@@ -1,0 +1,13 @@
+[package]
+name = "omnipool"
+version = "0.0.1"
+
+[dependencies]
+# Use sui-cli v0.15.0
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "72bc4cbcf794ef95bc3bc7077222a72f672e5615" }
+serde = { local = "../serde" }
+
+[addresses]
+omnipool = "0x0"
+serde = "0x0"
+sui = "0x2"
