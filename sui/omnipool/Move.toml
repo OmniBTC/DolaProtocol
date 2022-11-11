@@ -4,7 +4,7 @@ version = "0.0.1"
 
 [dependencies]
 # Use sui-cli v0.15.0
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "72bc4cbcf794ef95bc3bc7077222a72f672e5615" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
 serde = { local = "../serde" }
 
 [addresses]
