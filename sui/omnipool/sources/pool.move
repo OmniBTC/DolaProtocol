@@ -69,12 +69,6 @@ module omnipool::pool {
         let coin = coin::from_balance(balance, ctx);
 
         transfer::transfer(coin, app_address);
-
-        // emit(WithdrawEvent {
-        //     withdraw_amount: amount,
-        //     app_payload,
-        //     app_address
-        // })
     }
 
     /// encode deposit msg
