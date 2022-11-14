@@ -1,7 +1,10 @@
 module omnipool::pool {
+    use std::ascii;
+    use std::type_name;
     use std::vector;
 
     use serde::serde::{serialize_address, serialize_vector, serialize_u64, deserialize_u64, deserialize_address, vector_slice, serialize_u16, deserialize_u16};
+    use serde::u16;
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
@@ -12,9 +15,6 @@ module omnipool::pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario;
-    use std::type_name;
-    use std::ascii;
-    use serde::u16;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -89,8 +89,10 @@ module omnipool::pool {
         serialize_address(&mut pool_payload, user);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
-        serialize_vector(&mut pool_payload, app_payload);
+        if (vector::length(&app_payload) > 0) {
+            serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
+            serialize_vector(&mut pool_payload, app_payload);
+        };
         pool_payload
     }
 
