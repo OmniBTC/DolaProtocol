@@ -10,3 +10,9 @@ Cargo.lock
 **/*.rs.bk
 
 .idea/
+
+# Ignore move build
+build
+
+.DS_Store
+
