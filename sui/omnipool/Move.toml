@@ -1,5 +1,5 @@
 [package]
-name = "omnipool"
+name = "OmniPool"
 version = "0.0.1"
 
 [dependencies]

@@ -3,6 +3,7 @@ module wormhole_bridge::bridge {
     use omnipool::pool::Pool;
     use sui::coin::Coin;
     use sui::tx_context::TxContext;
+    use wormhole::wormhole;
 
 
     public entry fun send<CoinType>(
@@ -11,12 +12,12 @@ module wormhole_bridge::bridge {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::deposit_to<CoinType>(
+        let _msg = pool::deposit_to<CoinType>(
             pool,
             deposit_coin,
             app_payload,
             ctx
         );
-
+        // wormhole::publish_message()
     }
 }

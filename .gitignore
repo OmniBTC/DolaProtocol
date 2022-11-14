@@ -14,3 +14,5 @@ Cargo.lock
 # Ignore move build
 build
 
+.DS_Store
+

@@ -29,16 +29,6 @@ module omnipool::pool {
         id: UID
     }
 
-    struct DepositMsg {
-        pool_payload: vector<u8>
-    }
-
-    // struct WithdrawEvent has copy, drop {
-    //     withdraw_amount: u64,
-    //     app_address: address,
-    //     app_payload: vector<u8>
-    // }
-
     fun init(ctx: &mut TxContext) {
         transfer::transfer(PoolMangerCap {
             id: object::new(ctx)
@@ -58,20 +48,12 @@ module omnipool::pool {
         deposit_coin: Coin<CoinType>,
         app_payload: vector<u8>,
         ctx: &mut TxContext
-    ): DepositMsg {
+    ): vector<u8> {
         let amount = coin::value(&deposit_coin);
         let user = tx_context::sender(ctx);
         let token_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
         let pool_payload = encode_pool_payload(user, amount, token_name, app_payload);
         balance::join(&mut pool.balance, coin::into_balance(deposit_coin));
-
-        DepositMsg {
-            pool_payload
-        }
-    }
-
-    public fun get_payload(msg: DepositMsg): vector<u8> {
-        let DepositMsg { pool_payload } = msg;
         pool_payload
     }
 
@@ -171,7 +153,7 @@ module omnipool::pool {
             let ctx = test_scenario::ctx(scenario);
             let coin = coin::mint_for_testing<SUI>(100, ctx);
             let app_payload = vector::empty<u8>();
-            get_payload(deposit_to<SUI>(&mut pool, coin, app_payload, ctx));
+            deposit_to<SUI>(&mut pool, coin, app_payload, ctx);
             assert!(balance::value(&pool.balance) == 100, 0);
             test_scenario::return_shared(pool);
         };
