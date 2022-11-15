@@ -9,27 +9,21 @@ module wormhole_bridge::bridge_pool {
     use sui::tx_context;
     use sui::sui::SUI;
     use serde::u16::U16;
-    use wormhole::myu16::{Self as wormhole_u16};
     use wormhole::external_address::ExternalAddress;
     use wormhole::state::{State as WormholeState};
-    use wormhole::myvaa::{Self as vaa, VAA};
+    use wormhole::myvaa::{Self as vaa};
     use serde::u16;
     use wormhole::external_address;
     use sui::object_table;
-    use sui::object::UID;
-    use std::option::Option;
     use sui::vec_map::VecMap;
     use sui::vec_map;
-    use std::option;
-    use sui::object;
+    use wormhole_bridge::verify::{parse_verify_and_replay_protect, Unit};
 
     const EMUST_DEPLOYER: u64 = 0;
 
     const EUNKNOWN_CHAIN: u64 = 1;
 
     const EUNKNOWN_EMITTER: u64 = 2;
-
-    struct Unit has key, store { id: UID, }
 
     struct PoolState has key, store {
         pool_cap: PoolMangerCap,
@@ -85,53 +79,6 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
-    public fun get_registered_emitter(pool_state: &PoolState, chain_id: &U16): Option<ExternalAddress> {
-        if (vec_map::contains(&pool_state.registered_emitters, chain_id)) {
-            option::some(*vec_map::get(&pool_state.registered_emitters, chain_id))
-        } else {
-            option::none()
-        }
-    }
-
-    public fun assert_known_emitter(pool_state: &PoolState, vm: &VAA) {
-        let chain_id = u16::from_u64(wormhole_u16::to_u64(vaa::get_emitter_chain(vm)));
-        let maybe_emitter = get_registered_emitter(pool_state, &chain_id);
-        assert!(option::is_some<ExternalAddress>(&maybe_emitter), EUNKNOWN_CHAIN);
-
-        let emitter = option::extract(&mut maybe_emitter);
-        assert!(emitter == vaa::get_emitter_address(vm), EUNKNOWN_EMITTER);
-    }
-
-    public fun parse_and_verify(
-        wormhole_state: &mut WormholeState,
-        bridge_state: &PoolState,
-        vaa: vector<u8>,
-        ctx: &mut TxContext
-    ): VAA {
-        let vaa = vaa::parse_and_verify(wormhole_state, vaa, ctx);
-        assert_known_emitter(bridge_state, &vaa);
-        vaa
-    }
-
-    public fun replay_protect(pool_state: &mut PoolState, vaa: &VAA, ctx: &mut TxContext) {
-        // this calls set::add which aborts if the element already exists
-        object_table::add<vector<u8>, Unit>(
-            &mut pool_state.consumed_vaas,
-            vaa::get_hash(vaa),
-            Unit { id: object::new(ctx) }
-        );
-    }
-
-    public fun parse_verify_and_replay_protect(
-        wormhole_state: &mut WormholeState,
-        pool_state: &mut PoolState,
-        vaa: vector<u8>,
-        ctx: &mut TxContext): VAA {
-        let vaa = parse_and_verify(wormhole_state, pool_state, vaa, ctx);
-        replay_protect(pool_state, &vaa, ctx);
-        vaa
-    }
-
     public entry fun receive<CoinType>(
         wormhole_state: &mut WormholeState,
         pool_state: &mut PoolState,
@@ -141,7 +88,8 @@ module wormhole_bridge::bridge_pool {
     ) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
-            pool_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
             vaa,
             ctx
         );
