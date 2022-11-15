@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_core {
-    use omnipool::pool::{decode_deposit_payload};
+    use omnipool::pool::{decode_send_deposit_payload, decode_send_withdraw_payload};
     use sui::tx_context::TxContext;
     use wormhole::wormhole;
     use wormhole::emitter::EmitterCapability;
@@ -18,6 +18,9 @@ module wormhole_bridge::bridge_core {
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
     use sui::bcs;
+    use omnipool::pool;
+    use sui::coin::Coin;
+    use sui::sui::SUI;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -57,7 +60,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public entry fun receive<CoinType>(
+    public fun receive_deposit<CoinType>(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         vaa: vector<u8>,
@@ -72,7 +75,7 @@ module wormhole_bridge::bridge_core {
             ctx
         );
         let (user, amount, token_name, app_payload) =
-            decode_deposit_payload(myvaa::get_payload(&vaa));
+            decode_send_deposit_payload(myvaa::get_payload(&vaa));
         pool_manager::add_liquidity(
             &core_state.pool_manager_cap,
             pool_manager_info,
@@ -85,5 +88,47 @@ module wormhole_bridge::bridge_core {
         );
         myvaa::destroy(vaa);
         app_payload
+    }
+
+    public fun receive_withdraw(
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        vaa: vector<u8>,
+        ctx: &mut TxContext
+    ): vector<u8> {
+        let vaa = parse_verify_and_replay_protect(
+            wormhole_state,
+            &core_state.registered_emitters,
+            &mut core_state.consumed_vaas,
+            vaa,
+            ctx
+        );
+        let (_user, _token_name, app_payload) =
+            decode_send_withdraw_payload(myvaa::get_payload(&vaa));
+
+        myvaa::destroy(vaa);
+        app_payload
+    }
+
+    public fun send_withdraw<CoinType>(
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        pool_manager_info: &mut PoolManagerInfo,
+        chainid: u64,
+        user: address,
+        amount: u64,
+        token_name: vector<u8>,
+        wormhole_message_fee: Coin<SUI>,
+    ){
+        pool_manager::remove_liquidity(
+            &core_state.pool_manager_cap,
+            pool_manager_info,
+            chainid,
+            token_name,
+            bcs::to_bytes(&user),
+            amount
+        );
+        let msg = pool::encode_receive_withdraw_payload(user, amount, token_name);
+        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 }
