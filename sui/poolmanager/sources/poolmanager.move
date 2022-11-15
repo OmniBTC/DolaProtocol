@@ -1,5 +1,5 @@
 /// Manage the liquidity of all chains' pools
-module omnicore::poolmanager {
+module poolmanager::poolmanager {
     use serde::u16::{Self, U16};
     use serde::u256::{Self, U256};
     use sui::dynamic_object_field;
@@ -12,8 +12,6 @@ module omnicore::poolmanager {
     use sui::bcs::to_bytes;
     #[test_only]
     use sui::test_scenario;
-
-    friend omnicore::messagecore;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 1;
 
