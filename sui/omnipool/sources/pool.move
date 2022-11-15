@@ -18,6 +18,8 @@ module omnipool::pool {
 
     const EINVALID_LENGTH: u64 = 0;
 
+    const EMUST_DEPLOYER: u64 = 0;
+
     /// The user's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
         id: UID,
@@ -29,10 +31,18 @@ module omnipool::pool {
         id: UID
     }
 
-    fun init(ctx: &mut TxContext) {
-        transfer::transfer(PoolMangerCap {
+
+    public fun register_cap(ctx: &mut TxContext): PoolMangerCap {
+        // todo! consider into govern
+        assert!(tx_context::sender(ctx) == @omnipool, EMUST_DEPLOYER);
+        PoolMangerCap {
             id: object::new(ctx)
-        }, tx_context::sender(ctx));
+        }
+    }
+
+    public fun delete_cap(pool_cap: PoolMangerCap){
+        let PoolMangerCap{id} = pool_cap;
+        object::delete(id);
     }
 
     public entry fun create_pool<CoinType>(ctx: &mut TxContext) {
@@ -135,10 +145,6 @@ module omnipool::pool {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            init(test_scenario::ctx(scenario));
-        };
-        test_scenario::next_tx(scenario, manager);
-        {
             let ctx = test_scenario::ctx(scenario);
             create_pool<SUI>(ctx);
         };
@@ -158,15 +164,11 @@ module omnipool::pool {
 
     #[test]
     public fun test_withdraw_to() {
-        let manager = @0xA;
+        let manager = @0x0;
         let user = @0xC;
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
-        {
-            init(test_scenario::ctx(scenario));
-        };
-        test_scenario::next_tx(scenario, manager);
         {
             let ctx = test_scenario::ctx(scenario);
             create_pool<SUI>(ctx);
@@ -174,7 +176,7 @@ module omnipool::pool {
         test_scenario::next_tx(scenario, manager);
         {
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
-            let manager_cap = test_scenario::take_from_sender<PoolMangerCap>(scenario);
+            let manager_cap = register_cap( test_scenario::ctx(scenario));
             let ctx = test_scenario::ctx(scenario);
             let app_payload = vector::empty<u8>();
             let token_name = ascii::into_bytes(type_name::into_string(type_name::get<SUI>()));
@@ -190,7 +192,7 @@ module omnipool::pool {
             assert!(balance::value(&pool.balance) == 0, 0);
 
             test_scenario::return_shared(pool);
-            test_scenario::return_to_sender(scenario, manager_cap);
+            delete_cap(manager_cap);
         };
         test_scenario::end(scenario_val);
     }

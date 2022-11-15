@@ -1,4 +1,4 @@
-module wormhole_bridge::bridge {
+module wormhole_bridge::bridge_pool {
     use omnipool::pool;
     use omnipool::pool::{Pool, PoolMangerCap};
     use sui::coin::Coin;
@@ -32,6 +32,7 @@ module wormhole_bridge::bridge {
     struct Unit has key, store { id: UID, }
 
     struct State has key, store {
+        pool_cap: PoolMangerCap,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<U16, ExternalAddress>
@@ -41,6 +42,7 @@ module wormhole_bridge::bridge {
         assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             State {
+                pool_cap: pool::register_cap(ctx),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty()
@@ -134,7 +136,6 @@ module wormhole_bridge::bridge {
         wormhole_state: &mut WormholeState,
         state: &mut State,
         vaa: vector<u8>,
-        pool_cap: &PoolMangerCap,
         pool: &mut Pool<CoinType>,
         ctx: &mut TxContext
     ) {
@@ -144,7 +145,8 @@ module wormhole_bridge::bridge {
             vaa,
             ctx
         );
-        pool::withdraw_to(pool_cap,
+        pool::withdraw_to(
+            &state.pool_cap,
             pool,
             vaa::get_payload(&vaa),
             ctx

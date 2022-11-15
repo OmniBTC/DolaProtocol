@@ -1,5 +1,5 @@
 /// Manage the liquidity of all chains' pools
-module poolmanager::poolmanager {
+module pool_manager::pool_manager {
     use serde::u16::{Self, U16};
     use serde::u256::{Self, U256};
     use sui::dynamic_object_field;

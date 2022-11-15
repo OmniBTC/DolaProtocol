@@ -1,22 +1,27 @@
-module wormhole_bridge::bridge {
-    use std::option::{Self, Option};
-    use std::vector;
-
-    use omnicore::message_core::process_payload;
-    use serde::u16::{Self, U16};
+module wormhole_bridge::bridge_core {
+    use omnipool::pool;
+    use omnipool::pool::{Pool, PoolMangerCap};
     use sui::coin::Coin;
-    use sui::object::{Self, UID};
-    use sui::object_table;
-    use sui::sui::SUI;
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
-    use sui::vec_map::{Self, VecMap};
-    use wormhole::emitter::EmitterCapability;
-    use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::myu16::Self as wormhole_u16;
-    use wormhole::myvaa::{Self as vaa, VAA};
-    use wormhole::state::State as WormholeState;
+    use sui::tx_context::TxContext;
     use wormhole::wormhole;
+    use wormhole::emitter::EmitterCapability;
+    use sui::transfer;
+    use sui::tx_context;
+    use sui::sui::SUI;
+    use serde::u16::U16;
+    use wormhole::myu16::{Self as wormhole_u16};
+    use wormhole::external_address::ExternalAddress;
+    use wormhole::state::{State as WormholeState};
+    use wormhole::myvaa::{Self as vaa, VAA};
+    use serde::u16;
+    use wormhole::external_address;
+    use sui::object_table;
+    use sui::object::UID;
+    use std::option::Option;
+    use sui::vec_map::VecMap;
+    use sui::vec_map;
+    use std::option;
+    use sui::object;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -60,13 +65,21 @@ module wormhole_bridge::bridge {
         );
     }
 
-    public entry fun send(
+    public entry fun send<CoinType>(
         state: &mut State,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        msg: vector<u8>,
-        _ctx: &mut TxContext
+        pool: &mut Pool<CoinType>,
+        deposit_coin: Coin<CoinType>,
+        app_payload: vector<u8>,
+        ctx: &mut TxContext
     ) {
+        let msg = pool::deposit_to<CoinType>(
+            pool,
+            deposit_coin,
+            app_payload,
+            ctx
+        );
         wormhole::publish_message(&mut state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
@@ -118,24 +131,24 @@ module wormhole_bridge::bridge {
     }
 
     public entry fun receive<CoinType>(
-        state: &mut State,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        vaa_bytes: vector<u8>,
+        state: &mut State,
+        vaa: vector<u8>,
+        pool_cap: &PoolMangerCap,
+        pool: &mut Pool<CoinType>,
         ctx: &mut TxContext
     ) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             state,
-            vaa_bytes,
+            vaa,
             ctx
         );
-        let payload = process_payload(vaa::get_payload(&vaa));
+        pool::withdraw_to(pool_cap,
+            pool,
+            vaa::get_payload(&vaa),
+            ctx
+        );
         vaa::destroy(vaa);
-        if (vector::length(&payload) > 0) {
-            send(state, wormhole_state, wormhole_message_fee, payload, ctx);
-        } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
-        }
     }
 }

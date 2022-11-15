@@ -1,2 +1,2 @@
 /// Manage permissions for applications to modify storage
-module omnicore::appmanager {}
+module omnicore::app_manager {}
