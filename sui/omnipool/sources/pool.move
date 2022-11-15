@@ -27,21 +27,21 @@ module omnipool::pool {
     }
 
     /// Give permission to the bridge when Pool is in use
-    struct PoolMangerCap has key, store {
+    struct PoolCap has key, store {
         id: UID
     }
 
 
-    public fun register_cap(ctx: &mut TxContext): PoolMangerCap {
+    public fun register_cap(ctx: &mut TxContext): PoolCap {
         // todo! consider into govern
         assert!(tx_context::sender(ctx) == @omnipool, EMUST_DEPLOYER);
-        PoolMangerCap {
+        PoolCap {
             id: object::new(ctx)
         }
     }
 
-    public fun delete_cap(pool_cap: PoolMangerCap){
-        let PoolMangerCap{id} = pool_cap;
+    public fun delete_cap(pool_cap: PoolCap){
+        let PoolCap{id} = pool_cap;
         object::delete(id);
     }
 
@@ -69,7 +69,7 @@ module omnipool::pool {
 
     /// call by bridge
     public fun withdraw_to<CoinType>(
-        _: &PoolMangerCap,
+        _: &PoolCap,
         pool: &mut Pool<CoinType>,
         pool_payload: vector<u8>,
         ctx: &mut TxContext

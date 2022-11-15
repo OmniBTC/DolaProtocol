@@ -1,30 +1,25 @@
 module wormhole_bridge::bridge_core {
-    use omnipool::pool;
-    use omnipool::pool::Pool;
-    use sui::coin::Coin;
+    use omnipool::pool::{decode_deposit_payload};
     use sui::tx_context::TxContext;
     use wormhole::wormhole;
     use wormhole::emitter::EmitterCapability;
     use sui::transfer;
     use sui::tx_context;
-    use sui::sui::SUI;
     use serde::u16::U16;
     use wormhole::external_address::ExternalAddress;
     use wormhole::state::{State as WormholeState};
-    use wormhole::myvaa::{Self as vaa};
+    use wormhole::myu16::{Self as wormhole_u16};
+    use wormhole::myvaa;
     use serde::u16;
     use wormhole::external_address;
     use sui::object_table;
     use sui::vec_map::VecMap;
     use sui::vec_map;
-    use pool_manager::pool_manager::{PoolManagerCap, Self};
+    use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
+    use sui::bcs;
 
     const EMUST_DEPLOYER: u64 = 0;
-
-    const EUNKNOWN_CHAIN: u64 = 1;
-
-    const EUNKNOWN_EMITTER: u64 = 2;
 
     struct CoreState has key, store {
         pool_manager_cap: PoolManagerCap,
@@ -62,31 +57,13 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public entry fun send<CoinType>(
-        core_state: &mut CoreState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        pool: &mut Pool<CoinType>,
-        deposit_coin: Coin<CoinType>,
-        app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let msg = pool::deposit_to<CoinType>(
-            pool,
-            deposit_coin,
-            app_payload,
-            ctx
-        );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
-    }
-
     public entry fun receive<CoinType>(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         vaa: vector<u8>,
-        _pool: &mut Pool<CoinType>,
+        pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ) {
+    ): vector<u8> {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -94,6 +71,19 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        vaa::destroy(vaa);
+        let (user, amount, token_name, app_payload) =
+            decode_deposit_payload(myvaa::get_payload(&vaa));
+        pool_manager::add_liquidity(
+            &core_state.pool_manager_cap,
+            pool_manager_info,
+            wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
+            token_name,
+            // todo! fix address
+            bcs::to_bytes(&user),
+            amount,
+            ctx
+        );
+        myvaa::destroy(vaa);
+        app_payload
     }
 }

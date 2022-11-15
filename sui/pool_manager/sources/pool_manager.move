@@ -76,6 +76,7 @@ module pool_manager::pool_manager {
     }
 
     public fun add_liquidity(
+        _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         chainid: u64,
         pool_address: vector<u8>,
@@ -107,6 +108,7 @@ module pool_manager::pool_manager {
     }
 
     public fun remove_liquidity(
+        _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         chainid: u64,
         pool_address: vector<u8>,
@@ -183,8 +185,10 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
+            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
 
             add_liquidity(
+                &pool_manager_cap,
                 &mut pool_manager_info,
                 chainid,
                 to_bytes(&pool_address),
@@ -227,8 +231,10 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
+            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
 
             add_liquidity(
+                &pool_manager_cap,
                 &mut pool_manager_info,
                 chainid,
                 to_bytes(&pool_address),
@@ -248,8 +254,10 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
+            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
 
             remove_liquidity(
+                &pool_manager_cap,
                 &mut pool_manager_info,
                 chainid,
                 to_bytes(&pool_address),
