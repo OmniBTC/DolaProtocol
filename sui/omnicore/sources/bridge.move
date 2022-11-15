@@ -134,6 +134,8 @@ module wormhole_bridge::bridge {
         vaa::destroy(vaa);
         if (vector::length(&payload) > 0) {
             send(state, wormhole_state, wormhole_message_fee, payload, ctx);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         }
     }
 }
