@@ -62,7 +62,7 @@ module omnipool::pool {
         let amount = coin::value(&deposit_coin);
         let user = tx_context::sender(ctx);
         let token_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
-        let pool_payload = encode_pool_payload(user, amount, token_name, app_payload);
+        let pool_payload = encode_deposit_payload(user, amount, token_name, app_payload);
         balance::join(&mut pool.balance, coin::into_balance(deposit_coin));
         pool_payload
     }
@@ -74,7 +74,7 @@ module omnipool::pool {
         pool_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let (app_address, amount, _token_name, _app_payload, ) = decode_pool_payload(pool_payload);
+        let (app_address, amount, _token_name, _app_payload, ) = decode_deposit_payload(pool_payload);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
 
@@ -82,7 +82,7 @@ module omnipool::pool {
     }
 
     /// encode deposit msg
-    public fun encode_pool_payload(
+    public fun encode_deposit_payload(
         user: address,
         amount: u64,
         token_name: vector<u8>,
@@ -100,8 +100,8 @@ module omnipool::pool {
         pool_payload
     }
 
-    /// decode withdraw msg
-    public fun decode_pool_payload(pool_payload: vector<u8>): (address, u64, vector<u8>, vector<u8>) {
+    /// decode deposit msg
+    public fun decode_deposit_payload(pool_payload: vector<u8>): (address, u64, vector<u8>, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -180,7 +180,7 @@ module omnipool::pool {
             let ctx = test_scenario::ctx(scenario);
             let app_payload = vector::empty<u8>();
             let token_name = ascii::into_bytes(type_name::into_string(type_name::get<SUI>()));
-            let pool_payload = encode_pool_payload(user, 100, token_name, app_payload);
+            let pool_payload = encode_deposit_payload(user, 100, token_name, app_payload);
             let balance = balance::create_for_testing<SUI>(100);
 
             balance::join(&mut pool.balance, balance);
