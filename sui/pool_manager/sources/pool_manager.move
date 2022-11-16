@@ -1,13 +1,14 @@
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
-    use serde::u16::{Self, U16};
-    use serde::u256::{Self, U256};
-    use sui::dynamic_object_field;
+    use std::ascii::String;
+
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
+    #[test_only]
+    use std::ascii::string;
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
@@ -22,28 +23,39 @@ module pool_manager::pool_manager {
     }
 
     struct PoolManagerInfo has key, store {
-        id: UID
-    }
-
-    struct PoolInfo has store, copy, drop {
-        chainid: U16,
-        pool: vector<u8>,
-    }
-
-    struct LiquidityInfo has key, store {
         id: UID,
-        reserve: u64,
-        users: Table<vector<u8>, UserInfo>
+        // token_name => PoolInfo
+        pool_infos: Table<String, PoolInfo>,
+        // user_address => UserLiquidity
+        user_infos: Table<vector<u8>, UserLiquidity>
     }
 
-    struct UserInfo has store, copy, drop {
-        liduitidy: U256
+    struct PoolInfo has store {
+        // token liquidity
+        reserve: Liquidity,
+        // chainid => PoolLiquidity
+        pools: Table<u64, PoolLiquidity>,
+    }
+
+    struct PoolLiquidity has store {
+        // address => Liquidity
+        liquidity: Table<vector<u8>, Liquidity>
+    }
+
+    struct UserLiquidity has store {
+        liquidity: Table<String, Liquidity>,
+    }
+
+    struct Liquidity has store {
+        value: u64
     }
 
     fun init(ctx: &mut TxContext) {
-        transfer::transfer(PoolManagerInfo {
-            id: object::new(ctx)
-        }, tx_context::sender(ctx))
+        transfer::share_object(PoolManagerInfo {
+            id: object::new(ctx),
+            pool_infos: table::new(ctx),
+            user_infos: table::new(ctx)
+        })
     }
 
     public entry fun register_cap(ctx: &mut TxContext): PoolManagerCap {
@@ -53,82 +65,141 @@ module pool_manager::pool_manager {
         }
     }
 
-    fun create_pool_info(chianid: u64, pool: vector<u8>): PoolInfo {
-        PoolInfo {
-            chainid: u16::from_u64(chianid),
-            pool
+    public fun register_pool(
+        _: &PoolManagerCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        token_name: String,
+        ctx: &mut TxContext
+    ) {
+        let pool_info = PoolInfo {
+            reserve: zero_liquidity(),
+            pools: table::new(ctx)
+        };
+        table::add(&mut pool_manager_info.pool_infos, token_name, pool_info);
+    }
+
+    public fun zero_liquidity(): Liquidity {
+        Liquidity {
+            value: 0
         }
     }
 
-    public fun register_pool(
+    public fun user_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
+        token_name: String,
+        user_address: vector<u8>
+    ): u64 {
+        let user_infos = &mut pool_manager_info.user_infos;
+        let user_liquidity = table::borrow(user_infos, user_address);
+        let liquidity = table::borrow(&user_liquidity.liquidity, token_name);
+        liquidity.value
+    }
+
+    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: String): u64 {
+        let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
+        pool_info.reserve.value
+    }
+
+    public fun pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        token_name: String,
         chainid: u64,
-        pool_address: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let pool_info = create_pool_info(chainid, pool_address);
-        let liquidity_info = LiquidityInfo {
-            id: object::new(ctx),
-            reserve: 0,
-            users: table::new(ctx)
-        };
-        dynamic_object_field::add(&mut pool_manager_info.id, pool_info, liquidity_info)
+        pool_address: vector<u8>
+    ): u64 {
+        let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
+        let pool_liquidity = table::borrow(&pool_info.pools, chainid);
+        let liquidity = table::borrow(&pool_liquidity.liquidity, pool_address);
+        liquidity.value
     }
 
     public fun add_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
+        token_name: String,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let pool_info = create_pool_info(chainid, pool_address);
-        if (!dynamic_object_field::exists_(&mut pool_manager_info.id, pool_info)) {
-            register_pool(pool_manager_info, chainid, pool_address, ctx);
+        let pool_infos = &mut pool_manager_info.pool_infos;
+        let user_infos = &mut pool_manager_info.user_infos;
+
+        // update pool infos
+        // update token liquidity
+        if (!table::contains(pool_infos, token_name)) {
+            let pool_info = PoolInfo {
+                reserve: zero_liquidity(),
+                pools: table::new(ctx)
+            };
+            table::add(pool_infos, token_name, pool_info);
         };
-        let liquidity_info = dynamic_object_field::borrow_mut<PoolInfo, LiquidityInfo>(
-            &mut pool_manager_info.id,
-            pool_info
-        );
+        let pool_info = table::borrow_mut(pool_infos, token_name);
+        pool_info.reserve.value = pool_info.reserve.value + amount;
 
-        liquidity_info.reserve = liquidity_info.reserve + amount;
+        // update pool liquidity
+        let pools_liquidity = &mut pool_info.pools;
 
-        if (!table::contains(&mut liquidity_info.users, user_address)) {
-            table::add(&mut liquidity_info.users, user_address, UserInfo {
-                liduitidy: u256::zero()
-            });
+        if (!table::contains(pools_liquidity, chainid)) {
+            let pool_liquidity = PoolLiquidity {
+                liquidity: table::new(ctx)
+            };
+            table::add(pools_liquidity, chainid, pool_liquidity);
+        };
+        let pool_liquidity = table::borrow_mut(pools_liquidity, chainid);
+        if (!table::contains(&mut pool_liquidity.liquidity, pool_address)) {
+            table::add(&mut pool_liquidity.liquidity, pool_address, zero_liquidity());
         };
 
-        let user_info = table::borrow(&mut liquidity_info.users, user_address);
-        let new_liquidity = u256::add(user_info.liduitidy, u256::from_u64(amount));
-        let user_info = table::borrow_mut(&mut liquidity_info.users, user_address);
-        user_info.liduitidy = new_liquidity;
+        let liquidity = table::borrow_mut(&mut pool_liquidity.liquidity, pool_address);
+        liquidity.value = liquidity.value + amount;
+
+        // update user infos
+        if (!table::contains(user_infos, user_address)) {
+            let user_liquidity = UserLiquidity {
+                liquidity: table::new(ctx)
+            };
+            table::add(user_infos, user_address, user_liquidity);
+        };
+        let user_liquidity = table::borrow_mut(user_infos, user_address);
+        if (!table::contains(&mut user_liquidity.liquidity, token_name)) {
+            table::add(&mut user_liquidity.liquidity, token_name, zero_liquidity());
+        };
+        let liquidity = table::borrow_mut(&mut user_liquidity.liquidity, token_name);
+        liquidity.value = liquidity.value + amount;
     }
 
     public fun remove_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
+        token_name: String,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
-        amount: u64)
+        amount: u64,
+        _ctx: &mut TxContext
+    )
     {
-        let pool_info = create_pool_info(chainid, pool_address);
-        let liquidity_info = dynamic_object_field::borrow_mut<PoolInfo, LiquidityInfo>(
-            &mut pool_manager_info.id,
-            pool_info
-        );
+        let pool_infos = &mut pool_manager_info.pool_infos;
+        let user_infos = &mut pool_manager_info.user_infos;
 
-        assert!(liquidity_info.reserve >= amount, ENOT_ENOUGH_LIQUIDITY);
+        // update pool infos
+        // update token liquidity
+        let pool_info = table::borrow_mut(pool_infos, token_name);
+        assert!(pool_info.reserve.value >= amount, ENOT_ENOUGH_LIQUIDITY);
+        pool_info.reserve.value = pool_info.reserve.value - amount;
 
-        liquidity_info.reserve = liquidity_info.reserve - amount;
+        // update pool liquidity
+        let pools_liquidity = &mut pool_info.pools;
+        let pool_liquidity = table::borrow_mut(pools_liquidity, chainid);
 
-        let user_info = table::borrow(&mut liquidity_info.users, user_address);
-        let new_liquidity = u256::sub(user_info.liduitidy, u256::from_u64(amount));
-        let user_info = table::borrow_mut(&mut liquidity_info.users, user_address);
-        user_info.liduitidy = new_liquidity;
+        let liquidity = table::borrow_mut(&mut pool_liquidity.liquidity, pool_address);
+        liquidity.value = liquidity.value - amount;
+
+        // update user infos
+        let user_liquidity = table::borrow_mut(user_infos, user_address);
+        let liquidity = table::borrow_mut(&mut user_liquidity.liquidity, token_name);
+        liquidity.value = liquidity.value - amount;
     }
 
     #[test_only]
@@ -138,7 +209,7 @@ module pool_manager::pool_manager {
 
     #[test]
     public fun test_register_pool() {
-        let manager = @0xA;
+        let manager = @pool_manager;
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
@@ -147,29 +218,27 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            let chainid = 1;
-            let pool_address = @0xB;
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let token_name = string(b"USDT");
 
-            let pool_info = create_pool_info(chainid, to_bytes(&pool_address));
-            assert!(!dynamic_object_field::exists_(&mut pool_manager_info.id, pool_info), 0);
+            let cap = register_cap(test_scenario::ctx(scenario));
 
-            register_pool(&mut pool_manager_info, chainid, to_bytes(&pool_address), test_scenario::ctx(scenario));
+            register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
 
-            assert!(dynamic_object_field::exists_(&mut pool_manager_info.id, pool_info), 0);
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+            transfer::transfer(cap, manager);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
     }
 
     #[test]
     public fun test_add_liquidity() {
-        let manager = @0xA;
+        let manager = @pool_manager;
         let chainid = 1;
+        let token_name = string(b"USDT");
         let pool_address = @0xB;
         let user_address = @0xC;
         let amount = 100;
-        let pool_info = create_pool_info(chainid, to_bytes(&pool_address));
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
@@ -178,44 +247,50 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            register_pool(&mut pool_manager_info, chainid, to_bytes(&pool_address), test_scenario::ctx(scenario));
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+
+            let cap = register_cap(test_scenario::ctx(scenario));
+
+            register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
+
+            transfer::transfer(cap, manager);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
-
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
+            assert!(token_liquidity(&mut pool_manager_info, token_name) == 0, 0);
             add_liquidity(
-                &pool_manager_cap,
+                &cap,
                 &mut pool_manager_info,
+                token_name,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
                 amount,
                 test_scenario::ctx(scenario)
             );
-            let liquidity_info = dynamic_object_field::borrow<PoolInfo, LiquidityInfo>(
-                &pool_manager_info.id,
-                pool_info
-            );
-            let user_info = table::borrow(&liquidity_info.users, to_bytes(&user_address));
-            assert!(liquidity_info.reserve == amount, 0);
-            assert!(user_info.liduitidy == u256::from_u64(amount), 0);
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+
+            assert!(token_liquidity(&mut pool_manager_info, token_name) == amount, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == amount, 0);
+            assert!(user_liquidity(&mut pool_manager_info, token_name, to_bytes(&user_address)) == amount, 0);
+
+            test_scenario::return_to_sender(scenario, cap);
+            test_scenario::return_shared(pool_manager_info);
         };
+
         test_scenario::end(scenario_val);
     }
 
     #[test]
     public fun test_remove_liquidity() {
-        let manager = @0xA;
+        let manager = @pool_manager;
         let chainid = 1;
+        let token_name = string(b"USDT");
         let pool_address = @0xB;
         let user_address = @0xC;
         let amount = 100;
-        let pool_info = create_pool_info(chainid, to_bytes(&pool_address));
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
@@ -224,54 +299,60 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            register_pool(&mut pool_manager_info, chainid, to_bytes(&pool_address), test_scenario::ctx(scenario));
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+
+            let cap = register_cap(test_scenario::ctx(scenario));
+
+            register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
+
+            transfer::transfer(cap, manager);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
-
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
+            // assert!(token_liquidity(&mut pool_manager_info, pool_name) == 0, 0);
             add_liquidity(
-                &pool_manager_cap,
+                &cap,
                 &mut pool_manager_info,
+                token_name,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
                 amount,
                 test_scenario::ctx(scenario)
             );
-            let liquidity_info = dynamic_object_field::borrow<PoolInfo, LiquidityInfo>(
-                &pool_manager_info.id,
-                pool_info
-            );
-            let user_info = table::borrow(&liquidity_info.users, to_bytes(&user_address));
-            assert!(liquidity_info.reserve == amount, 0);
-            assert!(user_info.liduitidy == u256::from_u64(amount), 0);
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+
+            test_scenario::return_to_sender(scenario, cap);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_manager_info = test_scenario::take_from_sender<PoolManagerInfo>(scenario);
-            let pool_manager_cap = register_cap(test_scenario::ctx(scenario));
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
+
+            assert!(token_liquidity(&mut pool_manager_info, token_name) == amount, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == amount, 0);
+            assert!(user_liquidity(&mut pool_manager_info, token_name, to_bytes(&user_address)) == amount, 0);
 
             remove_liquidity(
-                &pool_manager_cap,
+                &cap,
                 &mut pool_manager_info,
+                token_name,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
-                amount
+                amount,
+                test_scenario::ctx(scenario)
             );
-            let liquidity_info = dynamic_object_field::borrow<PoolInfo, LiquidityInfo>(
-                &pool_manager_info.id,
-                pool_info
-            );
-            let user_info = table::borrow(&liquidity_info.users, to_bytes(&user_address));
-            assert!(liquidity_info.reserve == 0, 0);
-            assert!(user_info.liduitidy == u256::from_u64(0), 0);
-            test_scenario::return_to_sender(scenario, pool_manager_info);
+
+            assert!(token_liquidity(&mut pool_manager_info, token_name) == 0, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == 0, 0);
+            assert!(user_liquidity(&mut pool_manager_info, token_name, to_bytes(&user_address)) == 0, 0);
+
+            test_scenario::return_to_sender(scenario, cap);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
     }
