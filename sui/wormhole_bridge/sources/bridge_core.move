@@ -1,26 +1,23 @@
 module wormhole_bridge::bridge_core {
-    use omnipool::pool::{decode_send_deposit_payload, decode_send_withdraw_payload};
-    use sui::tx_context::TxContext;
-    use wormhole::wormhole;
-    use wormhole::emitter::EmitterCapability;
-    use sui::transfer;
-    use sui::tx_context;
-    use serde::u16::U16;
-    use wormhole::external_address::ExternalAddress;
-    use wormhole::state::{State as WormholeState};
-    use wormhole::myu16::{Self as wormhole_u16};
-    use wormhole::myvaa;
-    use serde::u16;
-    use wormhole::external_address;
-    use sui::object_table;
-    use sui::vec_map::VecMap;
-    use sui::vec_map;
+    use serde::u16::{Self, U16};
+
+    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, Pool};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
-    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
-    use sui::bcs;
-    use omnipool::pool;
+    use sui::bcs::to_bytes;
     use sui::coin::Coin;
+    use sui::object::id_address;
+    use sui::object_table;
     use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::vec_map::{Self, VecMap};
+    use wormhole::emitter::EmitterCapability;
+    use wormhole::external_address::{Self, ExternalAddress};
+    use wormhole::myu16::Self as wormhole_u16;
+    use wormhole::myvaa;
+    use wormhole::state::State as WormholeState;
+    use wormhole::wormhole;
+    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -74,15 +71,16 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        let (user, amount, token_name, app_payload) =
+        let (pool, user, amount, token_name, app_payload) =
             decode_send_deposit_payload(myvaa::get_payload(&vaa));
         pool_manager::add_liquidity(
             &core_state.pool_manager_cap,
             pool_manager_info,
-            wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             token_name,
+            wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             // todo! fix address
-            bcs::to_bytes(&user),
+            to_bytes(&pool),
+            to_bytes(&user),
             amount,
             ctx
         );
@@ -103,7 +101,7 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        let (_user, _token_name, app_payload) =
+        let (_pool, _user, _token_name, app_payload) =
             decode_send_withdraw_payload(myvaa::get_payload(&vaa));
 
         myvaa::destroy(vaa);
@@ -114,21 +112,24 @@ module wormhole_bridge::bridge_core {
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         pool_manager_info: &mut PoolManagerInfo,
+        pool: &mut Pool<CoinType>,
         chainid: u64,
         user: address,
         amount: u64,
         token_name: vector<u8>,
         wormhole_message_fee: Coin<SUI>,
-    ){
+    ) {
+        let pool_address = id_address(pool);
         pool_manager::remove_liquidity(
             &core_state.pool_manager_cap,
             pool_manager_info,
-            chainid,
             token_name,
-            bcs::to_bytes(&user),
+            chainid,
+            to_bytes(&pool_address),
+            to_bytes(&user),
             amount
         );
-        let msg = pool::encode_receive_withdraw_payload(user, amount, token_name);
+        let msg = pool::encode_receive_withdraw_payload(pool_address, user, amount, token_name);
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 }

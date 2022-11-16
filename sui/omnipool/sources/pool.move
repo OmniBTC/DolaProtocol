@@ -33,7 +33,6 @@ module omnipool::pool {
         id: UID
     }
 
-
     public fun register_cap(ctx: &mut TxContext): PoolCap {
         // todo! consider into govern
         assert!(tx_context::sender(ctx) == @omnipool, EMUST_DEPLOYER);

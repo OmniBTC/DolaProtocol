@@ -174,7 +174,6 @@ module pool_manager::pool_manager {
         pool_address: vector<u8>,
         user_address: vector<u8>,
         amount: u64,
-        _ctx: &mut TxContext
     )
     {
         let pool_infos = &mut pool_manager_info.pool_infos;
@@ -340,8 +339,7 @@ module pool_manager::pool_manager {
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
-                amount,
-                test_scenario::ctx(scenario)
+                amount
             );
 
             assert!(token_liquidity(&mut pool_manager_info, token_name) == 0, 0);

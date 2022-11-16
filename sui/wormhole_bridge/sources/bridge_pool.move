@@ -1,23 +1,19 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool;
-    use omnipool::pool::{Pool, PoolCap};
+    use serde::u16::{Self, U16};
+
+    use omnipool::pool::{Self, Pool, PoolCap};
     use sui::coin::Coin;
-    use sui::tx_context::TxContext;
-    use wormhole::wormhole;
-    use wormhole::emitter::EmitterCapability;
-    use sui::transfer;
-    use sui::tx_context;
-    use sui::sui::SUI;
-    use serde::u16::U16;
-    use wormhole::external_address::ExternalAddress;
-    use wormhole::state::{State as WormholeState};
-    use serde::u16;
-    use wormhole::external_address;
     use sui::object_table;
-    use sui::vec_map::VecMap;
-    use sui::vec_map;
-    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
+    use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::vec_map::{Self, VecMap};
+    use wormhole::emitter::EmitterCapability;
+    use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::myvaa;
+    use wormhole::state::State as WormholeState;
+    use wormhole::wormhole;
+    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -76,6 +72,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun send_withdraw<CoinType>(
+        pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
@@ -83,6 +80,7 @@ module wormhole_bridge::bridge_pool {
         ctx: &mut TxContext
     ) {
         let msg = pool::withdraw_to<CoinType>(
+            pool,
             app_payload,
             ctx
         );
@@ -113,7 +111,7 @@ module wormhole_bridge::bridge_pool {
         pool: &mut Pool<CoinType>,
         vaa: vector<u8>,
         ctx: &mut TxContext
-    ){
+    ) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &pool_state.registered_emitters,
@@ -121,7 +119,7 @@ module wormhole_bridge::bridge_pool {
             vaa,
             ctx
         );
-        let (user, amount, token_name) =
+        let (_pool_address, user, amount, token_name) =
             pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, token_name, ctx);
         myvaa::destroy(vaa);
