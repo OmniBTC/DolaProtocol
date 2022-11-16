@@ -1,14 +1,10 @@
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
-    use std::ascii::String;
-
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    #[test_only]
-    use std::ascii::string;
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
@@ -25,7 +21,7 @@ module pool_manager::pool_manager {
     struct PoolManagerInfo has key, store {
         id: UID,
         // token_name => PoolInfo
-        pool_infos: Table<String, PoolInfo>,
+        pool_infos: Table<vector<u8>, PoolInfo>,
         // user_address => UserLiquidity
         user_infos: Table<vector<u8>, UserLiquidity>
     }
@@ -43,7 +39,8 @@ module pool_manager::pool_manager {
     }
 
     struct UserLiquidity has store {
-        liquidity: Table<String, Liquidity>,
+        // token_name => Liquidity
+        liquidity: Table<vector<u8>, Liquidity>,
     }
 
     struct Liquidity has store {
@@ -68,7 +65,7 @@ module pool_manager::pool_manager {
     public fun register_pool(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
-        token_name: String,
+        token_name: vector<u8>,
         ctx: &mut TxContext
     ) {
         let pool_info = PoolInfo {
@@ -86,7 +83,7 @@ module pool_manager::pool_manager {
 
     public fun user_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
-        token_name: String,
+        token_name: vector<u8>,
         user_address: vector<u8>
     ): u64 {
         let user_infos = &mut pool_manager_info.user_infos;
@@ -95,14 +92,14 @@ module pool_manager::pool_manager {
         liquidity.value
     }
 
-    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: String): u64 {
+    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>): u64 {
         let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
         pool_info.reserve.value
     }
 
     public fun pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
-        token_name: String,
+        token_name: vector<u8>,
         chainid: u64,
         pool_address: vector<u8>
     ): u64 {
@@ -115,7 +112,7 @@ module pool_manager::pool_manager {
     public fun add_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
-        token_name: String,
+        token_name: vector<u8>,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -172,7 +169,7 @@ module pool_manager::pool_manager {
     public fun remove_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
-        token_name: String,
+        token_name: vector<u8>,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -219,7 +216,7 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let token_name = string(b"USDT");
+            let token_name = b"USDT";
 
             let cap = register_cap(test_scenario::ctx(scenario));
 
@@ -235,7 +232,7 @@ module pool_manager::pool_manager {
     public fun test_add_liquidity() {
         let manager = @pool_manager;
         let chainid = 1;
-        let token_name = string(b"USDT");
+        let token_name = b"USDT";
         let pool_address = @0xB;
         let user_address = @0xC;
         let amount = 100;
@@ -287,7 +284,7 @@ module pool_manager::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @pool_manager;
         let chainid = 1;
-        let token_name = string(b"USDT");
+        let token_name = b"USDT";
         let pool_address = @0xB;
         let user_address = @0xC;
         let amount = 100;
