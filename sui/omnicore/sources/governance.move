@@ -7,6 +7,9 @@ module omnicore::governance {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
+    #[test_only]
+    use sui::test_scenario;
+
     /// Errors
     const ENOT_MEMBER: u64 = 0;
 
@@ -15,6 +18,12 @@ module omnicore::governance {
     const EALREADY_MEMBER: u64 = 2;
 
     const EWRONG_VOTE_TYPE: u64 = 3;
+
+    const ENOT_BENEFICIARY: u64 = 4;
+
+    const ECANNOT_CLAIM: u64 = 5;
+
+    const EVOTE_NOT_COMPLETE: u64 = 6;
 
     /// Const types
     const APPROVE_VOTE_TYPE: u8 = 0;
@@ -33,6 +42,7 @@ module omnicore::governance {
     }
 
     /// Vote by governance members to send a key for a proposal
+    /// or retrun cap from governance
     struct Vote<phantom T> has key {
         id: UID,
         // members address
@@ -43,6 +53,8 @@ module omnicore::governance {
         proposal: address,
         // vote type, 0 for approve, 1 for tranfer
         vote_type: u8,
+        // manual or contract calls to get a key or cap
+        claim: bool,
         // prevent duplicate key issuance
         finished: bool
     }
@@ -87,7 +99,13 @@ module omnicore::governance {
     }
 
     public fun ensure_two_thirds(members_num: u64, votes_num: u64): bool {
-        votes_num >= members_num * 2 / 3 + 1
+        let threshold =
+            if (members_num % 3 == 0) {
+                members_num * 2 / 3
+            } else {
+                members_num * 2 / 3 + 1
+            };
+        votes_num >= threshold
     }
 
     /// Anyone can create proposal with a cap
@@ -104,6 +122,7 @@ module omnicore::governance {
         vote_type: u8,
         proposal: &mut Proposal<T>,
         beneficiary: address,
+        claim: bool,
         ctx: &mut TxContext
     ) {
         let sponsor = tx_context::sender(ctx);
@@ -117,8 +136,41 @@ module omnicore::governance {
             beneficiary,
             proposal: id_address(proposal),
             vote_type,
+            claim,
             finished: false
         });
+    }
+
+    public entry fun claim_key<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext): Key<T> {
+        assert!(vote.claim, ECANNOT_CLAIM);
+        let beneficiary = tx_context::sender(ctx);
+        assert!(beneficiary == vote.beneficiary, ENOT_BENEFICIARY);
+        let members_num = vector::length(&gov.members);
+        let votes_num = vector::length(&mut vote.votes);
+        assert!((ensure_two_thirds(members_num, votes_num)), EVOTE_NOT_COMPLETE);
+        assert!(!vote.finished, EVOTE_NOT_COMPLETE);
+        vote.finished = true;
+        Key<T> {
+            id: object::new(ctx),
+        }
+    }
+
+    public entry fun claim_cap<T: key + store>(
+        gov: &mut Governance,
+        vote: &mut Vote<T>,
+        proposal: &mut Proposal<T>,
+        ctx: &mut TxContext
+    ): T {
+        assert!(vote.claim, ECANNOT_CLAIM);
+        let beneficiary = tx_context::sender(ctx);
+        assert!(beneficiary == vote.beneficiary, ENOT_BENEFICIARY);
+        let members_num = vector::length(&gov.members);
+        let votes_num = vector::length(&mut vote.votes);
+        assert!((ensure_two_thirds(members_num, votes_num)), EVOTE_NOT_COMPLETE);
+        assert!(!vote.finished, EVOTE_NOT_COMPLETE);
+        vote.finished = true;
+        let cap = option::extract(&mut proposal.cap);
+        cap
     }
 
     public entry fun vote_for_transfer<T: key + store>(
@@ -131,11 +183,15 @@ module omnicore::governance {
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
         let votes = &mut vote.votes;
-        assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
-        vector::push_back(votes, voter);
+
         let members_num = vector::length(&gov.members);
+        if (members_num != 1) {
+            assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
+            vector::push_back(votes, voter);
+        };
+
         let votes_num = vector::length(votes);
-        if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
+        if (ensure_two_thirds(members_num, votes_num) && !vote.finished && !vote.claim) {
             vote.finished = true;
             let cap = option::extract(&mut proposal.cap);
             transfer::transfer(cap, vote.beneficiary);
@@ -147,11 +203,13 @@ module omnicore::governance {
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
         let votes = &mut vote.votes;
-        assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
-        vector::push_back(votes, voter);
         let members_num = vector::length(&gov.members);
+        if (members_num != 1) {
+            assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
+            vector::push_back(votes, voter);
+        };
         let votes_num = vector::length(votes);
-        if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
+        if (ensure_two_thirds(members_num, votes_num) && !vote.finished && !vote.claim) {
             vote.finished = true;
             transfer::transfer(Key<T> {
                 id: object::new(ctx),
@@ -159,12 +217,147 @@ module omnicore::governance {
         }
     }
 
-    public fun borrow_cap<T: key + store>(proposal: &mut Proposal<T>, _: &mut Key<T>): &T {
+    public fun borrow_from_proposal<T: key + store>(proposal: &mut Proposal<T>, _: &mut Key<T>): &T {
         option::borrow(&proposal.cap)
     }
 
+    /// If someone or an app no longer borrows cap, destroy its key
     public entry fun destroy_key<T>(key: Key<T>) {
         let Key { id } = key;
         object::delete(id)
+    }
+
+    #[test_only]
+    public fun init_for_test(ctx: &mut TxContext) {
+        init(ctx)
+    }
+
+    #[test_only]
+    struct TestCap has key, store {
+        id: UID
+    }
+
+    #[test_only]
+    public fun test_cap(_: &TestCap): bool {
+        true
+    }
+
+    #[test]
+    public fun test_govern_cap() {
+        let first_member = @0xA;
+        let second_member = @0xB;
+        let third_member = @0xC;
+        let pool_manager = @0xD;
+        let app = @0xE;
+
+        let scenario_val = test_scenario::begin(first_member);
+        let scenario = &mut scenario_val;
+        {
+            init_for_test(test_scenario::ctx(scenario));
+        };
+        test_scenario::next_tx(scenario, first_member);
+        {
+            let test_cap = TestCap { id: object::new(test_scenario::ctx(scenario)) };
+            transfer::transfer(test_cap, pool_manager);
+        };
+        test_scenario::next_tx(scenario, pool_manager);
+        {
+            let test_cap = test_scenario::take_from_sender<TestCap>(scenario);
+            create_proposal(test_cap, test_scenario::ctx(scenario));
+        };
+        test_scenario::next_tx(scenario, first_member);
+        {
+            let shared_proposal = test_scenario::take_shared<Proposal<TestCap>>(scenario);
+            let shared_governance = test_scenario::take_shared<Governance>(scenario);
+            create_vote<TestCap>(
+                &mut shared_governance,
+                APPROVE_VOTE_TYPE,
+                &mut shared_proposal,
+                app,
+                false,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(shared_proposal);
+            test_scenario::return_shared(shared_governance);
+        };
+        test_scenario::next_tx(scenario, first_member);
+        {
+            let shared_governance = test_scenario::take_shared<Governance>(scenario);
+            let shared_vote = test_scenario::take_shared<Vote<TestCap>>(scenario);
+            vote_for_approve(&mut shared_governance, &mut shared_vote, test_scenario::ctx(scenario));
+
+            test_scenario::return_shared(shared_governance);
+            test_scenario::return_shared(shared_vote);
+        };
+        test_scenario::next_tx(scenario, app);
+        {
+            let proposal = test_scenario::take_shared<Proposal<TestCap>>(scenario);
+            let key = test_scenario::take_from_sender<Key<TestCap>>(scenario);
+            let cap = borrow_from_proposal(&mut proposal, &mut key);
+            assert!(test_cap(cap), 0);
+
+            test_scenario::return_shared(proposal);
+            test_scenario::return_to_sender(scenario, key);
+        };
+        test_scenario::next_tx(scenario, first_member);
+        {
+            let goverance_cap = test_scenario::take_from_sender<GovernanceCap>(scenario);
+            let goverance = test_scenario::take_shared<Governance>(scenario);
+            add_member(&goverance_cap, &mut goverance, second_member);
+
+            test_scenario::return_shared(goverance);
+            test_scenario::return_to_sender(scenario, goverance_cap);
+        };
+        test_scenario::next_tx(scenario, first_member);
+        {
+            let goverance_cap = test_scenario::take_from_sender<GovernanceCap>(scenario);
+            let goverance = test_scenario::take_shared<Governance>(scenario);
+            add_member(&goverance_cap, &mut goverance, third_member);
+
+            test_scenario::return_shared(goverance);
+            test_scenario::return_to_sender(scenario, goverance_cap);
+        };
+        test_scenario::next_tx(scenario, second_member);
+        {
+            let shared_proposal = test_scenario::take_shared<Proposal<TestCap>>(scenario);
+            let shared_governance = test_scenario::take_shared<Governance>(scenario);
+            create_vote<TestCap>(
+                &mut shared_governance,
+                TRANSFER_VOTE_TYPE,
+                &mut shared_proposal,
+                app,
+                false,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(shared_proposal);
+            test_scenario::return_shared(shared_governance);
+        };
+        test_scenario::next_tx(scenario, third_member);
+        {
+            let shared_governance = test_scenario::take_shared<Governance>(scenario);
+            let shared_proposal = test_scenario::take_shared<Proposal<TestCap>>(scenario);
+            let recent_vote_id = test_scenario::most_recent_id_shared<Vote<TestCap>>();
+            let shared_vote = test_scenario::take_shared_by_id<Vote<TestCap>>(
+                scenario,
+                option::extract(&mut recent_vote_id)
+            );
+            vote_for_transfer(
+                &mut shared_governance,
+                &mut shared_proposal,
+                &mut shared_vote,
+                test_scenario::ctx(scenario)
+            );
+
+            test_scenario::return_shared(shared_governance);
+            test_scenario::return_shared(shared_proposal);
+            test_scenario::return_shared(shared_vote);
+        };
+        test_scenario::next_tx(scenario, app);
+        {
+            let cap = test_scenario::take_from_sender<TestCap>(scenario);
+            assert!(test_cap(&cap), 0);
+            test_scenario::return_to_sender(scenario, cap);
+        };
+        test_scenario::end(scenario_val);
     }
 }
