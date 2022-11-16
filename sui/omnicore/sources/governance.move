@@ -1,3 +1,4 @@
+/// Manage permissions for modules in the protocol
 module omnicore::governance {
     use std::option::{Self, Option};
     use std::vector;
@@ -6,11 +7,19 @@ module omnicore::governance {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
+    /// Errors
     const ENOT_MEMBER: u64 = 0;
 
     const EALREADY_VOTE: u64 = 1;
 
     const EALREADY_MEMBER: u64 = 2;
+
+    const EWRONG_VOTE_TYPE: u64 = 3;
+
+    /// Const types
+    const APPROVE_VOTE_TYPE: u8 = 0;
+
+    const TRANSFER_VOTE_TYPE: u8 = 1;
 
     /// Manage governance members
     struct GovernanceCap has key, store {
@@ -32,6 +41,8 @@ module omnicore::governance {
         beneficiary: address,
         // just record cap position
         proposal: address,
+        // vote type, 0 for approve, 1 for tranfer
+        vote_type: u8,
         // prevent duplicate key issuance
         finished: bool
     }
@@ -90,6 +101,7 @@ module omnicore::governance {
     /// Member of governance can create vote
     public entry fun create_vote<T: key + store>(
         gov: &mut Governance,
+        vote_type: u8,
         proposal: &mut Proposal<T>,
         beneficiary: address,
         ctx: &mut TxContext
@@ -104,11 +116,34 @@ module omnicore::governance {
             votes,
             beneficiary,
             proposal: id_address(proposal),
+            vote_type,
             finished: false
         });
     }
 
-    public entry fun vote<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext) {
+    public entry fun vote_for_transfer<T: key + store>(
+        gov: &mut Governance,
+        proposal: &mut Proposal<T>,
+        vote: &mut Vote<T>,
+        ctx: &mut TxContext
+    ) {
+        assert!(vote.vote_type == TRANSFER_VOTE_TYPE, EWRONG_VOTE_TYPE);
+        let voter = tx_context::sender(ctx);
+        is_member(gov, voter);
+        let votes = &mut vote.votes;
+        assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
+        vector::push_back(votes, voter);
+        let members_num = vector::length(&gov.members);
+        let votes_num = vector::length(votes);
+        if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
+            vote.finished = true;
+            let cap = option::extract(&mut proposal.cap);
+            transfer::transfer(cap, vote.beneficiary);
+        }
+    }
+
+    public entry fun vote_for_approve<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext) {
+        assert!(vote.vote_type == APPROVE_VOTE_TYPE, EWRONG_VOTE_TYPE);
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
         let votes = &mut vote.votes;
@@ -128,7 +163,7 @@ module omnicore::governance {
         option::borrow(&proposal.cap)
     }
 
-    public entry fun destory_key<T>(key: Key<T>) {
+    public entry fun destroy_key<T>(key: Key<T>) {
         let Key { id } = key;
         object::delete(id)
     }
