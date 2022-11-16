@@ -1,11 +1,12 @@
 /// Manage permissions for modules in the protocol
-module omnicore::governance {
+module governance::governance {
     use std::option::{Self, Option};
     use std::vector;
 
     use sui::object::{Self, UID, id_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
+    use sui::dynamic_field;
 
     #[test_only]
     use sui::test_scenario;
@@ -26,9 +27,20 @@ module omnicore::governance {
     const EVOTE_NOT_COMPLETE: u64 = 6;
 
     /// Const types
-    const APPROVE_VOTE_TYPE: u8 = 0;
+    const APPROVE_VOTE_TYPE: u8 = 7;
 
-    const TRANSFER_VOTE_TYPE: u8 = 1;
+    const TRANSFER_VOTE_TYPE: u8 = 8;
+
+    const EALREADY_EXIST: u64 = 9;
+
+    const EMUST_NONE: u64 = 10;
+
+    const EMUST_SOME: u64 = 11;
+
+
+    struct GovernanceExternalCap has key, store {
+        id: UID
+    }
 
     /// Manage governance members
     struct GovernanceCap has key, store {
@@ -59,6 +71,19 @@ module omnicore::governance {
         finished: bool
     }
 
+    /// Vote by governance members to send a key for a proposal
+    struct VoteExternalCap<T: store> has key {
+        id: UID,
+        // members address
+        votes: vector<address>,
+        // External cap hash
+        external_hash: vector<u8>,
+        // External cap
+        external_cap: Option<T>,
+        // prevent duplicate key issuance
+        finished: bool
+    }
+
     /// Share a cap so that only the person who owns the key can use it,
     /// or the key can be wrapped in package for use.
     struct Proposal<T: key + store> has key, store {
@@ -80,7 +105,19 @@ module omnicore::governance {
         transfer::share_object(Governance {
             id: object::new(ctx),
             members
+        });
+        transfer::share_object(GovernanceExternalCap {
+            id: object::new(ctx)
         })
+    }
+
+    public entry fun add_external_cap<T: store>(
+        governance_external_cap: &mut GovernanceExternalCap,
+        hash: vector<u8>,
+        cap: T
+    ) {
+        assert!(!dynamic_field::exists_with_type<vector<u8>, T>(&governance_external_cap.id, hash), EALREADY_EXIST);
+        dynamic_field::add(&mut governance_external_cap.id, hash, cap);
     }
 
     public entry fun add_member(_: &GovernanceCap, goverance: &mut Governance, member: address) {
@@ -198,6 +235,26 @@ module omnicore::governance {
         }
     }
 
+    public entry fun create_vote_external_cap<T: store>(
+        gov: &mut Governance,
+        external_hash: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let sponsor = tx_context::sender(ctx);
+        is_member(gov, sponsor);
+
+        let votes = vector::empty<address>();
+        vector::push_back(&mut votes, sponsor);
+        // Like MakeDao
+        transfer::share_object(VoteExternalCap<T> {
+            id: object::new(ctx),
+            votes,
+            external_hash,
+            external_cap: option::none(),
+            finished: false
+        });
+    }
+
     public entry fun vote_for_approve<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext) {
         assert!(vote.vote_type == APPROVE_VOTE_TYPE, EWRONG_VOTE_TYPE);
         let voter = tx_context::sender(ctx);
@@ -215,6 +272,39 @@ module omnicore::governance {
                 id: object::new(ctx),
             }, vote.beneficiary)
         }
+    }
+
+    public fun vote_external_cap<T: store+drop>(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: VoteExternalCap<T>,
+        ctx: &mut TxContext
+    ): VoteExternalCap<T> {
+        assert!(option::is_none(&vote.external_cap), EMUST_NONE);
+        let voter = tx_context::sender(ctx);
+        is_member(gov, voter);
+        let votes = &mut vote.votes;
+        assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
+        vector::push_back(votes, voter);
+        let members_num = vector::length(&gov.members);
+        let votes_num = vector::length(votes);
+        if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
+            vote.finished = true;
+            vote.external_cap = option::some(dynamic_field::remove<vector<u8>, T>(
+                &mut governance_external_cap.id,
+                vote.external_hash));
+        };
+        vote
+    }
+
+    public fun external_cap_destroy<T: store>(
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: VoteExternalCap<T>,
+    ) {
+        assert!(option::is_some(&vote.external_cap), EMUST_SOME);
+        let VoteExternalCap { id, votes: _, external_hash, external_cap, finished: _ } = vote;
+        object::delete(id);
+        dynamic_field::add(&mut governance_external_cap.id, external_hash, option::destroy_some(external_cap));
     }
 
     public fun borrow_from_proposal<T: key + store>(proposal: &mut Proposal<T>, _: &mut Key<T>): &T {

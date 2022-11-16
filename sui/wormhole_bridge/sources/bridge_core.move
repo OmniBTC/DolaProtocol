@@ -18,11 +18,15 @@ module wormhole_bridge::bridge_core {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
+    use std::option;
+    use std::option::Option;
 
     const EMUST_DEPLOYER: u64 = 0;
 
+    const EMUST_SOME: u64 = 1;
+
     struct CoreState has key, store {
-        pool_manager_cap: PoolManagerCap,
+        pool_manager_cap: Option<PoolManagerCap>,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<U16, ExternalAddress>
@@ -32,12 +36,16 @@ module wormhole_bridge::bridge_core {
         assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             CoreState {
-                pool_manager_cap: pool_manager::register_cap(ctx),
+                pool_manager_cap: option::none(),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty()
             }
         );
+    }
+
+    public entry fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap){
+        core_state.pool_manager_cap = option::some(pool_manager_cap);
     }
 
     public entry fun register_remote_bridge(
@@ -64,6 +72,7 @@ module wormhole_bridge::bridge_core {
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
     ): (U16, vector<u8>) {
+        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -74,7 +83,7 @@ module wormhole_bridge::bridge_core {
         let (pool, user, amount, token_name, app_id, app_payload) =
             decode_send_deposit_payload(myvaa::get_payload(&vaa));
         pool_manager::add_liquidity(
-            &core_state.pool_manager_cap,
+            option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             token_name,
             wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
@@ -119,9 +128,10 @@ module wormhole_bridge::bridge_core {
         token_name: vector<u8>,
         wormhole_message_fee: Coin<SUI>,
     ) {
+        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         let pool_address = id_address(pool);
         pool_manager::remove_liquidity(
-            &core_state.pool_manager_cap,
+            option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             token_name,
             chainid,

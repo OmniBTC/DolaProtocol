@@ -1,15 +1,15 @@
 [package]
-name = "OmniCore"
+name = "Lending"
 version = "0.0.1"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
 Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "ade434c9326385f4ab23fe314a9bab34e074ad16" }
-Serde = { local = "../serde" }
+Serde = { local = "../../serde" }
 PoolManager = { local = "../pool_manager" }
 
 [addresses]
-omnicore = "0x0"
+lending = "0x0"
 pool_manager = "0x0"
 serde = "0x0"
 wormhole = "0x0"

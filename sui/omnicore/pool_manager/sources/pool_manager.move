@@ -3,19 +3,34 @@ module pool_manager::pool_manager {
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::{TxContext};
 
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
     use sui::test_scenario;
+    use sui::types;
+    use governance::governance;
+    use governance::governance::GovernanceExternalCap;
+    use std::hash;
+    use sui::bcs;
+    use std::option::Option;
+    use std::option;
 
     const EMUST_DEPLOYER: u64 = 0;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 1;
 
-    struct PoolManagerCap has key, store {
-        id: UID
+    const EONLY_ONE_ADMIN: u64 = 2;
+
+    const EMUST_SOME: u64 = 2;
+
+    struct PoolManagerAdminCap has store, drop {
+        count: u64
+    }
+
+
+    struct PoolManagerCap has store, drop {
     }
 
     struct PoolManagerInfo has key, store {
@@ -55,10 +70,17 @@ module pool_manager::pool_manager {
         })
     }
 
-    public entry fun register_cap(ctx: &mut TxContext): PoolManagerCap {
-        assert!(tx_context::sender(ctx) == @pool_manager, EMUST_DEPLOYER);
+    public entry fun register_admin_cap(govern: &mut GovernanceExternalCap){
+        let admin = PoolManagerAdminCap { count: 0 };
+        assert!(types::is_one_time_witness<PoolManagerAdminCap>(&admin), EONLY_ONE_ADMIN);
+        governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
+    }
+
+    public entry fun register_cap(admin: &mut Option<PoolManagerAdminCap>): PoolManagerCap {
+        assert!(option::is_some(admin), EMUST_SOME);
+        let admin = option::borrow_mut(admin);
+        admin.count = admin.count + 1;
         PoolManagerCap {
-            id: object::new(ctx)
         }
     }
 
