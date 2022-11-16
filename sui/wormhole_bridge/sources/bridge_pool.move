@@ -59,12 +59,14 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
+        app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
         let msg = pool::deposit_to<CoinType>(
             pool,
             deposit_coin,
+            app_id,
             app_payload,
             ctx
         );
@@ -76,11 +78,13 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
+        app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
         let msg = pool::withdraw_to<CoinType>(
             pool,
+            app_id,
             app_payload,
             ctx
         );
@@ -93,12 +97,14 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
+        app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
         let msg = pool::deposit_to<CoinType>(
             pool,
             deposit_coin,
+            app_id,
             app_payload,
             ctx
         );

@@ -15,6 +15,7 @@ module omnipool::pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario;
+    use serde::u16::U16;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -57,6 +58,7 @@ module omnipool::pool {
     public entry fun deposit_to<CoinType>(
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
+        app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ): vector<u8> {
@@ -64,7 +66,7 @@ module omnipool::pool {
         let user = tx_context::sender(ctx);
         let pool_address = uid_to_address(&pool.id);
         let token_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
-        let pool_payload = encode_send_deposit_payload(pool_address, user, amount, token_name, app_payload);
+        let pool_payload = encode_send_deposit_payload(pool_address, user, amount, token_name, app_id, app_payload);
         balance::join(&mut pool.balance, coin::into_balance(deposit_coin));
         pool_payload
     }
@@ -72,13 +74,14 @@ module omnipool::pool {
     /// call by user or application
     public entry fun withdraw_to<CoinType>(
         pool: &mut Pool<CoinType>,
+        app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ): vector<u8> {
         let pool_address = uid_to_address(&pool.id);
         let user = tx_context::sender(ctx);
         let token_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
-        let pool_payload = encode_send_withdraw_payload(pool_address, user, token_name, app_payload);
+        let pool_payload = encode_send_withdraw_payload(pool_address, user, token_name, app_id, app_payload);
         pool_payload
     }
 
@@ -103,6 +106,7 @@ module omnipool::pool {
         user: address,
         amount: u64,
         token_name: vector<u8>,
+        app_id: U16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -111,6 +115,7 @@ module omnipool::pool {
         serialize_u64(&mut pool_payload, amount);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
+        serialize_u16(&mut pool_payload, app_id);
         if (vector::length(&app_payload) > 0) {
             serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
             serialize_vector(&mut pool_payload, app_payload);
@@ -119,7 +124,7 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_send_deposit_payload(pool_payload: vector<u8>): (address, address, u64, vector<u8>, vector<u8>) {
+    public fun decode_send_deposit_payload(pool_payload: vector<u8>): (address, address, u64, vector<u8>, U16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -144,6 +149,10 @@ module omnipool::pool {
         let token_name = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
             data_len = 2;
@@ -157,7 +166,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_address, app_address, amount, token_name, app_payload)
+        (pool_address, app_address, amount, token_name, app_id, app_payload)
     }
 
     /// encode deposit msg
@@ -165,6 +174,7 @@ module omnipool::pool {
         pool: address,
         user: address,
         token_name: vector<u8>,
+        app_id: U16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -172,6 +182,7 @@ module omnipool::pool {
         serialize_address(&mut pool_payload, user);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
+        serialize_u16(&mut pool_payload, app_id);
         if (vector::length(&app_payload) > 0) {
             serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
             serialize_vector(&mut pool_payload, app_payload);
@@ -180,7 +191,7 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_send_withdraw_payload(pool_payload: vector<u8>): (address, address, vector<u8>, vector<u8>) {
+    public fun decode_send_withdraw_payload(pool_payload: vector<u8>): (address, address, vector<u8>, U16,vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -201,6 +212,10 @@ module omnipool::pool {
         let token_name = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
             data_len = 2;
@@ -214,7 +229,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_address, app_address, token_name, app_payload)
+        (pool_address, app_address, token_name, app_id, app_payload)
     }
 
     /// encode deposit msg
@@ -281,7 +296,7 @@ module omnipool::pool {
             let ctx = test_scenario::ctx(scenario);
             let coin = coin::mint_for_testing<SUI>(100, ctx);
             let app_payload = vector::empty<u8>();
-            deposit_to<SUI>(&mut pool, coin, app_payload, ctx);
+            deposit_to<SUI>(&mut pool, coin, u16::zero(), app_payload, ctx);
             assert!(balance::value(&pool.balance) == 100, 0);
             test_scenario::return_shared(pool);
         };

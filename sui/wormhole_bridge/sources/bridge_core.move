@@ -63,7 +63,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): vector<u8> {
+    ): (U16, vector<u8>) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -71,7 +71,7 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        let (pool, user, amount, token_name, app_payload) =
+        let (pool, user, amount, token_name, app_id, app_payload) =
             decode_send_deposit_payload(myvaa::get_payload(&vaa));
         pool_manager::add_liquidity(
             &core_state.pool_manager_cap,
@@ -85,7 +85,7 @@ module wormhole_bridge::bridge_core {
             ctx
         );
         myvaa::destroy(vaa);
-        app_payload
+        (app_id, app_payload)
     }
 
     public fun receive_withdraw(
@@ -93,7 +93,7 @@ module wormhole_bridge::bridge_core {
         core_state: &mut CoreState,
         vaa: vector<u8>,
         ctx: &mut TxContext
-    ): vector<u8> {
+    ): (U16, vector<u8>) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -101,11 +101,11 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        let (_pool, _user, _token_name, app_payload) =
+        let (_pool, _user, _token_name, app_id, app_payload) =
             decode_send_withdraw_payload(myvaa::get_payload(&vaa));
 
         myvaa::destroy(vaa);
-        app_payload
+        (app_id, app_payload)
     }
 
     public fun send_withdraw<CoinType>(
