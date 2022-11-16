@@ -297,6 +297,10 @@ module governance::governance {
         vote
     }
 
+    public fun borrow_external_cap<T: store+drop>(vote: &mut VoteExternalCap<T>): &mut T {
+        option::borrow_mut(&mut vote.external_cap)
+    }
+
     public fun external_cap_destroy<T: store>(
         governance_external_cap: &mut GovernanceExternalCap,
         vote: VoteExternalCap<T>,
