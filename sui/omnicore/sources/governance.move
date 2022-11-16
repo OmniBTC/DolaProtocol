@@ -44,7 +44,7 @@ module omnicore::governance {
     }
 
     /// Use it to get a cap
-    struct Key<phantom T: store + key> has key, store {
+    struct Key<phantom T> has key, store {
         id: UID
     }
 
