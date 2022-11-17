@@ -1,13 +1,13 @@
 [package]
-name = "OmniPool"
+name = "AppManager"
 version = "0.0.1"
 
 [dependencies]
-# Use sui-cli v0.15.0
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
-Serde = { local = "../serde" }
+Serde = { local = "../../serde" }
+
 
 [addresses]
-omnipool = "0x0"
+app_manager = "0x0"
 serde = "0x0"
 sui = "0x2"

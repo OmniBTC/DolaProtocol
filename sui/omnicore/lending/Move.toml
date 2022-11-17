@@ -1,19 +1,16 @@
 [package]
-name = "WormholeBridge"
+name = "Lending"
 version = "0.0.1"
 
 [dependencies]
-# Use sui-cli v0.15.0
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
 Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "ade434c9326385f4ab23fe314a9bab34e074ad16" }
-OmniPool = { local = "../omnipool" }
-PoolManager = { local = "../omnicore/pool_manager" }
-AppManager = { local = "../omnicore/app_manager" }
+Serde = { local = "../../serde" }
+PoolManager = { local = "../pool_manager" }
 
 [addresses]
-wormhole_bridge = "0x0"
-wormhole="0x0"
-omnipool = "0x0"
-app_manager="0x0"
-pool_manager="0x0"
+lending = "0x0"
+pool_manager = "0x0"
+serde = "0x0"
+wormhole = "0x0"
 sui = "0x2"

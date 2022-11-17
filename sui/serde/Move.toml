@@ -1,5 +1,5 @@
 [package]
-name = "serde"
+name = "Serde"
 version = "0.0.1"
 
 [dependencies]
