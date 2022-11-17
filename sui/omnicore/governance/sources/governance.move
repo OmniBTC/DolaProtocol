@@ -37,6 +37,8 @@ module governance::governance {
 
     const EMUST_SOME: u64 = 11;
 
+    const EVOTE_HAS_COMPLETE: u64 = 12;
+
 
     struct GovernanceExternalCap has key, store {
         id: UID
@@ -72,16 +74,19 @@ module governance::governance {
     }
 
     /// Vote by governance members to send a key for a proposal
-    struct VoteExternalCap<T: store> has key {
+    struct VoteExternalCap has key {
         id: UID,
         // members address
         votes: vector<address>,
         // External cap hash
         external_hash: vector<u8>,
-        // External cap
-        external_cap: Option<T>,
         // prevent duplicate key issuance
         finished: bool
+    }
+
+    struct FlashCap<T> {
+        // External cap
+        external_cap: T,
     }
 
     /// Share a cap so that only the person who owns the key can use it,
@@ -235,7 +240,7 @@ module governance::governance {
         }
     }
 
-    public entry fun create_vote_external_cap<T: store>(
+    public entry fun create_vote_external_cap(
         gov: &mut Governance,
         external_hash: vector<u8>,
         ctx: &mut TxContext
@@ -246,11 +251,10 @@ module governance::governance {
         let votes = vector::empty<address>();
         vector::push_back(&mut votes, sponsor);
         // Like MakeDao
-        transfer::share_object(VoteExternalCap<T> {
+        transfer::share_object(VoteExternalCap {
             id: object::new(ctx),
             votes,
             external_hash,
-            external_cap: option::none(),
             finished: false
         });
     }
@@ -274,13 +278,13 @@ module governance::governance {
         }
     }
 
-    public fun vote_external_cap<T: store+drop>(
+    public fun vote_external_cap<T: store>(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
-        vote: VoteExternalCap<T>,
+        vote: &mut VoteExternalCap,
         ctx: &mut TxContext
-    ): VoteExternalCap<T> {
-        assert!(option::is_none(&vote.external_cap), EMUST_NONE);
+    ): Option<FlashCap<T>> {
+        assert!(!vote.finished, EVOTE_HAS_COMPLETE);
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
         let votes = &mut vote.votes;
@@ -290,25 +294,33 @@ module governance::governance {
         let votes_num = vector::length(votes);
         if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
             vote.finished = true;
-            vote.external_cap = option::some(dynamic_field::remove<vector<u8>, T>(
-                &mut governance_external_cap.id,
-                vote.external_hash));
-        };
-        vote
+            option::some(FlashCap {
+                external_cap: dynamic_field::remove<vector<u8>, T>(
+                    &mut governance_external_cap.id,
+                    vote.external_hash)
+            })
+        }else {
+            option::none()
+        }
     }
 
-    public fun borrow_external_cap<T: store+drop>(vote: &mut VoteExternalCap<T>): &mut T {
-        option::borrow_mut(&mut vote.external_cap)
+    public fun borrow_external_cap<T: store+drop>(flash_cap: &mut Option<FlashCap<T>>): &mut T {
+        &mut option::borrow_mut(flash_cap).external_cap
     }
 
     public fun external_cap_destroy<T: store>(
         governance_external_cap: &mut GovernanceExternalCap,
-        vote: VoteExternalCap<T>,
+        vote: &mut VoteExternalCap,
+        flash_cap: Option<FlashCap<T>>
     ) {
-        assert!(option::is_some(&vote.external_cap), EMUST_SOME);
-        let VoteExternalCap { id, votes: _, external_hash, external_cap, finished: _ } = vote;
-        object::delete(id);
-        dynamic_field::add(&mut governance_external_cap.id, external_hash, option::destroy_some(external_cap));
+        if (option::is_some(&flash_cap)) {
+            assert!(vote.finished, EVOTE_NOT_COMPLETE);
+            let flash_cap = option::destroy_some(flash_cap);
+            let FlashCap{external_cap} = flash_cap;
+            dynamic_field::add(&mut governance_external_cap.id, vote.external_hash, external_cap);
+        }else{
+            option::destroy_none(flash_cap);
+        }
     }
 
     public fun borrow_from_proposal<T: key + store>(proposal: &mut Proposal<T>, _: &mut Key<T>): &T {
