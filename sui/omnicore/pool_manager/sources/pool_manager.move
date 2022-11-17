@@ -30,8 +30,7 @@ module pool_manager::pool_manager {
     }
 
 
-    struct PoolManagerCap has store, drop {
-    }
+    struct PoolManagerCap has store, drop {}
 
     struct PoolManagerInfo has key, store {
         id: UID,
@@ -70,18 +69,21 @@ module pool_manager::pool_manager {
         })
     }
 
-    public entry fun register_admin_cap(govern: &mut GovernanceExternalCap){
+    public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
         let admin = PoolManagerAdminCap { count: 0 };
         assert!(types::is_one_time_witness<PoolManagerAdminCap>(&admin), EONLY_ONE_ADMIN);
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
+    public entry fun register_cap_with_admin(admin: &mut PoolManagerAdminCap): PoolManagerCap {
+        admin.count = admin.count + 1;
+        PoolManagerCap {}
+    }
+
     public entry fun register_cap(admin: &mut Option<PoolManagerAdminCap>): PoolManagerCap {
         assert!(option::is_some(admin), EMUST_SOME);
         let admin = option::borrow_mut(admin);
-        admin.count = admin.count + 1;
-        PoolManagerCap {
-        }
+        register_cap_with_admin(admin)
     }
 
     public fun register_pool(

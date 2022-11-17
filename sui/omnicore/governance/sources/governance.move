@@ -305,6 +305,7 @@ module governance::governance {
     }
 
     public fun borrow_external_cap<T: store+drop>(flash_cap: &mut Option<FlashCap<T>>): &mut T {
+        assert!(option::is_some(flash_cap), EMUST_SOME);
         &mut option::borrow_mut(flash_cap).external_cap
     }
 
@@ -316,9 +317,9 @@ module governance::governance {
         if (option::is_some(&flash_cap)) {
             assert!(vote.finished, EVOTE_NOT_COMPLETE);
             let flash_cap = option::destroy_some(flash_cap);
-            let FlashCap{external_cap} = flash_cap;
+            let FlashCap { external_cap } = flash_cap;
             dynamic_field::add(&mut governance_external_cap.id, vote.external_hash, external_cap);
-        }else{
+        }else {
             option::destroy_none(flash_cap);
         }
     }
