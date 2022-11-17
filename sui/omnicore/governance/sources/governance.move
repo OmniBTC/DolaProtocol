@@ -309,6 +309,13 @@ module governance::governance {
         &mut option::borrow_mut(flash_cap).external_cap
     }
 
+    public fun migrate_external_cap<T: store+drop>(flash_cap: Option<FlashCap<T>>): T {
+        // todo! consider whether to limit function call
+        assert!(option::is_some(&flash_cap), EMUST_SOME);
+        let FlashCap { external_cap } = option::destroy_some(flash_cap);
+        external_cap
+    }
+
     public fun external_cap_destroy<T: store>(
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
