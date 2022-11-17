@@ -20,10 +20,14 @@ module wormhole_bridge::bridge_core {
     use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
     use std::option;
     use std::option::Option;
+    use app_manager::app_manager::AppCap;
+    use app_manager::app_manager;
 
     const EMUST_DEPLOYER: u64 = 0;
 
     const EMUST_SOME: u64 = 1;
+
+    const EINVALID_APP: u64 = 2;
 
     struct CoreState has key, store {
         pool_manager_cap: Option<PoolManagerCap>,
@@ -44,7 +48,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public entry fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap){
+    public entry fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
         core_state.pool_manager_cap = option::some(pool_manager_cap);
     }
 
@@ -68,6 +72,7 @@ module wormhole_bridge::bridge_core {
     public fun receive_deposit<CoinType>(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        app_cap: &AppCap,
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
@@ -82,6 +87,7 @@ module wormhole_bridge::bridge_core {
         );
         let (pool, user, amount, token_name, app_id, app_payload) =
             decode_send_deposit_payload(myvaa::get_payload(&vaa));
+        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
         pool_manager::add_liquidity(
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
@@ -100,6 +106,7 @@ module wormhole_bridge::bridge_core {
     public fun receive_withdraw(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        app_cap: &AppCap,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ): (U16, vector<u8>) {
@@ -112,6 +119,7 @@ module wormhole_bridge::bridge_core {
         );
         let (_pool, _user, _token_name, app_id, app_payload) =
             decode_send_withdraw_payload(myvaa::get_payload(&vaa));
+        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
 
         myvaa::destroy(vaa);
         (app_id, app_payload)

@@ -12,7 +12,7 @@ module app_manager::app_manager {
         count: U16
     }
 
-    struct AppId has key, store {
+    struct AppCap has key, store {
         id: UID,
         app_id: U16
     }
@@ -26,13 +26,13 @@ module app_manager::app_manager {
         }, @app_manager)
     }
 
-    public fun app_id(app_id: &AppId): U16 {
+    public fun app_id(app_id: &AppCap): U16 {
         app_id.app_id
     }
 
-    public fun register_app(_: &AppManagerCap, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppId {
+    public fun register_app(_: &AppManagerCap, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
         let count = u16::to_u64(total_app_info.count);
-        let app_id = AppId {
+        let app_id = AppCap {
             id: object::new(ctx),
             app_id: u16::from_u64(count)
         };
@@ -40,8 +40,8 @@ module app_manager::app_manager {
         app_id
     }
 
-    public fun destroy_app_id(app_id: AppId) {
-        let AppId { id, app_id: _ } = app_id;
+    public fun destroy_app_id(app_id: AppCap) {
+        let AppCap { id, app_id: _ } = app_id;
         object::delete(id);
     }
 }

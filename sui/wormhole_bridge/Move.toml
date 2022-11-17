@@ -8,10 +8,12 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "ade434c9326385f4ab23fe314a9bab34e074ad16" }
 OmniPool = { local = "../omnipool" }
 PoolManager = { local = "../omnicore/pool_manager" }
+AppManager = { local = "../omnicore/app_manager" }
 
 [addresses]
 wormhole_bridge = "0x0"
 wormhole="0x0"
 omnipool = "0x0"
+app_manager="0x0"
 pool_manager="0x0"
 sui = "0x2"
