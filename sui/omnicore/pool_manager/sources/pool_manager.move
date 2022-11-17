@@ -1,21 +1,20 @@
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
+    use std::hash;
+    use std::option::{Self, Option};
+
+    use governance::governance::{Self, GovernanceExternalCap};
+    use sui::bcs;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::{TxContext};
+    use sui::tx_context::TxContext;
+    use sui::types;
 
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
     use sui::test_scenario;
-    use sui::types;
-    use governance::governance;
-    use governance::governance::GovernanceExternalCap;
-    use std::hash;
-    use sui::bcs;
-    use std::option::Option;
-    use std::option;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -28,7 +27,6 @@ module pool_manager::pool_manager {
     struct PoolManagerAdminCap has store, drop {
         count: u64
     }
-
 
     struct PoolManagerCap has store, drop {}
 
@@ -227,6 +225,11 @@ module pool_manager::pool_manager {
         init(ctx)
     }
 
+    #[test_only]
+    public fun manager_cap_for_test(): PoolManagerCap {
+        PoolManagerCap {}
+    }
+
     #[test]
     public fun test_register_pool() {
         let manager = @pool_manager;
@@ -241,11 +244,10 @@ module pool_manager::pool_manager {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let token_name = b"USDT";
 
-            let cap = register_cap(test_scenario::ctx(scenario));
+            let cap = manager_cap_for_test();
 
             register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
 
-            transfer::transfer(cap, manager);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
@@ -269,17 +271,16 @@ module pool_manager::pool_manager {
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = register_cap(test_scenario::ctx(scenario));
+            let cap = manager_cap_for_test();
 
             register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
 
-            transfer::transfer(cap, manager);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
+            let cap = manager_cap_for_test();
             assert!(token_liquidity(&mut pool_manager_info, token_name) == 0, 0);
             add_liquidity(
                 &cap,
@@ -296,7 +297,6 @@ module pool_manager::pool_manager {
             assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == amount, 0);
             assert!(user_liquidity(&mut pool_manager_info, token_name, to_bytes(&user_address)) == amount, 0);
 
-            test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(pool_manager_info);
         };
 
@@ -321,18 +321,16 @@ module pool_manager::pool_manager {
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = register_cap(test_scenario::ctx(scenario));
+            let cap = manager_cap_for_test();
 
             register_pool(&cap, &mut pool_manager_info, token_name, test_scenario::ctx(scenario));
 
-            transfer::transfer(cap, manager);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
-            // assert!(token_liquidity(&mut pool_manager_info, pool_name) == 0, 0);
+            let cap = manager_cap_for_test();
             add_liquidity(
                 &cap,
                 &mut pool_manager_info,
@@ -344,13 +342,12 @@ module pool_manager::pool_manager {
                 test_scenario::ctx(scenario)
             );
 
-            test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = test_scenario::take_from_sender<PoolManagerCap>(scenario);
+            let cap = manager_cap_for_test();
 
             assert!(token_liquidity(&mut pool_manager_info, token_name) == amount, 0);
             assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == amount, 0);
@@ -370,7 +367,6 @@ module pool_manager::pool_manager {
             assert!(pool_liquidity(&mut pool_manager_info, token_name, chainid, to_bytes(&pool_address)) == 0, 0);
             assert!(user_liquidity(&mut pool_manager_info, token_name, to_bytes(&user_address)) == 0, 0);
 
-            test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
