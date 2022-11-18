@@ -1,1 +1,1 @@
-module lending::otoken {}
+module lending::dtoken {}
