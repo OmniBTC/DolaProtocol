@@ -8,7 +8,8 @@ module lending::rates {
     public fun calculate_utilization(storage: &mut Storage, token_name: vector<u8>): u64 {
         let liquidity = get_otoken_scaled_total_supply(storage, token_name);
         let debt = get_dtoken_scaled_total_supply(storage, token_name);
-        ((debt * (RAY as u128) / liquidity) as u64)
+        // todo! liquidity need to use current pool The remaining balance, not otoken
+        ((debt * (RAY as u128) / (debt + liquidity)) as u64)
     }
 
     public fun calculate_borrow_rate(storage: &mut Storage, token_name: vector<u8>): u64 {

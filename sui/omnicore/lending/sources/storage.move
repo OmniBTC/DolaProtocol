@@ -53,7 +53,7 @@ module lending::storage {
     }
 
     struct ScaledBalance has store {
-        // token_name => scale balance
+        // user address => scale balance
         user_state: Table<vector<u8>, u64>,
         // total supply of scale balance
         total_supply: u128,
