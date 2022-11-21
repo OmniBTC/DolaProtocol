@@ -3,6 +3,7 @@ module lending::logic {
     use lending::rates;
     use lending::scaled_balance;
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index};
+    use sui::tx_context::{epoch, TxContext};
 
     const RAY: u64 = 100000000;
 
@@ -78,9 +79,10 @@ module lending::logic {
         cap: &StorageCap,
         storage: &mut Storage,
         token_name: vector<u8>,
+        ctx: &mut TxContext
     ) {
-        // todo! fix
-        let current_timestamp = 0;
+        // todo: use timestamp after sui implementation
+        let current_timestamp = epoch(ctx);
 
         let last_update_timestamp = storage::get_last_update_timestamp(storage, token_name);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, token_name);
