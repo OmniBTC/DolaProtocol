@@ -1,11 +1,10 @@
 module lending::logic {
-    use lending::storage::{StorageCap, Storage, get_liquidity_index};
+    use lending::math::{calculate_compounded_interest, calculate_linear_interest};
+    use lending::rates;
     use lending::scaled_balance;
-    use lending::storage;
+    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index};
 
     const RAY: u64 = 100000000;
-
-    const SECONDS_PER_YEAR: u64 = 31536000;
 
     public fun mint_otoken(
         cap: &StorageCap, // todo! Where manage this?
@@ -108,62 +107,12 @@ module lending::logic {
     }
 
     public fun update_interest_rate(
-        _: &StorageCap,
-        _storage: &mut Storage,
-        _token_name: vector<u8>,
+        cap: &StorageCap,
+        storage: &mut Storage,
+        token_name: vector<u8>,
     ) {
-        // todo! fix
-    }
-
-
-    public fun ray_mul(a: u64, b: u64): u64 {
-        ((a as u128) * (b as u128) / (RAY as u128) as u64)
-    }
-
-    public fun calculate_compounded_interest(
-        current_timestamp: u64,
-        last_update_timestamp: u64,
-        rate: u64,
-    ): u64 {
-        let exp = current_timestamp - last_update_timestamp;
-
-        if (exp == 0) {
-            // todo! fix?
-            return rate
-        };
-
-        let exp_minus_one: u64;
-        let exp_minus_two: u64;
-        let base_power_two: u64;
-        let base_power_three: u64;
-        exp_minus_one = exp - 1;
-
-        if (exp > 2) {
-            exp_minus_two = exp - 2;
-        }else {
-            exp_minus_two = 0;
-        };
-
-        base_power_two = ray_mul(rate, rate) / (SECONDS_PER_YEAR * SECONDS_PER_YEAR);
-
-        base_power_three = ray_mul(base_power_two, rate) / SECONDS_PER_YEAR;
-
-        let second_term = exp * exp_minus_one * base_power_two;
-        second_term = second_term / 2;
-        let third_term = exp * exp_minus_one * exp_minus_two * base_power_three;
-        third_term = third_term / 6;
-
-        RAY + (rate * exp) / SECONDS_PER_YEAR + second_term + third_term
-    }
-
-    public fun calculate_linear_interest(
-        current_timestamp: u64,
-        last_update_timestamp: u64,
-        rate: u64,
-    ): u64 {
-        let result = rate * (current_timestamp - last_update_timestamp);
-        result = result / SECONDS_PER_YEAR;
-
-        RAY + result
+        let borrow_rate = rates::calculate_borrow_rate(storage, token_name);
+        let liquidity_rate = rates::calculate_liquidity_rate(storage, token_name, borrow_rate);
+        storage::update_interest_rate(cap, storage, token_name, borrow_rate, liquidity_rate);
     }
 }
