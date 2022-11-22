@@ -19,7 +19,9 @@ module oracle::oracle {
     }
 
     struct Price has store {
-        value: u64
+        value: u64,
+        // 2 decimals should be 100,
+        decimal: u64
     }
 
     fun init(ctx: &mut TxContext) {
@@ -40,16 +42,16 @@ module oracle::oracle {
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
         if (!table::contains(price_oracles, token_name)) {
-            table::add(price_oracles, token_name, Price { value: 0 });
+            table::add(price_oracles, token_name, Price { value: 0, decimal: 0 });
         };
         let price = table::borrow_mut(price_oracles, token_name);
         price.value = token_price;
     }
 
-    public entry fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): u64 {
+    public entry fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u64) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, token_name);
-        price.value
+        (price.value, price.decimal)
     }
 }

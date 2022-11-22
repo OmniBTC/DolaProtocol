@@ -1,5 +1,6 @@
 module lending::storage {
     use std::hash;
+    use std::vector;
 
     use governance::governance::{Self, GovernanceExternalCap};
     use sui::bcs;
@@ -15,10 +16,25 @@ module lending::storage {
 
     const ENONEXISTENT_RESERVE: u64 = 2;
 
+    const ENONEXISTENT_USERINFO: u64 = 3;
+
+    const EHAS_NOT_OTOKEN: u64 = 4;
+
+    const EHAS_NOT_DTOKEN: u64 = 5;
+
     struct Storage has key {
         id: UID,
         // token name -> reserve data
-        reserves: Table<vector<u8>, ReserveData>
+        reserves: Table<vector<u8>, ReserveData>,
+        // users address -> user info
+        user_infos: Table<vector<u8>, UserInfo>
+    }
+
+    struct UserInfo has store {
+        // token names
+        collaterals: vector<vector<u8>>,
+        // token names
+        loans: vector<vector<u8>>
     }
 
     struct ReserveData has store {
@@ -87,6 +103,7 @@ module lending::storage {
         transfer::share_object(Storage {
             id: object::new(ctx),
             reserves: table::new(ctx),
+            user_infos: table::new(ctx)
         });
     }
 
@@ -127,6 +144,38 @@ module lending::storage {
                 total_supply: 0,
             },
         });
+    }
+
+    public fun get_user_collaterals(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        let user_info = table::borrow(&mut storage.user_infos, user_address);
+        user_info.collaterals
+    }
+
+    public fun get_user_loans(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        let user_info = table::borrow(&mut storage.user_infos, user_address);
+        user_info.loans
+    }
+
+    public fun get_user_scaled_otoken(
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow(&storage.reserves, token_name);
+        assert!(table::contains(&reserve.otoken_scaled.user_state, user_address), EHAS_NOT_OTOKEN);
+        *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+    }
+
+    public fun get_user_scaled_dtoken(
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow(&storage.reserves, token_name);
+        assert!(table::contains(&reserve.dtoken_scaled.user_state, user_address), EHAS_NOT_DTOKEN);
+        *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
     }
 
     public fun get_treasury_factor(
@@ -187,8 +236,8 @@ module lending::storage {
 
     public fun get_borrow_index(
         storage: &mut Storage,
-        token_name: vector<u8>)
-    : u64 {
+        token_name: vector<u8>
+    ): u64 {
         assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, token_name).current_borrow_index
     }
@@ -280,6 +329,72 @@ module lending::storage {
         };
         table::add(&mut dtoken_scaled.user_state, user, scaled_amount - current_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
+    }
+
+    public fun add_user_collateral(
+        _: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ) {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
+        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        if (!vector::contains(&user_info.collaterals, &token_name)) {
+            vector::push_back(&mut user_info.collaterals, token_name)
+        }
+    }
+
+    public fun remove_user_collateral(
+        _: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ) {
+        assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
+        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+
+        let (exist, index) = vector::index_of(&user_info.collaterals, &token_name);
+        if (exist) {
+            let _ = vector::remove(&mut user_info.collaterals, index);
+        }
+    }
+
+    public fun add_user_loan(
+        _: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ) {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
+        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        if (!vector::contains(&user_info.loans, &token_name)) {
+            vector::push_back(&mut user_info.loans, token_name)
+        }
+    }
+
+    public fun remove_user_loan(
+        _: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ) {
+        assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
+        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+
+        let (exist, index) = vector::index_of(&user_info.loans, &token_name);
+        if (exist) {
+            let _ = vector::remove(&mut user_info.loans, index);
+        }
     }
 
     public fun update_borrow_rate_factors(

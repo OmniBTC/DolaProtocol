@@ -1,11 +1,201 @@
 module lending::logic {
+    use std::vector;
+
     use lending::math::{calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
-    use lending::scaled_balance;
-    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index};
+    use lending::scaled_balance::{Self, balance_of};
+    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan};
+    use oracle::oracle::{get_token_price, PriceOracle};
     use sui::tx_context::{epoch, TxContext};
 
     const RAY: u64 = 100000000;
+
+    const ECOLLATERAL_AS_LOAN: u64 = 0;
+
+    const ENOT_HEALTH: u64 = 1;
+
+    const EIS_HEALTH: u64 = 2;
+
+    const ENOT_COLLATERAL: u64 = 3;
+
+    const ENOT_LOAN: u64 = 4;
+
+    public fun liquidate(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        liquidator: vector<u8>,
+        user_address: vector<u8>,
+        collateral: vector<u8>,
+        loan_token: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        update_state(cap, storage, loan_token, ctx);
+        update_state(cap, storage, collateral, ctx);
+        assert!(is_collateral(storage, user_address, collateral), ENOT_COLLATERAL);
+        assert!(is_loan(storage, user_address, loan_token), ENOT_LOAN);
+        assert!(!check_health_factor(storage, oracle, user_address), EIS_HEALTH);
+        let liquidated_debt = user_loan_balance(storage, user_address, loan_token) / 2;
+        let liquidated_debt_val = user_loan_value(storage, oracle, user_address, loan_token) / 2;
+        let (collateral_price, decimal) = get_token_price(oracle, collateral);
+        // todo: fix calculation
+        let collateral_amount = liquidated_debt_val * decimal / collateral_price;
+        burn_dtoken(cap, storage, user_address, loan_token, liquidated_debt);
+        burn_otoken(cap, storage, user_address, collateral, collateral_amount);
+        mint_otoken(cap, storage, liquidator, collateral, collateral_amount);
+        update_interest_rate(cap, storage, collateral);
+        update_interest_rate(cap, storage, loan_token);
+    }
+
+    public fun borrow(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        user_address: vector<u8>,
+        token_name: vector<u8>,
+        token_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        update_state(cap, storage, token_name, ctx);
+        assert!(!is_collateral(storage, user_address, token_name), ECOLLATERAL_AS_LOAN);
+        if (!is_loan(storage, user_address, token_name)) {
+            add_user_loan(cap, storage, user_address, token_name);
+        };
+        mint_dtoken(cap, storage, user_address, token_name, token_amount);
+        assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
+        update_interest_rate(cap, storage, token_name);
+    }
+
+    public fun repay(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>,
+        token_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        update_state(cap, storage, token_name, ctx);
+        burn_dtoken(cap, storage, user_address, token_name, token_amount);
+        update_interest_rate(cap, storage, token_name);
+    }
+
+    public fun supply(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>,
+        token_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        update_state(cap, storage, token_name, ctx);
+        mint_otoken(cap, storage, user_address, token_name, token_amount);
+        update_interest_rate(cap, storage, token_name);
+        if (!is_loan(storage, user_address, token_name) && !is_collateral(storage, user_address, token_name)) {
+            add_user_collateral(cap, storage, user_address, token_name);
+        }
+    }
+
+    public fun withdraw(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>,
+        token_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        update_state(cap, storage, token_name, ctx);
+        burn_otoken(cap, storage, user_address, token_name, token_amount);
+        update_interest_rate(cap, storage, token_name);
+    }
+
+    public fun check_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>): bool {
+        let collateral_value = total_collateral_value(storage, oracle, user_address);
+        let loan_value = total_loan_value(storage, oracle, user_address);
+        collateral_value >= loan_value
+    }
+
+    public fun is_collateral(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
+        let collaterals = get_user_collaterals(storage, user_address);
+        vector::contains(&collaterals, &token_name)
+    }
+
+    public fun is_loan(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
+        let loans = get_user_loans(storage, user_address);
+        vector::contains(&loans, &token_name)
+    }
+
+    public fun user_collateral_value(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        let balance = user_collateral_balance(storage, user_address, token_name);
+        let (price, decimal) = get_token_price(oracle, token_name);
+        (((balance as u128) * (price as u128) / (decimal as u128)) as u64)
+    }
+
+    public fun user_collateral_balance(
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        let scaled_balance = get_user_scaled_otoken(storage, user_address, token_name);
+        let current_index = get_liquidity_index(storage, token_name);
+        balance_of(scaled_balance, current_index)
+    }
+
+    public fun user_loan_value(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        let balance = user_loan_balance(storage, user_address, token_name);
+        let (price, decimal) = get_token_price(oracle, token_name);
+        (((balance as u128) * (price as u128) / (decimal as u128)) as u64)
+    }
+
+    public fun user_loan_balance(
+        storage: &mut Storage,
+        user_address: vector<u8>,
+        token_name: vector<u8>
+    ): u64 {
+        let scaled_balance = get_user_scaled_dtoken(storage, user_address, token_name);
+        let current_index = get_liquidity_index(storage, token_name);
+        balance_of(scaled_balance, current_index)
+    }
+
+
+    public fun total_collateral_value(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>): u64 {
+        let collaterals = get_user_collaterals(storage, user_address);
+        let length = vector::length(&collaterals);
+        let value = 0;
+        let i = 0;
+        while (i < length) {
+            let collateral = vector::borrow(&collaterals, i);
+            // todo: fix token decimal
+            let collateral_value = user_collateral_value(storage, oracle, user_address, *collateral);
+            value = value + collateral_value;
+            i = i + 1;
+        };
+        value
+    }
+
+    public fun total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>): u64 {
+        let loans = get_user_collaterals(storage, user_address);
+        let length = vector::length(&loans);
+        let value = 0;
+        let i = 0;
+        while (i < length) {
+            let loan = vector::borrow(&loans, i);
+            // todo: fix token decimal
+            let loan_value = user_loan_value(storage, oracle, user_address, *loan);
+            value = value + loan_value;
+            i = i + 1;
+        };
+        value
+    }
 
     public fun mint_otoken(
         cap: &StorageCap, // todo! Where manage this?
