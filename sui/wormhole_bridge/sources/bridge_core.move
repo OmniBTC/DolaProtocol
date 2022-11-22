@@ -69,14 +69,14 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun receive_deposit<CoinType>(
+    public fun receive_deposit(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (U16, vector<u8>) {
+    ): (vector<u8>, address, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
@@ -92,6 +92,7 @@ module wormhole_bridge::bridge_core {
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             token_name,
+            app_manager::app_id(app_cap),
             wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             // todo! fix address
             to_bytes(&pool),
@@ -100,7 +101,7 @@ module wormhole_bridge::bridge_core {
             ctx
         );
         myvaa::destroy(vaa);
-        (app_id, app_payload)
+        (token_name, user, amount, app_payload)
     }
 
     public fun receive_withdraw(
@@ -109,7 +110,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         ctx: &mut TxContext
-    ): (U16, vector<u8>) {
+    ): vector<u8> {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -122,12 +123,13 @@ module wormhole_bridge::bridge_core {
         assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
 
         myvaa::destroy(vaa);
-        (app_id, app_payload)
+        app_payload
     }
 
     public fun send_withdraw<CoinType>(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
         chainid: u64,
@@ -142,6 +144,7 @@ module wormhole_bridge::bridge_core {
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             token_name,
+            app_manager::app_id(app_cap),
             chainid,
             to_bytes(&pool_address),
             to_bytes(&user),

@@ -133,6 +133,13 @@ module lending::storage {
         app_manager::app_id(option::borrow(&storage.app_cap))
     }
 
+    public fun get_app_cap(
+        _: &StorageCap,
+        storage: &mut Storage
+    ): &AppCap {
+        option::borrow(&storage.app_cap)
+    }
+
     public entry fun register_new_reserve(
         _: &mut StorageAdminCap,
         storage: &mut Storage,
