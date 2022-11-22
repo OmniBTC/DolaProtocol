@@ -1,6 +1,9 @@
 module wormhole_bridge::bridge_core {
+    use std::option::{Self, Option};
+
     use serde::u16::{Self, U16};
 
+    use app_manager::app_manager::{Self, AppCap};
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, Pool};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::bcs::to_bytes;
@@ -13,15 +16,9 @@ module wormhole_bridge::bridge_core {
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::myu16::Self as wormhole_u16;
-    use wormhole::myvaa;
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
-    use std::option;
-    use std::option::Option;
-    use app_manager::app_manager::AppCap;
-    use app_manager::app_manager;
+    use wormhole_bridge::verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -70,7 +67,7 @@ module wormhole_bridge::bridge_core {
     }
 
     public fun receive_deposit(
-        wormhole_state: &mut WormholeState,
+        _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
@@ -78,51 +75,60 @@ module wormhole_bridge::bridge_core {
         ctx: &mut TxContext
     ): (vector<u8>, address, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
-        let vaa = parse_verify_and_replay_protect(
-            wormhole_state,
-            &core_state.registered_emitters,
-            &mut core_state.consumed_vaas,
-            vaa,
-            ctx
-        );
+        // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &core_state.registered_emitters,
+        //     &mut core_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // let (pool, user, amount, token_name, app_id, app_payload) =
+        //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
+
         let (pool, user, amount, token_name, app_id, app_payload) =
-            decode_send_deposit_payload(myvaa::get_payload(&vaa));
+            decode_send_deposit_payload(vaa);
         assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
         pool_manager::add_liquidity(
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             token_name,
             app_manager::app_id(app_cap),
-            wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
+            // todo: use wormhole chainid
+            // wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
+            1,
             // todo! fix address
             to_bytes(&pool),
             to_bytes(&user),
             amount,
             ctx
         );
-        myvaa::destroy(vaa);
+        // myvaa::destroy(vaa);
         (token_name, user, amount, app_payload)
     }
 
     public fun receive_withdraw(
-        wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
+        _wormhole_state: &mut WormholeState,
+        _core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ): (vector<u8>, address, vector<u8>) {
-        let vaa = parse_verify_and_replay_protect(
-            wormhole_state,
-            &core_state.registered_emitters,
-            &mut core_state.consumed_vaas,
-            vaa,
-            ctx
-        );
+        // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &core_state.registered_emitters,
+        //     &mut core_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // let (_pool, user, token_name, app_id, app_payload) =
+        //     decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         let (_pool, user, token_name, app_id, app_payload) =
-            decode_send_withdraw_payload(myvaa::get_payload(&vaa));
+            decode_send_withdraw_payload(vaa);
         assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
 
-        myvaa::destroy(vaa);
+        // myvaa::destroy(vaa);
         (token_name, user, app_payload)
     }
 

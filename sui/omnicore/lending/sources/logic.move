@@ -1,22 +1,21 @@
 module lending::logic {
     use std::vector;
 
+    use omnipool::pool::Pool;
+
     use lending::math::{calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, get_app_cap, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle};
-    use sui::tx_context::{epoch, TxContext};
-    use pool_manager::pool_manager::PoolManagerInfo;
-    use pool_manager::pool_manager;
-    use wormhole_bridge::bridge_core;
-    use wormhole_bridge::bridge_core::CoreState;
-    use wormhole::state::State as WormholeState;
-    use omnipool::pool::Pool;
+    use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use serde::serde::deserialize_u64;
+    use sui::bcs;
     use sui::coin::Coin;
     use sui::sui::SUI;
-    use sui::bcs;
-    use serde::serde::deserialize_u64;
+    use sui::tx_context::{epoch, TxContext};
+    use wormhole::state::State as WormholeState;
+    use wormhole_bridge::bridge_core::{Self, CoreState};
 
     const RAY: u64 = 100000000;
 
@@ -100,7 +99,7 @@ module lending::logic {
         }
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): u64{
+    public fun decode_app_payload(app_payload: vector<u8>): u64 {
         deserialize_u64(&app_payload)
     }
 

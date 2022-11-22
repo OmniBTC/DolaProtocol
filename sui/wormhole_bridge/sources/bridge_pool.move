@@ -10,10 +10,9 @@ module wormhole_bridge::bridge_pool {
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::myvaa;
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use wormhole_bridge::verify::{Unit, parse_verify_and_replay_protect};
+    use wormhole_bridge::verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -112,22 +111,25 @@ module wormhole_bridge::bridge_pool {
     }
 
     public fun receive_withdraw<CoinType>(
-        wormhole_state: &mut WormholeState,
+        _wormhole_state: &mut WormholeState,
         pool_state: &mut PoolState,
         pool: &mut Pool<CoinType>,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let vaa = parse_verify_and_replay_protect(
-            wormhole_state,
-            &pool_state.registered_emitters,
-            &mut pool_state.consumed_vaas,
-            vaa,
-            ctx
-        );
+        // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &pool_state.registered_emitters,
+        //     &mut pool_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // let (_pool_address, user, amount, token_name) =
+        //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (_pool_address, user, amount, token_name) =
-            pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
+            pool::decode_receive_withdraw_payload(vaa);
         pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, token_name, ctx);
-        myvaa::destroy(vaa);
+        // myvaa::destroy(vaa);
     }
 }
