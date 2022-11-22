@@ -52,7 +52,7 @@ module lending::actions {
             vaa,
             ctx
         );
-        let token_amount = decode_app_payload(app_payload);
+        let (_, token_amount) = decode_app_payload(app_payload);
         inner_withdraw(
             cap,
             storage,
@@ -99,7 +99,7 @@ module lending::actions {
             ctx
         );
         let user_address = bcs::to_bytes(&user);
-        let token_amount = decode_app_payload(app_payload);
+        let (_, token_amount) = decode_app_payload(app_payload);
         inner_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
         bridge_core::send_withdraw(
             wormhole_state,
