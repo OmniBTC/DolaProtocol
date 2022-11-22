@@ -1,21 +1,16 @@
 module lending::logic {
     use std::vector;
 
-    use omnipool::pool::Pool;
-
     use lending::math::{calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
-    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, get_app_cap, remove_user_loan};
+    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::deserialize_u64;
-    use sui::bcs;
-    use sui::coin::Coin;
-    use sui::sui::SUI;
     use sui::tx_context::{epoch, TxContext};
-    use wormhole::state::State as WormholeState;
-    use wormhole_bridge::bridge_core::{Self, CoreState};
+
+    friend lending::actions;
 
     const RAY: u64 = 100000000;
 
@@ -33,17 +28,16 @@ module lending::logic {
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
 
-    public fun liquidate(
+    public(friend) fun inner_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        liquidator: vector<u8>,
         user_address: vector<u8>,
         collateral: vector<u8>,
         loan_token: vector<u8>,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         update_state(cap, storage, loan_token, ctx);
         update_state(cap, storage, collateral, ctx);
         assert!(is_collateral(storage, user_address, collateral), ENOT_COLLATERAL);
@@ -56,32 +50,12 @@ module lending::logic {
         let collateral_amount = liquidated_debt_val * decimal / collateral_price;
         burn_dtoken(cap, storage, user_address, loan_token, liquidated_debt);
         burn_otoken(cap, storage, user_address, collateral, collateral_amount);
-        mint_otoken(cap, storage, liquidator, collateral, collateral_amount);
         update_interest_rate(cap, pool_manager_info, storage, collateral);
         update_interest_rate(cap, pool_manager_info, storage, loan_token);
+        collateral_amount
     }
 
-    public entry fun supply(
-        wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        vaa: vector<u8>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
-        storage: &mut Storage,
-        ctx: &mut TxContext
-    ) {
-        let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            vaa,
-            pool_manager_info,
-            ctx
-        );
-        inner_supply(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
-    }
-
-    fun inner_supply(
+    public(friend) fun inner_supply(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
@@ -103,43 +77,7 @@ module lending::logic {
         deserialize_u64(&app_payload)
     }
 
-    public entry fun withdraw<CoinType>(
-        wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        pool: &mut Pool<CoinType>,
-        vaa: vector<u8>,
-        chainid: u64,
-        wormhole_message_fee: Coin<SUI>,
-        cap: &StorageCap,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        pool_manager_info: &mut PoolManagerInfo,
-        ctx: &mut TxContext
-    ) {
-        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            vaa,
-            ctx
-        );
-        let token_amount = decode_app_payload(app_payload);
-        inner_withdraw(cap, storage, oracle, pool_manager_info, bcs::to_bytes(&user), token_name, token_amount, ctx);
-        bridge_core::send_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            pool_manager_info,
-            pool,
-            chainid,
-            user,
-            token_amount,
-            token_name,
-            wormhole_message_fee
-        );
-    }
-
-    fun inner_withdraw(
+    public(friend) fun inner_withdraw(
         cap: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -163,44 +101,8 @@ module lending::logic {
         }
     }
 
-    public entry fun borrow<CoinType>(
-        wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        pool: &mut Pool<CoinType>,
-        vaa: vector<u8>,
-        chainid: u64,
-        wormhole_message_fee: Coin<SUI>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        ctx: &mut TxContext
-    ) {
-        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            vaa,
-            ctx
-        );
-        let user_address = bcs::to_bytes(&user);
-        let token_amount = decode_app_payload(app_payload);
-        inner_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
-        bridge_core::send_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            pool_manager_info,
-            pool,
-            chainid,
-            user,
-            token_amount,
-            token_name,
-            wormhole_message_fee
-        );
-    }
 
-    fun inner_borrow(
+    public(friend) fun inner_borrow(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
@@ -224,27 +126,8 @@ module lending::logic {
         update_interest_rate(cap, pool_manager_info, storage, token_name);
     }
 
-    public entry fun repay(
-        wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        vaa: vector<u8>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
-        storage: &mut Storage,
-        ctx: &mut TxContext
-    ) {
-        let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            vaa,
-            pool_manager_info,
-            ctx
-        );
-        inner_repay(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
-    }
 
-    fun inner_repay(
+    public(friend) fun inner_repay(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,

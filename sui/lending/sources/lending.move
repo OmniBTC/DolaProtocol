@@ -1,4 +1,4 @@
-module lending::lending {
+module lending_portal::lending {
     use std::vector;
 
     use omnipool::pool::Pool;

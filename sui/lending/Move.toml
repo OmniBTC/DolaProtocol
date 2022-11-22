@@ -1,5 +1,5 @@
 [package]
-name = "lending"
+name = "LendingPortal"
 version = "0.0.1"
 
 [dependencies]
