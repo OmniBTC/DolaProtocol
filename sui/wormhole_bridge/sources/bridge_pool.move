@@ -1,8 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use std::vector;
-
     use omnipool::pool::{Self, Pool, PoolCap};
-    use serde::serde::serialize_vector_with_length;
     use serde::u16::{Self, U16};
     use sui::coin::Coin;
     use sui::object_table;
@@ -14,6 +11,7 @@ module wormhole_bridge::bridge_pool {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
+    use wormhole_bridge::helper::encode_deposit_and_withdraw;
     use wormhole_bridge::verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
@@ -116,9 +114,7 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
-        let msg = vector::empty<u8>();
-        serialize_vector_with_length(&mut msg, deposit_msg);
-        serialize_vector_with_length(&mut msg, withdraw_msg);
+        let msg = encode_deposit_and_withdraw(deposit_msg, withdraw_msg);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 

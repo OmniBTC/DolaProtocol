@@ -1,11 +1,9 @@
 module wormhole_bridge::bridge_core {
     use std::option::{Self, Option};
-    use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, Pool};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
-    use serde::serde::{deserialize_vector_with_length, vector_slice};
     use serde::u16::{Self, U16};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
@@ -19,6 +17,7 @@ module wormhole_bridge::bridge_core {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
+    use wormhole_bridge::helper::decode_deposit_and_withdraw;
     use wormhole_bridge::verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
@@ -128,8 +127,7 @@ module wormhole_bridge::bridge_core {
         // let (pool, user, amount, token_name, app_id, app_payload) =
         //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
-        let deposit_msg = deserialize_vector_with_length(&vaa);
-        let withdraw_msg = vector_slice(&vaa, 8 + vector::length(&deposit_msg), vector::length(&vaa));
+        let (deposit_msg, withdraw_msg) = decode_deposit_and_withdraw(vaa);
         let (deposit_pool, deposit_user, deposit_amount, deposit_token_name, app_id, app_payload) =
             decode_send_deposit_payload(deposit_msg);
         let (_, _, withdraw_token_name, _, _) =
