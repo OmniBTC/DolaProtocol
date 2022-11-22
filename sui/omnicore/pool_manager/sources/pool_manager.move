@@ -15,6 +15,9 @@ module pool_manager::pool_manager {
     use sui::bcs::to_bytes;
     #[test_only]
     use sui::test_scenario;
+    use serde::u16::U16;
+    #[test_only]
+    use serde::u16;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -32,10 +35,15 @@ module pool_manager::pool_manager {
 
     struct PoolManagerInfo has key, store {
         id: UID,
+        app_infos: Table<vector<u8>, AppInfo>,
         // token_name => PoolInfo
         pool_infos: Table<vector<u8>, PoolInfo>,
         // user_address => UserLiquidity
         user_infos: Table<vector<u8>, UserLiquidity>
+    }
+
+    struct AppInfo has store {
+        app_liquidity: Table<U16, u128>
     }
 
     struct PoolInfo has store {
@@ -62,6 +70,7 @@ module pool_manager::pool_manager {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PoolManagerInfo {
             id: object::new(ctx),
+            app_infos: table::new(ctx),
             pool_infos: table::new(ctx),
             user_infos: table::new(ctx)
         })
@@ -103,6 +112,16 @@ module pool_manager::pool_manager {
         }
     }
 
+    public fun get_app_liquidity(
+        pool_manager_info: &PoolManagerInfo,
+        token_name: vector<u8>,
+        app_id: U16
+    ): u128 {
+        let app_infos = &pool_manager_info.app_infos;
+        let app_liquidity = &table::borrow(app_infos, token_name).app_liquidity;
+        *table::borrow(app_liquidity, app_id)
+    }
+
     public fun user_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
@@ -135,6 +154,7 @@ module pool_manager::pool_manager {
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
+        app_id: U16,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -143,6 +163,22 @@ module pool_manager::pool_manager {
     ) {
         let pool_infos = &mut pool_manager_info.pool_infos;
         let user_infos = &mut pool_manager_info.user_infos;
+        let app_infos = &mut pool_manager_info.app_infos;
+
+        if (!table::contains(app_infos, token_name)) {
+            table::add(app_infos, token_name, AppInfo {
+                app_liquidity: table::new(ctx)
+            }) ;
+        };
+        let app_liquidity = &mut table::borrow_mut(app_infos, token_name).app_liquidity;
+        let cur_app_liquidity;
+        if (!table::contains(app_liquidity, app_id)) {
+            cur_app_liquidity = 0;
+        }else {
+            cur_app_liquidity = table::remove(app_liquidity, app_id);
+        };
+        table::add(app_liquidity, app_id, cur_app_liquidity + (amount as u128));
+
 
         // update pool infos
         // update token liquidity
@@ -192,6 +228,7 @@ module pool_manager::pool_manager {
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
+        app_id: U16,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -200,6 +237,13 @@ module pool_manager::pool_manager {
     {
         let pool_infos = &mut pool_manager_info.pool_infos;
         let user_infos = &mut pool_manager_info.user_infos;
+
+        let app_infos = &mut pool_manager_info.app_infos;
+
+        let app_liquidity = &mut table::borrow_mut(app_infos, token_name).app_liquidity;
+        let cur_app_liquidity = table::remove(app_liquidity, app_id);
+
+        table::add(app_liquidity, app_id, cur_app_liquidity - (amount as u128));
 
         // update pool infos
         // update token liquidity
@@ -286,6 +330,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
+                u16::zero(),
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
@@ -335,6 +380,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
+                u16::zero(),
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
@@ -357,6 +403,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
+                u16::zero(),
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),

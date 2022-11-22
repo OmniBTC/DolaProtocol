@@ -9,6 +9,11 @@ module lending::storage {
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
     use sui::types;
+    use std::option::Option;
+    use app_manager::app_manager::AppCap;
+    use std::option;
+    use serde::u16::U16;
+    use app_manager::app_manager;
 
     const EONLY_ONE_ADMIN: u64 = 0;
 
@@ -22,8 +27,13 @@ module lending::storage {
 
     const EHAS_NOT_DTOKEN: u64 = 5;
 
+    const EMUST_NONE: u64 = 6;
+
+    const EMUST_SOME: u64 = 7;
+
     struct Storage has key {
         id: UID,
+        app_cap: Option<AppCap>,
         // token name -> reserve data
         reserves: Table<vector<u8>, ReserveData>,
         // users address -> user info
@@ -102,9 +112,25 @@ module lending::storage {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(Storage {
             id: object::new(ctx),
+            app_cap: option::none(),
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
         });
+    }
+
+    public fun transfer_new_cap(
+        _: &mut StorageAdminCap,
+        storage: &mut Storage,
+        app_cap: AppCap
+    ) {
+        assert!(option::is_none(&storage.app_cap), EMUST_NONE);
+        option::fill(&mut storage.app_cap, app_cap);
+    }
+
+    public fun get_app_id(
+        storage: &mut Storage
+    ): U16 {
+        app_manager::app_id(option::borrow(&storage.app_cap))
     }
 
     public entry fun register_new_reserve(
