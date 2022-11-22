@@ -1,7 +1,10 @@
 module lending::actions {
+    use std::ascii;
+    use std::type_name;
+
     use omnipool::pool::Pool;
 
-    use lending::logic::{inner_supply, inner_withdraw, inner_borrow, inner_repay, decode_app_payload};
+    use lending::logic::{inner_supply, inner_withdraw, inner_borrow, inner_repay, inner_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::PoolManagerInfo;
@@ -13,12 +16,12 @@ module lending::actions {
     use wormhole_bridge::bridge_core::{Self, CoreState};
 
     public entry fun supply(
+        pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        vaa: vector<u8>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
+        cap: &StorageCap,
+        vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
         let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
@@ -33,16 +36,16 @@ module lending::actions {
     }
 
     public entry fun withdraw<CoinType>(
+        pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         pool: &mut Pool<CoinType>,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        cap: &StorageCap,
+        wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         chainid: u64,
-        wormhole_message_fee: Coin<SUI>,
-        cap: &StorageCap,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
     ) {
         let (token_name, user, app_payload) = bridge_core::receive_withdraw(
@@ -79,16 +82,16 @@ module lending::actions {
 
 
     public entry fun borrow<CoinType>(
+        pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         pool: &mut Pool<CoinType>,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        cap: &StorageCap,
+        wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         chainid: u64,
-        wormhole_message_fee: Coin<SUI>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
         ctx: &mut TxContext
     ) {
         let (token_name, user, app_payload) = bridge_core::receive_withdraw(
@@ -116,12 +119,12 @@ module lending::actions {
     }
 
     public entry fun repay(
+        pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        vaa: vector<u8>,
-        cap: &StorageCap,
-        pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
+        cap: &StorageCap,
+        vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
         let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
@@ -133,5 +136,53 @@ module lending::actions {
             ctx
         );
         inner_repay(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
+    }
+
+    public entry fun liquidate<CoinType>(
+        pool_manager_info: &mut PoolManagerInfo,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        // withdraw collateral
+        pool: &mut Pool<CoinType>,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        cap: &StorageCap,
+        wormhole_message_fee: Coin<SUI>,
+        vaa: vector<u8>,
+        chainid: u64,
+        ctx: &mut TxContext
+    ) {
+        let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
+            wormhole_state,
+            core_state,
+            get_app_cap(cap, storage),
+            vaa,
+            pool_manager_info,
+            ctx
+        );
+        let collateral_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
+        let withdraw_amount = inner_liquidate(
+            cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            bcs::to_bytes(&user),
+            collateral_name,
+            token_name,
+            amount,
+            ctx,
+        );
+        bridge_core::send_withdraw(
+            wormhole_state,
+            core_state,
+            get_app_cap(cap, storage),
+            pool_manager_info,
+            pool,
+            chainid,
+            user,
+            withdraw_amount,
+            collateral_name,
+            wormhole_message_fee
+        );
     }
 }

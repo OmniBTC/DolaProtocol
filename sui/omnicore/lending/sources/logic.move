@@ -36,6 +36,7 @@ module lending::logic {
         user_address: vector<u8>,
         collateral: vector<u8>,
         loan_token: vector<u8>,
+        repay_debt: u64,
         ctx: &mut TxContext
     ): u64 {
         update_state(cap, storage, loan_token, ctx);
@@ -43,8 +44,8 @@ module lending::logic {
         assert!(is_collateral(storage, user_address, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, user_address, loan_token), ENOT_LOAN);
         assert!(!check_health_factor(storage, oracle, user_address), EIS_HEALTH);
-        let liquidated_debt = user_loan_balance(storage, user_address, loan_token) / 2;
-        let liquidated_debt_val = user_loan_value(storage, oracle, user_address, loan_token) / 2;
+        let liquidated_debt = repay_debt;
+        let liquidated_debt_val = calculate_value(oracle, loan_token, liquidated_debt);
         let (collateral_price, decimal) = get_token_price(oracle, collateral);
         // todo: fix calculation
         let collateral_amount = liquidated_debt_val * decimal / collateral_price;
@@ -193,6 +194,11 @@ module lending::logic {
         let scaled_balance = get_user_scaled_otoken(storage, user_address, token_name);
         let current_index = get_liquidity_index(storage, token_name);
         balance_of(scaled_balance, current_index)
+    }
+
+    public fun calculate_value(oracle: &mut PriceOracle, token_name: vector<u8>, amount: u64): u64 {
+        let (price, decimal) = get_token_price(oracle, token_name);
+        (((amount as u128) * (price as u128) / (decimal as u128)) as u64)
     }
 
     public fun user_loan_value(
