@@ -1,7 +1,9 @@
 module wormhole_bridge::bridge_pool {
-    use serde::u16::{Self, U16};
+    use std::vector;
 
     use omnipool::pool::{Self, Pool, PoolCap};
+    use serde::serde::serialize_vector_with_length;
+    use serde::u16::{Self, U16};
     use sui::coin::Coin;
     use sui::object_table;
     use sui::sui::SUI;
@@ -90,23 +92,33 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
-    public entry fun send_deposit_and_withdraw<CoinType>(
+    public entry fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        pool: &mut Pool<CoinType>,
-        deposit_coin: Coin<CoinType>,
+        withdraw_pool: &mut Pool<WithdrawCoinType>,
+        deposit_pool: &mut Pool<DepositCoinType>,
+        deposit_coin: Coin<DepositCoinType>,
         app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::deposit_to<CoinType>(
-            pool,
+        let deposit_msg = pool::deposit_to<DepositCoinType>(
+            deposit_pool,
             deposit_coin,
             app_id,
             app_payload,
             ctx
         );
+        let withdraw_msg = pool::withdraw_to<WithdrawCoinType>(
+            withdraw_pool,
+            app_id,
+            app_payload,
+            ctx
+        );
+        let msg = vector::empty<u8>();
+        serialize_vector_with_length(&mut msg, deposit_msg);
+        serialize_vector_with_length(&mut msg, withdraw_msg);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 

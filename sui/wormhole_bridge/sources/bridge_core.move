@@ -1,11 +1,12 @@
 module wormhole_bridge::bridge_core {
     use std::option::{Self, Option};
-
-    use serde::u16::{Self, U16};
+    use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, Pool};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
+    use serde::serde::{deserialize_vector_with_length, vector_slice};
+    use serde::u16::{Self, U16};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
     use sui::object::id_address;
@@ -107,6 +108,51 @@ module wormhole_bridge::bridge_core {
         (token_name, user, amount, app_payload)
     }
 
+    public fun receive_deposit_and_withdraw(
+        _wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        app_cap: &AppCap,
+        vaa: vector<u8>,
+        pool_manager_info: &mut PoolManagerInfo,
+        ctx: &mut TxContext
+    ): (vector<u8>, vector<u8>, address, u64, vector<u8>) {
+        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
+        // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &core_state.registered_emitters,
+        //     &mut core_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // let (pool, user, amount, token_name, app_id, app_payload) =
+        //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
+
+        let deposit_msg = deserialize_vector_with_length(&vaa);
+        let withdraw_msg = vector_slice(&vaa, 8 + vector::length(&deposit_msg), vector::length(&vaa));
+        let (deposit_pool, deposit_user, deposit_amount, deposit_token_name, app_id, app_payload) =
+            decode_send_deposit_payload(deposit_msg);
+        let (_, _, withdraw_token_name, _, _) =
+            decode_send_withdraw_payload(withdraw_msg);
+        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
+        pool_manager::add_liquidity(
+            option::borrow(&core_state.pool_manager_cap),
+            pool_manager_info,
+            deposit_token_name,
+            app_manager::app_id(app_cap),
+            // todo: use wormhole chainid
+            // wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
+            1,
+            // todo! fix address
+            to_bytes(&deposit_pool),
+            to_bytes(&deposit_user),
+            deposit_amount,
+            ctx
+        );
+        // myvaa::destroy(vaa);
+        (withdraw_token_name, deposit_token_name, deposit_user, deposit_amount, app_payload)
+    }
+
     public fun receive_withdraw(
         _wormhole_state: &mut WormholeState,
         _core_state: &mut CoreState,
@@ -139,6 +185,7 @@ module wormhole_bridge::bridge_core {
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
         chainid: u64,
+        // todo: fix address
         user: address,
         amount: u64,
         token_name: vector<u8>,

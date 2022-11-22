@@ -7,7 +7,8 @@ module lending::logic {
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
-    use serde::serde::{deserialize_u64, deserialize_u8, vector_slice};
+    use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
+    use serde::u16;
     use sui::tx_context::{epoch, TxContext};
 
     friend lending::actions;
@@ -74,8 +75,7 @@ module lending::logic {
         }
     }
 
-    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64) {
-        let length = vector::length(&app_payload);
+    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>) {
         let index = 0;
         let data_len;
 
@@ -87,7 +87,15 @@ module lending::logic {
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        (call_type, amount)
+        data_len = 2;
+        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = u16::to_u64(user_length);
+        let user = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
+
+        (call_type, amount, user)
     }
 
     public(friend) fun inner_withdraw(

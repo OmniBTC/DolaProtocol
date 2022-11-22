@@ -4,7 +4,7 @@ module omnipool::pool {
     use std::vector;
 
     use serde::serde::{serialize_address, serialize_vector, serialize_u64, deserialize_u64, deserialize_address, vector_slice, serialize_u16, deserialize_u16};
-    use serde::u16;
+    use serde::u16::{Self, U16};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID, uid_to_address};
@@ -15,7 +15,6 @@ module omnipool::pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario;
-    use serde::u16::U16;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -124,7 +123,9 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_send_deposit_payload(pool_payload: vector<u8>): (address, address, u64, vector<u8>, U16, vector<u8>) {
+    public fun decode_send_deposit_payload(
+        pool_payload: vector<u8>
+    ): (address, address, u64, vector<u8>, U16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -169,7 +170,7 @@ module omnipool::pool {
         (pool_address, app_address, amount, token_name, app_id, app_payload)
     }
 
-    /// encode deposit msg
+    /// encode whihdraw msg
     public fun encode_send_withdraw_payload(
         pool: address,
         user: address,
@@ -190,8 +191,8 @@ module omnipool::pool {
         pool_payload
     }
 
-    /// decode deposit msg
-    public fun decode_send_withdraw_payload(pool_payload: vector<u8>): (address, address, vector<u8>, U16,vector<u8>) {
+    /// decode withdraw msg
+    public fun decode_send_withdraw_payload(pool_payload: vector<u8>): (address, address, vector<u8>, U16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;

@@ -1,7 +1,4 @@
 module lending::actions {
-    use std::ascii;
-    use std::type_name;
-
     use omnipool::pool::Pool;
 
     use lending::logic::{inner_supply, inner_withdraw, inner_borrow, inner_repay, inner_liquidate, decode_app_payload};
@@ -10,6 +7,7 @@ module lending::actions {
     use pool_manager::pool_manager::PoolManagerInfo;
     use sui::bcs;
     use sui::coin::Coin;
+    use sui::object::address_from_bytes;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
     use wormhole::state::State as WormholeState;
@@ -55,7 +53,7 @@ module lending::actions {
             vaa,
             ctx
         );
-        let (_, token_amount) = decode_app_payload(app_payload);
+        let (_, token_amount, _) = decode_app_payload(app_payload);
         inner_withdraw(
             cap,
             storage,
@@ -102,7 +100,7 @@ module lending::actions {
             ctx
         );
         let user_address = bcs::to_bytes(&user);
-        let (_, token_amount) = decode_app_payload(app_payload);
+        let (_, token_amount, _) = decode_app_payload(app_payload);
         inner_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
         bridge_core::send_withdraw(
             wormhole_state,
@@ -142,7 +140,6 @@ module lending::actions {
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        // withdraw collateral
         pool: &mut Pool<CoinType>,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -152,7 +149,7 @@ module lending::actions {
         chainid: u64,
         ctx: &mut TxContext
     ) {
-        let (token_name, user, amount, _app_payload) = bridge_core::receive_deposit(
+        let (withdraw_token_name, deposit_token_name, _user, amount, app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -160,18 +157,19 @@ module lending::actions {
             pool_manager_info,
             ctx
         );
-        let collateral_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
+        let (_, _, user) = decode_app_payload(app_payload);
         let withdraw_amount = inner_liquidate(
             cap,
             pool_manager_info,
             storage,
             oracle,
             bcs::to_bytes(&user),
-            collateral_name,
-            token_name,
+            withdraw_token_name,
+            deposit_token_name,
             amount,
             ctx,
         );
+
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -179,9 +177,9 @@ module lending::actions {
             pool_manager_info,
             pool,
             chainid,
-            user,
+            address_from_bytes(user),
             withdraw_amount,
-            collateral_name,
+            withdraw_token_name,
             wormhole_message_fee
         );
     }
