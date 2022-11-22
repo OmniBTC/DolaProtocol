@@ -15,8 +15,8 @@ module lending::logic {
     use omnipool::pool::Pool;
     use sui::coin::Coin;
     use sui::sui::SUI;
-    use sui::object::address_from_bytes;
     use sui::bcs;
+    use serde::serde::deserialize_u64;
 
     const RAY: u64 = 100000000;
 
@@ -100,23 +100,32 @@ module lending::logic {
         }
     }
 
-    // todo! Add remote withdraw support
+    public fun decode_app_payload(app_payload: vector<u8>): u64{
+        deserialize_u64(&app_payload)
+    }
+
     public entry fun withdraw<CoinType>(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         pool: &mut Pool<CoinType>,
+        vaa: vector<u8>,
         chainid: u64,
         wormhole_message_fee: Coin<SUI>,
         cap: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         pool_manager_info: &mut PoolManagerInfo,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
-        token_amount: u64,
         ctx: &mut TxContext
     ) {
-        inner_withdraw(cap, storage, oracle, pool_manager_info, user_address, token_name, token_amount, ctx);
+        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
+            wormhole_state,
+            core_state,
+            get_app_cap(cap, storage),
+            vaa,
+            ctx
+        );
+        let token_amount = decode_app_payload(app_payload);
+        inner_withdraw(cap, storage, oracle, pool_manager_info, bcs::to_bytes(&user), token_name, token_amount, ctx);
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -124,7 +133,7 @@ module lending::logic {
             pool_manager_info,
             pool,
             chainid,
-            address_from_bytes(user_address),
+            user,
             token_amount,
             token_name,
             wormhole_message_fee
@@ -159,17 +168,24 @@ module lending::logic {
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         pool: &mut Pool<CoinType>,
+        vaa: vector<u8>,
         chainid: u64,
         wormhole_message_fee: Coin<SUI>,
         cap: &StorageCap,
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
-        token_amount: u64,
         ctx: &mut TxContext
     ) {
+        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
+            wormhole_state,
+            core_state,
+            get_app_cap(cap, storage),
+            vaa,
+            ctx
+        );
+        let user_address = bcs::to_bytes(&user);
+        let token_amount = decode_app_payload(app_payload);
         inner_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
         bridge_core::send_withdraw(
             wormhole_state,
@@ -178,7 +194,7 @@ module lending::logic {
             pool_manager_info,
             pool,
             chainid,
-            address_from_bytes(user_address),
+            user,
             token_amount,
             token_name,
             wormhole_message_fee

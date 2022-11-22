@@ -110,7 +110,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         ctx: &mut TxContext
-    ): vector<u8> {
+    ): (vector<u8>, address, vector<u8>) {
         let vaa = parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -118,12 +118,12 @@ module wormhole_bridge::bridge_core {
             vaa,
             ctx
         );
-        let (_pool, _user, _token_name, app_id, app_payload) =
+        let (_pool, user, token_name, app_id, app_payload) =
             decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
 
         myvaa::destroy(vaa);
-        app_payload
+        (token_name, user, app_payload)
     }
 
     public fun send_withdraw<CoinType>(
