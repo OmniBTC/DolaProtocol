@@ -1,4 +1,4 @@
-module lending::actions {
+module lending::wormhole_adapter {
     use omnipool::pool::Pool;
 
     use lending::logic::{inner_supply, inner_withdraw, inner_borrow, inner_repay, inner_liquidate, decode_app_payload};

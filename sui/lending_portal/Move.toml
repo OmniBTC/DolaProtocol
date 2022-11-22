@@ -10,7 +10,7 @@ Serde = { local = "../serde" }
 WormholeBridge = { local = "../wormhole_bridge" }
 
 [addresses]
-lending = "0x0"
+lending_portal = "0x0"
 serde = "0x0"
 wormhole_bridge = "0x0"
 wormhole = "0x0"

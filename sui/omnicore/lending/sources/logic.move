@@ -11,7 +11,8 @@ module lending::logic {
     use serde::u16;
     use sui::tx_context::{epoch, TxContext};
 
-    friend lending::actions;
+    // todo! remove friend, use cap manager
+    friend lending::wormhole_adapter;
 
     const RAY: u64 = 100000000;
 
@@ -28,6 +29,8 @@ module lending::logic {
     const ENOT_ENOUGH_OTOKEN: u64 = 5;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
+
+    const EINVALID_LENGTH: u64 = 7;
 
     public(friend) fun inner_liquidate(
         cap: &StorageCap,
@@ -94,6 +97,8 @@ module lending::logic {
         data_len = u16::to_u64(user_length);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
+
+        assert!(index==vector::length(&app_payload), EINVALID_LENGTH);
 
         (call_type, amount, user)
     }

@@ -11,6 +11,8 @@ module lending_portal::lending {
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_pool::{send_deposit, PoolState, send_withdraw, send_deposit_and_withdraw};
 
+    const EINVALID_LENGTH: u64 = 0;
+
     const APPID: u64 = 0;
 
     /// Call types for relayer call
@@ -134,6 +136,7 @@ module lending_portal::lending {
         data_len = u16::to_u64(user_length);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
+        assert!(index==vector::length(&app_payload), EINVALID_LENGTH);
 
         (call_type, amount, user)
     }
