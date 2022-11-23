@@ -75,7 +75,7 @@ module lending::logic {
         }
     }
 
-    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>) {
+    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
         let index = 0;
         let data_len;
 
@@ -85,6 +85,10 @@ module lending::logic {
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let dst_chain = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -97,7 +101,7 @@ module lending::logic {
 
         assert!(index==vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, user)
+        (call_type, amount, user, dst_chain)
     }
 
     public fun execute_withdraw(
