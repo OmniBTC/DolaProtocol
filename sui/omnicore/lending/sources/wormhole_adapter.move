@@ -1,13 +1,10 @@
 module lending::wormhole_adapter {
-    use omnipool::pool::Pool;
-
     use lending::logic::{inner_supply, inner_withdraw, inner_borrow, inner_repay, inner_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::PoolManagerInfo;
     use sui::bcs;
     use sui::coin::Coin;
-    use sui::object::address_from_bytes;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
     use wormhole::state::State as WormholeState;
@@ -33,11 +30,10 @@ module lending::wormhole_adapter {
         inner_supply(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
     }
 
-    public entry fun withdraw<CoinType>(
+    public entry fun withdraw(
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        pool: &mut Pool<CoinType>,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
         cap: &StorageCap,
@@ -46,7 +42,7 @@ module lending::wormhole_adapter {
         chainid: u64,
         ctx: &mut TxContext
     ) {
-        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
+        let (pool, user, token_name, app_payload) = bridge_core::receive_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -79,11 +75,10 @@ module lending::wormhole_adapter {
     }
 
 
-    public entry fun borrow<CoinType>(
+    public entry fun borrow(
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        pool: &mut Pool<CoinType>,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
         cap: &StorageCap,
@@ -92,7 +87,7 @@ module lending::wormhole_adapter {
         chainid: u64,
         ctx: &mut TxContext
     ) {
-        let (token_name, user, app_payload) = bridge_core::receive_withdraw(
+        let (pool, user, token_name, app_payload) = bridge_core::receive_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -136,11 +131,10 @@ module lending::wormhole_adapter {
         inner_repay(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
     }
 
-    public entry fun liquidate<CoinType>(
+    public entry fun liquidate(
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        pool: &mut Pool<CoinType>,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
         cap: &StorageCap,
@@ -149,7 +143,7 @@ module lending::wormhole_adapter {
         chainid: u64,
         ctx: &mut TxContext
     ) {
-        let (withdraw_token_name, deposit_token_name, _user, amount, app_payload) = bridge_core::receive_deposit_and_withdraw(
+        let (_deposit_pool, deposit_user, deposit_amount, deposit_token, withdraw_pool, withdraw_user, withdraw_token, _app_id, _app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -157,16 +151,15 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, user) = decode_app_payload(app_payload);
         let withdraw_amount = inner_liquidate(
             cap,
             pool_manager_info,
             storage,
             oracle,
-            bcs::to_bytes(&user),
-            withdraw_token_name,
-            deposit_token_name,
-            amount,
+            bcs::to_bytes(&withdraw_user),
+            withdraw_token,
+            deposit_token,
+            deposit_amount,
             ctx,
         );
 
@@ -175,11 +168,11 @@ module lending::wormhole_adapter {
             core_state,
             get_app_cap(cap, storage),
             pool_manager_info,
-            pool,
+            withdraw_pool,
             chainid,
-            address_from_bytes(user),
+            deposit_user,
             withdraw_amount,
-            withdraw_token_name,
+            withdraw_token,
             wormhole_message_fee
         );
     }

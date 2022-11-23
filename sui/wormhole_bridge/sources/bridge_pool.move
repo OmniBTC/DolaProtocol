@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, Pool, PoolCap};
+    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use serde::u16::{Self, U16};
     use sui::coin::Coin;
     use sui::object_table;
@@ -11,7 +11,6 @@ module wormhole_bridge::bridge_pool {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use wormhole_bridge::helper::encode_deposit_and_withdraw;
     use wormhole_bridge::verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
@@ -94,27 +93,23 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        withdraw_pool: &mut Pool<WithdrawCoinType>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_pool: &mut Pool<WithdrawCoinType>,
+        withdraw_user: address,
         app_id: U16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let deposit_msg = pool::deposit_to<DepositCoinType>(
+        let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             deposit_pool,
             deposit_coin,
-            app_id,
-            app_payload,
-            ctx
-        );
-        let withdraw_msg = pool::withdraw_to<WithdrawCoinType>(
             withdraw_pool,
+            withdraw_user,
             app_id,
             app_payload,
             ctx
         );
-        let msg = encode_deposit_and_withdraw(deposit_msg, withdraw_msg);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 

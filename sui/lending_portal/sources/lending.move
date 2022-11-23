@@ -86,22 +86,23 @@ module lending_portal::lending {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        // punished person
-        punished: vector<u8>,
-        collateral_pool: &mut Pool<CollateralCoinType>,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coin: Coin<DebtCoinType>,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        // punished person
+        punished: address,
         ctx: &mut TxContext
     ) {
-        let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), punished);
-        send_deposit_and_withdraw(
+        let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), to_bytes(&punished));
+        send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
             wormhole_state,
             wormhole_message_fee,
-            collateral_pool,
             debt_pool,
             debt_coin,
+            collateral_pool,
+            punished,
             app_id(),
             app_payload,
             ctx
@@ -136,7 +137,7 @@ module lending_portal::lending {
         data_len = u16::to_u64(user_length);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
-        assert!(index==vector::length(&app_payload), EINVALID_LENGTH);
+        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
         (call_type, amount, user)
     }
