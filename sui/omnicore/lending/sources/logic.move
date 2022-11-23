@@ -11,9 +11,6 @@ module lending::logic {
     use serde::u16;
     use sui::tx_context::{epoch, TxContext};
 
-    // todo! remove friend, use cap manager
-    friend lending::wormhole_adapter;
-
     const RAY: u64 = 100000000;
 
     const ECOLLATERAL_AS_LOAN: u64 = 0;
@@ -32,7 +29,7 @@ module lending::logic {
 
     const EINVALID_LENGTH: u64 = 7;
 
-    public(friend) fun inner_liquidate(
+    public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
@@ -60,7 +57,7 @@ module lending::logic {
         collateral_amount
     }
 
-    public(friend) fun inner_supply(
+    public fun execute_supply(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
@@ -103,7 +100,7 @@ module lending::logic {
         (call_type, amount, user)
     }
 
-    public(friend) fun inner_withdraw(
+    public fun execute_withdraw(
         cap: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -128,7 +125,7 @@ module lending::logic {
     }
 
 
-    public(friend) fun inner_borrow(
+    public fun execute_borrow(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
@@ -153,7 +150,7 @@ module lending::logic {
     }
 
 
-    public(friend) fun inner_repay(
+    public fun execute_repay(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
