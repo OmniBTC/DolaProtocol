@@ -11,7 +11,7 @@ PoolManager = { local = "../pool_manager" }
 
 [addresses]
 example_proposal = "0x0"
-pool_manager = "0x8a41507bf7b1b70f1b081bc8b92e73a2c2eacb25"
-wormhole_bridge = "0x1ca1ab0a6f183e4cffb1e510db2f03fef8827ec2"
-governance = "0x11e7e652f8c8cf13dced797058687f22637782c0"
+pool_manager = "0x1c4283fc2b25cc8a9882a69f5a17b2947b8bfdd8"
+wormhole_bridge = "0xc21ad9b9866a34c2868527666a6d8607303d44d8"
+governance = "0x65f4b8c73c55579d97c9a0bd2c0c9913300cf30b"
 sui = "0x2"

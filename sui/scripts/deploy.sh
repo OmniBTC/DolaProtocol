@@ -2,7 +2,7 @@
 
 # Deploy using sui command line tool
 
- import wormhole
+# import wormhole
 . import_wormhole.sh
 find ../ | grep "Move.toml" | xargs sed -i -e "s/wormhole = .*/wormhole = \"$WORM_PACKAGE\"/"
 
@@ -94,8 +94,9 @@ find ../ | grep "Move.toml" | xargs sed -i -e "s/lending_portal = .*/lending_por
 
 # export
 
-echo "export wormhole=\"$WORM_PACKAGE\"" > ./env.sh
+echo "#!/bin/bash" > ./env.sh
 {
+  echo "export wormhole=\"$WORM_PACKAGE\""
   echo "export State=\"$WORM_STATE\"" 
   echo "export omnipool=\"$omnipool\""
   echo "export app_manager=\"$app_manager\""
@@ -117,6 +118,7 @@ echo "export wormhole=\"$WORM_PACKAGE\"" > ./env.sh
   echo "export lending_portal=\"$lending_portal\"" 
 } >> ./env.sh
 
-
+# clean
+rm -rf ids.log publish.log
 
 
