@@ -29,8 +29,9 @@ do
     clear_callable_func_name=$(echo "$callable_func_name" | sed -e "s/<.*>//g")
     {
       echo "# $(echo "$func" | xargs)"
-      echo "functions $clear_callable_func_name () {"
-      echo "    package_module_function \"\$@\""
+      echo "function $clear_callable_func_name() {"
+      echo "    args=(\$(get_args \"\$@\"))"
+      echo "    sui client call --package \"\$$package_name\" --module \"$module_name\" --function \"$func_name\" --gas-budget 10000 --args \"\${args[@]}\" "
       echo "}"
       echo ""
     } >> entry_funcs.sh
