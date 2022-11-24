@@ -8,6 +8,6 @@ Serde = { local = "../../serde" }
 
 
 [addresses]
-governance = "0x0"
-serde = "0x0"
+governance = "0x11e7e652f8c8cf13dced797058687f22637782c0"
+serde = "0x2653e605c5e0fc39d364b51c39f3dafab62c8cdd"
 sui = "0x2"

@@ -2,13 +2,14 @@ module app_manager::app_manager {
     use serde::u16::{Self, U16};
     use sui::object::{Self, UID};
     use sui::transfer;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
 
     struct AppManagerCap has key, store {
         id: UID,
     }
 
     struct TotalAppInfo has key, store {
+        id: UID,
         count: U16
     }
 
@@ -19,11 +20,12 @@ module app_manager::app_manager {
 
     fun init(ctx: &mut TxContext) {
         transfer::share_object(TotalAppInfo {
+            id: object::new(ctx),
             count: u16::from_u64(0)
         });
         transfer::transfer(AppManagerCap {
             id: object::new(ctx),
-        }, @app_manager)
+        }, tx_context::sender(ctx))
     }
 
     public fun app_id(app_id: &AppCap): U16 {

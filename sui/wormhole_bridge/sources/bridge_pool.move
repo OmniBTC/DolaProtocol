@@ -2,6 +2,7 @@ module wormhole_bridge::bridge_pool {
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use serde::u16::{Self, U16};
     use sui::coin::Coin;
+    use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
@@ -16,6 +17,7 @@ module wormhole_bridge::bridge_pool {
     const EMUST_DEPLOYER: u64 = 0;
 
     struct PoolState has key, store {
+        id: UID,
         pool_cap: PoolCap,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
@@ -26,6 +28,7 @@ module wormhole_bridge::bridge_pool {
         assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             PoolState {
+                id: object::new(ctx),
                 pool_cap: pool::register_cap(ctx),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
@@ -57,7 +60,7 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
-        app_id: U16,
+        app_id: u64,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -76,7 +79,7 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        app_id: U16,
+        app_id: u64,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -97,7 +100,7 @@ module wormhole_bridge::bridge_pool {
         deposit_coin: Coin<DepositCoinType>,
         withdraw_pool: &mut Pool<WithdrawCoinType>,
         withdraw_user: address,
-        app_id: U16,
+        app_id: u64,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {

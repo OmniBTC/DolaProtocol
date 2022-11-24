@@ -3,7 +3,7 @@ module lending_portal::lending {
 
     use omnipool::pool::Pool;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
-    use serde::u16::{Self, U16};
+    use serde::u16;
     use sui::bcs::to_bytes;
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -26,10 +26,6 @@ module lending_portal::lending {
 
     const LIQUIDATE: u8 = 4;
 
-    public fun app_id(): U16 {
-        u16::from_u64(APPID)
-    }
-
     public entry fun supply<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
@@ -40,7 +36,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let app_payload = encode_app_payload(SUPPLY, coin::value(&deposit_coin), user, 0);
-        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, app_id(), app_payload, ctx);
+        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, APPID, app_payload, ctx);
     }
 
     public entry fun withdraw<CoinType>(
@@ -54,7 +50,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let app_payload = encode_app_payload(WITHDRAW, amount, user, dst_chain);
-        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, app_id(), app_payload, ctx);
+        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
 
     public entry fun borrow<CoinType>(
@@ -68,7 +64,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let app_payload = encode_app_payload(BORROW, amount, user, dst_chain);
-        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, app_id(), app_payload, ctx);
+        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
 
     public entry fun repay<CoinType>(
@@ -81,7 +77,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let app_payload = encode_app_payload(REPAY, coin::value(&repay_coin), user, 0);
-        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, app_id(), app_payload, ctx);
+        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, APPID, app_payload, ctx);
     }
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
@@ -106,13 +102,13 @@ module lending_portal::lending {
             debt_coin,
             collateral_pool,
             punished,
-            app_id(),
+            APPID,
             app_payload,
             ctx
         );
     }
 
-    public entry fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u64): vector<u8> {
+    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u64): vector<u8> {
         let payload = vector::empty<u8>();
         serialize_u8(&mut payload, call_type);
         serialize_u64(&mut payload, amount);
@@ -122,7 +118,7 @@ module lending_portal::lending {
         payload
     }
 
-    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>) {
         let index = 0;
         let data_len;
 

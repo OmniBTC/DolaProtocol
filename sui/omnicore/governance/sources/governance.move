@@ -3,10 +3,10 @@ module governance::governance {
     use std::option::{Self, Option};
     use std::vector;
 
+    use sui::dynamic_field;
     use sui::object::{Self, UID, id_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use sui::dynamic_field;
 
     #[test_only]
     use sui::test_scenario;
@@ -183,7 +183,7 @@ module governance::governance {
         });
     }
 
-    public entry fun claim_key<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext): Key<T> {
+    public fun claim_key<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext): Key<T> {
         assert!(vote.claim, ECANNOT_CLAIM);
         let beneficiary = tx_context::sender(ctx);
         assert!(beneficiary == vote.beneficiary, ENOT_BENEFICIARY);
@@ -197,7 +197,7 @@ module governance::governance {
         }
     }
 
-    public entry fun claim_cap<T: key + store>(
+    public fun claim_cap<T: key + store>(
         gov: &mut Governance,
         vote: &mut Vote<T>,
         proposal: &mut Proposal<T>,

@@ -4,7 +4,7 @@ module serde::u16 {
 
     const E_OVERFLOW: u64 = 0x0;
 
-    struct U16 has key, store, copy, drop {
+    struct U16 has store, copy, drop {
         number: u64
     }
 

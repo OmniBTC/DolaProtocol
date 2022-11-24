@@ -7,6 +7,7 @@ module wormhole_bridge::bridge_core {
     use serde::u16::{Self, U16};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
+    use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
@@ -25,6 +26,7 @@ module wormhole_bridge::bridge_core {
     const EINVALID_APP: u64 = 2;
 
     struct CoreState has key, store {
+        id: UID,
         pool_manager_cap: Option<PoolManagerCap>,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
@@ -35,6 +37,7 @@ module wormhole_bridge::bridge_core {
         assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             CoreState {
+                id: object::new(ctx),
                 pool_manager_cap: option::none(),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
@@ -43,7 +46,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public entry fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
+    public fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
         core_state.pool_manager_cap = option::some(pool_manager_cap);
     }
 
