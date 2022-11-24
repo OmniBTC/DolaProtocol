@@ -94,7 +94,7 @@ find ../ | grep "Move.toml" | xargs sed -i -e "s/lending_portal = .*/lending_por
 
 # export
 
-echo "export wormhole=\"$WORM_PACKAGE\"" > ../env.sh
+echo "export wormhole=\"$WORM_PACKAGE\"" > ./env.sh
 {
   echo "export State=\"$WORM_STATE\"" 
   echo "export omnipool=\"$omnipool\""
@@ -115,7 +115,7 @@ echo "export wormhole=\"$WORM_PACKAGE\"" > ../env.sh
   echo "export Storage=\"$Storage\"" 
   echo "export WormholeAdapater=\"$WormholeAdapater\""
   echo "export lending_portal=\"$lending_portal\"" 
-} >> ../env.sh
+} >> ./env.sh
 
 
 
