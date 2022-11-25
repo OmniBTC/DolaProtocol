@@ -4,6 +4,7 @@ import base64
 import functools
 import json
 import os
+import time
 import traceback
 from collections import OrderedDict
 from pathlib import Path
@@ -79,7 +80,7 @@ def persist_cache(cache_file):
             data[str(k)] = CacheObject[k]
     if len(data) == 0:
         return
-    pt = ThreadExecutor(executor=1, mode="async")
+    pt = ThreadExecutor(executor=1, mode="all")
 
     def worker():
         with open(str(cache_file), "w") as f:
@@ -90,7 +91,10 @@ def persist_cache(cache_file):
 
 def reload_cache(cache_file):
     with open(str(cache_file), "r") as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except:
+            data = {}
         for k in data:
             object_type = ObjectType.from_type(k)
             if object_type in CacheObject:
@@ -304,7 +308,7 @@ class SuiPackage:
                             sig_scheme="ED25519",
                             request_type="WaitForLocalExecution",
                             index_object: bool = True
-                            ):
+                            ) -> dict:
         """
 
         :param index_object:
@@ -349,14 +353,14 @@ class SuiPackage:
             if index_object:
                 object_ids = []
                 for k in ["created", "mutated"]:
-                    for d in result[k]:
+                    for d in result.get(k, dict()):
                         if "reference" in d and "objectId" in d["reference"]:
                             object_ids.append(d["reference"]["objectId"])
                 if len(object_ids):
                     object_details = self.get_objects(object_ids)
                     flag = False
                     for k in ["created", "mutated"]:
-                        for i, d in enumerate(result[k]):
+                        for i, d in enumerate(result.get(k, dict())):
                             if "reference" in d and "objectId" in d["reference"] \
                                     and d["reference"]["objectId"] in object_details:
                                 object_detail = object_details[d["reference"]["objectId"]]
@@ -519,7 +523,6 @@ class SuiPackage:
         """
         if ty_args is None:
             ty_args = []
-        print(abi)
         assert isinstance(list(ty_args), list) and len(
             abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
         assert len(args) == len(abi["parameters"]), f'args error: {abi["parameters"]}'
@@ -547,8 +550,8 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()
-        print("move call", result)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
 
     def simulate_transaction(
             self,
@@ -587,4 +590,4 @@ if __name__ == "__main__":
     c.publish_package()
     print(CacheObject)
     print(c.main1.Hello)
-    c.main1.set_m(c.main1.Hello[-1], 10)
+    print(c.main1.set_m(c.main1.Hello[-1], 10))
