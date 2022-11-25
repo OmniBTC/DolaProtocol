@@ -4,20 +4,19 @@ module pool_manager::pool_manager {
     use std::option::{Self, Option};
 
     use governance::governance::{Self, GovernanceExternalCap};
+    use serde::u16::U16;
     use sui::bcs;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::types;
 
+    #[test_only]
+    use serde::u16;
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
     use sui::test_scenario;
-    use serde::u16::U16;
-    #[test_only]
-    use serde::u16;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -78,7 +77,6 @@ module pool_manager::pool_manager {
 
     public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
         let admin = PoolManagerAdminCap { count: 0 };
-        assert!(types::is_one_time_witness<PoolManagerAdminCap>(&admin), EONLY_ONE_ADMIN);
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
