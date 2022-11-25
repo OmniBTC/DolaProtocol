@@ -104,6 +104,7 @@ def reload_cache(cache_file):
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
+    print("insert", object_type, object_id)
     if object_type not in CacheObject:
         CacheObject[object_type] = [object_id] if object_id is not None else []
         final_object = CacheObject
@@ -303,6 +304,25 @@ class SuiPackage:
         print("\n")
         return result
 
+    def dry_run_transaction(self,
+                           tx_bytes
+                           ):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_dryRunTransaction",
+                "params": [
+                    tx_bytes
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return result
+
     def execute_transaction(self,
                             tx_bytes,
                             sig_scheme="ED25519",
@@ -482,10 +502,49 @@ class SuiPackage:
         assert key in self.abis, f"key not found in abi"
         return functools.partial(self.submit_transaction, self.abis[key])
 
+    def construct_transaction(
+            self,
+            abi: dict,
+            param_args: list,
+            ty_args: List[str] = None,
+            gas_budget=100000,
+    ):
+        if ty_args is None:
+            ty_args = []
+        assert isinstance(list(ty_args), list) and len(
+            abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
+        assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+        arguments = []
+        if len(param_args):
+            arguments = param_args
+
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_moveCall",
+                "params": [
+                    self.account.account_address,
+                    self.package_id,
+                    abi["module_name"],
+                    abi["func_name"],
+                    ty_args,
+                    arguments,
+                    None,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return result
+
     def submit_transaction(
             self,
             abi: dict,
-            *args,
+            *param_args,
             ty_args: List[str] = None,
             gas_budget=100000,
     ) -> dict:
@@ -515,68 +574,29 @@ class SuiPackage:
           'type_parameters': [{'abilities': []},
                               {'abilities': []}],
           'visibility': 'Public'}
+        :param param_args:
         :param abi:
-        :param args:
         :param ty_args:
         :param gas_budget:
         :return:
         """
-        if ty_args is None:
-            ty_args = []
-        assert isinstance(list(ty_args), list) and len(
-            abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
-        assert len(args) == len(abi["parameters"]), f'args error: {abi["parameters"]}'
-        arguments = []
-        if len(args):
-            arguments = args
-
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_moveCall",
-                "params": [
-                    self.account.account_address,
-                    self.package_id,
-                    abi["module_name"],
-                    abi["func_name"],
-                    ty_args,
-                    arguments,
-                    None,
-                    gas_budget
-                ]
-            },
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
         return self.execute_transaction(result["txBytes"])
 
     def simulate_transaction(
             self,
             abi: dict,
-            *args,
+            *param_args,
             ty_args: List[str] = None,
-            max_gas_amount=500000,
-            gas_unit_price=100,
-            return_types="storage",
-            **kwargs,
+            gas_budget=100000,
     ) -> Union[list | int]:
         """
         return_types: storage|gas
             storage: return storage changes
             gas: return gas
         """
-        pass
-
-    def estimate_gas_price(self):
-        try:
-            result = self.client.get(url=f"{self.base_url}/estimate_gas_price").json()
-            return int(result["gas_estimate"])
-        except Exception as e:
-            print(f"Estimate gas price fail:{e}, using default 100")
-            return 100
+        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
+        return self.dry_run_transaction(result["txBytes"])
 
     def get_table_item(self, table_handle: str, key_type: str, value_str: str, key: dict):
         pass
@@ -590,4 +610,5 @@ if __name__ == "__main__":
     c.publish_package()
     print(CacheObject)
     print(c.main1.Hello)
+    print(c.main1.set_m.simulate(c.main1.Hello[-1], 10))
     print(c.main1.set_m(c.main1.Hello[-1], 10))
