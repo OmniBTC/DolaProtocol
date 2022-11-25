@@ -5,9 +5,9 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='sui-brownie',
-    version='1.0.0',
+    version='1.1.0',
     description='Sui Package Tool',
-    long_description="This is an aptos python tool to quickly implement aptos calls",
+    long_description="This is an sui python tool to quickly implement sui calls",
     # The project's main homepage.
     url='https://github.com/OmniBTC/OmniSwap/blob/main/utils',
     # Author details
@@ -29,6 +29,6 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     python_requires=">=3.6",
-    py_modules=["aptos_brownie"],
+    py_modules=["sui_brownie"],
     install_requires=["pyyaml", "toml", "retrying"]
 )
