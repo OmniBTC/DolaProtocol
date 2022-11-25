@@ -5,11 +5,11 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='sui-brownie',
-    version='1.1.0',
+    version='1.3.0',
     description='Sui Package Tool',
     long_description="This is an sui python tool to quickly implement sui calls",
     # The project's main homepage.
-    url='https://github.com/OmniBTC/OmniSwap/blob/main/utils',
+    url='https://github.com/OmniBTC/DolaProtocol/blob/main/utils',
     # Author details
     author='DaiWei',
     author_email='dw1253464613@gmail.com',

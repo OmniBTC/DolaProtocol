@@ -104,7 +104,6 @@ def reload_cache(cache_file):
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
-    print("insert", object_type, object_id)
     if object_type not in CacheObject:
         CacheObject[object_type] = [object_id] if object_id is not None else []
         final_object = CacheObject
@@ -598,6 +597,118 @@ class SuiPackage:
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
         return self.dry_run_transaction(result["txBytes"])
 
+    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=100000):
+        if recipient is None:
+            recipient = self.account.account_address
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_payAllSui",
+                "params": [
+                    self.account.account_address,
+                    input_coins,
+                    recipient,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
+
+    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
+        if recipients is None:
+            recipients = self.account.account_address
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_paySui",
+                "params": [
+                    self.account.account_address,
+                    input_coins,
+                    recipients,
+                    amounts,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
+
+    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
+        if recipients is None:
+            recipients = self.account.account_address
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_pay",
+                "params": [
+                    self.account.account_address,
+                    input_coins,
+                    recipients,
+                    amounts,
+                    None,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
+
+    def merge_coins(self, input_coins: list, gas_budget=100000):
+        assert len(input_coins) >= 2
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_mergeCoins",
+                "params": [
+                    self.account.account_address,
+                    input_coins[0],
+                    input_coins[1:],
+                    None,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
+
+    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=100000):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_splitCoin",
+                "params": [
+                    self.account.account_address,
+                    input_coin,
+                    split_amounts,
+                    None,
+                    gas_budget
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()["result"]
+        return self.execute_transaction(result["txBytes"])
+
     def get_table_item(self, table_handle: str, key_type: str, value_str: str, key: dict):
         pass
 
@@ -606,9 +717,12 @@ class SuiPackage:
 
 
 if __name__ == "__main__":
+    # todo!
+    # 1. Support sui and coin
+    # 2. Support vector
+    # 3. Only notice current account coin
     c = SuiPackage("./Hello")
     c.publish_package()
     print(CacheObject)
     print(c.main1.Hello)
-    print(c.main1.set_m.simulate(c.main1.Hello[-1], 10))
-    print(c.main1.set_m(c.main1.Hello[-1], 10))
+    pprint(c.main1.set_m(c.main1.Hello[-1], 10))
