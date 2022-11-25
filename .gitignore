@@ -14,5 +14,8 @@ Cargo.lock
 # Ignore move build
 build
 
+# Ignore sui log
+**/sui.log**
+
 .DS_Store
 
