@@ -18,7 +18,7 @@ pip install sui_brownie
 import sui_brownie
 
 package = sui_brownie.SuiPackage(
-								 brownie_config: Union[Path, str] = Path.cwd(),
+				 brownie_config: Union[Path, str] = Path.cwd(),
                  network: str = "sui-devnet",
                  is_compile: bool = True,
                  package_id: str = None,
