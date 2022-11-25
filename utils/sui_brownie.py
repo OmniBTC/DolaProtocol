@@ -21,6 +21,8 @@ from Parallelism import ThreadExecutor
 
 
 class ObjectType:
+    __single_object: Dict[str, ObjectType] = dict()
+
     def __init__(self,
                  package_id: str,
                  module_name: str,
@@ -30,10 +32,21 @@ class ObjectType:
         self.module_name = module_name
         self.struct_name = struct_name
         self.package_name = ""
+        assert str(self) not in self.__single_object, "Has exist, use from_data"
 
+    @classmethod
+    def from_data(
+            cls,
+            package_id: str,
+            module_name: str,
+            struct_name: str) -> ObjectType:
+        data = f"{package_id}::{module_name}::{struct_name}"
+        if data not in cls.__single_object:
+            cls.__single_object[data] = ObjectType(package_id, module_name, struct_name)
+        return cls.__single_object[data]
 
-    @staticmethod
-    def from_type(data: str) -> ObjectType:
+    @classmethod
+    def from_type(cls, data: str) -> ObjectType:
         """
         :param data:
             0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello
@@ -42,7 +55,10 @@ class ObjectType:
         data = data.split("::")
         result = data[:2]
         result.append("::".join(data[2:]))
-        return ObjectType(*result)
+        return cls.from_data(*result)
+
+    def __repr__(self):
+        return self.__str__()
 
     def __str__(self):
         return f"{self.package_id}::{self.module_name}::{self.struct_name}"
@@ -55,6 +71,7 @@ CacheObject: Dict[ObjectType, list] = OrderedDict()
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
+    print("insert", object_type, object_id)
     if object_type not in CacheObject:
         CacheObject[object_type] = [object_id] if object_id is not None else []
         final_object = CacheObject
@@ -534,4 +551,6 @@ class SuiPackage:
 if __name__ == "__main__":
     c = SuiPackage("./Hello")
     c.publish_package()
+    print(CacheObject)
+    print(c.main1.Hello)
     c.main1.set_m("0x160a17ab678ca502efd8baba75522553249d78c6", 10)
