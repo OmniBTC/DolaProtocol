@@ -10,7 +10,6 @@ module pool_manager::pool_manager {
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::types;
 
     #[test_only]
     use serde::u16;
@@ -78,7 +77,6 @@ module pool_manager::pool_manager {
 
     public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
         let admin = PoolManagerAdminCap { count: 0 };
-        assert!(types::is_one_time_witness<PoolManagerAdminCap>(&admin), EONLY_ONE_ADMIN);
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
