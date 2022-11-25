@@ -15,4 +15,10 @@ Cargo.lock
 build
 
 .DS_Store
+.idea
+.env
+__pycache__
+.cache/
+dist/
+*egg-info/
 
