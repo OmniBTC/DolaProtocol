@@ -15,7 +15,7 @@ Oracle = { local = "../oracle" }
 [addresses]
 lending = "0x53ab3c43552beb34a498a4aeb5f98ce335d64457"
 wormhole_bridge = "0xc21ad9b9866a34c2868527666a6d8607303d44d8"
-pool_manager = "0x1c4283fc2b25cc8a9882a69f5a17b2947b8bfdd8"
+pool_manager = "0x7b2655fee65ec0c55b7bc7a3d17ef9f0e7b7d98e"
 app_manager = "0xff83a554f6638b839bffe3970acf00c20e2f731c"
 governance = "0x65f4b8c73c55579d97c9a0bd2c0c9913300cf30b"
 oracle = "0xea634889019c69439f414d4eb635e27d45389585"

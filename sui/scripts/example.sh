@@ -2,7 +2,5 @@
 
 . entry_funcs.sh
 
-mine=$(sui client active-address)
-
-# test add member
-governance_governance_add_member "$GovernanceCap" "$Governance" "$mine"
+# register pool manager admin cap
+# pool_manager_pool_manager_register_admin_cap "$GovernanceExternalCap"
