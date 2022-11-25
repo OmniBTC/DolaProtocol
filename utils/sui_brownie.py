@@ -29,6 +29,8 @@ class ObjectType:
         self.package_id = package_id
         self.module_name = module_name
         self.struct_name = struct_name
+        self.package_name = ""
+
 
     @staticmethod
     def from_type(data: str) -> ObjectType:
@@ -52,9 +54,9 @@ class ObjectType:
 CacheObject: Dict[ObjectType, list] = OrderedDict()
 
 
-def insert_cache(object_type: ObjectType, object_id: str):
+def insert_cache(object_type: ObjectType, object_id: str = None):
     if object_type not in CacheObject:
-        CacheObject[object_type] = [object_id]
+        CacheObject[object_type] = [object_id] if object_id is not None else []
         final_object = CacheObject
         attr_list = [object_type.module_name, object_type.struct_name]
         for k, attr in enumerate(attr_list):
@@ -67,9 +69,9 @@ def insert_cache(object_type: ObjectType, object_id: str):
                     ob = type(f"CacheObject_{object_type.module_name}", (object,), dict())()
                 setattr(final_object, attr, ob)
                 final_object = ob
-            if k == len(attr_list) - 1:
-                final_object[object_type.package_id].append(object_id)
-    elif object_id not in CacheObject[object_type]:
+            if k == len(attr_list) - 1 and object_type not in final_object:
+                final_object[object_type] = CacheObject[object_type]
+    elif object_id is not None and object_id not in CacheObject[object_type]:
         CacheObject[object_type].append(object_id)
 
 
@@ -192,8 +194,7 @@ class SuiPackage:
 
         # # # # # # Abis
         self.abis = {}
-        if self.package_id is not None:
-            self.get_abis()
+        self.get_abis()
 
     def compile(self):
         # # # # # Compile
@@ -371,6 +372,8 @@ class SuiPackage:
             return result
 
     def get_abis(self):
+        if self.package_id is None:
+            return
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -386,9 +389,22 @@ class SuiPackage:
             raise ApiError(response.text, response.status_code)
         result = response.json()["result"]
         for module_name in result:
-            if "exposed_functions" not in result[module_name]:
-                continue
-            for func_name in result[module_name]["exposed_functions"]:
+            for struct_name in result[module_name].get("structs", dict()):
+                object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
+                object_type.package_name = self.package_name
+                insert_cache(object_type, None)
+                attr_list = [module_name, struct_name]
+                if len(attr_list):
+                    final_object = self
+                    for attr in attr_list[:-1]:
+                        if hasattr(final_object, attr):
+                            final_object = getattr(final_object, attr)
+                        else:
+                            ob = type(f"{self.__class__.__name__}_{attr}", (object,), dict())()
+                            setattr(final_object, attr, ob)
+                            final_object = ob
+                    setattr(final_object, attr_list[-1], CacheObject[object_type])
+            for func_name in result[module_name].get("exposed_functions", dict()):
                 abi = result[module_name]["exposed_functions"][func_name]
                 abi["module_name"] = module_name
                 abi["func_name"] = func_name
