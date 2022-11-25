@@ -3,9 +3,10 @@ from __future__ import annotations
 import base64
 import functools
 import os
-from collections import OrderedDict
+import traceback
+from collections import OrderedDict, defaultdict
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Dict
 from pprint import pprint
 
 import httpx
@@ -19,6 +20,59 @@ import toml
 from Parallelism import ThreadExecutor
 
 
+class ObjectType:
+    def __init__(self,
+                 package_id: str,
+                 module_name: str,
+                 struct_name: str
+                 ):
+        self.package_id = package_id
+        self.module_name = module_name
+        self.struct_name = struct_name
+
+    @staticmethod
+    def from_type(data: str) -> ObjectType:
+        """
+        :param data:
+            0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello
+        :return:
+        """
+        data = data.split("::")
+        result = data[:2]
+        result.append("::".join(data[2:]))
+        return ObjectType(*result)
+
+    def __str__(self):
+        return f"{self.package_id}::{self.module_name}::{self.struct_name}"
+
+    def __hash__(self):
+        return hash(str(self))
+
+
+CacheObject: Dict[ObjectType, list] = OrderedDict()
+
+
+def insert_cache(object_type: ObjectType, object_id: str):
+    if object_type not in CacheObject:
+        CacheObject[object_type] = [object_id]
+        final_object = CacheObject
+        attr_list = [object_type.module_name, object_type.struct_name]
+        for k, attr in enumerate(attr_list):
+            if hasattr(final_object, attr):
+                final_object = getattr(final_object, attr)
+            else:
+                if k == len(attr_list) - 1:
+                    ob = defaultdict(lambda: [])
+                else:
+                    ob = type(f"CacheObject_{object_type.module_name}", (object,), dict())()
+                setattr(final_object, attr, ob)
+                final_object = ob
+            if k == len(attr_list) - 1:
+                final_object[object_type.package_id].append(object_id)
+    elif object_id not in CacheObject[object_type]:
+        CacheObject[object_type].append(object_id)
+
+
 class ApiError(Exception):
     """Error thrown when the API returns >= 400"""
 
@@ -30,41 +84,48 @@ class ApiError(Exception):
 
 class SuiPackage:
     def __init__(self,
-                 project_path: Union[Path, str] = Path.cwd(),
+                 brownie_config: Union[Path, str] = Path.cwd(),
                  network: str = "sui-devnet",
                  is_compile: bool = True,
                  package_id: str = None,
                  package_path: Union[Path, str] = None
                  ):
         """
-        :param project_path: The folder where brownie-config.yaml is located.
+        :param brownie_config: The folder where brownie-config.yaml is located.
         :param network:
         :param is_compile:
-        :param package_path: The folder where Move.toml is located. Mostly the same as project_path.
+        :param package_path: The folder where Move.toml is located. Mostly the same as brownie_config.
         """
         self.package_id = package_id
-        if isinstance(project_path, Path):
-            self.project_path = project_path
+        if isinstance(brownie_config, Path):
+            self.brownie_config = brownie_config
         else:
-            self.project_path = Path(project_path)
+            self.brownie_config = Path(brownie_config)
+
+        # # # # # cache file
+        cache_dir = self.brownie_config.joinpath(".cache")
+        if not cache_dir.exists():
+            cache_dir.mkdir()
+        self.cache_file = cache_dir.joinpath("objects.json")
+
         self.network = network
 
         if package_path is None:
-            self.package_path = self.project_path
+            self.package_path = self.brownie_config
         elif isinstance(package_path, str):
             self.package_path = Path(package_path)
         else:
             self.package_path = package_path
 
         # # # # # load config
-        assert self.project_path.joinpath(
+        assert self.brownie_config.joinpath(
             "brownie-config.yaml").exists(), "brownie-config.yaml not found"
-        self.config_path = self.project_path.joinpath("brownie-config.yaml")
+        self.config_path = self.brownie_config.joinpath("brownie-config.yaml")
         self.config = {}  # all network configs
         with self.config_path.open() as fp:
             self.config = yaml.safe_load(fp)
         try:
-            load_dotenv(self.project_path.joinpath(self.config["dotenv"]))
+            load_dotenv(self.brownie_config.joinpath(self.config["dotenv"]))
             self.private_key = os.getenv("PRIVATE_KEY")
             self.mnemonic = os.getenv("MNEMONIC")
             if self.private_key is not None:
@@ -115,10 +176,9 @@ class SuiPackage:
         if is_compile:
             self.compile()
 
-        # # # # Metadata
+        # # # # # Bytecode
         self.build_path = self.package_path.joinpath(
             f"build/{self.package_name}")
-        # # # # # Bytecode
         self.move_module_files = []
         bytecode_modules = self.build_path.joinpath("bytecode_modules")
         for m in os.listdir(bytecode_modules):
@@ -131,8 +191,9 @@ class SuiPackage:
                 self.move_modules.append(f.read())
 
         # # # # # # Abis
-        self.cache_object = {}
         self.abis = {}
+        if self.package_id is not None:
+            self.get_abis()
 
     def compile(self):
         # # # # # Compile
@@ -179,14 +240,12 @@ class SuiPackage:
             raise ApiError(response.text, response.status_code)
         result = response.json()
         result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
+        # # # # Update package id
         for d in result.get("created", []):
             if "data" in d and "dataType" in d["data"]:
                 if d["data"]["dataType"] == "package":
                     self.package_id = d["reference"]["objectId"]
-                elif d["data"]["dataType"] == "moveObject":
-                    if d["data"]["type"] not in self.cache_object:
-                        self.cache_object[d["data"]["type"]] = OrderedDict()
-                    self.cache_object[d["data"]["type"]][d["reference"]["objectId"]] = d
+                    self.get_abis()
 
         pprint(result)
         print("-" * (100 + len(view)))
@@ -252,9 +311,14 @@ class SuiPackage:
                         for i, d in enumerate(result[k]):
                             if "reference" in d and "objectId" in d["reference"] \
                                     and d["reference"]["objectId"] in object_details:
-                                result[k][i] = object_details[d["reference"]["objectId"]]
+                                object_detail = object_details[d["reference"]["objectId"]]
+                                result[k][i] = object_detail
+                                if "data" in object_detail and "type" in object_detail["data"]:
+                                    object_type = ObjectType.from_type(object_detail["data"]["type"])
+                                    insert_cache(object_type, d["reference"]["objectId"])
             return result
         except:
+            traceback.print_exc()
             return result
 
     @staticmethod
@@ -454,5 +518,4 @@ class SuiPackage:
 if __name__ == "__main__":
     c = SuiPackage("./Hello")
     c.publish_package()
-    c.get_abis()
     c.main1.set_m("0x160a17ab678ca502efd8baba75522553249d78c6", 10)

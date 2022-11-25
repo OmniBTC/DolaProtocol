@@ -18,4 +18,5 @@ build
 .idea
 .env
 __pycache__
+.cache/
 
