@@ -1,28 +1,33 @@
 module lending::wormhole_adapter {
+    use std::option::{Self, Option};
+
     use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::PoolManagerInfo;
     use sui::bcs;
     use sui::coin::Coin;
+    use sui::object::{Self, UID};
     use sui::sui::SUI;
+    use sui::transfer;
     use sui::tx_context::TxContext;
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
-    use std::option::Option;
-    use sui::transfer;
-    use std::option;
 
     const EMUST_NONE: u64 = 0;
 
     const EMUST_SOME: u64 = 1;
 
     struct WormholeAdapater has key {
+        id: UID,
         storage_cap: Option<StorageCap>
     }
 
-    fun init() {
-        transfer::share_object(WormholeAdapater { storage_cap: option::none() })
+    fun init(ctx: &mut TxContext) {
+        transfer::share_object(WormholeAdapater {
+            id: object::new(ctx),
+            storage_cap: option::none()
+        })
     }
 
     public fun transfer_storage_cap(

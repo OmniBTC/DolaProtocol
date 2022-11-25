@@ -3,11 +3,10 @@ name = "AppManager"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 Serde = { local = "../../serde" }
 
-
 [addresses]
-app_manager = "0x0"
-serde = "0x0"
+app_manager = "0x80663c9040498b16e38d3fafa3ff9499c7c3d0bb"
+serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
 sui = "0x2"

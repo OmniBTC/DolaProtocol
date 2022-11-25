@@ -1,19 +1,17 @@
 module lending::storage {
     use std::hash;
+    use std::option::{Self, Option};
     use std::vector;
 
+    use app_manager::app_manager::{Self, AppCap};
     use governance::governance::{Self, GovernanceExternalCap};
+    use serde::u16::U16;
     use sui::bcs;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
     use sui::types;
-    use std::option::Option;
-    use app_manager::app_manager::AppCap;
-    use std::option;
-    use serde::u16::U16;
-    use app_manager::app_manager;
 
     const EONLY_ONE_ADMIN: u64 = 0;
 
@@ -104,7 +102,7 @@ module lending::storage {
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
-    public entry fun register_cap_with_admin(admin: &mut StorageAdminCap): StorageCap {
+    public fun register_cap_with_admin(admin: &mut StorageAdminCap): StorageCap {
         admin.count = admin.count + 1;
         StorageCap {}
     }
@@ -140,7 +138,7 @@ module lending::storage {
         option::borrow(&storage.app_cap)
     }
 
-    public entry fun register_new_reserve(
+    public fun register_new_reserve(
         _: &mut StorageAdminCap,
         storage: &mut Storage,
         token_name: vector<u8>,

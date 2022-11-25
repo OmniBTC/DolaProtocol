@@ -3,16 +3,16 @@ name = "LendingPortal"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
-Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "ade434c9326385f4ab23fe314a9bab34e074ad16" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
+Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "8f7150ac22da1171e99c6f0c5e51f33de5f63f75" }
 OmniPool = { local = "../omnipool" }
 Serde = { local = "../serde" }
 WormholeBridge = { local = "../wormhole_bridge" }
 
 [addresses]
-lending_portal = "0x0"
-serde = "0x0"
-wormhole_bridge = "0x0"
-wormhole = "0x0"
-omnipool = "0x0"
+lending_portal = "0x1ea62dae69dbdfc31afb477c4800274d70363d59"
+serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
+wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
+wormhole = "0xace3a101a7cfa5ccab80569d8a5ea9078bac7ba4"
+omnipool = "0xe1d3a504d4df58d7cb9339db9e1ab8ff98a228dc"
 sui = "0x2"

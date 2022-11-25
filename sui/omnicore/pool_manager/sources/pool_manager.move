@@ -80,12 +80,12 @@ module pool_manager::pool_manager {
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
-    public entry fun register_cap_with_admin(admin: &mut PoolManagerAdminCap): PoolManagerCap {
+    public fun register_cap_with_admin(admin: &mut PoolManagerAdminCap): PoolManagerCap {
         admin.count = admin.count + 1;
         PoolManagerCap {}
     }
 
-    public entry fun register_cap(admin: &mut Option<PoolManagerAdminCap>): PoolManagerCap {
+    public fun register_cap(admin: &mut Option<PoolManagerAdminCap>): PoolManagerCap {
         assert!(option::is_some(admin), EMUST_SOME);
         let admin = option::borrow_mut(admin);
         register_cap_with_admin(admin)

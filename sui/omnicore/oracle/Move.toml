@@ -3,8 +3,8 @@ name = "Oracle"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 
 [addresses]
-oracle = "0x0"
+oracle = "0x38ed2ad25bb65db102de1ed85694a977c1d23516"
 sui = "0x2"

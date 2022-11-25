@@ -1,21 +1,18 @@
-module example_proposal::main {
-    use governance::governance::{Governance, GovernanceExternalCap, VoteExternalCap};
-    use sui::tx_context::TxContext;
-    use governance::governance;
-
+module example_proposal::proposal {
     use std::option;
-    use pool_manager::pool_manager;
-    use pool_manager::pool_manager::PoolManagerAdminCap;
-    use wormhole_bridge::bridge_core;
-    use wormhole_bridge::bridge_core::CoreState;
+
+    use governance::governance::{Self, Governance, GovernanceExternalCap, VoteExternalCap};
+    use pool_manager::pool_manager::{Self, PoolManagerAdminCap};
+    use sui::tx_context::TxContext;
+    use wormhole_bridge::bridge_core::{Self, CoreState};
 
     public entry fun vote_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         core_state: &mut CoreState,
-        ctx: &mut TxContext)
-    {
+        ctx: &mut TxContext
+    ) {
         let flash_cap = governance::vote_external_cap<PoolManagerAdminCap>(gov, governance_external_cap, vote, ctx);
 
         if (option::is_some(&flash_cap)) {

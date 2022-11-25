@@ -4,7 +4,7 @@ module oracle::oracle {
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
 
     const ENONEXISTENT_ORACLE: u64 = 0;
 
@@ -31,7 +31,7 @@ module oracle::oracle {
         });
         transfer::transfer(OracleCap {
             id: object::new(ctx),
-        }, @oracle)
+        }, tx_context::sender(ctx))
     }
 
     public entry fun update_token_price(
@@ -48,7 +48,7 @@ module oracle::oracle {
         price.value = token_price;
     }
 
-    public entry fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u64) {
+    public fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u64) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, token_name);

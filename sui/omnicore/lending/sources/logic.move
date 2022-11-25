@@ -75,7 +75,7 @@ module lending::logic {
         }
     }
 
-    public entry fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
         let index = 0;
         let data_len;
 
@@ -99,7 +99,7 @@ module lending::logic {
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
 
-        assert!(index==vector::length(&app_payload), EINVALID_LENGTH);
+        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
         (call_type, amount, user, dst_chain)
     }

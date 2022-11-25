@@ -3,10 +3,11 @@ module governance::governance {
     use std::option::{Self, Option};
     use std::vector;
 
+    use sui::dynamic_field;
+    use sui::event::emit;
     use sui::object::{Self, UID, id_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use sui::dynamic_field;
 
     #[test_only]
     use sui::test_scenario;
@@ -101,6 +102,11 @@ module governance::governance {
         id: UID
     }
 
+    /// Help to get the key of dynamic object
+    struct AddExternalCapEvent has store, copy, drop {
+        hash: vector<u8>
+    }
+
     fun init(ctx: &mut TxContext) {
         let members = vector::empty<address>();
         vector::push_back(&mut members, tx_context::sender(ctx));
@@ -123,6 +129,9 @@ module governance::governance {
     ) {
         assert!(!dynamic_field::exists_with_type<vector<u8>, T>(&governance_external_cap.id, hash), EALREADY_EXIST);
         dynamic_field::add(&mut governance_external_cap.id, hash, cap);
+        emit(AddExternalCapEvent {
+            hash
+        })
     }
 
     public entry fun add_member(_: &GovernanceCap, goverance: &mut Governance, member: address) {
@@ -183,7 +192,7 @@ module governance::governance {
         });
     }
 
-    public entry fun claim_key<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext): Key<T> {
+    public fun claim_key<T: key + store>(gov: &mut Governance, vote: &mut Vote<T>, ctx: &mut TxContext): Key<T> {
         assert!(vote.claim, ECANNOT_CLAIM);
         let beneficiary = tx_context::sender(ctx);
         assert!(beneficiary == vote.beneficiary, ENOT_BENEFICIARY);
@@ -197,7 +206,7 @@ module governance::governance {
         }
     }
 
-    public entry fun claim_cap<T: key + store>(
+    public fun claim_cap<T: key + store>(
         gov: &mut Governance,
         vote: &mut Vote<T>,
         proposal: &mut Proposal<T>,
