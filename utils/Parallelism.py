@@ -212,6 +212,11 @@ class ProcessExecutor(_Parallelism):
 class ThreadExecutor(_Parallelism):
 
     def __init__(self, executor=multiprocessing.cpu_count(), mode='all'):
+        """
+
+        :param executor:
+        :param mode: all | first | async
+        """
         super(ThreadExecutor, self).__init__(executor, mode)
         self.__pool = _MyThreadPool(max_worker=self._executor)
         self.__results = queue.Queue()

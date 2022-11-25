@@ -30,5 +30,5 @@ setup(
     ],
     python_requires=">=3.6",
     py_modules=["aptos_brownie"],
-    install_requires=['aptos_sdk', "pyyaml", "toml"]
+    install_requires=["pyyaml", "toml", "retrying"]
 )

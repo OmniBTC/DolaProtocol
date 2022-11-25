@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import base64
 import functools
+import json
 import os
 import traceback
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from pathlib import Path
 from typing import Union, List, Dict
 from pprint import pprint
+from retrying import retry
 
 import httpx
 from dotenv import load_dotenv
@@ -70,8 +72,34 @@ class ObjectType:
 CacheObject: Dict[ObjectType, list] = OrderedDict()
 
 
+def persist_cache(cache_file):
+    data = {}
+    for k in CacheObject:
+        if len(CacheObject[k]):
+            data[str(k)] = CacheObject[k]
+    if len(data) == 0:
+        return
+    pt = ThreadExecutor(executor=1, mode="async")
+
+    def worker():
+        with open(str(cache_file), "w") as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+
+    pt.run([worker])
+
+
+def reload_cache(cache_file):
+    with open(str(cache_file), "r") as f:
+        data = json.load(f)
+        for k in data:
+            object_type = ObjectType.from_type(k)
+            if object_type in CacheObject:
+                for v in CacheObject[object_type]:
+                    data[k].append(v)
+            CacheObject[ObjectType.from_type(k)] = data[k]
+
+
 def insert_cache(object_type: ObjectType, object_id: str = None):
-    print("insert", object_type, object_id)
     if object_type not in CacheObject:
         CacheObject[object_type] = [object_id] if object_id is not None else []
         final_object = CacheObject
@@ -81,7 +109,7 @@ def insert_cache(object_type: ObjectType, object_id: str = None):
                 final_object = getattr(final_object, attr)
             else:
                 if k == len(attr_list) - 1:
-                    ob = defaultdict(lambda: [])
+                    ob = dict()
                 else:
                     ob = type(f"CacheObject_{object_type.module_name}", (object,), dict())()
                 setattr(final_object, attr, ob)
@@ -212,6 +240,7 @@ class SuiPackage:
         # # # # # # Abis
         self.abis = {}
         self.get_abis()
+        reload_cache(self.cache_file)
 
     def compile(self):
         # # # # # Compile
@@ -325,6 +354,7 @@ class SuiPackage:
                             object_ids.append(d["reference"]["objectId"])
                 if len(object_ids):
                     object_details = self.get_objects(object_ids)
+                    flag = False
                     for k in ["created", "mutated"]:
                         for i, d in enumerate(result[k]):
                             if "reference" in d and "objectId" in d["reference"] \
@@ -334,6 +364,9 @@ class SuiPackage:
                                 if "data" in object_detail and "type" in object_detail["data"]:
                                     object_type = ObjectType.from_type(object_detail["data"]["type"])
                                     insert_cache(object_type, d["reference"]["objectId"])
+                                    flag = True
+                    if flag:
+                        persist_cache(self.cache_file)
             return result
         except:
             traceback.print_exc()
@@ -368,6 +401,7 @@ class SuiPackage:
         engine.run(workers)
         return result
 
+    @retry(stop_max_attempt_number=3, wait_random_min=50, wait_random_max=100)
     def get_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
@@ -553,4 +587,4 @@ if __name__ == "__main__":
     c.publish_package()
     print(CacheObject)
     print(c.main1.Hello)
-    c.main1.set_m("0x160a17ab678ca502efd8baba75522553249d78c6", 10)
+    c.main1.set_m(c.main1.Hello[-1], 10)
