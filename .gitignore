@@ -19,4 +19,6 @@ build
 .env
 __pycache__
 .cache/
+dist/
+*egg-info/
 
