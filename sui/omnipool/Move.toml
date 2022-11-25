@@ -4,10 +4,10 @@ version = "0.0.1"
 
 [dependencies]
 # Use sui-cli v0.15.0
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 Serde = { local = "../serde" }
 
 [addresses]
-omnipool = "0xe0423f3a197df5df45b9128e9e45df3003ad01ec"
-serde = "0x2653e605c5e0fc39d364b51c39f3dafab62c8cdd"
+omnipool = "0xe1d3a504d4df58d7cb9339db9e1ab8ff98a228dc"
+serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
 sui = "0x2"

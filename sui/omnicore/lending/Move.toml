@@ -3,8 +3,8 @@ name = "Lending"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
-Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "ade434c9326385f4ab23fe314a9bab34e074ad16" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
+Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "8f7150ac22da1171e99c6f0c5e51f33de5f63f75" }
 Serde = { local = "../../serde" }
 WormholeBridge = { local = "../../wormhole_bridge" }
 AppManager = { local = "../app_manager" }
@@ -13,12 +13,12 @@ Governance = { local = "../governance" }
 Oracle = { local = "../oracle" }
 
 [addresses]
-lending = "0x53ab3c43552beb34a498a4aeb5f98ce335d64457"
-wormhole_bridge = "0xc21ad9b9866a34c2868527666a6d8607303d44d8"
-pool_manager = "0x7b2655fee65ec0c55b7bc7a3d17ef9f0e7b7d98e"
-app_manager = "0xff83a554f6638b839bffe3970acf00c20e2f731c"
-governance = "0x65f4b8c73c55579d97c9a0bd2c0c9913300cf30b"
-oracle = "0xea634889019c69439f414d4eb635e27d45389585"
-serde = "0x2653e605c5e0fc39d364b51c39f3dafab62c8cdd"
-wormhole = "0x464f7e4644b6cc807757340129de0be0630f1c22"
+lending = "0x3a115660ccac88c4052c19f33de9c6cac1c13667"
+wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
+pool_manager = "0xa37f9f2b733a0988b98c3ad1e1ae71987238cc8e"
+app_manager = "0x80663c9040498b16e38d3fafa3ff9499c7c3d0bb"
+governance = "0x74295af9f171917d3c57cbc4d6044757c60a8676"
+oracle = "0x38ed2ad25bb65db102de1ed85694a977c1d23516"
+serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
+wormhole = "0xace3a101a7cfa5ccab80569d8a5ea9078bac7ba4"
 sui = "0x2"

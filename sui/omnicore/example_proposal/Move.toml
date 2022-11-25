@@ -3,7 +3,7 @@ name = "ExampleProposal"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 Governance = { local = "../governance" }
 WormholeBridge = { local = "../../wormhole_bridge" }
 PoolManager = { local = "../pool_manager" }
@@ -11,7 +11,7 @@ PoolManager = { local = "../pool_manager" }
 
 [addresses]
 example_proposal = "0x0"
-pool_manager = "0x7b2655fee65ec0c55b7bc7a3d17ef9f0e7b7d98e"
-wormhole_bridge = "0xc21ad9b9866a34c2868527666a6d8607303d44d8"
-governance = "0x65f4b8c73c55579d97c9a0bd2c0c9913300cf30b"
+pool_manager = "0xa37f9f2b733a0988b98c3ad1e1ae71987238cc8e"
+wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
+governance = "0x74295af9f171917d3c57cbc4d6044757c60a8676"
 sui = "0x2"

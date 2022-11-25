@@ -3,11 +3,11 @@ name = "Governance"
 version = "0.0.1"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "bf4065c04b8d7462047955abeea0aa9e11221088" }
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 Serde = { local = "../../serde" }
 
 
 [addresses]
-governance = "0x65f4b8c73c55579d97c9a0bd2c0c9913300cf30b"
-serde = "0x2653e605c5e0fc39d364b51c39f3dafab62c8cdd"
+governance = "0x74295af9f171917d3c57cbc4d6044757c60a8676"
+serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
 sui = "0x2"
