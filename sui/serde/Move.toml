@@ -3,8 +3,8 @@ name = "Serde"
 version = "0.0.1"
 
 [dependencies]
-# Use sui-cli v0.15.0
-Sui = { local = "/Users/daiwei/project/chainx/meta/sui/sui/crates/sui-framework" }
+# Use sui-cli v0.16.0
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
 
 [addresses]
 serde = "0x0"
