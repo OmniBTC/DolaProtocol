@@ -89,7 +89,9 @@ def persist_cache(cache_file):
     pt.run([worker])
 
 
-def reload_cache(cache_file):
+def reload_cache(cache_file: Path):
+    if not cache_file.exists():
+        return
     with open(str(cache_file), "r") as f:
         try:
             data = json.load(f)
