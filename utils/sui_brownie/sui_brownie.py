@@ -247,6 +247,7 @@ class SuiPackage:
         self.abis = {}
         self.get_abis()
         reload_cache(self.cache_file)
+        self.filter_result_key = ["disassembled", "signers_map"]
 
     def compile(self):
         # # # # # Compile
@@ -264,6 +265,32 @@ class SuiPackage:
             return base64.b64encode(data)
         else:
             return [base64.b64encode(d).decode("ascii") for d in data]
+
+    def format_dict(self, data):
+        for k in list(data.keys()):
+            if k in self.filter_result_key:
+                del data[k]
+                continue
+            if isinstance(data[k], list):
+                self.format_list(data[k])
+            elif isinstance(data[k], dict):
+                self.format_dict(data[k])
+
+    def format_list(self, data):
+        for v in data:
+            if isinstance(v, list):
+                self.format_list(v)
+            elif isinstance(v, dict):
+                self.format_dict(v)
+
+    def format_result(self, data):
+        if data is None:
+            return
+        if isinstance(data, list):
+            self.format_list(data)
+        if isinstance(data, dict):
+            self.format_dict(data)
+        return data
 
     def publish_package(self, gas_budget=100000):
         # view = f"Publish {self.package_name}"
@@ -306,8 +333,8 @@ class SuiPackage:
         return result
 
     def dry_run_transaction(self,
-                           tx_bytes
-                           ):
+                            tx_bytes
+                            ):
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -367,7 +394,7 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = self.format_result(response.json()["result"])
         try:
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success", result
             result = result["EffectsCert"]["effects"]["effects"]
@@ -717,14 +744,3 @@ class SuiPackage:
     def get_events(self, address: str, event_handle: str, field_name: str, limit: int = None):
         pass
 
-
-if __name__ == "__main__":
-    # todo!
-    # 1. Support sui and coin
-    # 2. Support vector
-    # 3. Only notice current account coin
-    c = SuiPackage("./Hello")
-    c.publish_package()
-    print(CacheObject)
-    print(c.main1.Hello)
-    pprint(c.main1.set_m(c.main1.Hello[-1], 10))
