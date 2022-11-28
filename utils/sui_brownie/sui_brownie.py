@@ -15,12 +15,12 @@ from retrying import retry
 import httpx
 from dotenv import load_dotenv
 
-from account import Account
+from .account import Account
 
 import yaml
 import toml
 
-from Parallelism import ThreadExecutor
+from .parallelism import ThreadExecutor
 
 
 class ObjectType:

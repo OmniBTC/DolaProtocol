@@ -7,7 +7,7 @@ import base64
 import json
 from typing import Union
 
-import ed25519
+from . import ed25519
 
 
 class Account:

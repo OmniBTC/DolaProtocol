@@ -5,7 +5,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='sui-brownie',
-    version='1.3.0',
+    version='1.5.0',
     description='Sui Package Tool',
     long_description="This is an sui python tool to quickly implement sui calls",
     # The project's main homepage.
@@ -29,6 +29,6 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     python_requires=">=3.6",
-    py_modules=["sui_brownie"],
-    install_requires=["pyyaml", "toml", "retrying"]
+    packages=["sui_brownie"],
+    install_requires=["pyyaml", "toml", "retrying", "mnemonic"]
 )
