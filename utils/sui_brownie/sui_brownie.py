@@ -135,6 +135,58 @@ class ApiError(Exception):
         self.status_code = status_code
 
 
+class SuiCliConfig:
+
+    def __init__(self,
+                 file,
+                 rpc: str,
+                 network: str,
+                 account: Account):
+        if isinstance(file, Path):
+            self.file = file
+        else:
+            self.file = Path(file)
+        self.rpc = rpc
+
+        self.network = network.split("-")[-1].lower()
+        self.account = account
+        self.tmp_keystore = self.file.parent.joinpath(".env.keystore")
+
+    def __enter__(self):
+        self.active_config()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file.exists():
+            self.file.unlink()
+
+        if self.tmp_keystore.exists():
+            self.tmp_keystore.unlink()
+
+    def active_config(self):
+        cmd = f'sui keytool import "{self.account.mnemonic}" ed25519'
+        os.system(cmd)
+        template_config_file = Path(__file__).parent.joinpath("sui_config.template.yaml")
+        with open(template_config_file, "r") as f:
+            config_data = f.read()
+
+        template_keystore_file = Path(__file__).parent.joinpath("sui_keystore.template.keystore")
+        with open(template_keystore_file, "r") as f:
+            keystore_data = f.read()
+        keystore_data = keystore_data.replace("{keystore}", self.account.keystore())
+
+        with open(self.tmp_keystore, "w") as f:
+            f.write(keystore_data)
+
+        config_data = config_data \
+            .replace("{file}", str(self.tmp_keystore.absolute())) \
+            .replace("{network}", self.network) \
+            .replace("{rpc}", self.rpc) \
+            .replace("{active_address}", self.account.account_address)
+        with open(self.file, "w") as f:
+            f.write(config_data)
+
+
 class SuiPackage:
     def __init__(self,
                  brownie_config: Union[Path, str] = Path.cwd(),
@@ -156,10 +208,10 @@ class SuiPackage:
             self.brownie_config = Path(brownie_config)
 
         # # # # # cache file
-        cache_dir = self.brownie_config.joinpath(".cache")
-        if not cache_dir.exists():
-            cache_dir.mkdir()
-        self.cache_file = cache_dir.joinpath("objects.json")
+        self.cache_dir = self.brownie_config.joinpath(".cache")
+        if not self.cache_dir.exists():
+            self.cache_dir.mkdir()
+        self.cache_file = self.cache_dir.joinpath("objects.json")
 
         self.network = network
 
@@ -247,6 +299,12 @@ class SuiPackage:
         self.abis = {}
         self.get_abis()
         reload_cache(self.cache_file)
+
+        # # # # # # Sui cli config
+        self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
+        self.cli_config = SuiCliConfig(self.cli_config_file, self.base_url, self.network, self.account)
+
+        # # # # # # filter result
         self.filter_result_key = ["disassembled", "signers_map"]
 
     def compile(self):
@@ -293,43 +351,55 @@ class SuiPackage:
         return data
 
     def publish_package(self, gas_budget=100000):
-        # view = f"Publish {self.package_name}"
-        # print("\n" + "-" * 50 + view + "-" * 50)
-        # compile_cmd = f"sui client publish --gas-budget {gas_budget}"
-        # os.system(compile_cmd)
-        # print("-" * (100 + len(view)))
-        # print("\n")
-
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_publish",
-                "params": [
-                    self.account.account_address,
-                    self.base64(self.move_modules),
-                    None,
-                    gas_budget
-                ]
-            },
-        )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        result = response.json()
-        result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
-        # # # # Update package id
-        for d in result.get("created", []):
-            if "data" in d and "dataType" in d["data"]:
-                if d["data"]["dataType"] == "package":
-                    self.package_id = d["reference"]["objectId"]
-                    self.get_abis()
-
-        pprint(result)
+        with self.cli_config as cof:
+            compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
+                          f"--path {self.package_path.absolute()} " \
+                          f"--gas-budget {gas_budget} --abi --json"
+            with os.popen(compile_cmd) as f:
+                result = f.read()
+            try:
+                result = json.loads(result[result.find("{"):])
+                result = self.format_result(result)
+            except:
+                pass
+            pprint(result)
+            self.add_details(result.get("effects", dict()))
         print("-" * (100 + len(view)))
         print("\n")
+
+        # For ubuntu has some issue
+        # view = f"Publish {self.package_name}"
+        # print("\n" + "-" * 50 + view + "-" * 50)
+        # response = self.client.post(
+        #     f"{self.base_url}",
+        #     json={
+        #         "jsonrpc": "2.0",
+        #         "id": 1,
+        #         "method": "sui_publish",
+        #         "params": [
+        #             self.account.account_address,
+        #             self.base64(self.move_modules),
+        #             None,
+        #             gas_budget
+        #         ]
+        #     },
+        # )
+        # if response.status_code >= 400:
+        #     raise ApiError(response.text, response.status_code)
+        # result = response.json()
+        # result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
+        # # # # # Update package id
+        # for d in result.get("created", []):
+        #     if "data" in d and "dataType" in d["data"]:
+        #         if d["data"]["dataType"] == "package":
+        #             self.package_id = d["reference"]["objectId"]
+        #             self.get_abis()
+        #
+        # pprint(result)
+        # print("-" * (100 + len(view)))
+        # print("\n")
         return result
 
     def dry_run_transaction(self,
@@ -350,6 +420,33 @@ class SuiPackage:
             raise ApiError(response.text, response.status_code)
         result = response.json()["result"]
         return result
+
+    def add_details(self, result):
+        """
+
+        :param result: effects
+        :return:
+        """
+        object_ids = []
+        for k in ["created", "mutated"]:
+            for d in result.get(k, dict()):
+                if "reference" in d and "objectId" in d["reference"]:
+                    object_ids.append(d["reference"]["objectId"])
+        if len(object_ids):
+            object_details = self.get_objects(object_ids)
+            flag = False
+            for k in ["created", "mutated"]:
+                for i, d in enumerate(result.get(k, dict())):
+                    if "reference" in d and "objectId" in d["reference"] \
+                            and d["reference"]["objectId"] in object_details:
+                        object_detail = object_details[d["reference"]["objectId"]]
+                        result[k][i] = object_detail
+                        if "data" in object_detail and "type" in object_detail["data"]:
+                            object_type = ObjectType.from_type(object_detail["data"]["type"])
+                            insert_cache(object_type, d["reference"]["objectId"])
+                            flag = True
+            if flag:
+                persist_cache(self.cache_file)
 
     def execute_transaction(self,
                             tx_bytes,
@@ -399,26 +496,7 @@ class SuiPackage:
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success", result
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
-                object_ids = []
-                for k in ["created", "mutated"]:
-                    for d in result.get(k, dict()):
-                        if "reference" in d and "objectId" in d["reference"]:
-                            object_ids.append(d["reference"]["objectId"])
-                if len(object_ids):
-                    object_details = self.get_objects(object_ids)
-                    flag = False
-                    for k in ["created", "mutated"]:
-                        for i, d in enumerate(result.get(k, dict())):
-                            if "reference" in d and "objectId" in d["reference"] \
-                                    and d["reference"]["objectId"] in object_details:
-                                object_detail = object_details[d["reference"]["objectId"]]
-                                result[k][i] = object_detail
-                                if "data" in object_detail and "type" in object_detail["data"]:
-                                    object_type = ObjectType.from_type(object_detail["data"]["type"])
-                                    insert_cache(object_type, d["reference"]["objectId"])
-                                    flag = True
-                    if flag:
-                        persist_cache(self.cache_file)
+                self.add_details(result)
             return result
         except:
             traceback.print_exc()
@@ -743,4 +821,3 @@ class SuiPackage:
 
     def get_events(self, address: str, event_handle: str, field_name: str, limit: int = None):
         pass
-

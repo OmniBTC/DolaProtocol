@@ -66,6 +66,14 @@ class PrivateKey:
             value = value[2:]
         return PrivateKey(SigningKey(bytes.fromhex(value)))
 
+    def generate_keystore(self):
+        """
+        Support only ed25519
+        :return: base64
+        """
+        data = ("00" + str(self.public_key()) + str(self)).replace("0x", "")
+        return base64.b64encode(bytes.fromhex(data)).decode("ascii")
+
     def hex(self) -> str:
         return f"0x{self.key.encode().hex()}"
 

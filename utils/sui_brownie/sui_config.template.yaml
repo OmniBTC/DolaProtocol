@@ -1,0 +1,9 @@
+---
+keystore:
+  File: {file}
+envs:
+  - alias: {network}
+    rpc: "{rpc}"
+    ws: ~
+active_env: {network}
+active_address: "{active_address}"

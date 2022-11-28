@@ -22,6 +22,7 @@ class Account:
             private_key: Union[str, ed25519.PrivateKey] = None
     ):
         assert mnemonic is not None or private_key is not None
+        self.mnemonic = mnemonic
         if mnemonic is not None:
             self.private_key: ed25519.PrivateKey = ed25519.PrivateKey.from_mnemonic(mnemonic)
         else:
@@ -53,19 +54,17 @@ class Account:
 
     @staticmethod
     def load_mnemonic(mnemonic: str) -> Account:
-        private_key = ed25519.PrivateKey.from_mnemonic(mnemonic)
-        return Account(private_key=private_key)
+        return Account(mnemonic=mnemonic)
 
     @staticmethod
     def load_key(key: str) -> Account:
-        private_key = ed25519.PrivateKey.from_hex(key)
-        return Account(private_key=private_key)
+        return Account(private_key=key)
 
     @staticmethod
     def load(path: str) -> Account:
         with open(path) as file:
             data = json.load(file)
-        return Account(private_key=ed25519.PrivateKey.from_hex(data["private_key"]))
+        return Account(private_key=data["private_key"])
 
     def store(self, path: str):
         data = {
@@ -80,8 +79,10 @@ class Account:
 
         return self.account_address
 
-
     def public_key(self) -> ed25519.PublicKey:
         """Returns the public key for the associated account"""
 
         return self.private_key.public_key()
+
+    def keystore(self) -> str:
+        return self.private_key.generate_keystore()
