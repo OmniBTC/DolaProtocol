@@ -33,7 +33,6 @@ module wormhole_bridge::bridge_core {
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             CoreState {
                 id: object::new(ctx),
@@ -56,7 +55,6 @@ module wormhole_bridge::bridge_core {
         ctx: &mut TxContext
     ) {
         // todo! change into govern permission
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
 
         // todo! consider remote register
         vec_map::insert(
