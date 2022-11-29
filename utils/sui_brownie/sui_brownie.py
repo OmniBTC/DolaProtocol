@@ -100,10 +100,7 @@ def reload_cache(cache_file: Path):
             data = {}
         for k in data:
             object_type = ObjectType.from_type(k)
-            if object_type in CacheObject:
-                for v in CacheObject[object_type]:
-                    data[k].append(v)
-            CacheObject[ObjectType.from_type(k)] = data[k]
+            insert_cache(object_type, object_id)
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
@@ -184,6 +181,25 @@ class SuiCliConfig:
             .replace("{active_address}", self.account.account_address)
         with open(self.file, "w") as f:
             f.write(config_data)
+
+
+class MoveToml:
+    def __init__(self, file: str, data: dict):
+        self.file = file
+        self.origin_data = data
+        self.data = copy.deepcopy(data)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+        with open(self.file, "w") as f:
+            toml.dump(self.data)
+
+    def restore(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.origin_data)
 
 
 class SuiPackage:
@@ -349,16 +365,21 @@ class SuiPackage:
             self.format_dict(data)
         return data
 
+    def replace_addresses(
+            self,
+            replace_address: dict = None
+    )-> list:
+        output = []
+        if replace_address is None:
+            return output
+
+
+
     def publish_package(
             self,
             gas_budget=100000,
-            replace_address=None
+            replace_address: dict = None
     ):
-        if replace_address is None:
-            replace_address = dict()
-        move_toml = copy.deepcopy(self.move_toml)
-        for k in replace_address:
-            pass
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         with self.cli_config as cof:
