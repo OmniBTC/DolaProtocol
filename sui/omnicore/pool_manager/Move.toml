@@ -8,7 +8,7 @@ Serde = { local = "../../serde" }
 Governance = { local = "../governance" }
 
 [addresses]
-pool_manager = "0xa37f9f2b733a0988b98c3ad1e1ae71987238cc8e"
-governance = "0x74295af9f171917d3c57cbc4d6044757c60a8676"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
+pool_manager = "0x0"
+governance = "0x0"
+serde = "0x0"
 sui = "0x2"

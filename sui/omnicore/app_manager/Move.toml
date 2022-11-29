@@ -7,6 +7,6 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 Serde = { local = "../../serde" }
 
 [addresses]
-app_manager = "0x80663c9040498b16e38d3fafa3ff9499c7c3d0bb"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
+app_manager = "0x0"
+serde = "0x0"
 sui = "0x2"

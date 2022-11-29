@@ -8,7 +8,6 @@ module lending::logic {
     use oracle::oracle::{get_token_price, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
-    use serde::u16;
     use sui::tx_context::{epoch, TxContext};
 
     const RAY: u64 = 100000000;
@@ -95,7 +94,7 @@ module lending::logic {
         let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = u16::to_u64(user_length);
+        data_len = (user_length as u64);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
 
