@@ -5,7 +5,6 @@ import copy
 import functools
 import json
 import os
-import time
 import traceback
 from collections import OrderedDict
 from pathlib import Path
@@ -74,14 +73,17 @@ class ObjectType:
         return hash(str(self))
 
 
-CacheObject: Dict[Union[ObjectType, str], list] = OrderedDict()
+CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
 
 
 def persist_cache(cache_file):
     data = {}
     for k in CacheObject:
-        if len(CacheObject[k]):
-            data[str(k)] = CacheObject[k]
+        for m in CacheObject[k]:
+            if len(CacheObject[k][m]):
+                if k not in data:
+                    data[str(k)] = {}
+                data[str(k)][m] = CacheObject[k][m]
     if len(data) == 0:
         return
     pt = ThreadExecutor(executor=1, mode="all")
@@ -105,24 +107,27 @@ def reload_cache(cache_file: Path):
             try:
                 object_type = ObjectType.from_type(k)
                 for v in data[k]:
-                    insert_cache(object_type, v)
+                    for v1 in data[k][v]:
+                        insert_cache(object_type, v1, v)
             except:
                 for v in data[k]:
-                    insert_package(k, v)
+                    for v1 in data[k][v]:
+                        insert_package(k, v1)
+
 
 def insert_package(package_name, object_id: str = None):
     if object_id is None:
         return
     if package_name not in CacheObject:
-        CacheObject[package_name] = []
-        setattr(CacheObject, package_name, CacheObject[package_name])
-    if object_id not in CacheObject[package_name]:
-        CacheObject[package_name].append(object_id)
+        CacheObject[package_name] = {"Shared": []}
+        setattr(CacheObject, package_name, CacheObject[package_name]["Shared"])
+    if object_id not in CacheObject[package_name]["Shared"]:
+        CacheObject[package_name]["Shared"].append(object_id)
 
 
-def insert_cache(object_type: ObjectType, object_id: str = None):
+def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
     if object_type not in CacheObject:
-        CacheObject[object_type] = [object_id] if object_id is not None else []
+        CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
         final_object = CacheObject
         attr_list = [object_type.module_name, object_type.struct_name]
         for k, attr in enumerate(attr_list):
@@ -137,8 +142,11 @@ def insert_cache(object_type: ObjectType, object_id: str = None):
                 final_object = ob
             if k == len(attr_list) - 1 and object_type not in final_object:
                 final_object[object_type] = CacheObject[object_type]
-    elif object_id is not None and object_id not in CacheObject[object_type]:
-        CacheObject[object_type].append(object_id)
+    elif object_id is not None:
+        if owner not in CacheObject[object_type]:
+            CacheObject[object_type][owner] = []
+        if object_id not in CacheObject[object_type][owner]:
+            CacheObject[object_type][owner].append(object_id)
 
 
 class ApiError(Exception):
@@ -546,7 +554,11 @@ class SuiPackage:
                         result[k][i] = object_detail
                         if "data" in object_detail and "type" in object_detail["data"]:
                             object_type = ObjectType.from_type(object_detail["data"]["type"])
-                            insert_cache(object_type, d["reference"]["objectId"])
+                            if "Shared" in object_detail["owner"]:
+                                insert_cache(object_type, d["reference"]["objectId"])
+                                insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
+                            else:
+                                insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
                             flag = True
             if flag:
                 persist_cache(self.cache_file)
@@ -687,7 +699,9 @@ class SuiPackage:
                             ob = type(f"{self.__class__.__name__}_{attr}", (object,), dict())()
                             setattr(final_object, attr, ob)
                             final_object = ob
-                    setattr(final_object, attr_list[-1], CacheObject[object_type])
+                    if self.account.account_address not in CacheObject[object_type]:
+                        CacheObject[object_type][self.account.account_address] = []
+                    setattr(final_object, attr_list[-1], CacheObject[object_type][self.account.account_address])
             for func_name in result[module_name].get("exposed_functions", dict()):
                 abi = result[module_name]["exposed_functions"][func_name]
                 abi["module_name"] = module_name
@@ -713,6 +727,8 @@ class SuiPackage:
 
     @staticmethod
     def judge_ctx(param) -> bool:
+        if not isinstance(param, dict):
+            return False
         final_arg = param.get("MutableReference", dict()).get("Struct", dict())
         if final_arg.get("address", None) == "0x2" \
                 and final_arg.get("module", None) == "tx_context" \
