@@ -74,7 +74,7 @@ class ObjectType:
         return hash(str(self))
 
 
-CacheObject: Dict[ObjectType, list] = OrderedDict()
+CacheObject: Dict[Union[ObjectType, str], list] = OrderedDict()
 
 
 def persist_cache(cache_file):
@@ -102,9 +102,22 @@ def reload_cache(cache_file: Path):
         except:
             data = {}
         for k in data:
-            object_type = ObjectType.from_type(k)
-            for v in data[k]:
-                insert_cache(object_type, v)
+            try:
+                object_type = ObjectType.from_type(k)
+                for v in data[k]:
+                    insert_cache(object_type, v)
+            except:
+                for v in data[k]:
+                    insert_package(k, v)
+
+def insert_package(package_name, object_id: str = None):
+    if object_id is None:
+        return
+    if package_name not in CacheObject:
+        CacheObject[package_name] = []
+        setattr(CacheObject, package_name, CacheObject[package_name])
+    if object_id not in CacheObject[package_name]:
+        CacheObject[package_name].append(object_id)
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
@@ -450,7 +463,9 @@ class SuiPackage:
                 if "data" in d and "dataType" in d["data"]:
                     if d["data"]["dataType"] == "package":
                         self.package_id = d["reference"]["objectId"]
+                        insert_package(self.package_name, self.package_id)
                         self.get_abis()
+                        persist_cache(self.cache_file)
         print("-" * (100 + len(view)))
         print("\n")
 
