@@ -185,8 +185,10 @@ class SuiCliConfig:
 
 
 class MoveToml:
-    def __init__(self, file: str, data: dict):
+    def __init__(self, file: str):
         self.file = file
+        with open(file, "r") as f:
+            data = toml.load(f)
         self.origin_data = data
         self.data = copy.deepcopy(data)
 
@@ -198,11 +200,17 @@ class MoveToml:
 
     def store(self):
         with open(self.file, "w") as f:
-            toml.dump(self.data)
+            toml.dump(self.data, f)
 
     def restore(self):
         with open(self.file, "w") as f:
-            toml.dump(self.origin_data)
+            toml.dump(self.origin_data, f)
+
+    def get(self, param, param1):
+        return self.data.get(param, param1)
+
+    def keys(self):
+        return self.data.keys()
 
 
 class SuiPackage:
@@ -368,26 +376,71 @@ class SuiPackage:
             self.format_dict(data)
         return data
 
+    @staticmethod
+    def replace_toml(move_toml: MoveToml, replace_address: dict = None):
+        for k in list(move_toml.get("addresses", dict()).keys()):
+            if k in replace_address:
+                move_toml["addresses"][k] = replace_address[k]
+        return move_toml
+
     def replace_addresses(
             self,
             replace_address: dict = None
-    )-> list:
-        output = []
+    ) -> dict:
+        output = {}
         if replace_address is None:
             return output
-        current_move_toml = MoveToml(self.move_path, self.move_toml)
-        output.append(output)
+        current_move_toml = MoveToml(self.move_path)
+        output[current_move_toml["package"]["name"]] = current_move_toml
 
-        for k in list(current_move_toml.get("addresses", dict()).keys()):
-            if k in replace_address:
-                current_move_toml["addresses"][k] = replace_address[k]
+        # process current move toml
+        self.replace_toml(current_move_toml, replace_address)
 
+        # process dependencies move toml
+        for k in list(current_move_toml.keys()):
+            if "dependencies" == k:
+                for d in list(current_move_toml[k].keys()):
+                    # process local
+                    if "local" in current_move_toml[k][d]:
+                        local_file = self.package_path \
+                            .joinpath(current_move_toml[k][d]["local"]) \
+                            .joinpath("Move.toml")
+                        assert local_file.exists(), f"{local_file.absolute()} not found"
+                        dep_move_toml = MoveToml(str(local_file))
+                        output[dep_move_toml["package"]["name"]] = dep_move_toml
+                        self.replace_toml(dep_move_toml, replace_address)
+                    # process remote
+                    else:
+                        git_index = current_move_toml[k][d]["git"].rfind("/")
+                        git_path = current_move_toml[k][d]["git"][:git_index + 1]
+                        git_file = current_move_toml[k][d]["git"][git_index + 1:]
+                        if "subdir" not in current_move_toml[k][d]:
+                            git_file = f"{d}.git"
+                            sub_dir = ""
+                        else:
+                            sub_dir = current_move_toml[k][d]["subdir"]
+                        git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
+                            .replace("://", "___") \
+                            .replace("/", "_").replace(".", "_")
+                        remote_file = Path(f"{os.environ.get('HOME')}/.move") \
+                            .joinpath(git_file) \
+                            .joinpath(sub_dir) \
+                            .joinpath("Move.toml")
+                        assert remote_file.exists(), f"{remote_file.absolute()} not found"
+                        dep_move_toml = MoveToml(str(remote_file))
+                        output[dep_move_toml["package"]["name"]] = dep_move_toml
+                        self.replace_toml(dep_move_toml, replace_address)
+
+        for k in output:
+            output[k].store()
+        return output
 
     def publish_package(
             self,
             gas_budget=100000,
             replace_address: dict = None
     ):
+        replace_tomls = self.replace_addresses(replace_address)
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         with self.cli_config as cof:
@@ -405,6 +458,9 @@ class SuiPackage:
             self.add_details(result.get("effects", dict()))
         print("-" * (100 + len(view)))
         print("\n")
+
+        for k in replace_tomls:
+            replace_tomls[k].restore()
 
         # For ubuntu has some issue
         # view = f"Publish {self.package_name}"
