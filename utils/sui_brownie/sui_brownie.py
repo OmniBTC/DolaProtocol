@@ -456,6 +456,11 @@ class SuiPackage:
                 pass
             pprint(result)
             self.add_details(result.get("effects", dict()))
+            for d in result.get("effects").get("created", []):
+                if "data" in d and "dataType" in d["data"]:
+                    if d["data"]["dataType"] == "package":
+                        self.package_id = d["reference"]["objectId"]
+                        self.get_abis()
         print("-" * (100 + len(view)))
         print("\n")
 
@@ -701,6 +706,16 @@ class SuiPackage:
         assert key in self.abis, f"key not found in abi"
         return functools.partial(self.submit_transaction, self.abis[key])
 
+    @staticmethod
+    def judge_ctx(param) -> bool:
+        final_arg = param.get("MutableReference", dict()).get("Struct", dict())
+        if final_arg.get("address", None) == "0x2" \
+                and final_arg.get("module", None) == "tx_context" \
+                and final_arg.get("name", None) == "TxContext":
+            return True
+        else:
+            return False
+
     def construct_transaction(
             self,
             abi: dict,
@@ -712,7 +727,11 @@ class SuiPackage:
             ty_args = []
         assert isinstance(list(ty_args), list) and len(
             abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
-        assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+        if len(abi["parameters"]) and self.judge_ctx(abi["parameters"][-1]):
+            assert len(param_args) == len(abi["parameters"]) - 1, f'param_args error: {abi["parameters"]}'
+        else:
+            assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+
         arguments = []
         if len(param_args):
             arguments = param_args
@@ -737,7 +756,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return result
 
     def submit_transaction(
