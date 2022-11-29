@@ -465,8 +465,8 @@ class SuiPackage:
                 result = self.format_result(result)
             except:
                 pass
-            pprint(result)
             self.add_details(result.get("effects", dict()))
+            pprint(result)
             for d in result.get("effects").get("created", []):
                 if "data" in d and "dataType" in d["data"]:
                     if d["data"]["dataType"] == "package":
