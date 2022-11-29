@@ -195,6 +195,8 @@ class MoveToml:
 
     def __setitem__(self, key, value):
         self.data[key] = value
+
+    def store(self):
         with open(self.file, "w") as f:
             toml.dump(self.data)
 
@@ -373,7 +375,12 @@ class SuiPackage:
         output = []
         if replace_address is None:
             return output
+        current_move_toml = MoveToml(self.move_path, self.move_toml)
+        output.append(output)
 
+        for k in list(current_move_toml.get("addresses", dict()).keys()):
+            if k in replace_address:
+                current_move_toml["addresses"][k] = replace_address[k]
 
 
     def publish_package(
