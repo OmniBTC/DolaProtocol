@@ -40,7 +40,7 @@ package = sui_brownie.SuiPackage(
 # Publish
 
 ~~~python
-package.publish_package()
+package.publish_package(replace_address=dict(serde="0x1234", wormhole="0x2345"))
 ~~~
 
 
