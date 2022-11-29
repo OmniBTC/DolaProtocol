@@ -282,28 +282,6 @@ class SuiPackage:
             self.move_toml = toml.load(fp)
         self.package_name = self.move_toml["package"]["name"]
 
-        # # # # # Replace address
-        self.replace_address = ""
-        has_replace = {}
-        if "addresses" in self.move_toml:
-            if "replace_address" in self.network_config:
-                for k in self.network_config["replace_address"]:
-                    if k in has_replace:
-                        continue
-                    if len(self.replace_address) == 0:
-                        self.replace_address = f"--named-addresses {k}={self.network_config['replace_address'][k]}"
-                    else:
-                        self.replace_address += f',{k}={self.network_config["replace_address"][k]}'
-                    has_replace[k] = True
-            for k in self.move_toml["addresses"]:
-                if k in has_replace:
-                    continue
-                if self.move_toml["addresses"][k] == "_":
-                    if len(self.replace_address) == 0:
-                        self.replace_address = f"--named-addresses {k}={self.account.account_address}"
-                    else:
-                        self.replace_address += f',{k}={self.account.account_address}'
-
         if is_compile:
             self.compile()
 
@@ -312,10 +290,11 @@ class SuiPackage:
             f"build/{self.package_name}")
         self.move_module_files = []
         bytecode_modules = self.build_path.joinpath("bytecode_modules")
-        for m in os.listdir(bytecode_modules):
-            if str(m).endswith(".mv"):
-                self.move_module_files.append(
-                    bytecode_modules.joinpath(str(m)))
+        if bytecode_modules.exists():
+            for m in os.listdir(bytecode_modules):
+                if str(m).endswith(".mv"):
+                    self.move_module_files.append(
+                        bytecode_modules.joinpath(str(m)))
         self.move_modules = []
         for m in self.move_module_files:
             with open(m, "rb") as f:
@@ -385,12 +364,14 @@ class SuiPackage:
 
     def replace_addresses(
             self,
-            replace_address: dict = None
+            replace_address: dict = None,
+            output={}
     ) -> dict:
-        output = {}
         if replace_address is None:
             return output
         current_move_toml = MoveToml(self.move_path)
+        if current_move_toml["package"]["name"] in output:
+            return output
         output[current_move_toml["package"]["name"]] = current_move_toml
 
         # process current move toml
@@ -402,13 +383,15 @@ class SuiPackage:
                 for d in list(current_move_toml[k].keys()):
                     # process local
                     if "local" in current_move_toml[k][d]:
-                        local_file = self.package_path \
-                            .joinpath(current_move_toml[k][d]["local"]) \
-                            .joinpath("Move.toml")
-                        assert local_file.exists(), f"{local_file.absolute()} not found"
-                        dep_move_toml = MoveToml(str(local_file))
-                        output[dep_move_toml["package"]["name"]] = dep_move_toml
-                        self.replace_toml(dep_move_toml, replace_address)
+                        local_path = self.package_path \
+                            .joinpath(current_move_toml[k][d]["local"])
+                        assert local_path.exists(), f"{local_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(
+                            brownie_config=self.brownie_config,
+                            network=self.network,
+                            is_compile=False,
+                            package_path=local_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
                     # process remote
                     else:
                         git_index = current_move_toml[k][d]["git"].rfind("/")
@@ -422,14 +405,16 @@ class SuiPackage:
                         git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
                             .replace("://", "___") \
                             .replace("/", "_").replace(".", "_")
-                        remote_file = Path(f"{os.environ.get('HOME')}/.move") \
+                        remote_path = Path(f"{os.environ.get('HOME')}/.move") \
                             .joinpath(git_file) \
-                            .joinpath(sub_dir) \
-                            .joinpath("Move.toml")
-                        assert remote_file.exists(), f"{remote_file.absolute()} not found"
-                        dep_move_toml = MoveToml(str(remote_file))
-                        output[dep_move_toml["package"]["name"]] = dep_move_toml
-                        self.replace_toml(dep_move_toml, replace_address)
+                            .joinpath(sub_dir)
+                        assert remote_path.exists(), f"{remote_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(
+                            brownie_config=self.brownie_config,
+                            network=self.network,
+                            is_compile=False,
+                            package_path=remote_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
 
         for k in output:
             output[k].store()
