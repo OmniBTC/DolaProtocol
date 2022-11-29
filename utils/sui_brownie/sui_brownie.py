@@ -100,7 +100,8 @@ def reload_cache(cache_file: Path):
             data = {}
         for k in data:
             object_type = ObjectType.from_type(k)
-            insert_cache(object_type, object_id)
+            for v in data[k]:
+                insert_cache(object_type, v)
 
 
 def insert_cache(object_type: ObjectType, object_id: str = None):
@@ -312,8 +313,8 @@ class SuiPackage:
 
         # # # # # # Abis
         self.abis = {}
-        self.get_abis()
         reload_cache(self.cache_file)
+        self.get_abis()
 
         # # # # # # Sui cli config
         self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
