@@ -65,7 +65,10 @@ class ObjectType:
         return self.__str__()
 
     def __str__(self):
-        return f"{self.package_id}::{self.module_name}::{self.struct_name}"
+        if self.package_id is None:
+            return self.package_name
+        else:
+            return f"{self.package_id}::{self.module_name}::{self.struct_name}"
 
     def __hash__(self):
         return hash(str(self))
@@ -365,10 +368,12 @@ class SuiPackage:
     def replace_addresses(
             self,
             replace_address: dict = None,
-            output={}
+            output: dict = None
     ) -> dict:
         if replace_address is None:
             return output
+        if output is None:
+            output = dict()
         current_move_toml = MoveToml(self.move_path)
         if current_move_toml["package"]["name"] in output:
             return output
@@ -425,7 +430,7 @@ class SuiPackage:
             gas_budget=100000,
             replace_address: dict = None
     ):
-        replace_tomls = self.replace_addresses(replace_address)
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         with self.cli_config as cof:
