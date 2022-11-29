@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import functools
 import json
 import os
@@ -164,8 +165,6 @@ class SuiCliConfig:
             self.tmp_keystore.unlink()
 
     def active_config(self):
-        cmd = f'sui keytool import "{self.account.mnemonic}" ed25519'
-        os.system(cmd)
         template_config_file = Path(__file__).parent.joinpath("sui_config.template.yaml")
         with open(template_config_file, "r") as f:
             config_data = f.read()
@@ -350,7 +349,16 @@ class SuiPackage:
             self.format_dict(data)
         return data
 
-    def publish_package(self, gas_budget=100000):
+    def publish_package(
+            self,
+            gas_budget=100000,
+            replace_address=None
+    ):
+        if replace_address is None:
+            replace_address = dict()
+        move_toml = copy.deepcopy(self.move_toml)
+        for k in replace_address:
+            pass
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         with self.cli_config as cof:
