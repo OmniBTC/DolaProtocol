@@ -737,6 +737,48 @@ class SuiPackage:
         else:
             return False
 
+    @classmethod
+    def cascade_arguments(cls, data) -> str:
+        output = "<"
+        for k, v in enumerate(data):
+            if k != 0:
+                output += ","
+            data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
+            if len(v["Struct"]["type_arguments"]):
+                data += cls.cascade_arguments(v["Struct"]["type_arguments"])
+            output += data
+        output += ">"
+        return output
+
+    @classmethod
+    def generate_object_type(cls, param: str) -> ObjectType:
+        if not isinstance(param, dict):
+            return None
+        if "Reference" in param:
+            final_arg = param["Reference"]
+        elif "MutableReference" in param:
+            final_arg = param["MutableReference"]
+        else:
+            return None
+
+        if "Struct" in final_arg:
+            output = cls.cascade_arguments(final_arg["Struct"])
+            return ObjectType.from_type(output)
+        else:
+            return None
+
+    @classmethod
+    def judge_coin(cls, param: str) -> ObjectType:
+        data = cls.generate_object_type(param)
+        if isinstance(data, ObjectType) \
+                and data.package_id == "0x2" \
+                and data.module_name == "coin" \
+                and data.struct_name.startswith("Coin"):
+            return data
+        else:
+            return None
+
+
     def construct_transaction(
             self,
             abi: dict,
@@ -753,9 +795,26 @@ class SuiPackage:
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
 
-        arguments = []
-        if len(param_args):
-            arguments = param_args
+        # for k, v in enumerate(abi):
+        #     is_coin = self.judge_coin(v)
+        #     if is_coin is None:
+        #         continue
+        #     if not isinstance(param_args[k], int):
+        #         continue
+        #     assert len(CacheObject[str(is_coin)][self.account.account_address]), f"Not found coin"
+        #     if len(CacheObject[str(is_coin)][self.account.account_address]) > 1:
+        #         if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+        #             # todo! Delete object id
+        #             self.pay_all_sui(
+        #                 CacheObject[str(is_coin)][self.account.account_address],
+        #                 self.account.account_address,
+        #                 gas_budget
+        #             )
+        #         else:
+        #             self.merge_coins(CacheObject[str(is_coin)][self.account.account_address])
+        #     if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+        #         self.pay_sui(CacheObject[str(is_coin)][self.account.account_address][-1])
+
 
         response = self.client.post(
             f"{self.base_url}",
@@ -769,7 +828,7 @@ class SuiPackage:
                     abi["module_name"],
                     abi["func_name"],
                     ty_args,
-                    arguments,
+                    param_args,
                     None,
                     gas_budget
                 ]
