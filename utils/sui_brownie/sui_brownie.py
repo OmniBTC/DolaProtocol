@@ -529,7 +529,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return result
 
     def add_details(self, result):
@@ -606,7 +609,11 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = self.format_result(response.json()["result"])
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        result = self.format_result(result)
         try:
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success", result
             result = result["EffectsCert"]["effects"]["effects"]
@@ -661,7 +668,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         try:
             return result["details"]
         except:
@@ -683,7 +693,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         for module_name in result:
             for struct_name in result[module_name].get("structs", dict()):
                 object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
@@ -738,14 +751,16 @@ class SuiPackage:
             return False
 
     @classmethod
-    def cascade_arguments(cls, data) -> str:
+    def cascade_type_arguments(cls, data) -> str:
+        if len(data) == 0:
+            return ""
         output = "<"
         for k, v in enumerate(data):
             if k != 0:
                 output += ","
             data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
             if len(v["Struct"]["type_arguments"]):
-                data += cls.cascade_arguments(v["Struct"]["type_arguments"])
+                data += cls.cascade_type_arguments(v["Struct"]["type_arguments"])
             output += data
         output += ">"
         return output
@@ -762,7 +777,10 @@ class SuiPackage:
             return None
 
         if "Struct" in final_arg:
-            output = cls.cascade_arguments(final_arg["Struct"])
+            output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"])
+            output = f'{final_arg["Struct"]["address"]}::' \
+                     f'{final_arg["Struct"]["module"]}::' \
+                     f'{final_arg["Struct"]["name"]}{output}'
             return ObjectType.from_type(output)
         else:
             return None
@@ -777,7 +795,6 @@ class SuiPackage:
             return data
         else:
             return None
-
 
     def construct_transaction(
             self,
@@ -795,26 +812,45 @@ class SuiPackage:
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
 
-        # for k, v in enumerate(abi):
-        #     is_coin = self.judge_coin(v)
-        #     if is_coin is None:
-        #         continue
-        #     if not isinstance(param_args[k], int):
-        #         continue
-        #     assert len(CacheObject[str(is_coin)][self.account.account_address]), f"Not found coin"
-        #     if len(CacheObject[str(is_coin)][self.account.account_address]) > 1:
-        #         if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-        #             # todo! Delete object id
-        #             self.pay_all_sui(
-        #                 CacheObject[str(is_coin)][self.account.account_address],
-        #                 self.account.account_address,
-        #                 gas_budget
-        #             )
-        #         else:
-        #             self.merge_coins(CacheObject[str(is_coin)][self.account.account_address])
-        #     if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-        #         self.pay_sui(CacheObject[str(is_coin)][self.account.account_address][-1])
+        for k, v in enumerate(abi["parameters"]):
+            is_coin = self.judge_coin(v)
+            if is_coin is None:
+                continue
+            if not isinstance(param_args[k], int):
+                continue
+            assert len(CacheObject[is_coin][self.account.account_address]), f"Not found coin"
+            coin_info = self.get_objects(CacheObject[is_coin][self.account.account_address])
+            if len(CacheObject[is_coin][self.account.account_address]) > 1:
+                if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+                    # todo! Delete object id
+                    self.pay_all_sui(
+                        CacheObject[is_coin][self.account.account_address],
+                        self.account.account_address,
+                        gas_budget
+                    )
+                else:
+                    self.merge_coins(CacheObject[is_coin][self.account.account_address], gas_budget)
+            coin_info = list(coin_info.values())[-1]["data"]
+            assert int(coin_info["fields"]["balance"]) >= param_args[k] + gas_budget, \
+                f'Balance not enough: ' \
+                f'{int(coin_info["fields"]["balance"])} < ' \
+                f'{param_args[k]}'
+            if int(coin_info["fields"]["balance"]) > param_args[k] + gas_budget:
+                split_amounts = [int(coin_info["fields"]["balance"]) - param_args[k] - gas_budget, param_args[k]]
+                print(split_amounts)
+                if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+                    self.pay_sui(
+                        [CacheObject[is_coin][self.account.account_address][-1]],
+                        split_amounts,
+                        [self.account.account_address] * len(split_amounts),
+                        gas_budget)
+                else:
+                    self.split_coin(
+                        [CacheObject[is_coin][self.account.account_address][-1]],
+                        split_amounts
+                    )
 
+            param_args[k] = CacheObject[is_coin][self.account.account_address][-1]
 
         response = self.client.post(
             f"{self.base_url}",
@@ -918,7 +954,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
@@ -941,7 +980,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
@@ -965,7 +1007,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def merge_coins(self, input_coins: list, gas_budget=100000):
@@ -987,7 +1032,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def split_coin(self, input_coin: str, split_amounts: list, gas_budget=100000):
@@ -1008,7 +1056,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def get_table_item(self, table_handle: str, key_type: str, value_str: str, key: dict):
