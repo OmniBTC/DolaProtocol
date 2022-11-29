@@ -8,6 +8,6 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 Serde = { local = "../serde" }
 
 [addresses]
-omnipool = "0xe1d3a504d4df58d7cb9339db9e1ab8ff98a228dc"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
+omnipool = "0x0"
+serde = "0x0"
 sui = "0x2"

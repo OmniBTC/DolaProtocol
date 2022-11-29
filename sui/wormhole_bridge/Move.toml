@@ -12,10 +12,10 @@ PoolManager = { local = "../omnicore/pool_manager" }
 AppManager = { local = "../omnicore/app_manager" }
 
 [addresses]
-wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
-wormhole = "0xace3a101a7cfa5ccab80569d8a5ea9078bac7ba4"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
-omnipool = "0xe1d3a504d4df58d7cb9339db9e1ab8ff98a228dc"
-app_manager = "0x80663c9040498b16e38d3fafa3ff9499c7c3d0bb"
-pool_manager = "0xa37f9f2b733a0988b98c3ad1e1ae71987238cc8e"
+wormhole_bridge = "0x0"
+wormhole = "0x0"
+serde = "0x0"
+omnipool = "0x0"
+app_manager = "0x0"
+pool_manager = "0x0"
 sui = "0x2"

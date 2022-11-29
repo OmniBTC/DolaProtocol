@@ -5,7 +5,6 @@ module lending::storage {
 
     use app_manager::app_manager::{Self, AppCap};
     use governance::governance::{Self, GovernanceExternalCap};
-    use serde::u16::U16;
     use sui::bcs;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
@@ -127,7 +126,7 @@ module lending::storage {
 
     public fun get_app_id(
         storage: &mut Storage
-    ): U16 {
+    ): u16 {
         app_manager::app_id(option::borrow(&storage.app_cap))
     }
 
