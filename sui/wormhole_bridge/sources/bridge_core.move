@@ -10,7 +10,7 @@ module wormhole_bridge::bridge_core {
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
@@ -52,7 +52,7 @@ module wormhole_bridge::bridge_core {
         core_state: &mut CoreState,
         emitter_chain_id: u16,
         emitter_address: vector<u8>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // todo! change into govern permission
 
