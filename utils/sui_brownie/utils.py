@@ -23,3 +23,14 @@ def padding_to_bytes(data: str, padding="right", length=32) -> str:
         return "0x" + data + "0" * padding_length
     else:
         return "0x" + "0" * padding_length + data
+
+
+def judge_hex_str(data: str):
+    flag = True
+    if "0x" == data[:2]:
+        data = data[2:]
+    for k in data:
+        if "0" <= k <= "9" or "a" <= k <= "f" or "A" <= k <= "F":
+            continue
+        flag = False
+    return flag

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import base64
+import copy
 import functools
 import json
 import os
-import time
 import traceback
 from collections import OrderedDict
 from pathlib import Path
@@ -69,15 +69,23 @@ class ObjectType:
     def __hash__(self):
         return hash(str(self))
 
+CACHE_DIR = Path(os.environ.get('HOME')).joinpath(".cache")
+if not CACHE_DIR.exists():
+    CACHE_DIR.mkdir()
 
-CacheObject: Dict[ObjectType, list] = OrderedDict()
+CACHE_FILE = CACHE_DIR.joinpath("objects.json")
+
+CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
 
 
-def persist_cache(cache_file):
+def persist_cache(cache_file=CACHE_FILE):
     data = {}
     for k in CacheObject:
-        if len(CacheObject[k]):
-            data[str(k)] = CacheObject[k]
+        for m in CacheObject[k]:
+            if len(CacheObject[k][m]):
+                if k not in data:
+                    data[str(k)] = {}
+                data[str(k)][m] = CacheObject[k][m]
     if len(data) == 0:
         return
     pt = ThreadExecutor(executor=1, mode="all")
@@ -89,7 +97,7 @@ def persist_cache(cache_file):
     pt.run([worker])
 
 
-def reload_cache(cache_file: Path):
+def reload_cache(cache_file: Path=CACHE_FILE):
     if not cache_file.exists():
         return
     with open(str(cache_file), "r") as f:
@@ -98,16 +106,40 @@ def reload_cache(cache_file: Path):
         except:
             data = {}
         for k in data:
-            object_type = ObjectType.from_type(k)
-            if object_type in CacheObject:
-                for v in CacheObject[object_type]:
-                    data[k].append(v)
-            CacheObject[ObjectType.from_type(k)] = data[k]
+            try:
+                object_type = ObjectType.from_type(k)
+                for v in data[k]:
+                    for v1 in data[k][v]:
+                        insert_cache(object_type, v1, v)
+            except:
+                for v in data[k]:
+                    for v1 in data[k][v]:
+                        insert_package(k, v1)
 
 
-def insert_cache(object_type: ObjectType, object_id: str = None):
+def insert_coin(coin_type: str, object_id: str, owner: str):
+    """
+    :param coin_type: 0x2::sui::SUI
+    :param object_id:
+    :param owner:
+    :return:
+    """
+    insert_cache(ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>'), object_id, owner)
+
+
+def insert_package(package_name, object_id: str = None):
+    if object_id is None:
+        return
+    if package_name not in CacheObject:
+        CacheObject[package_name] = {"Shared": []}
+        setattr(CacheObject, package_name, CacheObject[package_name]["Shared"])
+    if object_id not in CacheObject[package_name]["Shared"]:
+        CacheObject[package_name]["Shared"].append(object_id)
+
+
+def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
     if object_type not in CacheObject:
-        CacheObject[object_type] = [object_id] if object_id is not None else []
+        CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
         final_object = CacheObject
         attr_list = [object_type.module_name, object_type.struct_name]
         for k, attr in enumerate(attr_list):
@@ -122,8 +154,13 @@ def insert_cache(object_type: ObjectType, object_id: str = None):
                 final_object = ob
             if k == len(attr_list) - 1 and object_type not in final_object:
                 final_object[object_type] = CacheObject[object_type]
-    elif object_id is not None and object_id not in CacheObject[object_type]:
-        CacheObject[object_type].append(object_id)
+    elif object_id is not None:
+        if owner not in CacheObject[object_type]:
+            CacheObject[object_type][owner] = []
+        if object_id not in CacheObject[object_type][owner]:
+            CacheObject[object_type][owner].append(object_id)
+
+reload_cache()
 
 
 class ApiError(Exception):
@@ -164,8 +201,6 @@ class SuiCliConfig:
             self.tmp_keystore.unlink()
 
     def active_config(self):
-        cmd = f'sui keytool import "{self.account.mnemonic}" ed25519'
-        os.system(cmd)
         template_config_file = Path(__file__).parent.joinpath("sui_config.template.yaml")
         with open(template_config_file, "r") as f:
             config_data = f.read()
@@ -187,6 +222,77 @@ class SuiCliConfig:
             f.write(config_data)
 
 
+class MoveToml:
+    def __init__(self, file: str):
+        self.file = file
+        with open(file, "r") as f:
+            data = toml.load(f)
+        self.origin_data = data
+        self.data = copy.deepcopy(data)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def store(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.data, f)
+
+    def restore(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.origin_data, f)
+
+    def get(self, param, param1):
+        return self.data.get(param, param1)
+
+    def keys(self):
+        return self.data.keys()
+
+class Coin:
+    __single_object: Dict[str, Coin] = dict()
+
+    def __init__(self,
+                 object_id: str,
+                 owner: str,
+                 balance: int,
+                 ):
+        self.object_id = object_id
+        self.owner = owner
+        self.balance = int(balance)
+        assert self.object_id not in self.__single_object
+
+    @classmethod
+    def from_data(cls,
+                  object_id: str,
+                  owner: str,
+                  balance: int,
+                  ) -> Coin:
+        if object_id in cls.__single_object:
+            cls.__single_object[object_id].owner = owner
+            cls.__single_object[object_id].balance = balance
+        else:
+            cls.__single_object[object_id] = Coin(object_id, owner, balance)
+        return cls.__single_object[object_id]
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return json.dumps(dict(object_id=self.object_id, owner=self.owner, balance=self.balance))
+
+class HttpClient(httpx.Client):
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def get(self, *args, **kwargs):
+        return super().get(*args, **kwargs)
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def post(self, *args, **kwargs):
+        return super().post(*args, **kwargs)
+
+
 class SuiPackage:
     def __init__(self,
                  brownie_config: Union[Path, str] = Path.cwd(),
@@ -206,12 +312,6 @@ class SuiPackage:
             self.brownie_config = brownie_config
         else:
             self.brownie_config = Path(brownie_config)
-
-        # # # # # cache file
-        self.cache_dir = self.brownie_config.joinpath(".cache")
-        if not self.cache_dir.exists():
-            self.cache_dir.mkdir()
-        self.cache_file = self.cache_dir.joinpath("objects.json")
 
         self.network = network
 
@@ -245,7 +345,7 @@ class SuiPackage:
         # current aptos network config
         self.network_config = self.config["networks"][network]
         self.base_url = self.config["networks"][network]["node_url"]
-        self.client = httpx.Client()
+        self.client = HttpClient(timeout=10)
 
         # # # # # load move toml
         assert self.package_path.joinpath(
@@ -256,28 +356,6 @@ class SuiPackage:
             self.move_toml = toml.load(fp)
         self.package_name = self.move_toml["package"]["name"]
 
-        # # # # # Replace address
-        self.replace_address = ""
-        has_replace = {}
-        if "addresses" in self.move_toml:
-            if "replace_address" in self.network_config:
-                for k in self.network_config["replace_address"]:
-                    if k in has_replace:
-                        continue
-                    if len(self.replace_address) == 0:
-                        self.replace_address = f"--named-addresses {k}={self.network_config['replace_address'][k]}"
-                    else:
-                        self.replace_address += f',{k}={self.network_config["replace_address"][k]}'
-                    has_replace[k] = True
-            for k in self.move_toml["addresses"]:
-                if k in has_replace:
-                    continue
-                if self.move_toml["addresses"][k] == "_":
-                    if len(self.replace_address) == 0:
-                        self.replace_address = f"--named-addresses {k}={self.account.account_address}"
-                    else:
-                        self.replace_address += f',{k}={self.account.account_address}'
-
         if is_compile:
             self.compile()
 
@@ -286,10 +364,11 @@ class SuiPackage:
             f"build/{self.package_name}")
         self.move_module_files = []
         bytecode_modules = self.build_path.joinpath("bytecode_modules")
-        for m in os.listdir(bytecode_modules):
-            if str(m).endswith(".mv"):
-                self.move_module_files.append(
-                    bytecode_modules.joinpath(str(m)))
+        if bytecode_modules.exists():
+            for m in os.listdir(bytecode_modules):
+                if str(m).endswith(".mv"):
+                    self.move_module_files.append(
+                        bytecode_modules.joinpath(str(m)))
         self.move_modules = []
         for m in self.move_module_files:
             with open(m, "rb") as f:
@@ -297,11 +376,11 @@ class SuiPackage:
 
         # # # # # # Abis
         self.abis = {}
+        reload_cache(CACHE_FILE)
         self.get_abis()
-        reload_cache(self.cache_file)
 
         # # # # # # Sui cli config
-        self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
+        self.cli_config_file = CACHE_DIR.joinpath(".cli.yaml")
         self.cli_config = SuiCliConfig(self.cli_config_file, self.base_url, self.network, self.account)
 
         # # # # # # filter result
@@ -350,7 +429,79 @@ class SuiPackage:
             self.format_dict(data)
         return data
 
-    def publish_package(self, gas_budget=100000):
+    @staticmethod
+    def replace_toml(move_toml: MoveToml, replace_address: dict = None):
+        for k in list(move_toml.get("addresses", dict()).keys()):
+            if k in replace_address:
+                move_toml["addresses"][k] = replace_address[k]
+        return move_toml
+
+    def replace_addresses(
+            self,
+            replace_address: dict = None,
+            output: dict = None
+    ) -> dict:
+        if replace_address is None:
+            return output
+        if output is None:
+            output = dict()
+        current_move_toml = MoveToml(self.move_path)
+        if current_move_toml["package"]["name"] in output:
+            return output
+        output[current_move_toml["package"]["name"]] = current_move_toml
+
+        # process current move toml
+        self.replace_toml(current_move_toml, replace_address)
+
+        # process dependencies move toml
+        for k in list(current_move_toml.keys()):
+            if "dependencies" == k:
+                for d in list(current_move_toml[k].keys()):
+                    # process local
+                    if "local" in current_move_toml[k][d]:
+                        local_path = self.package_path \
+                            .joinpath(current_move_toml[k][d]["local"])
+                        assert local_path.exists(), f"{local_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(
+                            brownie_config=self.brownie_config,
+                            network=self.network,
+                            is_compile=False,
+                            package_path=local_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+                    # process remote
+                    else:
+                        git_index = current_move_toml[k][d]["git"].rfind("/")
+                        git_path = current_move_toml[k][d]["git"][:git_index + 1]
+                        git_file = current_move_toml[k][d]["git"][git_index + 1:]
+                        if "subdir" not in current_move_toml[k][d]:
+                            git_file = f"{d}.git"
+                            sub_dir = ""
+                        else:
+                            sub_dir = current_move_toml[k][d]["subdir"]
+                        git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
+                            .replace("://", "___") \
+                            .replace("/", "_").replace(".", "_")
+                        remote_path = Path(f"{os.environ.get('HOME')}/.move") \
+                            .joinpath(git_file) \
+                            .joinpath(sub_dir)
+                        assert remote_path.exists(), f"{remote_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(
+                            brownie_config=self.brownie_config,
+                            network=self.network,
+                            is_compile=False,
+                            package_path=remote_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+
+        for k in output:
+            output[k].store()
+        return output
+
+    def publish_package(
+            self,
+            gas_budget=100000,
+            replace_address: dict = None
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         with self.cli_config as cof:
@@ -363,11 +514,21 @@ class SuiPackage:
                 result = json.loads(result[result.find("{"):])
                 result = self.format_result(result)
             except:
-                pass
-            pprint(result)
+                pprint(result)
             self.add_details(result.get("effects", dict()))
+            pprint(result)
+            for d in result.get("effects").get("created", []):
+                if "data" in d and "dataType" in d["data"]:
+                    if d["data"]["dataType"] == "package":
+                        self.package_id = d["reference"]["objectId"]
+                        insert_package(self.package_name, self.package_id)
+                        self.get_abis()
+                        persist_cache(CACHE_FILE)
         print("-" * (100 + len(view)))
         print("\n")
+
+        for k in replace_tomls:
+            replace_tomls[k].restore()
 
         # For ubuntu has some issue
         # view = f"Publish {self.package_name}"
@@ -418,7 +579,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return result
 
     def add_details(self, result):
@@ -443,10 +607,14 @@ class SuiPackage:
                         result[k][i] = object_detail
                         if "data" in object_detail and "type" in object_detail["data"]:
                             object_type = ObjectType.from_type(object_detail["data"]["type"])
-                            insert_cache(object_type, d["reference"]["objectId"])
+                            if "Shared" in object_detail["owner"]:
+                                insert_cache(object_type, d["reference"]["objectId"])
+                                insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
+                            else:
+                                insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
                             flag = True
             if flag:
-                persist_cache(self.cache_file)
+                persist_cache(CACHE_FILE)
 
     def execute_transaction(self,
                             tx_bytes,
@@ -491,7 +659,11 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = self.format_result(response.json()["result"])
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        result = self.format_result(result)
         try:
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success", result
             result = result["EffectsCert"]["effects"]["effects"]
@@ -531,7 +703,6 @@ class SuiPackage:
         engine.run(workers)
         return result
 
-    @retry(stop_max_attempt_number=3, wait_random_min=50, wait_random_max=100)
     def get_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
@@ -546,9 +717,15 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         try:
-            return result["details"]
+            data = result["details"]
+            if "status" in result:
+                data["status"] = result["status"]
+            return data
         except:
             return result
 
@@ -568,7 +745,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         for module_name in result:
             for struct_name in result[module_name].get("structs", dict()):
                 object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
@@ -584,7 +764,9 @@ class SuiPackage:
                             ob = type(f"{self.__class__.__name__}_{attr}", (object,), dict())()
                             setattr(final_object, attr, ob)
                             final_object = ob
-                    setattr(final_object, attr_list[-1], CacheObject[object_type])
+                    if self.account.account_address not in CacheObject[object_type]:
+                        CacheObject[object_type][self.account.account_address] = []
+                    setattr(final_object, attr_list[-1], CacheObject[object_type][self.account.account_address])
             for func_name in result[module_name].get("exposed_functions", dict()):
                 abi = result[module_name]["exposed_functions"][func_name]
                 abi["module_name"] = module_name
@@ -608,6 +790,78 @@ class SuiPackage:
         assert key in self.abis, f"key not found in abi"
         return functools.partial(self.submit_transaction, self.abis[key])
 
+    @staticmethod
+    def judge_ctx(param) -> bool:
+        if not isinstance(param, dict):
+            return False
+        final_arg = param.get("MutableReference", dict()).get("Struct", dict())
+        if final_arg.get("address", None) == "0x2" \
+                and final_arg.get("module", None) == "tx_context" \
+                and final_arg.get("name", None) == "TxContext":
+            return True
+        else:
+            return False
+
+    @classmethod
+    def cascade_type_arguments(cls, data) -> str:
+        if len(data) == 0:
+            return ""
+        output = "<"
+        for k, v in enumerate(data):
+            if k != 0:
+                output += ","
+            data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
+            if len(v["Struct"]["type_arguments"]):
+                data += cls.cascade_type_arguments(v["Struct"]["type_arguments"])
+            output += data
+        output += ">"
+        return output
+
+    @classmethod
+    def generate_object_type(cls, param: str) -> ObjectType:
+        if not isinstance(param, dict):
+            return None
+        if "Reference" in param:
+            final_arg = param["Reference"]
+        elif "MutableReference" in param:
+            final_arg = param["MutableReference"]
+        else:
+            return None
+
+        if "Struct" in final_arg:
+            output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"])
+            output = f'{final_arg["Struct"]["address"]}::' \
+                     f'{final_arg["Struct"]["module"]}::' \
+                     f'{final_arg["Struct"]["name"]}{output}'
+            return ObjectType.from_type(output)
+        else:
+            return None
+
+    @classmethod
+    def judge_coin(cls, param: str) -> ObjectType:
+        data = cls.generate_object_type(param)
+        if isinstance(data, ObjectType) \
+                and data.package_id == "0x2" \
+                and data.module_name == "coin" \
+                and data.struct_name.startswith("Coin"):
+            return data
+        else:
+            return None
+
+    def get_coin_info(self, object_ids: list) -> Dict[str, Coin]:
+        result = self.get_objects(object_ids)
+        coin_info: Dict[str, Coin] = {}
+        for k in result:
+            if not result[k].get("status", None) == "Exists":
+                continue
+            owner_info = result[k]["owner"]
+            if "Shared" in owner_info:
+                owner = "Shared"
+            else:
+                owner = owner_info["AddressOwner"]
+            coin_info[k] = Coin(k, owner, int(result[k]["data"]["fields"]["balance"]))
+        return coin_info
+
     def construct_transaction(
             self,
             abi: dict,
@@ -615,14 +869,74 @@ class SuiPackage:
             ty_args: List[str] = None,
             gas_budget=100000,
     ):
+        param_args = list(param_args)
         if ty_args is None:
             ty_args = []
         assert isinstance(list(ty_args), list) and len(
             abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
-        assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
-        arguments = []
-        if len(param_args):
-            arguments = param_args
+        if len(abi["parameters"]) and self.judge_ctx(abi["parameters"][-1]):
+            assert len(param_args) == len(abi["parameters"]) - 1, f'param_args error: {abi["parameters"]}'
+        else:
+            assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+
+        normal_coin: List[ObjectType]  = []
+
+        for k in range(len(param_args)):
+            is_coin = self.judge_coin(abi["parameters"][k])
+            if is_coin is None:
+                continue
+            if not isinstance(param_args[k], int):
+                continue
+            assert len(CacheObject[is_coin][self.account.account_address]), f"Not found coin"
+
+            normal_coin.append(is_coin)
+
+            # merge
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            if len(CacheObject[is_coin][self.account.account_address]) > 1:
+                if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+                    self.pay_all_sui(
+                        CacheObject[is_coin][self.account.account_address],
+                        self.account.account_address,
+                        gas_budget
+                    )
+                else:
+                    self.merge_coins(CacheObject[is_coin][self.account.account_address], gas_budget)
+
+            # split
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            first_object_id = CacheObject[is_coin][self.account.account_address][0]
+            first_coin_info = coin_info[first_object_id]
+            assert first_coin_info.balance >= param_args[k] + gas_budget, \
+                f'Balance not enough: ' \
+                f'{first_coin_info.balance} < ' \
+                f'{param_args[k]}'
+            split_amounts = [param_args[k]]
+            if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+                self.pay_sui(
+                    [first_object_id],
+                    split_amounts,
+                    [self.account.account_address] * len(split_amounts),
+                    gas_budget)
+            else:
+                self.split_coin(
+                    [first_object_id],
+                    split_amounts
+                )
+
+            # find
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            for oid in coin_info:
+                if coin_info[oid].balance == param_args[k]:
+                    param_args[k] = oid
+                    break
+            assert not isinstance(param_args[k], int), "Fail split amount"
 
         response = self.client.post(
             f"{self.base_url}",
@@ -636,15 +950,19 @@ class SuiPackage:
                     abi["module_name"],
                     abi["func_name"],
                     ty_args,
-                    arguments,
+                    param_args,
                     None,
                     gas_budget
                 ]
             },
         )
+
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return result
 
     def submit_transaction(
@@ -723,7 +1041,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
@@ -746,7 +1067,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
@@ -770,7 +1094,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def merge_coins(self, input_coins: list, gas_budget=100000):
@@ -792,7 +1119,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def split_coin(self, input_coin: str, split_amounts: list, gas_budget=100000):
@@ -813,7 +1143,10 @@ class SuiPackage:
         )
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
-        result = response.json()["result"]
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
     def get_table_item(self, table_handle: str, key_type: str, value_str: str, key: dict):

@@ -4,6 +4,16 @@ This is an sui python tool to quickly implement sui calls.
 
 
 
+# Publish
+
+~~~shell
+python setup.py bdist_wheel
+
+twine upload --verbose  --repository upload  dist/*
+~~~
+
+
+
 # Setup
 
 ~~~shell
@@ -18,7 +28,7 @@ pip install sui_brownie
 import sui_brownie
 
 package = sui_brownie.SuiPackage(
-				 brownie_config: Union[Path, str] = Path.cwd(),
+				 				 brownie_config: Union[Path, str] = Path.cwd(),
                  network: str = "sui-devnet",
                  is_compile: bool = True,
                  package_id: str = None,
@@ -30,7 +40,7 @@ package = sui_brownie.SuiPackage(
 # Publish
 
 ~~~python
-package.publish_package()
+package.publish_package(replace_address=dict(serde="0x1234", wormhole="0x2345"))
 ~~~
 
 
