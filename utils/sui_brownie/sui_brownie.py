@@ -69,6 +69,16 @@ class ObjectType:
     def __hash__(self):
         return hash(str(self))
 
+    def normal_struct(self):
+        if self.struct_name is None:
+            return []
+        elif self.struct_name[-1] == ">":
+            index = self.struct_name.find("<")
+            return [self.struct_name[:index], self.struct_name[index + 1:-1]]
+        else:
+            return [self.struct_name]
+
+
 CACHE_DIR = Path(os.environ.get('HOME')).joinpath(".cache")
 if not CACHE_DIR.exists():
     CACHE_DIR.mkdir()
@@ -97,7 +107,7 @@ def persist_cache(cache_file=CACHE_FILE):
     pt.run([worker])
 
 
-def reload_cache(cache_file: Path=CACHE_FILE):
+def reload_cache(cache_file: Path = CACHE_FILE):
     if not cache_file.exists():
         return
     with open(str(cache_file), "r") as f:
@@ -147,6 +157,11 @@ def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared")
                 final_object = getattr(final_object, attr)
             else:
                 if k == len(attr_list) - 1:
+                    struct_names = object_type.normal_struct()
+                    if len(struct_names) == 0:
+                        return
+                    # correct name
+                    attr = struct_names[0]
                     ob = dict()
                 else:
                     ob = type(f"CacheObject_{object_type.module_name}", (object,), dict())()
@@ -159,6 +174,7 @@ def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared")
             CacheObject[object_type][owner] = []
         if object_id not in CacheObject[object_type][owner]:
             CacheObject[object_type][owner].append(object_id)
+
 
 reload_cache()
 
@@ -250,6 +266,7 @@ class MoveToml:
     def keys(self):
         return self.data.keys()
 
+
 class Coin:
     __single_object: Dict[str, Coin] = dict()
 
@@ -281,6 +298,7 @@ class Coin:
 
     def __str__(self):
         return json.dumps(dict(object_id=self.object_id, owner=self.owner, balance=self.balance))
+
 
 class HttpClient(httpx.Client):
 
@@ -669,6 +687,7 @@ class SuiPackage:
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
                 self.add_details(result)
+            print(f"Execute successs, transactionDigest: {result['transactionDigest']}")
             return result
         except:
             traceback.print_exc()
@@ -761,12 +780,17 @@ class SuiPackage:
                         if hasattr(final_object, attr):
                             final_object = getattr(final_object, attr)
                         else:
-                            ob = type(f"{self.__class__.__name__}_{attr}", (object,), dict())()
+                            ob = type(f"{attr}_{id(self)}", (object,), dict())()
                             setattr(final_object, attr, ob)
                             final_object = ob
+                    struct_names = object_type.normal_struct()
+                    if len(struct_names) == 0:
+                        break
+                    # correct name
+                    attr = struct_names[0]
                     if self.account.account_address not in CacheObject[object_type]:
                         CacheObject[object_type][self.account.account_address] = []
-                    setattr(final_object, attr_list[-1], CacheObject[object_type][self.account.account_address])
+                    setattr(final_object, attr, CacheObject[object_type][self.account.account_address])
             for func_name in result[module_name].get("exposed_functions", dict()):
                 abi = result[module_name]["exposed_functions"][func_name]
                 abi["module_name"] = module_name
@@ -779,7 +803,7 @@ class SuiPackage:
                         if hasattr(final_object, attr):
                             final_object = getattr(final_object, attr)
                         else:
-                            ob = type(f"{self.__class__.__name__}_{attr}", (object,), dict())()
+                            ob = type(f"{attr}_{id(self)}", (object,), dict())()
                             setattr(final_object, attr, ob)
                             final_object = ob
                     func = functools.partial(self.submit_transaction, abi)
@@ -879,7 +903,7 @@ class SuiPackage:
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
 
-        normal_coin: List[ObjectType]  = []
+        normal_coin: List[ObjectType] = []
 
         for k in range(len(param_args)):
             is_coin = self.judge_coin(abi["parameters"][k])
@@ -938,6 +962,7 @@ class SuiPackage:
                     break
             assert not isinstance(param_args[k], int), "Fail split amount"
 
+        print(f'\nExecute {abi["module_name"]}::{abi["func_name"]}...')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1025,6 +1050,7 @@ class SuiPackage:
     def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=100000):
         if recipient is None:
             recipient = self.account.account_address
+        print(f'\nExecute sui_payAllSui...')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1050,6 +1076,7 @@ class SuiPackage:
     def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
         if recipients is None:
             recipients = self.account.account_address
+        print(f'\nExecute sui_paySui...')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1076,6 +1103,7 @@ class SuiPackage:
     def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
         if recipients is None:
             recipients = self.account.account_address
+        print(f'\nExecute sui_pay...')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1102,6 +1130,7 @@ class SuiPackage:
 
     def merge_coins(self, input_coins: list, gas_budget=100000):
         assert len(input_coins) >= 2
+        print(f'\nExecute sui_mergeCoins...')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1126,6 +1155,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     def split_coin(self, input_coin: str, split_amounts: list, gas_budget=100000):
+        print(f'\nExecute sui_splitCoin...')
         response = self.client.post(
             f"{self.base_url}",
             json={
