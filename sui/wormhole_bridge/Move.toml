@@ -19,7 +19,7 @@ rev = "6c001d0c491d1481fd4b477881d320e2421a6517"
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "8f7150ac22da1171e99c6f0c5e51f33de5f63f75"
+rev = "4dee99ac5bb1f84ec3df1adbb04e0f925aaed263"
 
 [dependencies.OmniPool]
 local = "../omnipool"
