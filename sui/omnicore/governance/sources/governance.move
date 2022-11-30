@@ -297,9 +297,11 @@ module governance::governance {
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
         let votes = &mut vote.votes;
-        assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
-        vector::push_back(votes, voter);
         let members_num = vector::length(&gov.members);
+        if (members_num != 1) {
+            assert!(!vector::contains(votes, &voter), EALREADY_VOTE);
+            vector::push_back(votes, voter);
+        };
         let votes_num = vector::length(votes);
         if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
             vote.finished = true;
