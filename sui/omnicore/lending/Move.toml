@@ -13,12 +13,12 @@ Governance = { local = "../governance" }
 Oracle = { local = "../oracle" }
 
 [addresses]
-lending = "0x3a115660ccac88c4052c19f33de9c6cac1c13667"
-wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
-pool_manager = "0xa37f9f2b733a0988b98c3ad1e1ae71987238cc8e"
-app_manager = "0x80663c9040498b16e38d3fafa3ff9499c7c3d0bb"
-governance = "0x74295af9f171917d3c57cbc4d6044757c60a8676"
-oracle = "0x38ed2ad25bb65db102de1ed85694a977c1d23516"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
-wormhole = "0xace3a101a7cfa5ccab80569d8a5ea9078bac7ba4"
+lending = "0x0"
+wormhole_bridge = "0x0"
+pool_manager = "0x0"
+app_manager = "0x0"
+governance = "0x0"
+oracle = "0x0"
+serde = "0x0"
+wormhole = "0x0"
 sui = "0x2"

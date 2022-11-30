@@ -1,12 +1,11 @@
 module wormhole_bridge::bridge_pool {
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
-    use serde::u16::{Self, U16};
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
@@ -21,11 +20,10 @@ module wormhole_bridge::bridge_pool {
         pool_cap: PoolCap,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
-        registered_emitters: VecMap<U16, ExternalAddress>
+        registered_emitters: VecMap<u16, ExternalAddress>
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             PoolState {
                 id: object::new(ctx),
@@ -39,17 +37,16 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun register_remote_bridge(
         pool_state: &mut PoolState,
-        emitter_chain_id: u64,
+        emitter_chain_id: u16,
         emitter_address: vector<u8>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // todo! change into govern permission
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
 
         // todo! consider remote register
         vec_map::insert(
             &mut pool_state.registered_emitters,
-            u16::from_u64(emitter_chain_id),
+            emitter_chain_id,
             external_address::from_bytes(emitter_address)
         );
     }
@@ -60,7 +57,7 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
-        app_id: u64,
+        app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -79,7 +76,7 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        app_id: u64,
+        app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -100,7 +97,7 @@ module wormhole_bridge::bridge_pool {
         deposit_coin: Coin<DepositCoinType>,
         withdraw_pool: &mut Pool<WithdrawCoinType>,
         withdraw_user: address,
-        app_id: u64,
+        app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {

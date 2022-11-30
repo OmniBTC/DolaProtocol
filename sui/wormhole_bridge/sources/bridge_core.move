@@ -4,14 +4,13 @@ module wormhole_bridge::bridge_core {
     use app_manager::app_manager::{Self, AppCap};
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
-    use serde::u16::{Self, U16};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
@@ -30,11 +29,10 @@ module wormhole_bridge::bridge_core {
         pool_manager_cap: Option<PoolManagerCap>,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
-        registered_emitters: VecMap<U16, ExternalAddress>
+        registered_emitters: VecMap<u16, ExternalAddress>
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
         transfer::share_object(
             CoreState {
                 id: object::new(ctx),
@@ -52,17 +50,16 @@ module wormhole_bridge::bridge_core {
 
     public entry fun register_remote_bridge(
         core_state: &mut CoreState,
-        emitter_chain_id: u64,
+        emitter_chain_id: u16,
         emitter_address: vector<u8>,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ) {
         // todo! change into govern permission
-        assert!(tx_context::sender(ctx) == @wormhole_bridge, EMUST_DEPLOYER);
 
         // todo! consider remote register
         vec_map::insert(
             &mut core_state.registered_emitters,
-            u16::from_u64(emitter_chain_id),
+            emitter_chain_id,
             external_address::from_bytes(emitter_address)
         );
     }
@@ -96,7 +93,6 @@ module wormhole_bridge::bridge_core {
             token_name,
             app_manager::app_id(app_cap),
             // todo: use wormhole chainid
-            // wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             1,
             // todo! fix address
             to_bytes(&pool),
@@ -115,7 +111,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (address, address, u64, vector<u8>, address, address, vector<u8>, U16, vector<u8>) {
+    ): (address, address, u64, vector<u8>, address, address, vector<u8>, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(

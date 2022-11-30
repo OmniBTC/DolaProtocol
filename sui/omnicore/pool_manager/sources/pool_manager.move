@@ -4,15 +4,12 @@ module pool_manager::pool_manager {
     use std::option::{Self, Option};
 
     use governance::governance::{Self, GovernanceExternalCap};
-    use serde::u16::U16;
     use sui::bcs;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    #[test_only]
-    use serde::u16;
     #[test_only]
     use sui::bcs::to_bytes;
     #[test_only]
@@ -42,7 +39,7 @@ module pool_manager::pool_manager {
     }
 
     struct AppInfo has store {
-        app_liquidity: Table<U16, u128>
+        app_liquidity: Table<u16, u128>
     }
 
     struct PoolInfo has store {
@@ -113,7 +110,7 @@ module pool_manager::pool_manager {
     public fun get_app_liquidity(
         pool_manager_info: &PoolManagerInfo,
         token_name: vector<u8>,
-        app_id: U16
+        app_id: u16
     ): u128 {
         let app_infos = &pool_manager_info.app_infos;
         let app_liquidity = &table::borrow(app_infos, token_name).app_liquidity;
@@ -152,7 +149,7 @@ module pool_manager::pool_manager {
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -226,7 +223,7 @@ module pool_manager::pool_manager {
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         chainid: u64,
         pool_address: vector<u8>,
         user_address: vector<u8>,
@@ -328,7 +325,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
-                u16::zero(),
+                0,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
@@ -378,7 +375,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
-                u16::zero(),
+                0,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),
@@ -401,7 +398,7 @@ module pool_manager::pool_manager {
                 &cap,
                 &mut pool_manager_info,
                 token_name,
-                u16::zero(),
+                0,
                 chainid,
                 to_bytes(&pool_address),
                 to_bytes(&user_address),

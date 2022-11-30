@@ -10,9 +10,9 @@ Serde = { local = "../serde" }
 WormholeBridge = { local = "../wormhole_bridge" }
 
 [addresses]
-lending_portal = "0x1ea62dae69dbdfc31afb477c4800274d70363d59"
-serde = "0x3f2d739d542c968f4a2e59d673a2f949814d5317"
-wormhole_bridge = "0xafb5c513c8381522020c7a1b53c8548971cd24bf"
-wormhole = "0xace3a101a7cfa5ccab80569d8a5ea9078bac7ba4"
-omnipool = "0xe1d3a504d4df58d7cb9339db9e1ab8ff98a228dc"
+lending_portal = "0x0"
+serde = "0x0"
+wormhole_bridge = "0x0"
+wormhole = "0x0"
+omnipool = "0x0"
 sui = "0x2"

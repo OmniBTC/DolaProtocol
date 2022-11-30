@@ -3,7 +3,6 @@ module lending_portal::lending {
 
     use omnipool::pool::Pool;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
-    use serde::u16;
     use sui::bcs::to_bytes;
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -13,7 +12,7 @@ module lending_portal::lending {
 
     const EINVALID_LENGTH: u64 = 0;
 
-    const APPID: u64 = 0;
+    const APPID: u16 = 0;
 
     /// Call types for relayer call
     const SUPPLY: u8 = 0;
@@ -112,7 +111,7 @@ module lending_portal::lending {
         let payload = vector::empty<u8>();
         serialize_u8(&mut payload, call_type);
         serialize_u64(&mut payload, amount);
-        serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
+        serialize_u16(&mut payload, (vector::length(&user) as u16));
         serialize_u64(&mut payload, dst_chain);
         serialize_vector(&mut payload, user);
         payload
@@ -134,7 +133,7 @@ module lending_portal::lending {
         let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = u16::to_u64(user_length);
+        data_len = (user_length as u64);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
