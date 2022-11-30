@@ -69,11 +69,16 @@ class ObjectType:
     def __hash__(self):
         return hash(str(self))
 
+CACHE_DIR = Path(os.environ.get('HOME')).joinpath(".cache")
+if not CACHE_DIR.exists():
+    CACHE_DIR.mkdir()
+
+CACHE_FILE = CACHE_DIR.joinpath("objects.json")
 
 CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
 
 
-def persist_cache(cache_file):
+def persist_cache(cache_file=CACHE_FILE):
     data = {}
     for k in CacheObject:
         for m in CacheObject[k]:
@@ -92,7 +97,7 @@ def persist_cache(cache_file):
     pt.run([worker])
 
 
-def reload_cache(cache_file: Path):
+def reload_cache(cache_file: Path=CACHE_FILE):
     if not cache_file.exists():
         return
     with open(str(cache_file), "r") as f:
@@ -110,6 +115,16 @@ def reload_cache(cache_file: Path):
                 for v in data[k]:
                     for v1 in data[k][v]:
                         insert_package(k, v1)
+
+
+def insert_coin(coin_type: str, object_id: str, owner: str):
+    """
+    :param coin_type: 0x2::sui::SUI
+    :param object_id:
+    :param owner:
+    :return:
+    """
+    insert_cache(ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>'), object_id, owner)
 
 
 def insert_package(package_name, object_id: str = None):
@@ -144,6 +159,8 @@ def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared")
             CacheObject[object_type][owner] = []
         if object_id not in CacheObject[object_type][owner]:
             CacheObject[object_type][owner].append(object_id)
+
+reload_cache()
 
 
 class ApiError(Exception):
@@ -296,12 +313,6 @@ class SuiPackage:
         else:
             self.brownie_config = Path(brownie_config)
 
-        # # # # # cache file
-        self.cache_dir = self.brownie_config.joinpath(".cache")
-        if not self.cache_dir.exists():
-            self.cache_dir.mkdir()
-        self.cache_file = self.cache_dir.joinpath("objects.json")
-
         self.network = network
 
         if package_path is None:
@@ -365,11 +376,11 @@ class SuiPackage:
 
         # # # # # # Abis
         self.abis = {}
-        reload_cache(self.cache_file)
+        reload_cache(CACHE_FILE)
         self.get_abis()
 
         # # # # # # Sui cli config
-        self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
+        self.cli_config_file = CACHE_DIR.joinpath(".cli.yaml")
         self.cli_config = SuiCliConfig(self.cli_config_file, self.base_url, self.network, self.account)
 
         # # # # # # filter result
@@ -503,7 +514,7 @@ class SuiPackage:
                 result = json.loads(result[result.find("{"):])
                 result = self.format_result(result)
             except:
-                pass
+                pprint(result)
             self.add_details(result.get("effects", dict()))
             pprint(result)
             for d in result.get("effects").get("created", []):
@@ -512,7 +523,7 @@ class SuiPackage:
                         self.package_id = d["reference"]["objectId"]
                         insert_package(self.package_name, self.package_id)
                         self.get_abis()
-                        persist_cache(self.cache_file)
+                        persist_cache(CACHE_FILE)
         print("-" * (100 + len(view)))
         print("\n")
 
@@ -603,7 +614,7 @@ class SuiPackage:
                                 insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
                             flag = True
             if flag:
-                persist_cache(self.cache_file)
+                persist_cache(CACHE_FILE)
 
     def execute_transaction(self,
                             tx_bytes,
