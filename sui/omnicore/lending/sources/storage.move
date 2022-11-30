@@ -6,7 +6,7 @@ module lending::storage {
     use app_manager::app_manager::{Self, AppCap};
     use governance::governance::{Self, GovernanceExternalCap};
     use sui::bcs;
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
@@ -89,13 +89,14 @@ module lending::storage {
     }
 
     struct StorageAdminCap has store, drop {
+        storage: address,
         count: u64
     }
 
     struct StorageCap has store, drop {}
 
-    public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
-        let admin = StorageAdminCap { count: 0 };
+    public entry fun register_admin_cap(storage: &mut Storage, govern: &mut GovernanceExternalCap) {
+        let admin = StorageAdminCap { storage: uid_to_address(&storage.id), count: 0 };
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 

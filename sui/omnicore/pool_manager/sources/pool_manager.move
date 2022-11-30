@@ -5,7 +5,7 @@ module pool_manager::pool_manager {
 
     use governance::governance::{Self, GovernanceExternalCap};
     use sui::bcs;
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
@@ -24,6 +24,7 @@ module pool_manager::pool_manager {
     const EMUST_SOME: u64 = 2;
 
     struct PoolManagerAdminCap has store, drop {
+        pool_manager: address,
         count: u64
     }
 
@@ -72,8 +73,8 @@ module pool_manager::pool_manager {
         })
     }
 
-    public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
-        let admin = PoolManagerAdminCap { count: 0 };
+    public entry fun register_admin_cap(pool_manager: &mut PoolManagerInfo, govern: &mut GovernanceExternalCap) {
+        let admin = PoolManagerAdminCap { pool_manager: uid_to_address(&pool_manager.id), count: 0 };
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
