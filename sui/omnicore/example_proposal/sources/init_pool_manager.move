@@ -1,4 +1,4 @@
-module example_proposal::proposal {
+module example_proposal::init_pool_manager {
     use std::option;
 
     use governance::governance::{Self, Governance, GovernanceExternalCap, VoteExternalCap};

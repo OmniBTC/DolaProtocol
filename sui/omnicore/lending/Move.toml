@@ -2,16 +2,6 @@
 name = "Lending"
 version = "0.0.1"
 
-[dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework", rev = "6c001d0c491d1481fd4b477881d320e2421a6517" }
-Wormhole = { git = "https://github.com/OmniBTC/wormhole.git", subdir = "sui/wormhole", rev = "8f7150ac22da1171e99c6f0c5e51f33de5f63f75" }
-Serde = { local = "../../serde" }
-WormholeBridge = { local = "../../wormhole_bridge" }
-AppManager = { local = "../app_manager" }
-PoolManager = { local = "../pool_manager" }
-Governance = { local = "../governance" }
-Oracle = { local = "../oracle" }
-
 [addresses]
 lending = "0x0"
 wormhole_bridge = "0x0"
@@ -22,3 +12,31 @@ oracle = "0x0"
 serde = "0x0"
 wormhole = "0x0"
 sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "6c001d0c491d1481fd4b477881d320e2421a6517"
+
+[dependencies.Wormhole]
+git = "https://github.com/OmniBTC/wormhole.git"
+subdir = "sui/wormhole"
+rev = "8f7150ac22da1171e99c6f0c5e51f33de5f63f75"
+
+[dependencies.Serde]
+local = "../../serde"
+
+[dependencies.WormholeBridge]
+local = "../../wormhole_bridge"
+
+[dependencies.AppManager]
+local = "../app_manager"
+
+[dependencies.PoolManager]
+local = "../pool_manager"
+
+[dependencies.Governance]
+local = "../governance"
+
+[dependencies.Oracle]
+local = "../oracle"

@@ -10,7 +10,6 @@ module lending::storage {
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
-    use sui::types;
 
     const EONLY_ONE_ADMIN: u64 = 0;
 
@@ -97,7 +96,6 @@ module lending::storage {
 
     public entry fun register_admin_cap(govern: &mut GovernanceExternalCap) {
         let admin = StorageAdminCap { count: 0 };
-        assert!(types::is_one_time_witness<StorageAdminCap>(&admin), EONLY_ONE_ADMIN);
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
     }
 
@@ -115,7 +113,7 @@ module lending::storage {
         });
     }
 
-    public fun transfer_new_cap(
+    public fun transfer_app_cap(
         _: &mut StorageAdminCap,
         storage: &mut Storage,
         app_cap: AppCap
