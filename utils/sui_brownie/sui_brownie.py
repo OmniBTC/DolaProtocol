@@ -85,7 +85,20 @@ if not CACHE_DIR.exists():
 
 CACHE_FILE = CACHE_DIR.joinpath("objects.json")
 
-CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
+
+class CacheDict(OrderedDict):
+
+    def __getitem__(self, item):
+        try:
+            if isinstance(item, str):
+                return self[ObjectType.from_type(item)]
+            else:
+                return self[item]
+        except:
+            return self[item]
+
+
+CacheObject: Dict[Union[ObjectType, str], dict] = CacheDict()
 
 
 def persist_cache(cache_file=CACHE_FILE):
@@ -629,7 +642,10 @@ class SuiPackage:
                                 insert_cache(object_type, d["reference"]["objectId"])
                                 insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
                             else:
-                                insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
+                                try:
+                                    insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
+                                except:
+                                    pass
                             flag = True
             if flag:
                 persist_cache(CACHE_FILE)
@@ -853,7 +869,11 @@ class SuiPackage:
             return None
 
         if "Struct" in final_arg:
-            output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"])
+            try:
+                # todo! fix type param
+                output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"])
+            except:
+                return None
             output = f'{final_arg["Struct"]["address"]}::' \
                      f'{final_arg["Struct"]["module"]}::' \
                      f'{final_arg["Struct"]["name"]}{output}'
@@ -882,7 +902,10 @@ class SuiPackage:
             if "Shared" in owner_info:
                 owner = "Shared"
             else:
-                owner = owner_info["AddressOwner"]
+                try:
+                    owner = owner_info["AddressOwner"]
+                except:
+                    continue
             coin_info[k] = Coin(k, owner, int(result[k]["data"]["fields"]["balance"]))
         return coin_info
 
