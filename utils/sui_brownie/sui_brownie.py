@@ -265,6 +265,16 @@ class Coin:
     def __str__(self):
         return json.dumps(dict(object_id=self.object_id, owner=self.owner, balance=self.balance))
 
+class HttpClient(httpx.Client):
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def get(self, *args, **kwargs):
+        return super().get(*args, **kwargs)
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def post(self, *args, **kwargs):
+        return super().post(*args, **kwargs)
+
 
 class SuiPackage:
     def __init__(self,
@@ -324,7 +334,7 @@ class SuiPackage:
         # current aptos network config
         self.network_config = self.config["networks"][network]
         self.base_url = self.config["networks"][network]["node_url"]
-        self.client = httpx.Client()
+        self.client = HttpClient(timeout=10)
 
         # # # # # load move toml
         assert self.package_path.joinpath(
@@ -682,7 +692,6 @@ class SuiPackage:
         engine.run(workers)
         return result
 
-    @retry(stop_max_attempt_number=3, wait_random_min=50, wait_random_max=100)
     def get_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
