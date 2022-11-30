@@ -24,8 +24,8 @@ module example_proposal::init_lending_storage {
 
         governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
     }
-    
-    public entry fun vote_register_new_reverse_proposal(
+
+    public entry fun vote_register_new_reserve_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
