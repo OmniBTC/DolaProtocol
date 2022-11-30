@@ -909,7 +909,8 @@ class SuiPackage:
             coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
             CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
                                                                         key=lambda x: coin_info[x].balance)[::-1]
-            first_coin_info = coin_info[CacheObject[is_coin][self.account.account_address][0]]
+            first_object_id = CacheObject[is_coin][self.account.account_address][0]
+            first_coin_info = coin_info[first_object_id]
             assert first_coin_info.balance >= param_args[k] + gas_budget, \
                 f'Balance not enough: ' \
                 f'{first_coin_info.balance} < ' \
@@ -917,13 +918,13 @@ class SuiPackage:
             split_amounts = [param_args[k]]
             if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
                 self.pay_sui(
-                    [CacheObject[is_coin][self.account.account_address][-1]],
+                    [first_object_id],
                     split_amounts,
                     [self.account.account_address] * len(split_amounts),
                     gas_budget)
             else:
                 self.split_coin(
-                    [CacheObject[is_coin][self.account.account_address][-1]],
+                    [first_object_id],
                     split_amounts
                 )
 
