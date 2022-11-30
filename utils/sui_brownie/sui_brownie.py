@@ -64,10 +64,7 @@ class ObjectType:
         return self.__str__()
 
     def __str__(self):
-        if self.package_id is None:
-            return self.package_name
-        else:
-            return f"{self.package_id}::{self.module_name}::{self.struct_name}"
+        return f"{self.package_id}::{self.module_name}::{self.struct_name}"
 
     def __hash__(self):
         return hash(str(self))
@@ -235,6 +232,38 @@ class MoveToml:
 
     def keys(self):
         return self.data.keys()
+
+class Coin:
+    __single_object: Dict[str, Coin] = dict()
+
+    def __init__(self,
+                 object_id: str,
+                 owner: str,
+                 balance: int,
+                 ):
+        self.object_id = object_id
+        self.owner = owner
+        self.balance = int(balance)
+        assert self.object_id not in self.__single_object
+
+    @classmethod
+    def from_data(cls,
+                  object_id: str,
+                  owner: str,
+                  balance: int,
+                  ) -> Coin:
+        if object_id in cls.__single_object:
+            cls.__single_object[object_id].owner = owner
+            cls.__single_object[object_id].balance = balance
+        else:
+            cls.__single_object[object_id] = Coin(object_id, owner, balance)
+        return cls.__single_object[object_id]
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return json.dumps(dict(object_id=self.object_id, owner=self.owner, balance=self.balance))
 
 
 class SuiPackage:
@@ -673,7 +702,10 @@ class SuiPackage:
             assert False, result["error"]
         result = result["result"]
         try:
-            return result["details"]
+            data = result["details"]
+            if "status" in result:
+                data["status"] = result["status"]
+            return data
         except:
             return result
 
@@ -796,6 +828,20 @@ class SuiPackage:
         else:
             return None
 
+    def get_coin_info(self, object_ids: list) -> Dict[str, Coin]:
+        result = self.get_objects(object_ids)
+        coin_info: Dict[str, Coin] = {}
+        for k in result:
+            if not result[k].get("status", None) == "Exists":
+                continue
+            owner_info = result[k]["owner"]
+            if "Shared" in owner_info:
+                owner = "Shared"
+            else:
+                owner = owner_info["AddressOwner"]
+            coin_info[k] = Coin(k, owner, int(result[k]["data"]["fields"]["balance"]))
+        return coin_info
+
     def construct_transaction(
             self,
             abi: dict,
@@ -803,6 +849,7 @@ class SuiPackage:
             ty_args: List[str] = None,
             gas_budget=100000,
     ):
+        param_args = list(param_args)
         if ty_args is None:
             ty_args = []
         assert isinstance(list(ty_args), list) and len(
@@ -812,17 +859,24 @@ class SuiPackage:
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
 
-        for k, v in enumerate(abi["parameters"]):
-            is_coin = self.judge_coin(v)
+        normal_coin: List[ObjectType]  = []
+
+        for k in range(len(param_args)):
+            is_coin = self.judge_coin(abi["parameters"][k])
             if is_coin is None:
                 continue
             if not isinstance(param_args[k], int):
                 continue
             assert len(CacheObject[is_coin][self.account.account_address]), f"Not found coin"
-            coin_info = self.get_objects(CacheObject[is_coin][self.account.account_address])
+
+            normal_coin.append(is_coin)
+
+            # merge
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
             if len(CacheObject[is_coin][self.account.account_address]) > 1:
                 if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-                    # todo! Delete object id
                     self.pay_all_sui(
                         CacheObject[is_coin][self.account.account_address],
                         self.account.account_address,
@@ -830,27 +884,38 @@ class SuiPackage:
                     )
                 else:
                     self.merge_coins(CacheObject[is_coin][self.account.account_address], gas_budget)
-            coin_info = list(coin_info.values())[-1]["data"]
-            assert int(coin_info["fields"]["balance"]) >= param_args[k] + gas_budget, \
-                f'Balance not enough: ' \
-                f'{int(coin_info["fields"]["balance"])} < ' \
-                f'{param_args[k]}'
-            if int(coin_info["fields"]["balance"]) > param_args[k] + gas_budget:
-                split_amounts = [int(coin_info["fields"]["balance"]) - param_args[k] - gas_budget, param_args[k]]
-                print(split_amounts)
-                if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-                    self.pay_sui(
-                        [CacheObject[is_coin][self.account.account_address][-1]],
-                        split_amounts,
-                        [self.account.account_address] * len(split_amounts),
-                        gas_budget)
-                else:
-                    self.split_coin(
-                        [CacheObject[is_coin][self.account.account_address][-1]],
-                        split_amounts
-                    )
 
-            param_args[k] = CacheObject[is_coin][self.account.account_address][-1]
+            # split
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            first_coin_info = coin_info[CacheObject[is_coin][self.account.account_address][0]]
+            assert first_coin_info.balance >= param_args[k] + gas_budget, \
+                f'Balance not enough: ' \
+                f'{first_coin_info.balance} < ' \
+                f'{param_args[k]}'
+            split_amounts = [param_args[k]]
+            if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
+                self.pay_sui(
+                    [CacheObject[is_coin][self.account.account_address][-1]],
+                    split_amounts,
+                    [self.account.account_address] * len(split_amounts),
+                    gas_budget)
+            else:
+                self.split_coin(
+                    [CacheObject[is_coin][self.account.account_address][-1]],
+                    split_amounts
+                )
+
+            # find
+            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            for oid in coin_info:
+                if coin_info[oid].balance == param_args[k]:
+                    param_args[k] = oid
+                    break
+            assert not isinstance(param_args[k], int), "Fail split amount"
 
         response = self.client.post(
             f"{self.base_url}",
@@ -870,6 +935,7 @@ class SuiPackage:
                 ]
             },
         )
+
         if response.status_code >= 400:
             raise ApiError(response.text, response.status_code)
         result = response.json()
