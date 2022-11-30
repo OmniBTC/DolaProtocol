@@ -6,7 +6,7 @@ module example_proposal::init_pool_manager {
     use sui::tx_context::TxContext;
     use wormhole_bridge::bridge_core::{Self, CoreState};
 
-    public entry fun vote_proposal(
+    public entry fun vote_pool_manager_cap_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,

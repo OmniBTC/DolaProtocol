@@ -115,7 +115,6 @@ module lending::storage {
     }
 
     public fun transfer_app_cap(
-        _: &mut StorageAdminCap,
         storage: &mut Storage,
         app_cap: AppCap
     ) {

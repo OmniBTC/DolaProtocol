@@ -4,6 +4,7 @@ version = "0.0.1"
 
 [addresses]
 app_manager = "0x0"
+governance = "0x0"
 serde = "0x0"
 sui = "0x2"
 
@@ -14,3 +15,6 @@ rev = "6c001d0c491d1481fd4b477881d320e2421a6517"
 
 [dependencies.Serde]
 local = "../../serde"
+
+[dependencies.Governance]
+local = "../governance"
