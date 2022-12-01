@@ -4,8 +4,6 @@ from sui_brownie import CacheObject, ObjectType
 
 import load
 
-manager = "0xdc1f21230999232d6cfc230c4730021683f6546f"
-
 RAY = 100000000;
 
 
@@ -130,7 +128,7 @@ def vote_app_cap_proposal():
     )
 
 
-def vote_register_new_reserve_proposal():
+def vote_register_new_reserve_proposal(token_name):
     '''
     public entry fun vote_register_new_reserve_proposal(
         gov: &mut Governance,
@@ -146,17 +144,23 @@ def vote_register_new_reserve_proposal():
     )
     :return:
     '''
-    # example_proposal = load.example_proposal_package()
-    # governance = load.governance_package()
-    # lending = load.lending_package()
-    # example_proposal.init_lending_storage.vote_register_new_reserve_proposal(
-    #     governance.governance.Governance[-1],
-    #     governance.governance.GovernanceExternalCap[-1],
-    #     governance.governance.VoteExternalCap[-1],
-    # )
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    lending = load.lending_package()
+    example_proposal.init_lending_storage.vote_register_new_reserve_proposal(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        list(bytes(token_name)),
+        example_proposal.account.account_address,
+        0.01 * RAY,
+        0.01 * RAY,
+        0.01 * RAY,
+        lending.storage.Storage[-1]
+    )
 
 
-def mint_and_transfer_test_coin(test_coin_type, user, amount):
+def mint_and_transfer_test_coin(test_coin_type, amount):
     '''
     public entry fun mint_and_transfer<T>(
         lock: &mut TreasuryLock<T>,
@@ -165,17 +169,17 @@ def mint_and_transfer_test_coin(test_coin_type, user, amount):
         ctx: &mut TxContext
     )
     :param test_coin:
-    :param user:
     :return:
     '''
     test_coin = load.test_coins_package()
+    account_address = test_coin.account.account_address
     # print(CacheObject.lock.TreasuryLock)
     # print(CacheObject.lock.TreasuryLock[f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>"])
     test_coin.lock.mint_and_transfer(
         CacheObject[ObjectType.from_type(
-            f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>")][manager][-1],
+            f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>")][account_address][-1],
         int(amount),
-        user,
+        account_address,
         ty_args=[test_coin_type]
     )
 
@@ -210,9 +214,9 @@ def main():
     create_pool(usdt())
     create_pool(xbtc())
     mint_and_transfer_test_coin(xbtc(),
-                                manager, 1 * 1e8)
+                                1 * 1e8)
     mint_and_transfer_test_coin(usdt(),
-                                manager, 10000 * 1e8)
+                                10000 * 1e8)
 
     # 3. init pool manager
     hash = register_pool_manager_admin_cap()

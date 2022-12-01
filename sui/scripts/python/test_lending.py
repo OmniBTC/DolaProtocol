@@ -6,8 +6,6 @@ from sui_brownie import CacheObject, ObjectType
 from scripts.python import load
 from scripts.python.init import coin, sui, pool, usdt, mint_and_transfer_test_coin
 
-manager = "0xdc1f21230999232d6cfc230c4730021683f6546f"
-
 
 def portal_supply(coin_type):
     '''
@@ -97,7 +95,7 @@ def portal_withdraw(coin_type, amount):
 
 
 def test_supply():
-    mint_and_transfer_test_coin(usdt(), manager, 1e8)
+    mint_and_transfer_test_coin(usdt(), 1e8)
     portal_supply(usdt())
 
 
