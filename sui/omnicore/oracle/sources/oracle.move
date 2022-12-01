@@ -8,6 +8,8 @@ module oracle::oracle {
 
     const ENONEXISTENT_ORACLE: u64 = 0;
 
+    const EALREADY_EXIST_ORACLE: u64 = 1;
+
     struct OracleCap has key {
         id: UID
     }
@@ -21,7 +23,7 @@ module oracle::oracle {
     struct Price has store {
         value: u64,
         // 2 decimals should be 100,
-        decimal: u64
+        decimal: u8
     }
 
     fun init(ctx: &mut TxContext) {
@@ -34,6 +36,21 @@ module oracle::oracle {
         }, tx_context::sender(ctx))
     }
 
+    public entry fun register_token_price(
+        _: &OracleCap,
+        price_oracle: &mut PriceOracle,
+        token_name: vector<u8>,
+        token_price: u64,
+        price_decimal: u8
+    ) {
+        let price_oracles = &mut price_oracle.price_oracles;
+        assert!(!table::contains(price_oracles, token_name), EALREADY_EXIST_ORACLE);
+        table::add(price_oracles, token_name, Price {
+            value: token_price,
+            decimal: price_decimal
+        })
+    }
+
     public entry fun update_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
@@ -41,14 +58,12 @@ module oracle::oracle {
         token_price: u64
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
-        if (!table::contains(price_oracles, token_name)) {
-            table::add(price_oracles, token_name, Price { value: 0, decimal: 0 });
-        };
+        assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
         let price = table::borrow_mut(price_oracles, token_name);
         price.value = token_price;
     }
 
-    public fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u64) {
+    public fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u8) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, token_name);
