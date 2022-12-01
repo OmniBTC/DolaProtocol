@@ -5,6 +5,7 @@ import copy
 import functools
 import json
 import os
+import threading
 import traceback
 from collections import OrderedDict
 from pathlib import Path
@@ -48,6 +49,22 @@ class ObjectType:
             cls.__single_object[data] = ObjectType(package_id, module_name, struct_name)
         return cls.__single_object[data]
 
+    @staticmethod
+    def normal_package_id(package_id) -> str:
+        if package_id == "0x2":
+            return package_id
+        if package_id[:2] == "0x" and len(package_id[2:]) < 40:
+            package_id = f"0x{'0' * (40 - len(package_id[2:]))}{package_id[2:]}"
+        return package_id
+
+    @classmethod
+    def normal_data(cls, data: str):
+        data = data.split("::")
+        for k in range(len(data)):
+            index = data[k].find("0x")
+            data[k] = data[k][:index] + cls.normal_package_id(data[k][index:])
+        return "::".join(data)
+
     @classmethod
     def from_type(cls, data: str) -> ObjectType:
         """
@@ -55,10 +72,18 @@ class ObjectType:
             0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello
         :return:
         """
+        data = cls.normal_data(data)
         data = data.split("::")
         result = data[:2]
         result.append("::".join(data[2:]))
+
         return cls.from_data(*result)
+
+    @staticmethod
+    def is_object_type(data: str) -> bool:
+        if not isinstance(data, str):
+            return False
+        return len(data.split("::")) >= 3
 
     def __repr__(self):
         return self.__str__()
@@ -86,19 +111,90 @@ if not CACHE_DIR.exists():
 CACHE_FILE = CACHE_DIR.joinpath("objects.json")
 
 
-class CacheDict(OrderedDict):
+class RWList(list):
+    def __init__(self, rw_name="", write_flag=False, *args, **kwargs):
+        self.rw_name = rw_name
+        self.write_flag = write_flag
+        super(RWList, self).__init__(*args, **kwargs)
+
+    def append(self, *args, **kwargs) -> None:
+        if self.write_flag:
+            print(f"RWList write {self.rw_name} of {args[0]}")
+        super(RWList, self).append(*args, **kwargs)
+
+
+class RWDict(OrderedDict):
+
+    def __init__(self, rw_name="", read_flag=False, write_flag=False, *args, **kwargs):
+        self.rw_name = rw_name
+        self.read_flag = read_flag
+        self.write_flag = write_flag
+        super(RWDict, self).__init__(*args, **kwargs)
 
     def __getitem__(self, item):
-        try:
-            if isinstance(item, str):
-                return self[ObjectType.from_type(item)]
-            else:
-                return self[item]
-        except:
-            return self[item]
+        if self.read_flag:
+            print(f"RWDict read {self.rw_name} of {item}")
+        return super(RWDict, self).__getitem__(item)
+
+    def __setitem__(self, key, value):
+        if self.write_flag:
+            print(f"RWDict write {self.rw_name} of {key} {value}")
+        return super(RWDict, self).__setitem__(key, value)
 
 
-CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
+class ThirdCacheList(RWList):
+    def append(self, *args, **kwargs) -> None:
+        super(ThirdCacheList, self).append(*args, **kwargs)
+        persist_cache()
+
+
+class SecondCacheDict(RWDict):
+    def __setitem__(self, key, value):
+        if isinstance(value, list):
+            kv = ThirdCacheList(rw_name=f"{self.rw_name.replace('second', 'value')}", write_flag=False)
+            for v in value:
+                kv.append(v)
+        else:
+            raise ValueError
+        super(SecondCacheDict, self).__setitem__(key, kv)
+        persist_cache()
+
+
+CachePersistLock = threading.Lock()
+
+
+class TopCacheDict(RWDict):
+
+    def __getitem__(self, item):
+        if item in self:
+            return super(TopCacheDict, self).__getitem__(item)
+
+        if ObjectType.is_object_type(item) and ObjectType.from_type(item) in self:
+            item = ObjectType.from_type(item)
+
+        return super(TopCacheDict, self).__getitem__(item)
+
+    def get(self, key):
+        if key in self:
+            return super(TopCacheDict, self).get(key)
+
+        if ObjectType.is_object_type(key) and ObjectType.from_type(key) in self:
+            key = ObjectType.from_type(key)
+
+        return super(TopCacheDict, self).get(key)
+
+    def __setitem__(self, key, value):
+        if isinstance(value, dict):
+            kv = SecondCacheDict(rw_name=self.rw_name.replace("top", "second"), write_flag=False)
+            for k in value:
+                kv[k] = value[k]
+        else:
+            raise ValueError
+        super(TopCacheDict, self).__setitem__(key, kv)
+        persist_cache()
+
+
+CacheObject: Dict[Union[ObjectType, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
 
 
 def persist_cache(cache_file=CACHE_FILE):
@@ -106,18 +202,21 @@ def persist_cache(cache_file=CACHE_FILE):
     for k in CacheObject:
         for m in CacheObject[k]:
             if len(CacheObject[k][m]):
-                if k not in data:
+                if str(k) not in data:
                     data[str(k)] = {}
                 data[str(k)][m] = CacheObject[k][m]
     if len(data) == 0:
         return
+
     pt = ThreadExecutor(executor=1, mode="all")
 
     def worker():
         with open(str(cache_file), "w") as f:
             json.dump(data, f, indent=4, sort_keys=True)
 
+    CachePersistLock.acquire()
     pt.run([worker])
+    CachePersistLock.release()
 
 
 def reload_cache(cache_file: Path = CACHE_FILE):
@@ -162,6 +261,7 @@ def insert_package(package_name, object_id: str = None):
 
 def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
     if object_type not in CacheObject:
+        print("insert1", object_type, object_id, owner)
         CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
         final_object = CacheObject
         attr_list = [object_type.module_name, object_type.struct_name]
@@ -184,8 +284,10 @@ def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared")
                 final_object[object_type] = CacheObject[object_type]
     elif object_id is not None:
         if owner not in CacheObject[object_type]:
+            print("insert2", object_type, object_id, owner)
             CacheObject[object_type][owner] = []
         if object_id not in CacheObject[object_type][owner]:
+            print("insert3", object_type, object_id, owner)
             CacheObject[object_type][owner].append(object_id)
 
 
@@ -555,7 +657,6 @@ class SuiPackage:
                             self.package_id = d["reference"]["objectId"]
                             insert_package(self.package_name, self.package_id)
                             self.get_abis()
-                            persist_cache(CACHE_FILE)
             print("-" * (100 + len(view)))
             print("\n")
             for k in replace_tomls:
@@ -632,8 +733,8 @@ class SuiPackage:
                 if "reference" in d and "objectId" in d["reference"]:
                     object_ids.append(d["reference"]["objectId"])
         if len(object_ids):
+            cached_object_ids = set()
             object_details = self.get_objects(object_ids)
-            flag = False
             for k in ["created", "mutated"]:
                 for i, d in enumerate(result.get(k, dict())):
                     if "reference" in d and "objectId" in d["reference"] \
@@ -645,14 +746,17 @@ class SuiPackage:
                             if "Shared" in object_detail["owner"]:
                                 insert_cache(object_type, d["reference"]["objectId"])
                                 insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
+                                cached_object_ids.add(d["reference"]["objectId"])
                             else:
                                 try:
-                                    insert_cache(object_type, d["reference"]["objectId"], d["owner"]["AddressOwner"])
+                                    insert_cache(object_type, d["reference"]["objectId"],
+                                                 object_detail["owner"]["AddressOwner"])
+                                    cached_object_ids.add(d["reference"]["objectId"])
                                 except:
                                     pass
-                            flag = True
-            if flag:
-                persist_cache(CACHE_FILE)
+            remain_object_ids = cached_object_ids - set(object_ids)
+            if len(remain_object_ids):
+                print(f"Warning:not cache ids:{remain_object_ids}")
 
     def execute_transaction(self,
                             tx_bytes,
@@ -790,6 +894,8 @@ class SuiPackage:
         result = result["result"]
         for module_name in result:
             for struct_name in result[module_name].get("structs", dict()):
+                # if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
+                #     continue
                 object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
                 object_type.package_name = self.package_name
                 insert_cache(object_type, None)
