@@ -261,7 +261,6 @@ def insert_package(package_name, object_id: str = None):
 
 def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
     if object_type not in CacheObject:
-        print("insert1", object_type, object_id, owner)
         CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
         final_object = CacheObject
         attr_list = [object_type.module_name, object_type.struct_name]
@@ -284,10 +283,8 @@ def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared")
                 final_object[object_type] = CacheObject[object_type]
     elif object_id is not None:
         if owner not in CacheObject[object_type]:
-            print("insert2", object_type, object_id, owner)
             CacheObject[object_type][owner] = []
         if object_id not in CacheObject[object_type][owner]:
-            print("insert3", object_type, object_id, owner)
             CacheObject[object_type][owner].append(object_id)
 
 
@@ -892,10 +889,12 @@ class SuiPackage:
         if "error" in result:
             assert False, result["error"]
         result = result["result"]
+        print("abi")
+        pprint(result)
         for module_name in result:
             for struct_name in result[module_name].get("structs", dict()):
-                # if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
-                #     continue
+                if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
+                    continue
                 object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
                 object_type.package_name = self.package_name
                 insert_cache(object_type, None)
@@ -953,22 +952,28 @@ class SuiPackage:
             return False
 
     @classmethod
-    def cascade_type_arguments(cls, data) -> str:
+    def cascade_type_arguments(cls, data, ty_args: list = None) -> str:
+        if ty_args is None:
+            ty_args = []
         if len(data) == 0:
             return ""
         output = "<"
         for k, v in enumerate(data):
             if k != 0:
                 output += ","
-            data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
-            if len(v["Struct"]["type_arguments"]):
-                data += cls.cascade_type_arguments(v["Struct"]["type_arguments"])
+            if "TypeParameter" in v:
+                data = ty_args[v["TypeParameter"]]
+                print(data)
+            else:
+                data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
+                if len(v["Struct"]["type_arguments"]):
+                    data += cls.cascade_type_arguments(v["Struct"]["type_arguments"], ty_args)
             output += data
         output += ">"
         return output
 
     @classmethod
-    def generate_object_type(cls, param: str) -> ObjectType:
+    def generate_object_type(cls, param: str, ty_args: list = None) -> ObjectType:
         if not isinstance(param, dict):
             return None
         if "Reference" in param:
@@ -980,8 +985,7 @@ class SuiPackage:
 
         if "Struct" in final_arg:
             try:
-                # todo! fix type param
-                output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"])
+                output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"], ty_args)
             except:
                 return None
             output = f'{final_arg["Struct"]["address"]}::' \
@@ -992,8 +996,8 @@ class SuiPackage:
             return None
 
     @classmethod
-    def judge_coin(cls, param: str) -> ObjectType:
-        data = cls.generate_object_type(param)
+    def judge_coin(cls, param: str, ty_args: list = None) -> ObjectType:
+        data = cls.generate_object_type(param, ty_args)
         if isinstance(data, ObjectType) \
                 and data.package_id == "0x2" \
                 and data.module_name == "coin" \
@@ -1019,6 +1023,15 @@ class SuiPackage:
             coin_info[k] = Coin(k, owner, int(result[k]["data"]["fields"]["balance"]))
         return coin_info
 
+    @classmethod
+    def normal_float_list(cls, data: list):
+        for k in range(len(data)):
+            if isinstance(data[k], float):
+                assert float(int(data[k])) == data[k], f"{data[k]} must int"
+                data[k] = int(data[k])
+            elif isinstance(data[k], list):
+                cls.normal_float_list(data[k])
+
     def construct_transaction(
             self,
             abi: dict,
@@ -1027,6 +1040,8 @@ class SuiPackage:
             gas_budget=100000,
     ):
         param_args = list(param_args)
+        self.normal_float_list(param_args)
+
         if ty_args is None:
             ty_args = []
         assert isinstance(list(ty_args), list) and len(
@@ -1039,7 +1054,7 @@ class SuiPackage:
         normal_coin: List[ObjectType] = []
 
         for k in range(len(param_args)):
-            is_coin = self.judge_coin(abi["parameters"][k])
+            is_coin = self.judge_coin(abi["parameters"][k], ty_args)
             if is_coin is None:
                 continue
             if not isinstance(param_args[k], int):
