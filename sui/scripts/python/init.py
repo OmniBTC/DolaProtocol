@@ -64,6 +64,28 @@ def register_lending_storage_admin_cap():
     return result['events'][-1]['moveEvent']['fields']['hash']
 
 
+def register_token_price(token_name, price, decimal):
+    """
+    public entry fun register_token_price(
+        _: &OracleCap,
+        price_oracle: &mut PriceOracle,
+        token_name: vector<u8>,
+        token_price: u64,
+        price_decimal: u8
+    )
+    :return:
+    """
+    oracle = load.oracle_package()
+
+    oracle.oracle.register_token_price(
+        oracle.oracle.OracleCap[-1],
+        oracle.oracle.PriceOracle[-1],
+        list(bytes(token_name, 'ascii')),
+        price,
+        decimal
+    )
+
+
 def create_vote_external_cap(hash):
     governance = load.governance_package()
     governance.governance.create_vote_external_cap(governance.governance.Governance[-1], list(base64.b64decode(hash)))
@@ -225,13 +247,17 @@ def main():
     mint_and_transfer_test_coin(usdt(),
                                 1 * 1e8)
 
-    # 3. init pool manager
+    # 3. init oracle
+    register_token_price(usdt(), 100, 2)
+    register_token_price(xbtc(), 2000000, 2)
+
+    # 4. init pool manager
     hash = register_pool_manager_admin_cap()
     create_vote_external_cap(hash)
 
     vote_pool_manager_cap_proposal()
 
-    # 4. init lending storage
+    # 5. init lending storage
 
     hash = register_app_manager_cap()
     create_vote_external_cap(hash)
