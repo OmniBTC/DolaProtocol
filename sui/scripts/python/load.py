@@ -9,7 +9,7 @@ def sui_package(package_id: str = None, package_path: Union[Path, str] = None):
     return sui_brownie.SuiPackage(
         brownie_config=Path("../../"),
         network="sui-devnet",
-        is_compile=True,
+        is_compile=False,
         package_id=package_id,
         package_path=package_path
     )

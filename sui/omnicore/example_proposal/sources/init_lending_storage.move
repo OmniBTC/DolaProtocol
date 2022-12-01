@@ -25,6 +25,37 @@ module example_proposal::init_lending_storage {
         governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
     }
 
+    public entry fun vote_set_borrow_rate_factors(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        token_name: vector<u8>,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
+        storage: &mut Storage,
+        ctx: &mut TxContext
+    ) {
+        let flash_cap = governance::vote_external_cap<StorageAdminCap>(gov, governance_external_cap, vote, ctx);
+
+        if (option::is_some(&flash_cap)) {
+            let external_cap = governance::borrow_external_cap<StorageAdminCap>(&mut flash_cap);
+            let storage_cap = lending::storage::register_cap_with_admin(external_cap);
+            lending::storage::update_borrow_rate_factors(
+                &mut storage_cap,
+                storage,
+                token_name,
+                base_borrow_rate,
+                borrow_rate_slope1,
+                borrow_rate_slope2,
+                optimal_utilization
+            );
+        };
+
+        governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
+    }
+
     public entry fun vote_register_new_reserve_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
