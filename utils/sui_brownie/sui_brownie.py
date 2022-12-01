@@ -98,7 +98,7 @@ class CacheDict(OrderedDict):
             return self[item]
 
 
-CacheObject: Dict[Union[ObjectType, str], dict] = CacheDict()
+CacheObject: Dict[Union[ObjectType, str], dict] = OrderedDict()
 
 
 def persist_cache(cache_file=CACHE_FILE):
@@ -535,31 +535,35 @@ class SuiPackage:
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
-        with self.cli_config as cof:
-            compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                          f"--path {self.package_path.absolute()} " \
-                          f"--gas-budget {gas_budget} --abi --json"
-            with os.popen(compile_cmd) as f:
-                result = f.read()
-            try:
-                result = json.loads(result[result.find("{"):])
-                result = self.format_result(result)
-            except:
+        try:
+            with self.cli_config as cof:
+                compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
+                              f"--path {self.package_path.absolute()} " \
+                              f"--gas-budget {gas_budget} --abi --json"
+                with os.popen(compile_cmd) as f:
+                    result = f.read()
+                try:
+                    result = json.loads(result[result.find("{"):])
+                    result = self.format_result(result)
+                except:
+                    pprint(result)
+                self.add_details(result.get("effects", dict()))
                 pprint(result)
-            self.add_details(result.get("effects", dict()))
-            pprint(result)
-            for d in result.get("effects").get("created", []):
-                if "data" in d and "dataType" in d["data"]:
-                    if d["data"]["dataType"] == "package":
-                        self.package_id = d["reference"]["objectId"]
-                        insert_package(self.package_name, self.package_id)
-                        self.get_abis()
-                        persist_cache(CACHE_FILE)
-        print("-" * (100 + len(view)))
-        print("\n")
-
-        for k in replace_tomls:
-            replace_tomls[k].restore()
+                for d in result.get("effects").get("created", []):
+                    if "data" in d and "dataType" in d["data"]:
+                        if d["data"]["dataType"] == "package":
+                            self.package_id = d["reference"]["objectId"]
+                            insert_package(self.package_name, self.package_id)
+                            self.get_abis()
+                            persist_cache(CACHE_FILE)
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except Exception as e:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            assert False, e
 
         # For ubuntu has some issue
         # view = f"Publish {self.package_name}"
