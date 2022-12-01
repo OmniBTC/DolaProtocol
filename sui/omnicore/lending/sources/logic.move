@@ -75,34 +75,6 @@ module lending::logic {
         }
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
-        let index = 0;
-        let data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let dst_chain = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (user_length as u64);
-        let user = vector_slice(&app_payload, index, index + data_len);
-        index = index + data_len;
-
-        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
-
-        (call_type, amount, user, dst_chain)
-    }
 
     public fun execute_withdraw(
         cap: &StorageCap,
@@ -128,7 +100,6 @@ module lending::logic {
         }
     }
 
-
     public fun execute_borrow(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -152,7 +123,6 @@ module lending::logic {
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, token_name);
     }
-
 
     public fun execute_repay(
         cap: &StorageCap,
@@ -187,6 +157,35 @@ module lending::logic {
     public fun is_loan(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
         let loans = get_user_loans(storage, user_address);
         vector::contains(&loans, &token_name)
+    }
+
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
+        let index = 0;
+        let data_len;
+
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let dst_chain = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (user_length as u64);
+        let user = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
+
+        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
+
+        (call_type, amount, user, dst_chain)
     }
 
     public fun user_collateral_value(

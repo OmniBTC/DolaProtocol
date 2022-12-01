@@ -175,11 +175,23 @@ module lending::storage {
     }
 
     public fun get_user_collaterals(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
         let user_info = table::borrow(&mut storage.user_infos, user_address);
         user_info.collaterals
     }
 
     public fun get_user_loans(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
         let user_info = table::borrow(&mut storage.user_infos, user_address);
         user_info.loans
     }
