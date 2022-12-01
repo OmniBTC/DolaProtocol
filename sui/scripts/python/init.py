@@ -184,9 +184,9 @@ def vote_register_new_reserve_proposal(token_name):
         governance.governance.VoteExternalCap[-1],
         list(bytes(token_name, 'ascii')),
         example_proposal.account.account_address,
-        0.01 * RAY,
-        0.01 * RAY,
-        0.01 * RAY,
+        int(0.01 * RAY),
+        int(0.01 * RAY),
+        int(0.01 * RAY),
         lending.storage.Storage[-1]
     )
 
