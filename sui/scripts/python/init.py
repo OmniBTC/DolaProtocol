@@ -85,7 +85,6 @@ def vote_pool_manager_cap_proposal():
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
     wormhole_bridge = load.wormhole_bridge_package()
-    print(governance.governance.GovernanceExternalCap)
     return example_proposal.init_pool_manager.vote_pool_manager_cap_proposal(governance.governance.Governance[-1],
                                                                              governance.governance.GovernanceExternalCap[
                                                                                  -1],
@@ -161,7 +160,7 @@ def vote_register_new_reserve_proposal(token_name):
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
-        list(bytes(token_name)),
+        list(bytes(token_name, 'ascii')),
         example_proposal.account.account_address,
         0.01 * RAY,
         0.01 * RAY,
@@ -183,8 +182,6 @@ def mint_and_transfer_test_coin(test_coin_type, amount):
     '''
     test_coin = load.test_coins_package()
     account_address = test_coin.account.account_address
-    # print(CacheObject.lock.TreasuryLock)
-    # print(CacheObject.lock.TreasuryLock[f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>"])
     test_coin.lock.mint_and_transfer(
         CacheObject[ObjectType.from_type(
             f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>")][account_address][-1],
