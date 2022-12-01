@@ -44,6 +44,16 @@ def register_pool_manager_admin_cap():
     return result['events'][-1]['moveEvent']['fields']['hash']
 
 
+def register_app_manager_cap():
+    app_manager = load.app_manager_package()
+    governance = load.governance_package()
+    result = app_manager.app_manager.register_admin_cap(
+        app_manager.app_manager.TotalAppInfo[-1],
+        governance.governance.GovernanceExternalCap[-1]
+    )
+    return result['events'][-1]['moveEvent']['fields']['hash']
+
+
 def register_lending_storage_admin_cap():
     lending = load.lending_package()
     governance = load.governance_package()
@@ -75,7 +85,7 @@ def vote_pool_manager_cap_proposal():
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
     wormhole_bridge = load.wormhole_bridge_package()
-
+    print(governance.governance.GovernanceExternalCap)
     return example_proposal.init_pool_manager.vote_pool_manager_cap_proposal(governance.governance.Governance[-1],
                                                                              governance.governance.GovernanceExternalCap[
                                                                                  -1],
@@ -216,7 +226,7 @@ def main():
     mint_and_transfer_test_coin(xbtc(),
                                 1 * 1e8)
     mint_and_transfer_test_coin(usdt(),
-                                10000 * 1e8)
+                                1 * 1e8)
 
     # 3. init pool manager
     hash = register_pool_manager_admin_cap()
@@ -225,18 +235,27 @@ def main():
     vote_pool_manager_cap_proposal()
 
     # 4. init lending storage
+
+    hash = register_app_manager_cap()
+    create_vote_external_cap(hash)
+    vote_app_cap_proposal()
+    # register storage cap
     hash = register_lending_storage_admin_cap()
     create_vote_external_cap(hash)
 
     vote_storage_cap_proposal()
+    # register reserves
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve_proposal(sui())
 
     create_vote_external_cap(hash)
 
-    vote_app_cap_proposal()
+    vote_register_new_reserve_proposal(usdt())
 
     create_vote_external_cap(hash)
 
-    vote_register_new_reserve_proposal()
+    vote_register_new_reserve_proposal(xbtc())
 
 
 if __name__ == '__main__':
