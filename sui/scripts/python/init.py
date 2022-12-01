@@ -222,11 +222,11 @@ def xbtc():
 
 
 def sui():
-    return "0x2::sui::SUI"
+    return "0x0000000000000000000000000000000000000002::sui::SUI"
 
 
 def coin(coin_type):
-    return f"0x2::coin::Coin<{coin_type}>"
+    return f"0x0000000000000000000000000000000000000002::coin::Coin<{coin_type}>"
 
 
 def pool(coin_type):

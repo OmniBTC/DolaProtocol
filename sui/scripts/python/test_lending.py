@@ -1,5 +1,4 @@
 import base64
-from pprint import pprint
 
 from sui_brownie import CacheObject, ObjectType
 
@@ -24,15 +23,16 @@ def portal_supply(coin_type):
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
+    account_address = lending_portal.account.account_address
     result = lending_portal.lending.supply(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
-        CacheObject[ObjectType.from_type(pool(coin_type))][-1],
-        CacheObject[ObjectType.from_type(coin(coin_type))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
+        CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
-    pprint(result)
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def core_supply(vaa):
@@ -80,18 +80,19 @@ def portal_withdraw(coin_type, amount):
     lending_portal = load.lending_portal_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
+    account_address = lending_portal.account.account_address
     dst_chain = 1
 
     result = lending_portal.lending.withdraw(
-        CacheObject[ObjectType.from_type(pool(coin_type))][-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
         amount,
         ty_args=[coin_type]
     )
-    pprint(result)
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def core_withdraw(vaa):
@@ -114,6 +115,7 @@ def core_withdraw(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
+    account_address = lending.account.account_address
 
     lending.wormhole_adapter.withdraw(
         lending.wormhole_adapter.WormholeAdapater[-1],
@@ -122,7 +124,7 @@ def core_withdraw(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
         list(base64.b64decode(vaa)),
     )
 
@@ -143,17 +145,19 @@ def portal_borrow(coin_type, amount):
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
+    account_address = lending_portal.account.account_address
     dst_chain = 1
 
-    lending_portal.lending.borrow(
-        CacheObject[ObjectType.from_type(pool(coin_type))][-1],
+    result = lending_portal.lending.borrow(
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
         amount,
         ty_args=[coin_type]
     )
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def core_borrow(vaa):
@@ -176,6 +180,7 @@ def core_borrow(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
+    account_address = lending.account.account_address
 
     lending.wormhole_adapter.borrow(
         lending.wormhole_adapter.WormholeAdapater[-1],
@@ -184,7 +189,7 @@ def core_borrow(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
         list(base64.b64decode(vaa)),
     )
 
@@ -204,15 +209,17 @@ def portal_repay(coin_type):
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
+    account_address = lending_portal.account.account_address
 
-    lending_portal.lending.repay(
-        CacheObject[ObjectType.from_type(pool(coin_type))][-1],
+    result = lending_portal.lending.repay(
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
-        CacheObject[ObjectType.from_type(coin(coin_type))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def core_repay(vaa):
@@ -264,19 +271,21 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
     dst_chain = 1
+    account_address = lending_portal.account.account_address
     punished = lending_portal.account.account_address
 
-    lending_portal.lending.liquidate(
+    result = lending_portal.lending.liquidate(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
-        CacheObject[ObjectType.from_type(pool(debt_coin_type))][-1],
-        CacheObject[ObjectType.from_type(coin(debt_coin_type))][-1],
-        CacheObject[ObjectType.from_type(pool(collateral_coin_type))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        CacheObject[ObjectType.from_type(pool(debt_coin_type))][account_address][-1],
+        CacheObject[ObjectType.from_type(coin(debt_coin_type))][account_address][-1],
+        CacheObject[ObjectType.from_type(pool(collateral_coin_type))][account_address][-1],
         punished,
         ty_args=[debt_coin_type, collateral_coin_type]
     )
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def core_liquidate(vaa):
@@ -299,6 +308,7 @@ def core_liquidate(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
+    account_address = lending.account.account_address
 
     lending.wormhole_adapter.borrow(
         lending.wormhole_adapter.WormholeAdapater[-1],
@@ -307,14 +317,15 @@ def core_liquidate(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][-1],
+        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
         list(base64.b64decode(vaa)),
     )
 
 
 def test_supply():
     mint_and_transfer_test_coin(xbtc(), 1e8)
-    portal_supply(xbtc())
+    vaa = portal_supply(xbtc())
+    core_supply(vaa)
 
 
 def test_withdraw():
