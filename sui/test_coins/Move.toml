@@ -1,0 +1,12 @@
+[package]
+name = "TestCoins"
+version = "1.0.0"
+
+[addresses]
+test_coins = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "6c001d0c491d1481fd4b477881d320e2421a6517"
