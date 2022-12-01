@@ -8,6 +8,7 @@ module lending::logic {
     use oracle::oracle::{get_token_price, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
+    use sui::math::pow;
     use sui::tx_context::{epoch, TxContext};
 
     const RAY: u64 = 100000000;
@@ -48,7 +49,7 @@ module lending::logic {
         let liquidated_debt_val = calculate_value(oracle, loan_token, liquidated_debt);
         let (collateral_price, decimal) = get_token_price(oracle, collateral);
         // todo: fix calculation
-        let collateral_amount = liquidated_debt_val * decimal / collateral_price;
+        let collateral_amount = liquidated_debt_val * pow(10, decimal) / collateral_price;
         burn_dtoken(cap, storage, user_address, loan_token, liquidated_debt);
         burn_otoken(cap, storage, user_address, collateral, collateral_amount);
         update_interest_rate(cap, pool_manager_info, storage, collateral);
@@ -196,7 +197,7 @@ module lending::logic {
     ): u64 {
         let balance = user_collateral_balance(storage, user_address, token_name);
         let (price, decimal) = get_token_price(oracle, token_name);
-        (((balance as u128) * (price as u128) / (decimal as u128)) as u64)
+        (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_collateral_balance(
@@ -211,7 +212,7 @@ module lending::logic {
 
     public fun calculate_value(oracle: &mut PriceOracle, token_name: vector<u8>, amount: u64): u64 {
         let (price, decimal) = get_token_price(oracle, token_name);
-        (((amount as u128) * (price as u128) / (decimal as u128)) as u64)
+        (((amount as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_loan_value(
@@ -222,7 +223,7 @@ module lending::logic {
     ): u64 {
         let balance = user_loan_balance(storage, user_address, token_name);
         let (price, decimal) = get_token_price(oracle, token_name);
-        (((balance as u128) * (price as u128) / (decimal as u128)) as u64)
+        (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_loan_balance(
