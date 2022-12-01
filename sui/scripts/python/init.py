@@ -4,7 +4,7 @@ from sui_brownie import CacheObject, ObjectType
 
 import load
 
-RAY = 100000000;
+RAY = 100000000
 
 
 def init_bridge_core():

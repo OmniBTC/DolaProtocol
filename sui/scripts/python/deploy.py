@@ -22,16 +22,6 @@ omnipool_package = sui_brownie.SuiPackage(
 
 omnipool_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
-app_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
-    network="sui-devnet",
-    is_compile=True,
-    package_id=None,
-    package_path=("../../omnicore/app_manager")
-)
-
-app_manager_package.publish_package(replace_address=dict(serde=serde_package.package_id))
-
 governance_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
@@ -41,6 +31,17 @@ governance_package = sui_brownie.SuiPackage(
 )
 
 governance_package.publish_package(replace_address=dict(serde=serde_package.package_id))
+
+app_manager_package = sui_brownie.SuiPackage(
+    brownie_config=Path("../../"),
+    network="sui-devnet",
+    is_compile=True,
+    package_id=None,
+    package_path=("../../omnicore/app_manager")
+)
+
+app_manager_package.publish_package(
+    replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id))
 
 oracle_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
@@ -135,7 +136,8 @@ example_proposal_package.publish_package(replace_address=dict(
     pool_manager=pool_manager_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
-    lending=lending_package.package_id
+    lending=lending_package.package_id,
+    app_manager=app_manager_package.package_id
 ))
 
 test_coins_package = sui_brownie.SuiPackage(
