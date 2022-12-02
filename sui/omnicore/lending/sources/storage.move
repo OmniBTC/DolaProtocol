@@ -11,6 +11,8 @@ module lending::storage {
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
 
+    const RAY: u64 = 100000000;
+
     const EONLY_ONE_ADMIN: u64 = 0;
 
     const EALREADY_EXIST_RESERVE: u64 = 1;
@@ -153,8 +155,8 @@ module lending::storage {
             treasury_factor,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
-            current_borrow_index: 0,
-            current_liquidity_index: 0,
+            current_borrow_index: RAY,
+            current_liquidity_index: RAY,
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {

@@ -362,6 +362,7 @@ module lending::logic {
         let last_update_timestamp = storage::get_last_update_timestamp(storage, token_name);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, token_name);
         let current_borrow_index = storage::get_borrow_index(storage, token_name);
+        let current_liquidity_index = storage::get_liquidity_index(storage, token_name);
 
         let treasury_factor = storage::get_treasury_factor(storage, token_name);
 
@@ -369,13 +370,13 @@ module lending::logic {
             current_timestamp,
             last_update_timestamp,
             storage::get_borrow_rate(storage, token_name)
-        );
+        ) * current_borrow_index ;
 
         let new_liquidity_index = calculate_linear_interest(
             current_timestamp,
             last_update_timestamp,
             storage::get_liquidity_rate(storage, token_name)
-        );
+        ) * current_liquidity_index;
 
         let mint_to_treasury = ((dtoken_scaled_total_supply *
             ((new_borrow_index - current_borrow_index) as u128) /
