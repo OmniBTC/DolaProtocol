@@ -31,5 +31,5 @@ setup(
     python_requires=">=3.6",
     package_data={'': ['*']},
     packages=["sui_brownie"],
-    install_requires=["pyyaml", "toml", "retrying", "mnemonic", "httpx", "python-dotenv"]
+    install_requires=["pyyaml", "toml", "retrying", "mnemonic", "httpx", "python-dotenv", "pynacl"]
 )
