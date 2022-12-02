@@ -47,7 +47,7 @@ oracle_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
     is_compile=False,
-    package_id="0x5ab4bfe225440497f5d20b9b358e6bd33c14ee98",
+    package_id=None,
     package_path="../../omnicore/oracle"
 )
 

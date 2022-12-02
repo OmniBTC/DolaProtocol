@@ -889,8 +889,6 @@ class SuiPackage:
         if "error" in result:
             assert False, result["error"]
         result = result["result"]
-        print("abi")
-        pprint(result)
         for module_name in result:
             for struct_name in result[module_name].get("structs", dict()):
                 if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
