@@ -14,7 +14,7 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "6c001d0c491d1481fd4b477881d320e2421a6517"
+rev = "79100a5687881eef489f347629bf5b19e417cc8e"
 
 [dependencies.AppManager]
 local = "../app_manager"
