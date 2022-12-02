@@ -1,9 +1,10 @@
 import base64
 
+from init import force_claim_test_coin, btc, usdt
 from sui_brownie import CacheObject, ObjectType
 
-from scripts.python import load
-from scripts.python.init import coin, sui, pool, usdt, mint_and_transfer_test_coin, xbtc
+import load
+from init import coin, sui, pool
 
 
 def portal_supply(coin_type):
@@ -322,27 +323,31 @@ def core_liquidate(vaa):
     )
 
 
-def test_supply():
-    mint_and_transfer_test_coin(xbtc(), 1e8)
-    vaa = portal_supply(xbtc())
+def monitor_supply():
+    force_claim_test_coin(btc(), 1e8)
+    vaa = portal_supply(btc())
     core_supply(vaa)
 
 
-def test_withdraw():
-    vaa = portal_withdraw(xbtc())
+def monitor_withdraw():
+    vaa = portal_withdraw(btc())
     core_withdraw(vaa)
 
 
-def test_borrow():
+def monitor_borrow():
     vaa = portal_borrow(usdt(), 1e8)
     core_borrow(vaa)
 
 
-def test_repay():
+def monitor_repay():
     vaa = portal_repay(usdt())
     core_repay(vaa)
 
 
-def test_liquidate():
-    vaa = portal_liquidate(usdt(), xbtc())
+def monitor_liquidate():
+    vaa = portal_liquidate(usdt(), btc())
     core_repay(vaa)
+
+
+if __name__ == "__main__":
+    monitor_supply()
