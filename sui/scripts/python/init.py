@@ -1,6 +1,6 @@
 import base64
 
-from sui_brownie import CacheObject, ObjectType
+from sui_brownie import CacheObject
 
 import load
 
@@ -191,34 +191,29 @@ def vote_register_new_reserve_proposal(token_name):
     )
 
 
-def mint_and_transfer_test_coin(test_coin_type, amount):
-    '''
-    public entry fun mint_and_transfer<T>(
-        lock: &mut TreasuryLock<T>,
-        amount: u64,
-        recipient: address,
-        ctx: &mut TxContext
+def claim_test_coin(coin_type):
+    test_coins = load.test_coins_package()
+    test_coins.faucet.claim(
+        test_coins.faucet.Faucet[-1],
+        ty_args=[coin_type]
     )
-    :param test_coin:
-    :return:
-    '''
-    test_coin = load.test_coins_package()
-    account_address = test_coin.account.account_address
-    test_coin.lock.mint_and_transfer(
-        CacheObject[ObjectType.from_type(
-            f"{CacheObject.TestCoins[-1]}::lock::TreasuryLock<{test_coin_type}>")][account_address][-1],
+
+
+def force_claim_test_coin(coin_type, amount):
+    test_coins = load.test_coins_package()
+    test_coins.faucet.force_claim(
+        test_coins.faucet.Faucet[-1],
         int(amount),
-        account_address,
-        ty_args=[test_coin_type]
+        ty_args=[coin_type]
     )
 
 
 def usdt():
-    return f"{CacheObject.TestCoins[-1]}::usdt::USDT"
+    return f"{CacheObject.TestCoins[-1]}::coins::USDT"
 
 
-def xbtc():
-    return f"{CacheObject.TestCoins[-1]}::xbtc::XBTC"
+def btc():
+    return f"{CacheObject.TestCoins[-1]}::coins::BTC"
 
 
 def sui():
@@ -227,6 +222,10 @@ def sui():
 
 def coin(coin_type):
     return f"0x0000000000000000000000000000000000000002::coin::Coin<{coin_type}>"
+
+
+def balance(coin_type):
+    return f"0x0000000000000000000000000000000000000002::balance::Supply<{coin_type}>"
 
 
 def pool(coin_type):
@@ -239,17 +238,14 @@ def main():
     init_bridge_pool()
 
     # 2. init omnipool
-    create_pool(sui())
     create_pool(usdt())
-    create_pool(xbtc())
-    mint_and_transfer_test_coin(xbtc(),
-                                1 * 1e8)
-    mint_and_transfer_test_coin(usdt(),
-                                1 * 1e8)
+    create_pool(btc())
+    claim_test_coin(btc())
+    force_claim_test_coin(usdt(), 100000)
 
     # 3. init oracle
     register_token_price(usdt(), 100, 2)
-    register_token_price(xbtc(), 2000000, 2)
+    register_token_price(btc(), 2000000, 2)
 
     # 4. init pool manager
     hash = register_pool_manager_admin_cap()
@@ -278,7 +274,7 @@ def main():
 
     create_vote_external_cap(hash)
 
-    vote_register_new_reserve_proposal(xbtc())
+    vote_register_new_reserve_proposal(btc())
 
 
 if __name__ == '__main__':

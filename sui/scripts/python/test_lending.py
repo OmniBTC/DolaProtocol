@@ -329,16 +329,20 @@ def test_supply():
 
 
 def test_withdraw():
-    portal_withdraw(xbtc())
+    vaa = portal_withdraw(xbtc())
+    core_withdraw(vaa)
 
 
 def test_borrow():
-    portal_borrow(usdt(), 1e8)
+    vaa = portal_borrow(usdt(), 1e8)
+    core_borrow(vaa)
 
 
 def test_repay():
-    portal_repay(usdt())
+    vaa = portal_repay(usdt())
+    core_repay(vaa)
 
 
 def test_liquidate():
-    portal_liquidate(usdt(), xbtc())
+    vaa = portal_liquidate(usdt(), xbtc())
+    core_repay(vaa)
