@@ -4,7 +4,7 @@ version = "0.0.1"
 
 [addresses]
 omnipool = "0x0"
-serde = "0x9acdb93d404c88c3febf865487c7a24b9a227afa"
+serde = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
