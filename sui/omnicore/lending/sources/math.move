@@ -24,8 +24,7 @@ module lending::math {
         let exp = current_timestamp - last_update_timestamp;
 
         if (exp == 0) {
-            // todo! fix?
-            return rate
+            return RAY
         };
 
         let exp_minus_one: u64;
