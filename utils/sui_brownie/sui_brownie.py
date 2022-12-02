@@ -520,7 +520,7 @@ class SuiPackage:
         # # # # # Compile
         view = f"Compile {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
-        compile_cmd = f"sui move build --abi --path {self.package_path}"
+        compile_cmd = f"sui move build --abi {self.package_path}"
         print(compile_cmd)
         os.system(compile_cmd)
         print("-" * (100 + len(view)))
