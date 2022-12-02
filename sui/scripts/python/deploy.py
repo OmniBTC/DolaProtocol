@@ -5,7 +5,7 @@ import sui_brownie
 serde_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../serde"
 )
@@ -15,7 +15,7 @@ serde_package.publish_package()
 omnipool_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnipool"
 )
@@ -25,7 +25,7 @@ omnipool_package.publish_package(replace_address=dict(serde=serde_package.packag
 governance_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/governance"
 )
@@ -35,7 +35,7 @@ governance_package.publish_package(replace_address=dict(serde=serde_package.pack
 app_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/app_manager"
 )
@@ -46,7 +46,7 @@ app_manager_package.publish_package(
 oracle_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/oracle"
 )
@@ -56,7 +56,7 @@ oracle_package.publish_package()
 pool_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/pool_manager"
 )
@@ -67,10 +67,10 @@ pool_manager_package.publish_package(
 wormhole_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_4dee99ac5bb1f84ec3df1adbb04e0f925aaed263/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_3b20c0a0966dd5c936c9584b12dcf3b6ccc956e9/sui/wormhole")),
 )
 
 wormhole_package.publish_package()
@@ -78,7 +78,7 @@ wormhole_package.publish_package()
 wormhole_bridge_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../wormhole_bridge"
 )
@@ -94,7 +94,7 @@ wormhole_bridge_package.publish_package(replace_address=dict(
 lending_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/lending"
 )
@@ -112,7 +112,7 @@ lending_package.publish_package(replace_address=dict(
 lending_portal_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../lending_portal"
 )
@@ -127,7 +127,7 @@ lending_portal_package.publish_package(replace_address=dict(
 example_proposal_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../omnicore/example_proposal"
 )
@@ -143,7 +143,7 @@ example_proposal_package.publish_package(replace_address=dict(
 test_coins_package = sui_brownie.SuiPackage(
     brownie_config=Path("../../"),
     network="sui-devnet",
-    is_compile=False,
+    is_compile=True,
     package_id=None,
     package_path="../../test_coins"
 )
