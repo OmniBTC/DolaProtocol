@@ -42,7 +42,7 @@ def pool_manager_package(package_id: str = CacheObject.PoolManager[-1]):
 def wormhole_package(package_id: str = CacheObject.Wormhole[-1]):
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_3b20c0a0966dd5c936c9584b12dcf3b6ccc956e9/sui/wormhole")))
+                           ".move/https___github_com_OmniBTC_wormhole_git_ecd696e362e16f77daf9b38b20d2f873e50df72e/sui/wormhole")))
 
 
 def wormhole_bridge_package(package_id: str = CacheObject.WormholeBridge[-1]):
