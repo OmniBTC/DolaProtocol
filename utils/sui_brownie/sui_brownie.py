@@ -520,7 +520,7 @@ class SuiPackage:
         # # # # # Compile
         view = f"Compile {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
-        compile_cmd = f"sui move build --abi {self.package_path}"
+        compile_cmd = f"sui move build --abi --path {self.package_path}"
         print(compile_cmd)
         os.system(compile_cmd)
         print("-" * (100 + len(view)))
@@ -637,8 +637,7 @@ class SuiPackage:
         try:
             with self.cli_config as cof:
                 compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                              f"--path {self.package_path.absolute()} " \
-                              f"--gas-budget {gas_budget} --abi --json"
+                              f"--gas-budget {gas_budget} --abi --json {self.package_path.absolute()}"
                 with os.popen(compile_cmd) as f:
                     result = f.read()
                 try:
