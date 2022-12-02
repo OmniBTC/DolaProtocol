@@ -3,69 +3,69 @@ from pathlib import Path
 import sui_brownie
 
 serde_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../serde"
+    package_path="../serde"
 )
 
 serde_package.publish_package()
 
 omnipool_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnipool"
+    package_path="../omnipool"
 )
 
 omnipool_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
 governance_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/governance"
+    package_path="../omnicore/governance"
 )
 
 governance_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
 app_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/app_manager"
+    package_path="../omnicore/app_manager"
 )
 
 app_manager_package.publish_package(
     replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id))
 
 oracle_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/oracle"
+    package_path="../omnicore/oracle"
 )
 
 oracle_package.publish_package()
 
 pool_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/pool_manager"
+    package_path="../omnicore/pool_manager"
 )
 
 pool_manager_package.publish_package(
     replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id))
 
 wormhole_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
@@ -76,11 +76,11 @@ wormhole_package = sui_brownie.SuiPackage(
 wormhole_package.publish_package()
 
 wormhole_bridge_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../wormhole_bridge"
+    package_path="../wormhole_bridge"
 )
 
 wormhole_bridge_package.publish_package(replace_address=dict(
@@ -92,11 +92,11 @@ wormhole_bridge_package.publish_package(replace_address=dict(
 ))
 
 lending_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/lending"
+    package_path="../omnicore/lending"
 )
 
 lending_package.publish_package(replace_address=dict(
@@ -110,11 +110,11 @@ lending_package.publish_package(replace_address=dict(
 ))
 
 lending_portal_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../lending_portal"
+    package_path="../lending_portal"
 )
 
 lending_portal_package.publish_package(replace_address=dict(
@@ -125,11 +125,11 @@ lending_portal_package.publish_package(replace_address=dict(
 ))
 
 example_proposal_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../omnicore/example_proposal"
+    package_path="../omnicore/example_proposal"
 )
 
 example_proposal_package.publish_package(replace_address=dict(
@@ -141,11 +141,11 @@ example_proposal_package.publish_package(replace_address=dict(
 ))
 
 test_coins_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../../"),
+    brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../../test_coins"
+    package_path="../test_coins"
 )
 
 test_coins_package.publish_package()
