@@ -431,7 +431,10 @@ class SuiDynamicFiled:
         try:
             self.name = base64.b64decode(name).decode("ascii")
         except:
-            self.name = name
+            try:
+                self.name = base64.b64decode(name).hex()
+            except:
+                self.name = name
         self.value = value
 
     @staticmethod
@@ -439,6 +442,12 @@ class SuiDynamicFiled:
         data = data.replace("0x2::dynamic_field::Field<", "")[:-1]
         data = data.split(",")
         return data[0], ",".join(data[1:])
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        return f"<SuiDynamicFiled with name {str(self.name)} about {self.name_type}>"
 
 
 class SuiPackage:
@@ -827,7 +836,7 @@ class SuiPackage:
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
                 self.add_details(result)
-            print(f"Execute successs, transactionDigest: {result['transactionDigest']}")
+            print(f"Execute success, transactionDigest: {result['transactionDigest']}")
             return result
         except:
             traceback.print_exc()
