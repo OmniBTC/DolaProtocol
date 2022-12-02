@@ -803,7 +803,9 @@ class SuiPackage:
         result = result["result"]
         result = self.format_result(result)
         try:
-            assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success", result
+            if result["EffectsCert"]["effects"]["effects"]["status"]["status"] != "success":
+                pprint(result)
+            assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success"
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
                 self.add_details(result)
