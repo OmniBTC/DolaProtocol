@@ -913,7 +913,11 @@ class SuiPackage:
                     # correct name
                     attr = struct_names[0]
                     if self.account.account_address not in CacheObject[object_type]:
-                        CacheObject[object_type][self.account.account_address] = []
+                        if "Shared" in CacheObject[object_type] and len(CacheObject[object_type]["Shared"]):
+                            init_acc_data = copy.deepcopy(CacheObject[object_type]["Shared"])
+                        else:
+                            init_acc_data = []
+                        CacheObject[object_type][self.account.account_address] = init_acc_data
                     setattr(final_object, attr, CacheObject[object_type][self.account.account_address])
             for func_name in result[module_name].get("exposed_functions", dict()):
                 abi = result[module_name]["exposed_functions"][func_name]
