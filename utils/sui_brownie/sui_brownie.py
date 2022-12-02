@@ -445,7 +445,7 @@ class SuiPackage:
     def __init__(self,
                  brownie_config: Union[Path, str] = Path.cwd(),
                  network: str = "sui-devnet",
-                 is_compile: bool = True,
+                 is_compile: bool = False,
                  package_id: str = None,
                  package_path: Union[Path, str] = None
                  ):
@@ -854,9 +854,10 @@ class SuiPackage:
                     del detail["data"]["disassembled"]
                 result[v] = detail
 
-        engine = ThreadExecutor()
+        num = 20
 
-        num = 4
+        engine = ThreadExecutor(executor=num)
+
         split_data = self.slice_data(object_ids, num)
         workers = [functools.partial(worker, m) for m in split_data]
         engine.run(workers)
