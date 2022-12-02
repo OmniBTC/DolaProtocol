@@ -423,6 +423,24 @@ class HttpClient(httpx.Client):
         return super().post(*args, **kwargs)
 
 
+class SuiDynamicFiled:
+    def __init__(self, owner, uid, name, value, ty):
+        self.owner = owner
+        self.uid = uid
+        self.name_type, self.value_type = self.format_type(ty)
+        try:
+            self.name = base64.b64decode(name).decode("ascii")
+        except:
+            self.name = name
+        self.value = value
+
+    @staticmethod
+    def format_type(data: str) -> (str, str):
+        data = data.replace("0x2::dynamic_field::Field<", "")[:-1]
+        data = data.split(",")
+        return data[0], ",".join(data[1:])
+
+
 class SuiPackage:
     def __init__(self,
                  brownie_config: Union[Path, str] = Path.cwd(),
@@ -853,6 +871,58 @@ class SuiPackage:
                 "method": "sui_getObject",
                 "params": [
                     object_id
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["details"]
+            if "status" in result:
+                data["status"] = result["status"]
+            return data
+        except:
+            return result
+
+    def get_object_by_object(self, object_id: str):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_getObjectsOwnedByObject",
+                "params": [
+                    object_id
+                ]
+            },
+        )
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["details"]
+            if "status" in result:
+                data["status"] = result["status"]
+            return data
+        except:
+            return result
+
+    def get_object_by_address(self, addr: str):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_getObjectsOwnedByAddress",
+                "params": [
+                    addr
                 ]
             },
         )
@@ -1330,8 +1400,48 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def get_table_item(self, table_handle: str, key_type: str, value_str: str, key: dict):
-        pass
+    def get_dynamic_filed(self, object_id: str) -> List[SuiDynamicFiled]:
+        data = self.get_object_by_object(object_id)
+        oids = []
+        for v in data:
+            oids.append(v["objectId"])
+        if len(oids) == 0:
+            return []
+        output = []
+        info = self.get_objects(oids)
+        for k in info:
+            output.append(SuiDynamicFiled(owner=object_id,
+                                          uid=info[k]["data"]["fields"]["id"]["id"],
+                                          name=info[k]["data"]["fields"]["name"],
+                                          value=info[k]["data"]["fields"]["value"]["fields"],
+                                          ty=info[k]["data"]["type"]
+                                          ))
+        return output
 
-    def get_events(self, address: str, event_handle: str, field_name: str, limit: int = None):
-        pass
+    def get_table_item(self, object_id: str) -> List[SuiDynamicFiled]:
+        return self.get_dynamic_filed(object_id)
+
+    def get_bag_item(self, object_id: str) -> List[SuiDynamicFiled]:
+        return self.get_dynamic_filed(object_id)
+
+    @staticmethod
+    def normal_object_info(data):
+        return data.get("data", dict()).get("fields", dict())
+
+    def get_object_with_super_detail(self, object_id):
+        basic_info = self.normal_object_info(self.get_object(object_id))
+        for k in basic_info:
+            if "type" not in basic_info[k]:
+                continue
+            object_type = ObjectType.from_type(basic_info[k]["type"])
+            if object_type.package_id == "0x2":
+                if object_type.module_name == "table" and object_type.struct_name.startswith("Table"):
+                    tid = basic_info[k]["fields"]["id"]["id"]
+                    basic_info[k] = self.get_table_item(tid)
+                elif object_type.module_name == "bag" and object_type.struct_name.startswith("Bag"):
+                    tid = basic_info[k]["fields"]["id"]["id"]
+                    basic_info[k] = self.get_bag_item(tid)
+
+        dynamic_info = self.get_dynamic_filed(object_id)
+        basic_info["dynamic_filed"] = dynamic_info
+        return basic_info
