@@ -65,6 +65,10 @@ module example_proposal::init_lending_storage {
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
         storage: &mut Storage,
         ctx: &mut TxContext
     ) {
@@ -80,6 +84,10 @@ module example_proposal::init_lending_storage {
                 treasury_factor,
                 collateral_coefficient,
                 borrow_coefficient,
+                base_borrow_rate,
+                borrow_rate_slope1,
+                borrow_rate_slope2,
+                optimal_utilization,
                 ctx
             );
         };

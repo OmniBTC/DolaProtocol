@@ -187,6 +187,10 @@ def vote_register_new_reserve_proposal(token_name):
         int(0.01 * RAY),
         int(0.01 * RAY),
         int(0.01 * RAY),
+        int(0.02 * RAY),
+        int(0.07 * RAY),
+        int(3 * RAY),
+        int(0.45 * RAY),
         lending.storage.Storage[-1]
     )
 

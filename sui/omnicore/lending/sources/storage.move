@@ -145,6 +145,10 @@ module lending::storage {
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
         ctx: &mut TxContext
     ) {
         assert!(!table::contains(&storage.reserves, token_name), EALREADY_EXIST_RESERVE);
@@ -160,10 +164,10 @@ module lending::storage {
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {
-                base_borrow_rate: 0,
-                borrow_rate_slope1: 0,
-                borrow_rate_slope2: 0,
-                optimal_utilization: 0
+                base_borrow_rate,
+                borrow_rate_slope1,
+                borrow_rate_slope2,
+                optimal_utilization
             },
             otoken_scaled: ScaledBalance {
                 user_state: table::new<vector<u8>, u64>(ctx),
