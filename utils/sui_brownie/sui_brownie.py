@@ -10,7 +10,7 @@ import traceback
 from collections import OrderedDict
 from pathlib import Path
 from typing import Union, List, Dict
-from pprint import pprint
+from pprint import pprint, pformat
 from retrying import retry
 
 import httpx
@@ -447,7 +447,7 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return f"<SuiDynamicFiled with name {str(self.name)} about {self.name_type}>"
+        return str(pformat({"name": self.name, "value": self.value}))
 
 
 class SuiPackage:
@@ -1461,6 +1461,7 @@ class SuiPackage:
                     table_keys.append(k)
             if "fields" in basic_info[k]:
                 self.nest_process_table(basic_info[k]["fields"])
+                basic_info[k] = basic_info[k]["fields"]
 
         # nested processing table info's value
         for k in table_keys:
