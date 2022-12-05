@@ -324,9 +324,18 @@ def core_liquidate(vaa):
 
 
 def monitor_supply():
-    force_claim_test_coin(btc(), 1e8)
-    vaa = portal_supply(btc())
-    core_supply(vaa)
+    lending = load.lending_package()
+    data = lending.get_object_with_super_detail(lending.storage.Storage[-1])
+
+    from pprint import pprint
+    pprint(data["reserves"][2].name)
+    pprint(data["reserves"][2].value)
+    # force_claim_test_coin(btc(), 1e8)
+    # vaa = portal_supply(btc())
+    # core_supply(vaa)
+    # from pprint import pprint
+    # pprint(data["reserves"][2].name)
+    # pprint(data["reserves"][2].value)
 
 
 def monitor_withdraw():

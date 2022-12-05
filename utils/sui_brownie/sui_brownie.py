@@ -1423,7 +1423,10 @@ class SuiPackage:
             output.append(SuiDynamicFiled(owner=object_id,
                                           uid=info[k]["data"]["fields"]["id"]["id"],
                                           name=info[k]["data"]["fields"]["name"],
-                                          value=info[k]["data"]["fields"]["value"]["fields"],
+                                          value=info[k]["data"]["fields"]["value"]["fields"]
+                                          if (isinstance(info[k]["data"]["fields"]["value"], dict) and "fields" in
+                                              info[k]["data"]["fields"]["value"])
+                                          else info[k]["data"]["fields"]["value"],
                                           ty=info[k]["data"]["type"]
                                           ))
         return output
@@ -1438,19 +1441,37 @@ class SuiPackage:
     def normal_object_info(data):
         return data.get("data", dict()).get("fields", dict())
 
-    def get_object_with_super_detail(self, object_id):
-        basic_info = self.normal_object_info(self.get_object(object_id))
+    def nest_process_table(self, basic_info: dict):
+        if not isinstance(basic_info, dict):
+            return
+        table_keys = []
         for k in basic_info:
-            if "type" not in basic_info[k]:
+            if not (isinstance(basic_info[k], dict) and "type" in basic_info[k] and "fields" in basic_info[k]):
                 continue
             object_type = ObjectType.from_type(basic_info[k]["type"])
             if object_type.package_id == "0x2":
                 if object_type.module_name == "table" and object_type.struct_name.startswith("Table"):
                     tid = basic_info[k]["fields"]["id"]["id"]
                     basic_info[k] = self.get_table_item(tid)
+                    table_keys.append(k)
+
                 elif object_type.module_name == "bag" and object_type.struct_name.startswith("Bag"):
                     tid = basic_info[k]["fields"]["id"]["id"]
                     basic_info[k] = self.get_bag_item(tid)
+                    table_keys.append(k)
+            if "fields" in basic_info[k]:
+                self.nest_process_table(basic_info[k]["fields"])
+
+        # nested processing table info's value
+        for k in table_keys:
+            for i in range(len(basic_info[k])):
+                data: SuiDynamicFiled = basic_info[k][i]
+                self.nest_process_table(data.value)
+
+    def get_object_with_super_detail(self, object_id):
+        basic_info = self.normal_object_info(self.get_object(object_id))
+
+        self.nest_process_table(basic_info)
 
         dynamic_info = self.get_dynamic_filed(object_id)
         basic_info["dynamic_filed"] = dynamic_info
