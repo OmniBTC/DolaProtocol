@@ -1,7 +1,7 @@
 module lending::logic {
     use std::vector;
 
-    use lending::math::{calculate_compounded_interest, calculate_linear_interest};
+    use lending::math::{Self, calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
@@ -10,7 +10,6 @@ module lending::logic {
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
     use sui::math::pow;
     use sui::tx_context::{epoch, TxContext};
-    use lending::math;
 
     const RAY: u64 = 100000000;
 
@@ -160,9 +159,13 @@ module lending::logic {
         vector::contains(&loans, &token_name)
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 1;
         let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
@@ -170,10 +173,6 @@ module lending::logic {
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let dst_chain = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -186,7 +185,7 @@ module lending::logic {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, user, dst_chain)
+        (chain_id, call_type, amount, user)
     }
 
     public fun user_collateral_value(

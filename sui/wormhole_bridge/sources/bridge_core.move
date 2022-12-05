@@ -177,7 +177,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool_address: address,
-        chainid: u64,
+        chainid: u16,
         // todo: fix address
         user: address,
         amount: u64,

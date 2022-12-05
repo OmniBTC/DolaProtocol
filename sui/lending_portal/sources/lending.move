@@ -42,7 +42,7 @@ module lending_portal::lending {
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
+        dst_chain: u16,
         wormhole_message_fee: Coin<SUI>,
         amount: u64,
         ctx: &mut TxContext
@@ -56,7 +56,7 @@ module lending_portal::lending {
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
+        dst_chain: u16,
         wormhole_message_fee: Coin<SUI>,
         amount: u64,
         ctx: &mut TxContext
@@ -82,7 +82,7 @@ module lending_portal::lending {
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
+        dst_chain: u16,
         wormhole_message_fee: Coin<SUI>,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
@@ -107,19 +107,23 @@ module lending_portal::lending {
         );
     }
 
-    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u64): vector<u8> {
+    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u16): vector<u8> {
         let payload = vector::empty<u8>();
+        serialize_u16(&mut payload, dst_chain);
         serialize_u8(&mut payload, call_type);
         serialize_u64(&mut payload, amount);
         serialize_u16(&mut payload, (vector::length(&user) as u16));
-        serialize_u64(&mut payload, dst_chain);
         serialize_vector(&mut payload, user);
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 1;
         let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
@@ -136,8 +140,20 @@ module lending_portal::lending {
         data_len = (user_length as u64);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
+
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, user)
+        (chain_id, call_type, amount, user)
+    }
+
+    #[test]
+    fun test_encode_decode() {
+        let user = @0x11;
+        let payload = encode_app_payload(WITHDRAW, 100000000, to_bytes(&user), 1);
+        let (chain_id, call_type, amount, user_addr) = decode_app_payload(payload);
+        assert!(chain_id == 1, 0);
+        assert!(call_type == WITHDRAW, 0);
+        assert!(amount == 100000000, 0);
+        assert!(user_addr == to_bytes(&user), 0);
     }
 }

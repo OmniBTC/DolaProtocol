@@ -1,14 +1,14 @@
 import base64
 
-from init import force_claim_test_coin, btc, usdt
 from sui_brownie import CacheObject, ObjectType
 
 import load
-from init import coin, sui, pool
+from init import coin, pool
+from init import force_claim_test_coin, btc, usdt
 
 
 def portal_supply(coin_type):
-    '''
+    """
     public entry fun supply<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
@@ -18,9 +18,9 @@ def portal_supply(coin_type):
         ctx: &mut TxContext
     )
 
-    :param cointype:
+    :param coin_type:
     :return: payload
-    '''
+    """
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
@@ -28,7 +28,7 @@ def portal_supply(coin_type):
     result = lending_portal.lending.supply(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
@@ -37,7 +37,7 @@ def portal_supply(coin_type):
 
 
 def core_supply(vaa):
-    '''
+    """
     public entry fun supply(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
@@ -49,7 +49,7 @@ def core_supply(vaa):
     )
     :param vaa:
     :return:
-    '''
+    """
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
@@ -66,7 +66,7 @@ def core_supply(vaa):
 
 
 def portal_withdraw(coin_type, amount):
-    '''
+    """
     public entry fun withdraw<CoinType>(
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
@@ -77,7 +77,7 @@ def portal_withdraw(coin_type, amount):
         ctx: &mut TxContext
     )
     :return:
-    '''
+    """
     lending_portal = load.lending_portal_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
@@ -89,11 +89,35 @@ def portal_withdraw(coin_type, amount):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         amount,
         ty_args=[coin_type]
     )
     return result['events'][-1]['moveEvent']['fields']['payload']
+
+
+def pool_withdraw(vaa, coin_type):
+    """
+    public entry fun receive_withdraw<CoinType>(
+        _wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        pool: &mut Pool<CoinType>,
+        vaa: vector<u8>,
+        ctx: &mut TxContext
+    )
+    :param vaa:
+    :return:
+    """
+    wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+    account_address = wormhole_bridge.account.account_address
+    wormhole_bridge.bridge_pool.receive_withdraw(
+        wormhole.state.State[-1],
+        wormhole_bridge.bridge_pool.PoolState[-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
+        list(base64.b64decode(vaa)),
+        ty_args=[coin_type]
+    )
 
 
 def core_withdraw(vaa):
@@ -116,18 +140,18 @@ def core_withdraw(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
-    account_address = lending.account.account_address
 
-    lending.wormhole_adapter.withdraw(
+    result = lending.wormhole_adapter.withdraw(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         list(base64.b64decode(vaa)),
     )
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def portal_borrow(coin_type, amount):
@@ -154,7 +178,7 @@ def portal_borrow(coin_type, amount):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         amount,
         ty_args=[coin_type]
     )
@@ -190,7 +214,7 @@ def core_borrow(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         list(base64.b64decode(vaa)),
     )
 
@@ -216,7 +240,7 @@ def portal_repay(coin_type):
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
@@ -279,7 +303,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         CacheObject[ObjectType.from_type(pool(debt_coin_type))][account_address][-1],
         CacheObject[ObjectType.from_type(coin(debt_coin_type))][account_address][-1],
         CacheObject[ObjectType.from_type(pool(collateral_coin_type))][account_address][-1],
@@ -318,29 +342,21 @@ def core_liquidate(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        CacheObject[ObjectType.from_type(coin(sui()))][account_address][-1],
+        0,
         list(base64.b64decode(vaa)),
     )
 
 
 def monitor_supply():
-    lending = load.lending_package()
-    data = lending.get_object_with_super_detail(lending.storage.Storage[-1])
-
-    from pprint import pprint
-    pprint(data["reserves"][2].name)
-    pprint(data["reserves"][2].value)
-    # force_claim_test_coin(btc(), 1e8)
-    # vaa = portal_supply(btc())
-    # core_supply(vaa)
-    # from pprint import pprint
-    # pprint(data["reserves"][2].name)
-    # pprint(data["reserves"][2].value)
+    force_claim_test_coin(btc(), 1e8)
+    vaa = portal_supply(btc())
+    core_supply(vaa)
 
 
 def monitor_withdraw():
-    vaa = portal_withdraw(btc())
-    core_withdraw(vaa)
+    to_core_vaa = portal_withdraw(btc(), 1e8)
+    to_pool_vaa = core_withdraw(to_core_vaa)
+    pool_withdraw(to_pool_vaa, btc())
 
 
 def monitor_borrow():
@@ -358,5 +374,68 @@ def monitor_liquidate():
     core_repay(vaa)
 
 
+def check_pool_info():
+    pool_manager = load.pool_manager_package()
+    pool_manager_info = pool_manager.get_object_with_super_detail(pool_manager.pool_manager.PoolManagerInfo[-1])
+
+    print("\n --- app liquidity info ---")
+    for token in pool_manager_info['app_infos']:
+        print(f"token: {token.name}")
+        for app in token.value['app_liquidity']:
+            print("   ---- ---- ")
+            print(f"   app_id: {app.name}")
+            print(f"   liquidity: {app.value}")
+
+    print("\n --- user liquidity info ---")
+    for user in pool_manager_info['user_infos']:
+        print(f"user_address: {user.name}")
+        for token in user.value['liquidity']:
+            print("   ---- ---- ")
+            print(f"   token: {token.name}")
+            print(f"   liquidity: {token.value['value']}")
+
+    print("\n --- pool liquidity info ---")
+    for token in pool_manager_info['pool_infos']:
+        print(f"pool token: {token.name}")
+        print(f"pool reserve: {token.value['reserve']['value']}")
+        for chain in token.value['pools']:
+            print("   ---- ---- ")
+            print(f"   chain_id: {chain.name}")
+            for pool in chain.value['liquidity']:
+                print(f"   pool_address: {pool.name}")
+                print(f"   liquidity: {pool.value['value']}")
+
+
+def check_app_storage():
+    lending = load.lending_package()
+    storage = lending.get_object_with_super_detail(lending.storage.Storage[-1])
+    print("\n --- app storage info ---")
+    print(f"current app_id: {storage['app_cap']['app_id']}")
+
+    print("\n --- app reserves info ---")
+    for reserve in storage['reserves']:
+        print("   ---- ---- ")
+        print(f"   reserve_token: {reserve.name}")
+        print(f"       otoken supply: {reserve.value['otoken_scaled']['total_supply']}")
+        for user in reserve.value['otoken_scaled']['user_state']:
+            print(f"       ---- ----")
+            print(f"       user_address: {user.name}")
+            print(f"       otoken scaled: {user.value}")
+        print(f"       dtoken supply: {reserve.value['dtoken_scaled']['total_supply']}")
+        for user in reserve.value['dtoken_scaled']['user_state']:
+            print(f"       ---- ----")
+            print(f"       user_address: {user.name}")
+            print(f"       dtoken scaled: {user.value}")
+
+    print("\n --- app user info ---")
+    for user in storage['user_infos']:
+        print("   ---- ---- ")
+        print(f"   user_address: {user.name}")
+        print(f"   user collaterals: {[base64.b64decode(c) for c in user.value['collaterals']]}")
+        print(f"   user debt token: {[base64.b64decode(c) for c in user.value['loans']]}")
+
+
 if __name__ == "__main__":
-    monitor_supply()
+    # monitor_withdraw()
+    check_pool_info()
+    check_app_storage()

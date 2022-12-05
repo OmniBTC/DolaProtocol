@@ -47,7 +47,7 @@ module pool_manager::pool_manager {
         // token liquidity
         reserve: Liquidity,
         // chainid => PoolLiquidity
-        pools: Table<u64, PoolLiquidity>,
+        pools: Table<u16, PoolLiquidity>,
     }
 
     struct PoolLiquidity has store {
@@ -137,7 +137,7 @@ module pool_manager::pool_manager {
     public fun pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
-        chainid: u64,
+        chainid: u16,
         pool_address: vector<u8>
     ): u64 {
         let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
@@ -151,7 +151,7 @@ module pool_manager::pool_manager {
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
         app_id: u16,
-        chainid: u64,
+        chainid: u16,
         pool_address: vector<u8>,
         user_address: vector<u8>,
         amount: u64,
@@ -225,7 +225,7 @@ module pool_manager::pool_manager {
         pool_manager_info: &mut PoolManagerInfo,
         token_name: vector<u8>,
         app_id: u16,
-        chainid: u64,
+        chainid: u16,
         pool_address: vector<u8>,
         user_address: vector<u8>,
         amount: u64,
