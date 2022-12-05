@@ -424,18 +424,38 @@ class HttpClient(httpx.Client):
 
 
 class SuiDynamicFiled:
+
+    @staticmethod
+    def b64decode(d):
+        try:
+            d = base64.b64decode(d).decode("ascii")
+        except:
+            try:
+                d = base64.b64decode(d).hex()
+            except:
+                d = d
+        return d
+
+    @classmethod
+    def format_data(cls, d):
+        if isinstance(d, list):
+            for k in range(len(d)):
+                d[k] = cls.format_data(d[k])
+        elif isinstance(d, dict):
+            for k in list(d.keys()):
+                d[cls.b64decode(k)] = cls.format_data(d[k])
+        elif isinstance(d, str):
+            d = cls.b64decode(d)
+        return d
+
+
+
     def __init__(self, owner, uid, name, value, ty):
         self.owner = owner
         self.uid = uid
         self.name_type, self.value_type = self.format_type(ty)
-        try:
-            self.name = base64.b64decode(name).decode("ascii")
-        except:
-            try:
-                self.name = base64.b64decode(name).hex()
-            except:
-                self.name = name
-        self.value = value
+        self.name = self.b64decode(name)
+        self.value = self.format_data(value)
 
     @staticmethod
     def format_type(data: str) -> (str, str):
