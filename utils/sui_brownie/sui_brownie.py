@@ -1117,14 +1117,19 @@ class SuiPackage:
             elif isinstance(data[k], list):
                 cls.normal_float_list(data[k])
 
+    def __refresh_coin(self, is_coin: ObjectType):
+        coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+        coin_info = {k: coin_info[k] for k in coin_info if coin_info[k].owner == self.account.account_address}
+        CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                    key=lambda x: coin_info[x].balance)[::-1]
+        return coin_info
+
     def refresh_coin(self, coin_type: str):
         """
         :param coin_type: 0x2::sui::SUI
         """
         is_coin = ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>')
-        coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
-        CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
-                                                                    key=lambda x: coin_info[x].balance)[::-1]
+        self.__refresh_coin(is_coin)
 
     def construct_transaction(
             self,
@@ -1158,9 +1163,8 @@ class SuiPackage:
             normal_coin.append(is_coin)
 
             # merge
-            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
-            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
-                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            self.__refresh_coin(is_coin)
+
             if len(CacheObject[is_coin][self.account.account_address]) > 1:
                 if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
                     self.pay_all_sui(
@@ -1172,9 +1176,7 @@ class SuiPackage:
                     self.merge_coins(CacheObject[is_coin][self.account.account_address], gas_budget)
 
             # split
-            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
-            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
-                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            coin_info = self.__refresh_coin(is_coin)
             first_object_id = CacheObject[is_coin][self.account.account_address][0]
             first_coin_info = coin_info[first_object_id]
             assert first_coin_info.balance >= param_args[k] + gas_budget, \
@@ -1195,9 +1197,7 @@ class SuiPackage:
                 )
 
             # find
-            coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
-            CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
-                                                                        key=lambda x: coin_info[x].balance)[::-1]
+            coin_info = self.__refresh_coin(is_coin)
             for oid in coin_info:
                 if coin_info[oid].balance == param_args[k]:
                     param_args[k] = oid
