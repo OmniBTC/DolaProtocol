@@ -21,13 +21,9 @@ module lending::storage {
 
     const ENONEXISTENT_USERINFO: u64 = 3;
 
-    const EHAS_NOT_OTOKEN: u64 = 4;
+    const EMUST_NONE: u64 = 4;
 
-    const EHAS_NOT_DTOKEN: u64 = 5;
-
-    const EMUST_NONE: u64 = 6;
-
-    const EMUST_SOME: u64 = 7;
+    const EMUST_SOME: u64 = 5;
 
     struct Storage has key {
         id: UID,
@@ -209,8 +205,11 @@ module lending::storage {
     ): u64 {
         assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, token_name);
-        assert!(table::contains(&reserve.otoken_scaled.user_state, user_address), EHAS_NOT_OTOKEN);
-        *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.otoken_scaled.user_state, user_address)) {
+            *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+        } else {
+            0
+        }
     }
 
     public fun get_user_scaled_dtoken(
@@ -220,8 +219,11 @@ module lending::storage {
     ): u64 {
         assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, token_name);
-        assert!(table::contains(&reserve.dtoken_scaled.user_state, user_address), EHAS_NOT_DTOKEN);
-        *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.dtoken_scaled.user_state, user_address)) {
+            *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
+        } else {
+            0
+        }
     }
 
     public fun get_treasury_factor(
