@@ -1046,7 +1046,6 @@ class SuiPackage:
                 output += ","
             if "TypeParameter" in v:
                 data = ty_args[v["TypeParameter"]]
-                print(data)
             else:
                 data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
                 if len(v["Struct"]["type_arguments"]):
