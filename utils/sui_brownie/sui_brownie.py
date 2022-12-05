@@ -1063,6 +1063,8 @@ class SuiPackage:
             final_arg = param["Reference"]
         elif "MutableReference" in param:
             final_arg = param["MutableReference"]
+        elif "Struct" in param:
+            final_arg = param
         else:
             return None
 
@@ -1114,6 +1116,15 @@ class SuiPackage:
                 data[k] = int(data[k])
             elif isinstance(data[k], list):
                 cls.normal_float_list(data[k])
+
+    def refresh_coin(self, coin_type: str):
+        """
+        :param coin_type: 0x2::sui::SUI
+        """
+        is_coin = ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>')
+        coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
+        CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
+                                                                    key=lambda x: coin_info[x].balance)[::-1]
 
     def construct_transaction(
             self,
