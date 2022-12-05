@@ -3,8 +3,8 @@ import base64
 from sui_brownie import CacheObject, ObjectType
 
 import load
+from init import claim_test_coin, btc, usdt
 from init import coin, pool
-from init import force_claim_test_coin, btc, usdt
 
 
 def portal_supply(coin_type):
@@ -348,7 +348,7 @@ def core_liquidate(vaa):
 
 
 def monitor_supply():
-    force_claim_test_coin(btc(), 1e8)
+    claim_test_coin(btc())
     vaa = portal_supply(btc())
     core_supply(vaa)
 

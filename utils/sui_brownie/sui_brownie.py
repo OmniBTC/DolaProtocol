@@ -1420,7 +1420,7 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def get_dynamic_filed(self, object_id: str) -> List[SuiDynamicFiled]:
+    def get_dynamic_field(self, object_id: str) -> List[SuiDynamicFiled]:
         data = self.get_object_by_object(object_id)
         oids = []
         for v in data:
@@ -1442,10 +1442,10 @@ class SuiPackage:
         return output
 
     def get_table_item(self, object_id: str) -> List[SuiDynamicFiled]:
-        return self.get_dynamic_filed(object_id)
+        return self.get_dynamic_field(object_id)
 
     def get_bag_item(self, object_id: str) -> List[SuiDynamicFiled]:
-        return self.get_dynamic_filed(object_id)
+        return self.get_dynamic_field(object_id)
 
     @staticmethod
     def normal_object_info(data):
@@ -1484,6 +1484,6 @@ class SuiPackage:
 
         self.nest_process_table(basic_info)
 
-        dynamic_info = self.get_dynamic_filed(object_id)
-        basic_info["dynamic_filed"] = dynamic_info
+        dynamic_info = self.get_dynamic_field(object_id)
+        basic_info["dynamic_field"] = dynamic_info
         return basic_info
