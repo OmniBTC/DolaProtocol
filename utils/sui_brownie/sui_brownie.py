@@ -449,13 +449,24 @@ class SuiDynamicFiled:
 
     @classmethod
     def format_data(cls, d):
+        try:
+            return int(d)
+        except:
+            pass
         if isinstance(d, list):
             for k in range(len(d)):
                 d[k] = cls.format_data(d[k])
         elif isinstance(d, dict):
             for k in list(d.keys()):
+                if k == "fields":
+                    for m in d[k]:
+                        try:
+                            d[k][m] = int(d[k][m])
+                        except:
+                            pass
                 if k in ["type", "fields"]:
                     continue
+
                 d[k] = cls.format_data(d[k])
         elif isinstance(d, str):
             d = cls.b64decode(d)
