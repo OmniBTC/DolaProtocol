@@ -449,7 +449,9 @@ class SuiDynamicFiled:
                 d[k] = cls.format_data(d[k])
         elif isinstance(d, dict):
             for k in list(d.keys()):
-                d[cls.b64decode(k)] = cls.format_data(d[k])
+                if k in ["type", "fields"]:
+                    continue
+                d[k] = cls.format_data(d[k])
         elif isinstance(d, str):
             d = cls.b64decode(d)
         return d
@@ -1488,7 +1490,6 @@ class SuiPackage:
                     tid = basic_info[k]["fields"]["id"]["id"]
                     basic_info[k] = self.get_table_item(tid)
                     table_keys.append(k)
-
                 elif object_type.module_name == "bag" and object_type.struct_name.startswith("Bag"):
                     tid = basic_info[k]["fields"]["id"]["id"]
                     basic_info[k] = self.get_bag_item(tid)
