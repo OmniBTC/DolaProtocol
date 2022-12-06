@@ -356,7 +356,7 @@ def monitor_supply():
 
 
 def monitor_withdraw():
-    to_core_vaa = portal_withdraw(btc(), 1)
+    to_core_vaa = portal_withdraw(btc(), 1e8)
     to_pool_vaa = core_withdraw(to_core_vaa)
     pool_withdraw(to_pool_vaa, btc())
 
@@ -392,6 +392,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    # monitor_supply()
-    # check_pool_info()
+    monitor_withdraw()
+    check_pool_info()
     check_app_storage()

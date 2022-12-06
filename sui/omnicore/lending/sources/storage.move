@@ -25,6 +25,8 @@ module lending::storage {
 
     const EMUST_SOME: u64 = 5;
 
+    const ENOT_ENOUGH_AMOUNT: u64 = 6;
+
     struct Storage has key {
         id: UID,
         app_cap: Option<AppCap>,
@@ -335,7 +337,8 @@ module lending::storage {
         } else {
             current_amount = 0
         };
-        table::add(&mut otoken_scaled.user_state, user, scaled_amount - current_amount);
+        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        table::add(&mut otoken_scaled.user_state, user, current_amount - scaled_amount);
         otoken_scaled.total_supply = otoken_scaled.total_supply - (scaled_amount as u128);
     }
 
@@ -375,7 +378,8 @@ module lending::storage {
         } else {
             current_amount = 0
         };
-        table::add(&mut dtoken_scaled.user_state, user, scaled_amount - current_amount);
+        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        table::add(&mut dtoken_scaled.user_state, user, current_amount - scaled_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
     }
 

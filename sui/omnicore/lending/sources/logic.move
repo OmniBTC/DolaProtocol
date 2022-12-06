@@ -66,10 +66,10 @@ module lending::logic {
         token_amount: u64,
         ctx: &mut TxContext
     ) {
-        update_state(cap, storage, token_name, ctx);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
-        mint_otoken(cap, storage, user_address, token_name, token_amount);
         assert!(!is_loan(storage, user_address, token_name), ENOT_LOAN);
+        update_state(cap, storage, token_name, ctx);
+        mint_otoken(cap, storage, user_address, token_name, token_amount);
+        update_interest_rate(cap, pool_manager_info, storage, token_name);
         if (!is_collateral(storage, user_address, token_name)) {
             add_user_collateral(cap, storage, user_address, token_name);
         }
@@ -90,9 +90,9 @@ module lending::logic {
         // check otoken amount
         let otoken_amount = user_collateral_balance(storage, user_address, token_name);
         assert!(token_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
-
         burn_otoken(cap, storage, user_address, token_name, token_amount);
+
+        update_interest_rate(cap, pool_manager_info, storage, token_name);
 
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
         if (token_amount == otoken_amount) {
@@ -306,7 +306,7 @@ module lending::logic {
         token_name: vector<u8>,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
         storage::burn_otoken_scaled(
             cap,
             storage,
@@ -340,7 +340,7 @@ module lending::logic {
         token_name: vector<u8>,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
         storage::burn_dtoken_scaled(
             cap,
             storage,
