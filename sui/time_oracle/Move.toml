@@ -1,0 +1,12 @@
+[package]
+name = "TimeOracle"
+version = "0.0.1"
+
+[addresses]
+time_oracle = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "79100a5687881eef489f347629bf5b19e417cc8e"

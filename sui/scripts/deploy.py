@@ -2,6 +2,16 @@ from pathlib import Path
 
 import sui_brownie
 
+time_oracle_package = sui_brownie.SuiPackage(
+    brownie_config=Path("../"),
+    network="sui-devnet",
+    is_compile=True,
+    package_id=None,
+    package_path="../time_oracle"
+)
+
+time_oracle_package.publish_package()
+
 serde_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
     network="sui-devnet",
