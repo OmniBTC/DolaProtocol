@@ -473,7 +473,7 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return str(pformat({"name": self.name, "value": self.value}))
+        return str(pformat({self.name: self.value}, compact=True))
 
 
 class SuiPackage:
