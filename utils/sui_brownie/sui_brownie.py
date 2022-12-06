@@ -159,6 +159,12 @@ class SecondCacheDict(RWDict):
         super(SecondCacheDict, self).__setitem__(key, kv)
         persist_cache()
 
+    def __getitem__(self, item):
+        if item not in self and "Shared" in self:
+            self.__setitem__(item, copy.deepcopy(self["Shared"]))
+
+        return super(SecondCacheDict, self).__getitem__(item)
+
 
 CachePersistLock = threading.Lock()
 
@@ -447,8 +453,6 @@ class SuiDynamicFiled:
         elif isinstance(d, str):
             d = cls.b64decode(d)
         return d
-
-
 
     def __init__(self, owner, uid, name, value, ty):
         self.owner = owner
