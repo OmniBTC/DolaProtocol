@@ -434,6 +434,11 @@ class SuiDynamicFiled:
     @staticmethod
     def b64decode(d):
         try:
+            return int(d)
+        except:
+            pass
+
+        try:
             d = base64.b64decode(d).decode("ascii")
         except:
             try:
