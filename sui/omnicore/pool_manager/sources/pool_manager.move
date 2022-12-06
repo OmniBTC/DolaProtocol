@@ -21,7 +21,9 @@ module pool_manager::pool_manager {
 
     const EONLY_ONE_ADMIN: u64 = 2;
 
-    const EMUST_SOME: u64 = 2;
+    const EMUST_SOME: u64 = 3;
+
+    const ENONEXISTENT_RESERVE: u64 = 4;
 
     struct PoolManagerAdminCap has store, drop {
         pool_manager: address,
@@ -114,7 +116,10 @@ module pool_manager::pool_manager {
         app_id: u16
     ): u128 {
         let app_infos = &pool_manager_info.app_infos;
+        assert!(table::contains(app_infos, token_name), ENONEXISTENT_RESERVE);
+
         let app_liquidity = &table::borrow(app_infos, token_name).app_liquidity;
+        assert!(table::contains(app_liquidity, app_id), ENONEXISTENT_RESERVE);
         *table::borrow(app_liquidity, app_id)
     }
 
@@ -124,12 +129,15 @@ module pool_manager::pool_manager {
         user_address: vector<u8>
     ): u64 {
         let user_infos = &mut pool_manager_info.user_infos;
+        assert!(table::contains(user_infos, user_address), ENONEXISTENT_RESERVE);
         let user_liquidity = table::borrow(user_infos, user_address);
+        assert!(table::contains(&user_liquidity.liquidity, token_name), ENONEXISTENT_RESERVE);
         let liquidity = table::borrow(&user_liquidity.liquidity, token_name);
         liquidity.value
     }
 
     public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>): u64 {
+        assert!(table::contains(&pool_manager_info.pool_infos, token_name), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
         pool_info.reserve.value
     }
@@ -140,8 +148,11 @@ module pool_manager::pool_manager {
         chainid: u16,
         pool_address: vector<u8>
     ): u64 {
+        assert!(table::contains(&pool_manager_info.pool_infos, token_name), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, token_name);
+        assert!(table::contains(&pool_info.pools, chainid), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow(&pool_info.pools, chainid);
+        assert!(table::contains(&pool_liquidity.liquidity, pool_address), ENONEXISTENT_RESERVE);
         let liquidity = table::borrow(&pool_liquidity.liquidity, pool_address);
         liquidity.value
     }
@@ -236,6 +247,7 @@ module pool_manager::pool_manager {
 
         let app_infos = &mut pool_manager_info.app_infos;
 
+        assert!(table::contains(app_infos, token_name), ENONEXISTENT_RESERVE);
         let app_liquidity = &mut table::borrow_mut(app_infos, token_name).app_liquidity;
         let cur_app_liquidity = table::remove(app_liquidity, app_id);
 
@@ -243,19 +255,24 @@ module pool_manager::pool_manager {
 
         // update pool infos
         // update token liquidity
+        assert!(table::contains(pool_infos, token_name), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow_mut(pool_infos, token_name);
         assert!(pool_info.reserve.value >= amount, ENOT_ENOUGH_LIQUIDITY);
         pool_info.reserve.value = pool_info.reserve.value - amount;
 
         // update pool liquidity
         let pools_liquidity = &mut pool_info.pools;
+        assert!(table::contains(pools_liquidity, chainid), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow_mut(pools_liquidity, chainid);
 
+        assert!(table::contains(&pool_liquidity.liquidity, pool_address), ENONEXISTENT_RESERVE);
         let liquidity = table::borrow_mut(&mut pool_liquidity.liquidity, pool_address);
         liquidity.value = liquidity.value - amount;
 
         // update user infos
+        assert!(table::contains(user_infos, user_address), ENONEXISTENT_RESERVE);
         let user_liquidity = table::borrow_mut(user_infos, user_address);
+        assert!(table::contains(&user_liquidity.liquidity, token_name), ENONEXISTENT_RESERVE);
         let liquidity = table::borrow_mut(&mut user_liquidity.liquidity, token_name);
         liquidity.value = liquidity.value - amount;
     }
