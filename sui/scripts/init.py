@@ -212,6 +212,14 @@ def force_claim_test_coin(coin_type, amount):
     )
 
 
+def add_test_coins_admin(address):
+    test_coins = load.test_coins_package()
+    test_coins.faucet.add_admin(
+        test_coins.faucet.Faucet[-1],
+        address,
+    )
+
+
 def usdt():
     return f"{CacheObject.TestCoins[-1]}::coins::USDT"
 

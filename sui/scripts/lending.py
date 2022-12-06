@@ -4,7 +4,7 @@ from pprint import pprint
 from sui_brownie import CacheObject, ObjectType
 
 import load
-from init import claim_test_coin, btc, usdt
+from init import btc, usdt, force_claim_test_coin
 from init import coin, pool
 
 
@@ -26,11 +26,12 @@ def portal_supply(coin_type):
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
     account_address = lending_portal.account.account_address
+
     result = lending_portal.lending.supply(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         0,
-        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
         CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
@@ -206,9 +207,8 @@ def core_borrow(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
-    account_address = lending.account.account_address
 
-    lending.wormhole_adapter.borrow(
+    result = lending.wormhole_adapter.borrow(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         wormhole.state.State[-1],
@@ -218,6 +218,7 @@ def core_borrow(vaa):
         0,
         list(base64.b64decode(vaa)),
     )
+    return result['events'][-1]['moveEvent']['fields']['payload']
 
 
 def portal_repay(coin_type):
@@ -334,7 +335,6 @@ def core_liquidate(vaa):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
-    account_address = lending.account.account_address
 
     lending.wormhole_adapter.borrow(
         lending.wormhole_adapter.WormholeAdapater[-1],
@@ -348,11 +348,10 @@ def core_liquidate(vaa):
     )
 
 
-def monitor_supply():
-    claim_test_coin(btc())
-    vaa = portal_supply(btc())
+def monitor_supply(coin, amount=1):
+    force_claim_test_coin(coin, amount)
+    vaa = portal_supply(coin)
     core_supply(vaa)
-    check_app_storage()
 
 
 def monitor_withdraw():
@@ -362,8 +361,9 @@ def monitor_withdraw():
 
 
 def monitor_borrow():
-    vaa = portal_borrow(usdt(), 1)
-    core_borrow(vaa)
+    to_core_vaa = portal_borrow(usdt(), 1e8)
+    to_pool_vaa = core_borrow(to_core_vaa)
+    pool_withdraw(to_pool_vaa, usdt())
 
 
 def monitor_repay():
@@ -392,6 +392,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_withdraw()
+    monitor_borrow()
     check_pool_info()
     check_app_storage()
