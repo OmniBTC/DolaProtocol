@@ -51,7 +51,7 @@ module wormhole_bridge::bridge_pool {
         );
     }
 
-    public entry fun send_deposit<CoinType>(
+    public fun send_deposit<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
@@ -71,7 +71,7 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
-    public entry fun send_withdraw<CoinType>(
+    public fun send_withdraw<CoinType>(
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
@@ -89,7 +89,7 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
-    public entry fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
@@ -113,7 +113,7 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
     }
 
-    public fun receive_withdraw<CoinType>(
+    public entry fun receive_withdraw<CoinType>(
         _wormhole_state: &mut WormholeState,
         pool_state: &mut PoolState,
         pool: &mut Pool<CoinType>,

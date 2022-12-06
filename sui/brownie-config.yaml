@@ -8,3 +8,5 @@ networks:
       wormhole: "0x"
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
+  sui-localnet:
+    node_url: http://127.0.0.1:9000

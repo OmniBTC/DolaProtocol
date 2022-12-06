@@ -11,6 +11,8 @@ module lending::storage {
     use sui::transfer;
     use sui::tx_context::{TxContext, epoch};
 
+    const RAY: u64 = 100000000;
+
     const EONLY_ONE_ADMIN: u64 = 0;
 
     const EALREADY_EXIST_RESERVE: u64 = 1;
@@ -19,13 +21,11 @@ module lending::storage {
 
     const ENONEXISTENT_USERINFO: u64 = 3;
 
-    const EHAS_NOT_OTOKEN: u64 = 4;
+    const EMUST_NONE: u64 = 4;
 
-    const EHAS_NOT_DTOKEN: u64 = 5;
+    const EMUST_SOME: u64 = 5;
 
-    const EMUST_NONE: u64 = 6;
-
-    const EMUST_SOME: u64 = 7;
+    const ENOT_ENOUGH_AMOUNT: u64 = 6;
 
     struct Storage has key {
         id: UID,
@@ -143,6 +143,10 @@ module lending::storage {
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
         ctx: &mut TxContext
     ) {
         assert!(!table::contains(&storage.reserves, token_name), EALREADY_EXIST_RESERVE);
@@ -153,15 +157,15 @@ module lending::storage {
             treasury_factor,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
-            current_borrow_index: 0,
-            current_liquidity_index: 0,
+            current_borrow_index: RAY,
+            current_liquidity_index: RAY,
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {
-                base_borrow_rate: 0,
-                borrow_rate_slope1: 0,
-                borrow_rate_slope2: 0,
-                optimal_utilization: 0
+                base_borrow_rate,
+                borrow_rate_slope1,
+                borrow_rate_slope2,
+                optimal_utilization
             },
             otoken_scaled: ScaledBalance {
                 user_state: table::new<vector<u8>, u64>(ctx),
@@ -175,11 +179,23 @@ module lending::storage {
     }
 
     public fun get_user_collaterals(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
         let user_info = table::borrow(&mut storage.user_infos, user_address);
         user_info.collaterals
     }
 
     public fun get_user_loans(storage: &mut Storage, user_address: vector<u8>): vector<vector<u8>> {
+        if (!table::contains(&mut storage.user_infos, user_address)) {
+            table::add(&mut storage.user_infos, user_address, UserInfo {
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
         let user_info = table::borrow(&mut storage.user_infos, user_address);
         user_info.loans
     }
@@ -191,8 +207,11 @@ module lending::storage {
     ): u64 {
         assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, token_name);
-        assert!(table::contains(&reserve.otoken_scaled.user_state, user_address), EHAS_NOT_OTOKEN);
-        *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.otoken_scaled.user_state, user_address)) {
+            *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+        } else {
+            0
+        }
     }
 
     public fun get_user_scaled_dtoken(
@@ -202,8 +221,11 @@ module lending::storage {
     ): u64 {
         assert!(table::contains(&storage.reserves, token_name), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, token_name);
-        assert!(table::contains(&reserve.dtoken_scaled.user_state, user_address), EHAS_NOT_DTOKEN);
-        *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.dtoken_scaled.user_state, user_address)) {
+            *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
+        } else {
+            0
+        }
     }
 
     public fun get_treasury_factor(
@@ -315,7 +337,8 @@ module lending::storage {
         } else {
             current_amount = 0
         };
-        table::add(&mut otoken_scaled.user_state, user, scaled_amount - current_amount);
+        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        table::add(&mut otoken_scaled.user_state, user, current_amount - scaled_amount);
         otoken_scaled.total_supply = otoken_scaled.total_supply - (scaled_amount as u128);
     }
 
@@ -355,7 +378,8 @@ module lending::storage {
         } else {
             current_amount = 0
         };
-        table::add(&mut dtoken_scaled.user_state, user, scaled_amount - current_amount);
+        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        table::add(&mut dtoken_scaled.user_state, user, current_amount - scaled_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
     }
 

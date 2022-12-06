@@ -1,7 +1,7 @@
 module lending::logic {
     use std::vector;
 
-    use lending::math::{calculate_compounded_interest, calculate_linear_interest};
+    use lending::math::{Self, calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
@@ -66,43 +66,15 @@ module lending::logic {
         token_amount: u64,
         ctx: &mut TxContext
     ) {
-        update_state(cap, storage, token_name, ctx);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
-        mint_otoken(cap, storage, user_address, token_name, token_amount);
         assert!(!is_loan(storage, user_address, token_name), ENOT_LOAN);
+        update_state(cap, storage, token_name, ctx);
+        mint_otoken(cap, storage, user_address, token_name, token_amount);
+        update_interest_rate(cap, pool_manager_info, storage, token_name);
         if (!is_collateral(storage, user_address, token_name)) {
             add_user_collateral(cap, storage, user_address, token_name);
         }
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, vector<u8>, u64) {
-        let index = 0;
-        let data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let dst_chain = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (user_length as u64);
-        let user = vector_slice(&app_payload, index, index + data_len);
-        index = index + data_len;
-
-        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
-
-        (call_type, amount, user, dst_chain)
-    }
 
     public fun execute_withdraw(
         cap: &StorageCap,
@@ -118,16 +90,15 @@ module lending::logic {
         // check otoken amount
         let otoken_amount = user_collateral_balance(storage, user_address, token_name);
         assert!(token_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
-
         burn_otoken(cap, storage, user_address, token_name, token_amount);
+
+        update_interest_rate(cap, pool_manager_info, storage, token_name);
 
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
         if (token_amount == otoken_amount) {
             remove_user_collateral(cap, storage, user_address, token_name);
         }
     }
-
 
     public fun execute_borrow(
         cap: &StorageCap,
@@ -152,7 +123,6 @@ module lending::logic {
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, token_name);
     }
-
 
     public fun execute_repay(
         cap: &StorageCap,
@@ -187,6 +157,35 @@ module lending::logic {
     public fun is_loan(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
         let loans = get_user_loans(storage, user_address);
         vector::contains(&loans, &token_name)
+    }
+
+    public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (user_length as u64);
+        let user = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
+
+        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
+
+        (chain_id, call_type, amount, user)
     }
 
     public fun user_collateral_value(
@@ -307,7 +306,7 @@ module lending::logic {
         token_name: vector<u8>,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
         storage::burn_otoken_scaled(
             cap,
             storage,
@@ -341,7 +340,7 @@ module lending::logic {
         token_name: vector<u8>,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
         storage::burn_dtoken_scaled(
             cap,
             storage,
@@ -363,20 +362,21 @@ module lending::logic {
         let last_update_timestamp = storage::get_last_update_timestamp(storage, token_name);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, token_name);
         let current_borrow_index = storage::get_borrow_index(storage, token_name);
+        let current_liquidity_index = storage::get_liquidity_index(storage, token_name);
 
         let treasury_factor = storage::get_treasury_factor(storage, token_name);
 
-        let new_borrow_index = calculate_compounded_interest(
+        let new_borrow_index = math::ray_mul(calculate_compounded_interest(
             current_timestamp,
             last_update_timestamp,
             storage::get_borrow_rate(storage, token_name)
-        );
+        ), current_borrow_index) ;
 
-        let new_liquidity_index = calculate_linear_interest(
+        let new_liquidity_index = math::ray_mul(calculate_linear_interest(
             current_timestamp,
             last_update_timestamp,
             storage::get_liquidity_rate(storage, token_name)
-        );
+        ), current_liquidity_index);
 
         let mint_to_treasury = ((dtoken_scaled_total_supply *
             ((new_borrow_index - current_borrow_index) as u128) /

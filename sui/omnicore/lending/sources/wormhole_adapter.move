@@ -83,7 +83,7 @@ module lending::wormhole_adapter {
             vaa,
             ctx
         );
-        let (_, token_amount, _, dst_chain) = decode_app_payload(app_payload);
+        let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
         execute_withdraw(
             cap,
             storage,
@@ -129,7 +129,7 @@ module lending::wormhole_adapter {
             ctx
         );
         let user_address = bcs::to_bytes(&user);
-        let (_, token_amount, _, dst_chain) = decode_app_payload(app_payload);
+        let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
         execute_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
         bridge_core::send_withdraw(
             wormhole_state,
@@ -186,7 +186,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, _, dst_chain) = decode_app_payload(app_payload);
+        let (dst_chain, _, _, _) = decode_app_payload(app_payload);
         let withdraw_amount = execute_liquidate(
             cap,
             pool_manager_info,

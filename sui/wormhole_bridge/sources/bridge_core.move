@@ -96,7 +96,6 @@ module wormhole_bridge::bridge_core {
             1,
             // todo! fix address
             to_bytes(&pool),
-            to_bytes(&user),
             amount,
             ctx
         );
@@ -138,7 +137,6 @@ module wormhole_bridge::bridge_core {
             1,
             // todo! fix address
             to_bytes(&deposit_pool),
-            to_bytes(&deposit_user),
             deposit_amount,
             ctx
         );
@@ -177,7 +175,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool_address: address,
-        chainid: u64,
+        chainid: u16,
         // todo: fix address
         user: address,
         amount: u64,
@@ -192,7 +190,6 @@ module wormhole_bridge::bridge_core {
             app_manager::app_id(app_cap),
             chainid,
             to_bytes(&pool_address),
-            to_bytes(&user),
             amount
         );
         let msg = pool::encode_receive_withdraw_payload(pool_address, user, amount, token_name);
