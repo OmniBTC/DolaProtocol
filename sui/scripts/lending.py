@@ -430,6 +430,9 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_supply(usdt())
+    monitor_supply(btc())
+    check_pool_info()
+    check_app_storage()
+    monitor_withdraw()
     check_pool_info()
     check_app_storage()
