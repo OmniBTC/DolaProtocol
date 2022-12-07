@@ -57,6 +57,10 @@ def lending_portal_package(package_id: str = CacheObject.LendingPortal[-1]):
     return sui_package(package_id, "../lending_portal")
 
 
+def external_interfaces_package(package_id: str = CacheObject.ExternalInterfaces[-1]):
+    return sui_package(package_id, "../external_interfaces")
+
+
 def example_proposal_package(package_id: str = CacheObject.ExampleProposal[-1]):
     return sui_package(package_id, "../omnicore/example_proposal")
 

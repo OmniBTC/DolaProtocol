@@ -398,6 +398,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_borrow()
+    # monitor_supply(btc())
     check_pool_info()
     check_app_storage()
