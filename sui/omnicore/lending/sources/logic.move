@@ -5,11 +5,10 @@ module lending::logic {
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
-    use oracle::oracle::{get_token_price, PriceOracle};
+    use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
     use sui::math::pow;
-    use sui::tx_context::{epoch, TxContext};
 
     const RAY: u64 = 100000000;
 
@@ -38,10 +37,9 @@ module lending::logic {
         collateral: vector<u8>,
         loan_token: vector<u8>,
         repay_debt: u64,
-        ctx: &mut TxContext
     ): u64 {
-        update_state(cap, storage, loan_token, ctx);
-        update_state(cap, storage, collateral, ctx);
+        update_state(cap, storage, oracle, loan_token);
+        update_state(cap, storage, oracle, collateral);
         assert!(is_collateral(storage, user_address, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, user_address, loan_token), ENOT_LOAN);
         assert!(!check_health_factor(storage, oracle, user_address), EIS_HEALTH);
@@ -61,13 +59,13 @@ module lending::logic {
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         user_address: vector<u8>,
         token_name: vector<u8>,
         token_amount: u64,
-        ctx: &mut TxContext
     ) {
         assert!(!is_loan(storage, user_address, token_name), ENOT_LOAN);
-        update_state(cap, storage, token_name, ctx);
+        update_state(cap, storage, oracle, token_name);
         mint_otoken(cap, storage, user_address, token_name, token_amount);
         update_interest_rate(cap, pool_manager_info, storage, token_name);
         if (!is_collateral(storage, user_address, token_name)) {
@@ -84,9 +82,8 @@ module lending::logic {
         user_address: vector<u8>,
         token_name: vector<u8>,
         token_amount: u64,
-        ctx: &mut TxContext
     ) {
-        update_state(cap, storage, token_name, ctx);
+        update_state(cap, storage, oracle, token_name);
         // check otoken amount
         let otoken_amount = user_collateral_balance(storage, user_address, token_name);
         assert!(token_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
@@ -108,9 +105,8 @@ module lending::logic {
         user_address: vector<u8>,
         token_name: vector<u8>,
         token_amount: u64,
-        ctx: &mut TxContext
     ) {
-        update_state(cap, storage, token_name, ctx);
+        update_state(cap, storage, oracle, token_name);
 
         assert!(!is_collateral(storage, user_address, token_name), ECOLLATERAL_AS_LOAN);
         if (!is_loan(storage, user_address, token_name)) {
@@ -128,12 +124,12 @@ module lending::logic {
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         user_address: vector<u8>,
         token_name: vector<u8>,
         token_amount: u64,
-        ctx: &mut TxContext
     ) {
-        update_state(cap, storage, token_name, ctx);
+        update_state(cap, storage, oracle, token_name);
         let debt = user_loan_balance(storage, user_address, token_name);
         let repay_debt = if (debt > token_amount) { token_amount } else { debt };
         burn_dtoken(cap, storage, user_address, token_name, repay_debt);
@@ -353,11 +349,11 @@ module lending::logic {
     public fun update_state(
         cap: &StorageCap,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         token_name: vector<u8>,
-        ctx: &mut TxContext
     ) {
-        // todo: use timestamp after sui implementation
-        let current_timestamp = epoch(ctx);
+        // todo: use sui timestamp
+        let current_timestamp = get_timestamp(oracle);
 
         let last_update_timestamp = storage::get_last_update_timestamp(storage, token_name);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, token_name);

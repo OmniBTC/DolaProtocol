@@ -2,11 +2,7 @@ module lending::math {
 
     const RAY: u64 = 100000000;
 
-    /// todo: use timestamp after sui implementation
     const SECONDS_PER_YEAR: u64 = 31536000;
-
-    /// One epoch equals approximately 24 hours
-    const EPOCH_PER_YEAR: u64 = 365;
 
     public fun ray_mul(a: u64, b: u64): u64 {
         ((a as u128) * (b as u128) / (RAY as u128) as u64)
@@ -39,16 +35,16 @@ module lending::math {
             exp_minus_two = 0;
         };
 
-        base_power_two = ray_mul(rate, rate) / (EPOCH_PER_YEAR * EPOCH_PER_YEAR);
+        base_power_two = ray_mul(rate, rate) / (SECONDS_PER_YEAR * SECONDS_PER_YEAR);
 
-        base_power_three = ray_mul(base_power_two, rate) / EPOCH_PER_YEAR;
+        base_power_three = ray_mul(base_power_two, rate) / SECONDS_PER_YEAR;
 
         let second_term = exp * exp_minus_one * base_power_two;
         second_term = second_term / 2;
         let third_term = exp * exp_minus_one * exp_minus_two * base_power_three;
         third_term = third_term / 6;
 
-        RAY + (rate * exp) / EPOCH_PER_YEAR + second_term + third_term
+        RAY + (rate * exp) / SECONDS_PER_YEAR + second_term + third_term
     }
 
     public fun calculate_linear_interest(
@@ -57,7 +53,7 @@ module lending::math {
         rate: u64,
     ): u64 {
         let result = rate * (current_timestamp - last_update_timestamp);
-        result = result / EPOCH_PER_YEAR;
+        result = result / SECONDS_PER_YEAR;
 
         RAY + result
     }
