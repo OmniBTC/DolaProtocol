@@ -15,10 +15,6 @@ def sui_package(package_id: str = None, package_path: Union[Path, str] = None):
     )
 
 
-def time_oracle_package(package_id: str = CacheObject.Serde[-1]):
-    return sui_package(package_id, "../time_oracle")
-
-
 def serde_package(package_id: str = CacheObject.Serde[-1]):
     return sui_package(package_id, "../serde")
 
