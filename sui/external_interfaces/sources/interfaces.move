@@ -68,7 +68,7 @@ module external_interfaces::interfaces {
         reason: Option<String>
     }
 
-    public entry fun get_dora_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>) {
+    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>) {
         let token_liquidity = token_liquidity(pool_manager_info, token_name);
         emit(TokenLiquidityInfo {
             token_name,

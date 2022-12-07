@@ -2,14 +2,14 @@ import init
 import load
 
 
-def get_dora_token_liquidity(token_name):
+def get_dola_token_liquidity(token_name):
     """
-    public entry fun get_dora_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>)
+    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>)
     :return:
     """
     external_interfaces = load.external_interfaces_package()
     pool_manager = load.pool_manager_package()
-    result = external_interfaces.interfaces.get_dora_token_liquidity.simulate(
+    result = external_interfaces.interfaces.get_dola_token_liquidity.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
