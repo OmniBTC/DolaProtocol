@@ -9,6 +9,7 @@ wormhole_bridge = "0x0"
 governance = "0x0"
 lending = "0x0"
 app_manager = "0x0"
+oracle = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
@@ -30,3 +31,6 @@ local = "../pool_manager"
 
 [dependencies.Lending]
 local = "../lending"
+
+[dependencies.Oracle]
+local = "../oracle"

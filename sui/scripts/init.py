@@ -1,4 +1,5 @@
 import base64
+import time
 
 from sui_brownie import CacheObject
 
@@ -69,6 +70,7 @@ def register_token_price(token_name, price, decimal):
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
+        timestamp: u64,
         token_name: vector<u8>,
         token_price: u64,
         price_decimal: u8
@@ -80,6 +82,7 @@ def register_token_price(token_name, price, decimal):
     oracle.oracle.register_token_price(
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
+        int(time.time()),
         list(bytes(token_name.strip("0x"), 'ascii')),
         price,
         decimal
@@ -165,6 +168,7 @@ def vote_register_new_reserve_proposal(token_name):
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
+        oracle: &mut PriceOracle,
         token_name: vector<u8>,
         treasury: address,
         treasury_factor: u64,
@@ -178,10 +182,12 @@ def vote_register_new_reserve_proposal(token_name):
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
     lending = load.lending_package()
+    oracle = load.oracle_package()
     example_proposal.init_lending_storage.vote_register_new_reserve_proposal(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
+        oracle.oracle.PriceOracle[-1],
         list(bytes(token_name.strip("0x"), 'ascii')),
         example_proposal.account.account_address,
         int(0.01 * RAY),

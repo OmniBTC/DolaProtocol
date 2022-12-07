@@ -1,6 +1,8 @@
 module example_proposal::init_lending_storage {
     use std::option;
 
+    use oracle::oracle::PriceOracle;
+
     use app_manager::app_manager::{Self, AppManagerCap, TotalAppInfo};
     use governance::governance::{Self, Governance, GovernanceExternalCap, VoteExternalCap};
     use lending::storage::{StorageAdminCap, Storage};
@@ -60,6 +62,7 @@ module example_proposal::init_lending_storage {
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
+        oracle: &mut PriceOracle,
         token_name: vector<u8>,
         treasury: address,
         treasury_factor: u64,
@@ -79,6 +82,7 @@ module example_proposal::init_lending_storage {
             lending::storage::register_new_reserve(
                 external_cap,
                 storage,
+                oracle,
                 token_name,
                 treasury,
                 treasury_factor,

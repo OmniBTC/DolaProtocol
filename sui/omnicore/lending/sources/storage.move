@@ -5,11 +5,12 @@ module lending::storage {
 
     use app_manager::app_manager::{Self, AppCap};
     use governance::governance::{Self, GovernanceExternalCap};
+    use oracle::oracle::{PriceOracle, get_timestamp};
     use sui::bcs;
     use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::{TxContext, epoch};
+    use sui::tx_context::TxContext;
 
     const RAY: u64 = 100000000;
 
@@ -48,7 +49,7 @@ module lending::storage {
         // todo! add some flags
         flag: bool,
         // Timestamp of last update
-        // todo: use timestamp after sui implementation, now use epoch
+        // todo: use sui timestamp
         last_update_timestamp: u64,
         // Treasury
         treasury: address,
@@ -138,6 +139,7 @@ module lending::storage {
     public fun register_new_reserve(
         _: &mut StorageAdminCap,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         token_name: vector<u8>,
         treasury: address,
         treasury_factor: u64,
@@ -152,7 +154,7 @@ module lending::storage {
         assert!(!table::contains(&storage.reserves, token_name), EALREADY_EXIST_RESERVE);
         table::add(&mut storage.reserves, token_name, ReserveData {
             flag: true,
-            last_update_timestamp: epoch(ctx),
+            last_update_timestamp: get_timestamp(oracle),
             treasury,
             treasury_factor,
             current_borrow_rate: 0,

@@ -45,6 +45,7 @@ def core_supply(vaa):
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
         storage: &mut Storage,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -56,12 +57,14 @@ def core_supply(vaa):
     pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
+    oracle = load.oracle_package()
 
     lending.wormhole_adapter.supply(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
+        oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         list(base64.b64decode(vaa)),
     )
@@ -256,6 +259,7 @@ def core_repay(vaa):
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
         storage: &mut Storage,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -266,12 +270,14 @@ def core_repay(vaa):
     pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
+    oracle = load.oracle_package()
 
     lending.wormhole_adapter.repay(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
+        oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         list(base64.b64decode(vaa))
     )

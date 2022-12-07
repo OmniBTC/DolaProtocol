@@ -16,6 +16,8 @@ module oracle::oracle {
 
     struct PriceOracle has key {
         id: UID,
+        // todo: use sui timestamp
+        timestamp: u64,
         // token name => price
         price_oracles: Table<vector<u8>, Price>
     }
@@ -29,6 +31,7 @@ module oracle::oracle {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
+            timestamp: 0,
             price_oracles: table::new(ctx)
         });
         transfer::transfer(OracleCap {
@@ -39,10 +42,12 @@ module oracle::oracle {
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
+        timestamp: u64,
         token_name: vector<u8>,
         token_price: u64,
         price_decimal: u8
     ) {
+        price_oracle.timestamp = timestamp;
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, token_name), EALREADY_EXIST_ORACLE);
         table::add(price_oracles, token_name, Price {
@@ -68,5 +73,13 @@ module oracle::oracle {
         assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, token_name);
         (price.value, price.decimal)
+    }
+
+    public entry fun update_timestamp(_: &OracleCap, oracle: &mut PriceOracle, timestamp: u64) {
+        oracle.timestamp = timestamp;
+    }
+
+    public fun get_timestamp(oracle: &mut PriceOracle): u64 {
+        oracle.timestamp
     }
 }
