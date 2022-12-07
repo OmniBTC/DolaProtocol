@@ -17,6 +17,9 @@ module wormhole_bridge::bridge_core {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
+    use sui::table;
+    use sui::table::Table;
+    use sui::event;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -29,7 +32,13 @@ module wormhole_bridge::bridge_core {
         pool_manager_cap: Option<PoolManagerCap>,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
-        registered_emitters: VecMap<u16, ExternalAddress>
+        registered_emitters: VecMap<u16, ExternalAddress>,
+        // todo! Deleta after wormhole running
+        cache_vaas: Table<u64, vector<u8>>
+    }
+
+    struct VaaEvent has copy, drop {
+        vaa: vector<u8>
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
@@ -39,7 +48,8 @@ module wormhole_bridge::bridge_core {
                 pool_manager_cap: option::none(),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
-                registered_emitters: vec_map::empty()
+                registered_emitters: vec_map::empty(),
+                cache_vaas: table::new(ctx)
             }
         );
     }
@@ -194,5 +204,16 @@ module wormhole_bridge::bridge_core {
         );
         let msg = pool::encode_receive_withdraw_payload(pool_address, user, amount, token_name);
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&core_state.cache_vaas) + 1;
+        table::add(&mut core_state.cache_vaas, index, msg);
+    }
+
+    public entry fun read_vaa(core_state: &CoreState, index: u64) {
+        if (index == 0) {
+            index = table::length(&core_state.cache_vaas);
+        };
+        event::emit(VaaEvent {
+            vaa: *table::borrow(&core_state.cache_vaas, index)
+        })
     }
 }
