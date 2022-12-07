@@ -163,10 +163,6 @@ module lending::logic {
         let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
@@ -177,6 +173,10 @@ module lending::logic {
 
         data_len = (user_length as u64);
         let user = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);

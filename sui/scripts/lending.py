@@ -366,6 +366,26 @@ def core_liquidate(vaa):
     )
 
 
+def export_objects():
+    # Package id
+    lending_portal = load.lending_portal_package()
+    print(f"lending_portal:{lending_portal.package_id}")
+
+    # objects
+    wormhole_bridge = load.wormhole_bridge_package()
+    wormhole = load.wormhole_package()
+    data = {
+        "PoolState": wormhole_bridge.bridge_pool.PoolState[-1],
+        "WormholeState": wormhole.state.State[-1],
+    }
+    coin_types = [btc(), usdt()]
+    for k in coin_types:
+        dk = f'Pool<{k.split("::")[-1]}>'
+        data[dk] = CacheObject[ObjectType.from_type(pool(k))]["Shared"][-1]
+
+    pprint(data)
+
+
 def monitor_supply(coin, amount=1):
     force_claim_test_coin(coin, amount)
     vaa = portal_supply(coin)
@@ -410,6 +430,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_borrow()
+    monitor_supply(usdt())
     check_pool_info()
     check_app_storage()

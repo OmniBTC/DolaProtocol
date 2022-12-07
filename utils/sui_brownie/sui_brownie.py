@@ -1313,6 +1313,9 @@ class SuiPackage:
         :return:
         """
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
+        # Simulate before execute
+        self.dry_run_transaction(result["txBytes"])
+        # Execute
         return self.execute_transaction(result["txBytes"])
 
     def simulate_transaction(

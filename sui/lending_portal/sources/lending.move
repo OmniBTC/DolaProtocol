@@ -110,10 +110,10 @@ module lending_portal::lending {
     public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u16): vector<u8> {
         let payload = vector::empty<u8>();
         serialize_u16(&mut payload, dst_chain);
-        serialize_u8(&mut payload, call_type);
         serialize_u64(&mut payload, amount);
         serialize_u16(&mut payload, (vector::length(&user) as u16));
         serialize_vector(&mut payload, user);
+        serialize_u8(&mut payload, call_type);
         payload
     }
 
@@ -123,10 +123,6 @@ module lending_portal::lending {
 
         data_len = 2;
         let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
@@ -139,6 +135,10 @@ module lending_portal::lending {
 
         data_len = (user_length as u64);
         let user = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
