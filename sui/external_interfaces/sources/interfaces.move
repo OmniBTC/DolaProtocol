@@ -11,7 +11,7 @@ module external_interfaces::interfaces {
     use oracle::oracle::{PriceOracle, get_token_price};
     use pool_manager::pool_manager::{token_liquidity, PoolManagerInfo, get_app_liquidity};
     use sui::event::emit;
-    use sui::math::pow;
+    use sui::math::{pow, min};
 
     const RAY: u64 = 100000000;
 
@@ -183,6 +183,7 @@ module external_interfaces::interfaces {
     }
 
     public entry fun get_user_allowed_borrow(
+        pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         borrow_token: vector<u8>,
@@ -201,6 +202,16 @@ module external_interfaces::interfaces {
         let (price, decimal) = get_token_price(oracle, borrow_token);
         let can_borrow_value = user_total_collateral_value - user_total_loan_value;
         let borrow_amount = can_borrow_value * pow(10, decimal) / price;
+        let reserve = get_app_liquidity(pool_manager_info, borrow_token, get_app_id(storage));
+        if (reserve == 0) {
+            emit(UserAllowedBorrow {
+                borrow_token,
+                borrow_amount: 0,
+                reason: option::some(string(b"Not enough liquidity to borrow"))
+            });
+            return
+        };
+        borrow_amount = min(borrow_amount, reserve as u64);
         emit(UserAllowedBorrow {
             borrow_token,
             borrow_amount,

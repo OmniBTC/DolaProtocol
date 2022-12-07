@@ -127,7 +127,8 @@ def get_reserve_info(token_name):
 
 def get_user_allowed_borrow(user, token_name):
     """
-    public entry fun get_user_borrow_allowed(
+    public entry fun get_user_allowed_borrow(
+        pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         borrow_token: vector<u8>,
@@ -137,15 +138,17 @@ def get_user_allowed_borrow(user, token_name):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
+    pool_manager = load.pool_manager_package()
     lending = load.lending_package()
     oracle = load.oracle_package()
     result = external_interfaces.interfaces.get_user_allowed_borrow.simulate(
+        pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
-    
+
     return result['events'][-1]['moveEvent']['fields']
 
 
