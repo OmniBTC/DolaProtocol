@@ -145,8 +145,8 @@ def get_user_allowed_borrow(user, token_name):
         pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        user,
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.strip("0x"), 'ascii')),
+        user
     )
 
     return result['events'][-1]['moveEvent']['fields']
