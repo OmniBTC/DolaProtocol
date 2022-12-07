@@ -2,8 +2,8 @@ import time
 
 import ccxt
 
-from scripts import init
-from scripts import load
+import init
+import load
 
 
 def get_prices(symbols=("BTC/USDT", "ETH/USDT")):

@@ -42,10 +42,12 @@ module oracle::oracle {
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
+        timestamp: u64,
         token_name: vector<u8>,
         token_price: u64,
         price_decimal: u8
     ) {
+        price_oracle.timestamp = timestamp;
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, token_name), EALREADY_EXIST_ORACLE);
         table::add(price_oracles, token_name, Price {

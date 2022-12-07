@@ -137,7 +137,8 @@ example_proposal_package.publish_package(replace_address=dict(
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
     lending=lending_package.package_id,
-    app_manager=app_manager_package.package_id
+    app_manager=app_manager_package.package_id,
+    oracle=oracle_package.package_id
 ))
 
 test_coins_package = sui_brownie.SuiPackage(

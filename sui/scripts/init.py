@@ -1,4 +1,5 @@
 import base64
+import time
 
 from sui_brownie import CacheObject
 
@@ -69,6 +70,7 @@ def register_token_price(token_name, price, decimal):
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
+        timestamp: u64,
         token_name: vector<u8>,
         token_price: u64,
         price_decimal: u8
@@ -80,6 +82,7 @@ def register_token_price(token_name, price, decimal):
     oracle.oracle.register_token_price(
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
+        int(time.time()),
         list(bytes(token_name.strip("0x"), 'ascii')),
         price,
         decimal
