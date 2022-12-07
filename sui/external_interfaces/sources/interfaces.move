@@ -1,15 +1,17 @@
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
-
+    use std::ascii::{String, string};
+    use std::option::{Self, Option};
     use std::vector;
 
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply};
+    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral};
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id};
-    use oracle::oracle::PriceOracle;
+    use oracle::oracle::{PriceOracle, get_token_price};
     use pool_manager::pool_manager::{token_liquidity, PoolManagerInfo, get_app_liquidity};
     use sui::event::emit;
+    use sui::math::pow;
 
     const RAY: u64 = 100000000;
 
@@ -57,7 +59,13 @@ module external_interfaces::interfaces {
     struct UserDebtInfo has copy, drop {
         token_name: vector<u8>,
         debt_amount: u64,
-        debt_value: u64,
+        debt_value: u64
+    }
+
+    struct UserAllowedBorrow has copy, drop {
+        borrow_token: vector<u8>,
+        borrow_amount: u64,
+        reason: Option<String>
     }
 
     public entry fun get_dora_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>) {
@@ -177,6 +185,32 @@ module external_interfaces::interfaces {
             reserve,
             debt,
             utilization_rate
+        })
+    }
+
+    public entry fun get_user_allowed_borrow(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        borrow_token: vector<u8>,
+        user_address: vector<u8>
+    ) {
+        if (is_collateral(storage, user_address, borrow_token)) {
+            emit(UserAllowedBorrow {
+                borrow_token,
+                borrow_amount: 0,
+                reason: option::some(string(b"Borrowed token is collateral"))
+            });
+            return
+        };
+        let user_total_collateral_value = user_total_collateral_value(storage, oracle, user_address);
+        let user_total_loan_value = user_total_loan_value(storage, oracle, user_address);
+        let (price, decimal) = get_token_price(oracle, borrow_token);
+        let can_borrow_value = user_total_collateral_value - user_total_loan_value;
+        let borrow_amount = can_borrow_value * pow(10, decimal) / price;
+        emit(UserAllowedBorrow {
+            borrow_token,
+            borrow_amount,
+            reason: option::none()
         })
     }
 }
