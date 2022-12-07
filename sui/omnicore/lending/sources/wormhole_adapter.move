@@ -48,6 +48,7 @@ module lending::wormhole_adapter {
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
         storage: &mut Storage,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -61,7 +62,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        execute_supply(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
+        execute_supply(cap, pool_manager_info, storage, oracle, bcs::to_bytes(&user), token_name, amount);
     }
 
     public entry fun withdraw(
@@ -92,7 +93,6 @@ module lending::wormhole_adapter {
             bcs::to_bytes(&user),
             token_name,
             token_amount,
-            ctx
         );
         bridge_core::send_withdraw(
             wormhole_state,
@@ -130,7 +130,7 @@ module lending::wormhole_adapter {
         );
         let user_address = bcs::to_bytes(&user);
         let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
-        execute_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount, ctx);
+        execute_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount);
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -150,6 +150,7 @@ module lending::wormhole_adapter {
         pool_manager_info: &mut PoolManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
         storage: &mut Storage,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -163,7 +164,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        execute_repay(cap, pool_manager_info, storage, bcs::to_bytes(&user), token_name, amount, ctx);
+        execute_repay(cap, pool_manager_info, storage, oracle, bcs::to_bytes(&user), token_name, amount);
     }
 
     public entry fun liquidate(
@@ -196,7 +197,6 @@ module lending::wormhole_adapter {
             withdraw_token,
             deposit_token,
             deposit_amount,
-            ctx,
         );
 
         bridge_core::send_withdraw(
