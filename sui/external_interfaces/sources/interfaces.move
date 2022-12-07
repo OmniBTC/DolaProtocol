@@ -37,12 +37,6 @@ module external_interfaces::interfaces {
         utilization_rate: u64
     }
 
-    struct LendingUserInfo has copy, drop {
-        healeth_factor: u64,
-        collateral: UserCollateralInfo,
-        debt: UserDebtInfo,
-    }
-
     struct UserLendingInfo has copy, drop {
         collateral_infos: vector<UserCollateralInfo>,
         total_collateral_value: u64,
