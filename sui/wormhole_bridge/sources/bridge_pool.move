@@ -32,6 +32,13 @@ module wormhole_bridge::bridge_pool {
         vaa: vector<u8>
     }
 
+    struct VaaReciveWithdrawEvent has copy, drop {
+        pool_address: address,
+        user: address,
+        amount: u64,
+        token_name: vector<u8>
+    }
+
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
         transfer::share_object(
             PoolState {
@@ -158,6 +165,17 @@ module wormhole_bridge::bridge_pool {
         };
         event::emit(VaaEvent {
             vaa: *table::borrow(&pool_state.cache_vaas, index)
+        })
+    }
+
+    public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
+        let (pool_address, user, amount, token_name) =
+            pool::decode_receive_withdraw_payload(vaa);
+        event::emit(VaaReciveWithdrawEvent {
+            pool_address,
+            user,
+            amount,
+            token_name
         })
     }
 }
