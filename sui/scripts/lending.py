@@ -418,7 +418,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    export_objects()
-    # monitor_borrow()
-    # check_pool_info()
-    # check_app_storage()
+    monitor_supply(usdt())
+    check_pool_info()
+    check_app_storage()
