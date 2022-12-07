@@ -1,0 +1,24 @@
+[package]
+name = "ExternalInterfaces"
+version = "0.0.1"
+
+[addresses]
+external_interfaces = "0x0"
+pool_manager = "0x0"
+lending = "0x0"
+oracle = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "79100a5687881eef489f347629bf5b19e417cc8e"
+
+[dependencies.PoolManager]
+local = "../omnicore/pool_manager"
+
+[dependencies.Lending]
+local = "../omnicore/lending"
+
+[dependencies.Oracle]
+local = "../omnicore/oracle"
