@@ -27,7 +27,7 @@ def portal_supply(coin_type):
     wormhole = load.wormhole_package()
     account_address = lending_portal.account.account_address
 
-    result = lending_portal.lending.supply(
+    lending_portal.lending.supply(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         0,
@@ -35,7 +35,9 @@ def portal_supply(coin_type):
         CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def core_supply(vaa):
@@ -98,7 +100,9 @@ def portal_withdraw(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def pool_withdraw(vaa, coin_type):
@@ -156,7 +160,9 @@ def core_withdraw(vaa):
         0,
         list(base64.b64decode(vaa)),
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_core.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def portal_borrow(coin_type, amount):
@@ -187,7 +193,9 @@ def portal_borrow(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def core_borrow(vaa):
@@ -221,7 +229,9 @@ def core_borrow(vaa):
         0,
         list(base64.b64decode(vaa)),
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_core.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def portal_repay(coin_type):
@@ -249,7 +259,9 @@ def portal_repay(coin_type):
         CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
         ty_args=[coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], 0
+    )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
 def core_repay(vaa):
