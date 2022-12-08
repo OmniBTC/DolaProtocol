@@ -369,17 +369,28 @@ def core_liquidate(vaa):
 def export_objects():
     # Package id
     lending_portal = load.lending_portal_package()
-    print(f"lending_portal:{lending_portal.package_id}")
+    external_interfaces = load.external_interfaces_package()
+    print(f"lending_portal={lending_portal.package_id}")
+    print(f"external_interfaces={external_interfaces.package_id}")
 
     # objects
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
+    oracle = load.oracle_package()
+    lending = load.lending_package()
+    pool_manager = load.pool_manager_package()
+
     data = {
         "PoolState": wormhole_bridge.bridge_pool.PoolState[-1],
         "WormholeState": wormhole.state.State[-1],
+        "PriceOracle": oracle.oracle.PriceOracle[-1],
+        "Storage": lending.storage.Storage[-1],
+        "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1]
     }
     coin_types = [btc(), usdt()]
     for k in coin_types:
+        coin_key = k.split("::")[-1]
+        data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
         data[dk] = CacheObject[ObjectType.from_type(pool(k))]["Shared"][-1]
 
@@ -430,6 +441,4 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_supply(usdt(), 10000)
-    check_pool_info()
-    check_app_storage()
+    export_objects()
