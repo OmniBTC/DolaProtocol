@@ -124,6 +124,20 @@ lending_portal_package.publish_package(replace_address=dict(
     omnipool=omnipool_package.package_id
 ))
 
+external_interfaces_package = sui_brownie.SuiPackage(
+    brownie_config=Path("../"),
+    network="sui-devnet",
+    is_compile=True,
+    package_id=None,
+    package_path="../external_interfaces"
+)
+
+external_interfaces_package.publish_package(replace_address=dict(
+    pool_manager=pool_manager_package.package_id,
+    lending=lending_package.package_id,
+    oracle=oracle_package.package_id
+))
+
 example_proposal_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
     network="sui-devnet",
@@ -162,5 +176,6 @@ print(f"wormhole={wormhole_package.package_id}")
 print(f"wormhole_bridge={wormhole_bridge_package.package_id}")
 print(f"lending={lending_package.package_id}")
 print(f"lending_portal={lending_portal_package.package_id}")
+print(f"external_interfaces={external_interfaces_package.package_id}")
 print(f"example_proposal={example_proposal_package.package_id}")
 print(f"test_coins={test_coins_package.package_id}")

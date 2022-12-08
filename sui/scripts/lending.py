@@ -398,10 +398,10 @@ def monitor_withdraw():
     pool_withdraw(to_pool_vaa, btc())
 
 
-def monitor_borrow():
-    to_core_vaa = portal_borrow(usdt(), 1e8)
+def monitor_borrow(coin, amount=1):
+    to_core_vaa = portal_borrow(coin, amount * 1e8)
     to_pool_vaa = core_borrow(to_core_vaa)
-    pool_withdraw(to_pool_vaa, usdt())
+    pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_repay():
@@ -430,9 +430,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_supply(btc())
-    check_pool_info()
-    check_app_storage()
-    monitor_withdraw()
+    monitor_borrow(usdt(), 10000)
     check_pool_info()
     check_app_storage()
