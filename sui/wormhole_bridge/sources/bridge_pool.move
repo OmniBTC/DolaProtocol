@@ -1,9 +1,11 @@
 module wormhole_bridge::bridge_pool {
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
+    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
@@ -12,9 +14,6 @@ module wormhole_bridge::bridge_pool {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
-    use sui::table::Table;
-    use sui::table;
-    use sui::event;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -29,7 +28,8 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaEvent has copy, drop {
-        vaa: vector<u8>
+        vaa: vector<u8>,
+        nonce: u64
     }
 
     struct VaaReciveWithdrawEvent has copy, drop {
@@ -164,7 +164,8 @@ module wormhole_bridge::bridge_pool {
             index = table::length(&pool_state.cache_vaas);
         };
         event::emit(VaaEvent {
-            vaa: *table::borrow(&pool_state.cache_vaas, index)
+            vaa: *table::borrow(&pool_state.cache_vaas, index),
+            nonce: index
         })
     }
 

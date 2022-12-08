@@ -83,7 +83,7 @@ def register_token_price(token_name, price, decimal):
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
         int(time.time()),
-        list(bytes(token_name.strip("0x"), 'ascii')),
+        list(bytes(token_name.replace("0x", ""), 'ascii')),
         price,
         decimal
     )
@@ -188,7 +188,7 @@ def vote_register_new_reserve_proposal(token_name):
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
-        list(bytes(token_name.strip("0x"), 'ascii')),
+        list(bytes(token_name.replace("0x", ""), 'ascii')),
         example_proposal.account.account_address,
         int(0.01 * RAY),
         int(0.01 * RAY),
@@ -282,10 +282,6 @@ def main():
 
     vote_storage_cap_proposal()
     # register reserves
-    create_vote_external_cap(hash)
-
-    vote_register_new_reserve_proposal(sui())
-
     create_vote_external_cap(hash)
 
     vote_register_new_reserve_proposal(usdt())

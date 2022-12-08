@@ -161,7 +161,7 @@ def core_withdraw(vaa):
         list(base64.b64decode(vaa)),
     )
     return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
+        wormhole_bridge.bridge_core.CoreState[-1], 0
     )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
@@ -230,7 +230,7 @@ def core_borrow(vaa):
         list(base64.b64decode(vaa)),
     )
     return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
+        wormhole_bridge.bridge_core.CoreState[-1], 0
     )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
@@ -389,24 +389,24 @@ def export_objects():
 def monitor_supply(coin, amount=1):
     force_claim_test_coin(coin, amount)
     vaa = portal_supply(coin)
-    core_supply(vaa)
+    # core_supply(vaa)
 
 
 def monitor_withdraw():
     to_core_vaa = portal_withdraw(btc(), 1e8)
-    to_pool_vaa = core_withdraw(to_core_vaa)
-    pool_withdraw(to_pool_vaa, btc())
+    # to_pool_vaa = core_withdraw(to_core_vaa)
+    # pool_withdraw(to_pool_vaa, btc())
 
 
 def monitor_borrow(coin, amount=1):
     to_core_vaa = portal_borrow(coin, amount * 1e8)
-    to_pool_vaa = core_borrow(to_core_vaa)
-    pool_withdraw(to_pool_vaa, coin)
+    # to_pool_vaa = core_borrow(to_core_vaa)
+    # pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_repay():
     vaa = portal_repay(usdt())
-    core_repay(vaa)
+    # core_repay(vaa)
 
 
 def monitor_liquidate():
@@ -430,6 +430,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_borrow(usdt(), 10000)
+    monitor_supply(usdt(), 10000)
     check_pool_info()
     check_app_storage()
