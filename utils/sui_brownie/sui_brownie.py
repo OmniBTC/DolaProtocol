@@ -544,7 +544,7 @@ class SuiPackage:
         # current aptos network config
         self.network_config = self.config["networks"][network]
         self.base_url = self.config["networks"][network]["node_url"]
-        self.client = HttpClient(timeout=10)
+        self.client = HttpClient(timeout=30)
 
         # # # # # load move toml
         assert self.package_path.joinpath(
@@ -695,6 +695,7 @@ class SuiPackage:
             output[k].store()
         return output
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
             gas_budget=100000,
