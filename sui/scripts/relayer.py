@@ -2,11 +2,13 @@
 # @Author  : WeiDai
 # @FileName: relayer.py
 import base64
+import hashlib
 import json
 import time
 from collections import OrderedDict
 from pathlib import Path
 
+from parallelism import ProcessExecutor
 from scripts import load
 from scripts.init import pool
 from scripts.lending import core_supply, core_withdraw, core_borrow, core_repay
@@ -23,7 +25,7 @@ def read_json(file) -> dict:
 
 def write_json(file, data: dict):
     with open(file, "w") as f:
-        return json.dump(data, f)
+        return json.dump(data, f, indent=1, separators=(',', ':'))
 
 
 class BridgeDict(OrderedDict):
@@ -54,7 +56,8 @@ def bridge_pool():
         vaa = wormhole_bridge.bridge_pool.read_vaa.simulate(
             wormhole_bridge.bridge_pool.PoolState[-1], 0
         )["events"][-1]["moveEvent"]["fields"]["vaa"]
-        if hash(vaa) not in data:
+        dk = str(hashlib.sha3_256(vaa.encode()).digest().hex())
+        if dk not in data:
             decode_vaa = list(base64.b64decode(vaa))
             if decode_vaa[-1] == 0:
                 core_supply(vaa)
@@ -64,7 +67,7 @@ def bridge_pool():
                 core_borrow(vaa)
             elif decode_vaa[-1] == 3:
                 core_repay(vaa)
-            data[hash(vaa)] = vaa
+            data[dk] = vaa
         time.sleep(60)
 
 
@@ -79,7 +82,8 @@ def bridge_core():
         token_name = wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
             decode_vaa
         )["events"][-1]["moveEvent"]["fields"]["token_name"]
-        if hash(vaa) not in data:
+        dk = str(hashlib.sha3_256(vaa.encode()).digest().hex())
+        if dk not in data:
             wormhole = load.wormhole_package()
             wormhole_bridge = load.wormhole_bridge_package()
             account_address = wormhole_bridge.account.account_address
@@ -90,4 +94,10 @@ def bridge_core():
                 list(base64.b64decode(vaa)),
                 ty_args=[token_name]
             )
+            data[dk] = vaa
         time.sleep(60)
+
+
+def main():
+    pt = ProcessExecutor(executor=2)
+    pt.run([bridge_pool, bridge_core])
