@@ -211,7 +211,7 @@ module external_interfaces::interfaces {
             });
             return
         };
-        borrow_amount = min(borrow_amount, reserve as u64);
+        borrow_amount = min(borrow_amount, (reserve as u64));
         emit(UserAllowedBorrow {
             borrow_token,
             borrow_amount,

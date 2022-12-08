@@ -1,3 +1,5 @@
+import pprint
+
 import init
 import load
 
@@ -14,7 +16,7 @@ def get_dola_token_liquidity(token_name):
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
 
-    return result['events'][-1]['moveEvent']['fields']['token_liquidity']
+    return result['events'][-1]['moveEvent']['fields']
 
 
 def get_app_token_liquidity(app_id, token_name):
@@ -34,7 +36,7 @@ def get_app_token_liquidity(app_id, token_name):
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
 
-    return result['events'][-1]['moveEvent']['fields']['token_liquidity']
+    return result['events'][-1]['moveEvent']['fields']
 
 
 def get_user_token_debt(user, token_name):
@@ -58,9 +60,7 @@ def get_user_token_debt(user, token_name):
         user,
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
-    debt_amount = result['events'][-1]['moveEvent']['fields']['debt_amount']
-    debt_value = result['events'][-1]['moveEvent']['fields']['debt_value'] / 1e8
-    return (debt_amount, debt_value)
+    return result['events'][-1]['moveEvent']['fields']
 
 
 def get_user_collateral(user, token_name):
@@ -82,9 +82,8 @@ def get_user_collateral(user, token_name):
         user,
         list(bytes(token_name.strip("0x"), 'ascii'))
     )
-    collateral_amount = result['events'][-1]['moveEvent']['fields']['collateral_amount']
-    collateral_value = result['events'][-1]['moveEvent']['fields']['collateral_value'] / 1e8
-    return (collateral_amount, collateral_value)
+
+    return result['events'][-1]['moveEvent']['fields']
 
 
 def get_user_lending_info(user):
@@ -153,4 +152,4 @@ def get_user_allowed_borrow(user, token_name):
 
 
 if __name__ == "__main__":
-    print(get_reserve_info(init.btc()))
+    pprint.pp(get_dola_token_liquidity(init.usdt()))
