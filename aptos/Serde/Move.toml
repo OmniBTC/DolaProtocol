@@ -7,6 +7,9 @@ std = "0x1"
 aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
+serde = "_"
+
+[dev-addresses]
 serde = "0x11"
 
 [dependencies.AptosFramework]

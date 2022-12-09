@@ -3,23 +3,29 @@ name = "WormholeBridge"
 version = "0.0.1"
 
 [addresses]
+std = "0x1"
+aptos-stdlib = "0x1"
+aptos_framework = "0x1"
+aptos_std = "0x1"
 wormhole_bridge = "0x0"
 wormhole = "0x0"
 serde = "0x0"
 omnipool = "0x0"
-app_manager = "0x0"
-pool_manager = "0x0"
-sui = "0x2"
 
-[dependencies.Sui]
-git = "https://github.com/MystenLabs/sui.git"
-subdir = "crates/sui-framework"
-rev = "79100a5687881eef489f347629bf5b19e417cc8e"
+[dev-addresses]
+wormhole = "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
+wrapped_coin = "0xf4f53cc591e5190eddbc43940746e2b5deea6e0e1562b2bba765d488504842c7"
+deployer = "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
+subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
-subdir = "sui/wormhole"
-rev = "ecd696e362e16f77daf9b38b20d2f873e50df72e"
+rev = "9c2847d6e667851e9343227b5be4f0fa5c73ff6f"
+subdir = "aptos/wormhole"
 
 [dependencies.OmniPool]
 local = "../omnipool"

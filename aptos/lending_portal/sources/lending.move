@@ -145,15 +145,4 @@ module lending_portal::lending {
 
         (chain_id, call_type, amount, user)
     }
-
-    #[test]
-    fun test_encode_decode() {
-        let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, to_bytes(&user), 1);
-        let (chain_id, call_type, amount, user_addr) = decode_app_payload(payload);
-        assert!(chain_id == 1, 0);
-        assert!(call_type == WITHDRAW, 0);
-        assert!(amount == 100000000, 0);
-        assert!(user_addr == to_bytes(&user), 0);
-    }
 }
