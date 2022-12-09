@@ -6,9 +6,11 @@ module wormhole_bridge::bridge_core {
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
+    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
@@ -17,9 +19,6 @@ module wormhole_bridge::bridge_core {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
-    use sui::table;
-    use sui::table::Table;
-    use sui::event;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -38,7 +37,8 @@ module wormhole_bridge::bridge_core {
     }
 
     struct VaaEvent has copy, drop {
-        vaa: vector<u8>
+        vaa: vector<u8>,
+        nonce: u64
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
@@ -213,7 +213,8 @@ module wormhole_bridge::bridge_core {
             index = table::length(&core_state.cache_vaas);
         };
         event::emit(VaaEvent {
-            vaa: *table::borrow(&core_state.cache_vaas, index)
+            vaa: *table::borrow(&core_state.cache_vaas, index),
+            nonce: index
         })
     }
 }

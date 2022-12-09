@@ -13,7 +13,7 @@ def get_dola_token_liquidity(token_name):
     pool_manager = load.pool_manager_package()
     result = external_interfaces.interfaces.get_dola_token_liquidity.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
@@ -33,7 +33,7 @@ def get_app_token_liquidity(app_id, token_name):
     result = external_interfaces.interfaces.get_app_token_liquidity.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
         app_id,
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
@@ -58,7 +58,7 @@ def get_user_token_debt(user, token_name):
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
     return result['events'][-1]['moveEvent']['fields']
 
@@ -80,7 +80,7 @@ def get_user_collateral(user, token_name):
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
@@ -118,7 +118,7 @@ def get_reserve_info(token_name):
     result = external_interfaces.interfaces.get_reserve_info.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
-        list(bytes(token_name.strip("0x"), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
@@ -144,7 +144,7 @@ def get_user_allowed_borrow(user, token_name):
         pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        list(bytes(token_name.strip("0x"), 'ascii')),
+        list(bytes(token_name.replace("0x", ""), 'ascii')),
         user
     )
 

@@ -161,7 +161,7 @@ def core_withdraw(vaa):
         list(base64.b64decode(vaa)),
     )
     return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
+        wormhole_bridge.bridge_core.CoreState[-1], 0
     )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
@@ -230,7 +230,7 @@ def core_borrow(vaa):
         list(base64.b64decode(vaa)),
     )
     return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
+        wormhole_bridge.bridge_core.CoreState[-1], 0
     )["events"][-1]["moveEvent"]["fields"]["vaa"]
 
 
@@ -369,17 +369,28 @@ def core_liquidate(vaa):
 def export_objects():
     # Package id
     lending_portal = load.lending_portal_package()
-    print(f"lending_portal:{lending_portal.package_id}")
+    external_interfaces = load.external_interfaces_package()
+    print(f"lending_portal={lending_portal.package_id}")
+    print(f"external_interfaces={external_interfaces.package_id}")
 
     # objects
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
+    oracle = load.oracle_package()
+    lending = load.lending_package()
+    pool_manager = load.pool_manager_package()
+
     data = {
         "PoolState": wormhole_bridge.bridge_pool.PoolState[-1],
         "WormholeState": wormhole.state.State[-1],
+        "PriceOracle": oracle.oracle.PriceOracle[-1],
+        "Storage": lending.storage.Storage[-1],
+        "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1]
     }
     coin_types = [btc(), usdt()]
     for k in coin_types:
+        coin_key = k.split("::")[-1]
+        data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
         data[dk] = CacheObject[ObjectType.from_type(pool(k))]["Shared"][-1]
 
@@ -389,24 +400,24 @@ def export_objects():
 def monitor_supply(coin, amount=1):
     force_claim_test_coin(coin, amount)
     vaa = portal_supply(coin)
-    core_supply(vaa)
+    # core_supply(vaa)
 
 
 def monitor_withdraw():
     to_core_vaa = portal_withdraw(btc(), 1e8)
-    to_pool_vaa = core_withdraw(to_core_vaa)
-    pool_withdraw(to_pool_vaa, btc())
+    # to_pool_vaa = core_withdraw(to_core_vaa)
+    # pool_withdraw(to_pool_vaa, btc())
 
 
 def monitor_borrow(coin, amount=1):
     to_core_vaa = portal_borrow(coin, amount * 1e8)
-    to_pool_vaa = core_borrow(to_core_vaa)
-    pool_withdraw(to_pool_vaa, coin)
+    # to_pool_vaa = core_borrow(to_core_vaa)
+    # pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_repay():
     vaa = portal_repay(usdt())
-    core_repay(vaa)
+    # core_repay(vaa)
 
 
 def monitor_liquidate():
@@ -430,6 +441,4 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_borrow(usdt(), 10000)
-    check_pool_info()
-    check_app_storage()
+    export_objects()
