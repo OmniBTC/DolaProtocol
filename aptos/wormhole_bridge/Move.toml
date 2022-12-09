@@ -8,14 +8,15 @@ aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
 wormhole_bridge = "0x0"
-wormhole = "0x0"
 serde = "0x0"
 omnipool = "0x0"
+wormhole = "_"
+deployer = "_"
 
 [dev-addresses]
 wormhole = "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
-wrapped_coin = "0xf4f53cc591e5190eddbc43940746e2b5deea6e0e1562b2bba765d488504842c7"
 deployer = "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
+
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"

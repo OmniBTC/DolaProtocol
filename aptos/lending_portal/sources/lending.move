@@ -3,11 +3,6 @@ module lending_portal::lending {
 
     use omnipool::pool::Pool;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
-    use sui::bcs::to_bytes;
-    use sui::coin::{Self, Coin};
-    use sui::sui::SUI;
-    use sui::tx_context::{Self, TxContext};
-    use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_pool::{send_deposit, PoolState, send_withdraw, send_deposit_and_withdraw};
 
     const EINVALID_LENGTH: u64 = 0;

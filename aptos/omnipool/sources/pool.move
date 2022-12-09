@@ -16,7 +16,7 @@ module omnipool::pool {
     use aptos_framework::aptos_account;
     use aptos_framework::aptos_coin::AptosCoin;
 
-    const SEED: vector<u8> = b"Dola Omnipool";
+    const SEED: vector<u8> = b"Dola omnipool";
 
     const EINVALID_LENGTH: u64 = 0;
 

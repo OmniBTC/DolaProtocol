@@ -1,67 +1,89 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
-    use sui::coin::Coin;
-    use sui::object::{Self, UID};
-    use sui::object_table;
-    use sui::sui::SUI;
-    use sui::transfer;
-    use sui::tx_context::TxContext;
-    use sui::vec_map::{Self, VecMap};
+    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use wormhole_bridge::verify::Unit;
-    use sui::table::Table;
-    use sui::table;
-    use sui::event;
+    use std::signer;
+    use aptos_framework::account;
+    use aptos_framework::account::SignerCapability;
+    use wormhole::set::Set;
+    use aptos_std::table::Table;
+    use serde::u16::U16;
+    use wormhole::set;
+    use aptos_std::table;
+    use aptos_framework::coin::Coin;
+    use aptos_framework::aptos_coin::AptosCoin;
 
     const EMUST_DEPLOYER: u64 = 0;
 
+    const EMUST_ADMIN: u64 = 1;
+
+    const ENOT_INIT: u64 = 2;
+
+    const SEED: vector<u8> = b"Dola wormhole_bridge";
+
     struct PoolState has key, store {
-        id: UID,
+        resource_cap: SignerCapability,
         pool_cap: PoolCap,
         sender: EmitterCapability,
-        consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
-        registered_emitters: VecMap<u16, ExternalAddress>,
+        consumed_vaas: Set<vector<u8>>,
+        registered_emitters: Table<U16, ExternalAddress>,
         // todo! Deleta after wormhole running
-        cache_vaas: Table<u64, vector<u8>>
+        cache_vaas: Table<u64, vector<u8>>,
+        nonce: u64
     }
 
-    struct VaaEvent has copy, drop {
+    struct VaaEvent has key, copy, drop {
         vaa: vector<u8>
     }
 
-    struct VaaReciveWithdrawEvent has copy, drop {
+    struct VaaReciveWithdrawEvent has key, copy, drop {
         pool_address: address,
         user: address,
         amount: u64,
         token_name: vector<u8>
     }
 
-    public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
-        transfer::share_object(
-            PoolState {
-                id: object::new(ctx),
-                pool_cap: pool::register_cap(ctx),
-                sender: wormhole::register_emitter(wormhole_state, ctx),
-                consumed_vaas: object_table::new(ctx),
-                registered_emitters: vec_map::empty(),
-                cache_vaas: table::new(ctx)
-            }
-        );
+    public fun ensure_admin(sender: &signer): bool {
+        signer::address_of(sender) == @wormhole_bridge
+    }
+
+    public fun ensure_init(): bool {
+        exists<PoolState>(get_resource_address())
+    }
+
+    public fun get_resource_address(): address {
+        account::create_resource_address(&@wormhole_bridge, SEED)
+    }
+
+    public entry fun initialize_wormhole(sender: &signer) {
+        assert!(ensure_admin(sender), EMUST_ADMIN);
+        assert!(!ensure_init(), ENOT_INIT);
+
+        let wormhole_emitter = wormhole::register_emitter();
+        let (resource_signer, resource_cap) = account::create_resource_account(sender, SEED);
+        move_to(&resource_signer, PoolState {
+            resource_cap,
+            pool_cap: pool::register_cap(sender),
+            sender: wormhole_emitter,
+            consumed_vaas: set::new<vector<u8>>(),
+            registered_emitters: table::new(),
+            cache_vaas: table::new(),
+            nonce: 0
+        });
     }
 
     public entry fun register_remote_bridge(
-        pool_state: &mut PoolState,
-        emitter_chain_id: u16,
+        sender: &signer,
+        emitter_chain_id: U16,
         emitter_address: vector<u8>,
-        _ctx: &mut TxContext
-    ) {
+    ) acquires PoolState {
         // todo! change into govern permission
+        assert!(ensure_admin(sender), EMUST_ADMIN);
 
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
         // todo! consider remote register
-        vec_map::insert(
+        table::add(
             &mut pool_state.registered_emitters,
             emitter_chain_id,
             external_address::from_bytes(emitter_address)
@@ -69,80 +91,68 @@ module wormhole_bridge::bridge_pool {
     }
 
     public fun send_deposit<CoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        pool: &mut Pool<CoinType>,
+        sender: &signer,
+        wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<CoinType>,
-        app_id: u16,
+        app_id: U16,
         app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ) {
+    ) acquires PoolState {
         let msg = pool::deposit_to<CoinType>(
-            pool,
+            sender,
             deposit_coin,
             app_id,
             app_payload,
-            ctx
         );
-        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
+        pool_state.nonce = pool_state.nonce + 1;
+        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
     public fun send_withdraw<CoinType>(
-        pool: &mut Pool<CoinType>,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        app_id: u16,
+        sender: &signer,
+        wormhole_message_fee: Coin<AptosCoin>,
+        app_id: U16,
         app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ) {
+    ) acquires PoolState {
         let msg = pool::withdraw_to<CoinType>(
-            pool,
+            sender,
             app_id,
             app_payload,
-            ctx
         );
-        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
+        pool_state.nonce = pool_state.nonce + 1;
+        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
     public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        deposit_pool: &mut Pool<DepositCoinType>,
+        sender: &signer,
+        wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_pool: &mut Pool<WithdrawCoinType>,
         withdraw_user: address,
-        app_id: u16,
+        app_id: U16,
         app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ) {
+    ) acquires PoolState {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
-            deposit_pool,
+            sender,
             deposit_coin,
-            withdraw_pool,
             withdraw_user,
             app_id,
             app_payload,
-            ctx
         );
-        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
+        pool_state.nonce = pool_state.nonce + 1;
+        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
     public entry fun receive_withdraw<CoinType>(
-        _wormhole_state: &mut WormholeState,
-        pool_state: &mut PoolState,
-        pool: &mut Pool<CoinType>,
         vaa: vector<u8>,
-        ctx: &mut TxContext
-    ) {
+    ) acquires PoolState {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -155,23 +165,26 @@ module wormhole_bridge::bridge_pool {
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (_pool_address, user, amount, token_name) =
             pool::decode_receive_withdraw_payload(vaa);
-        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, token_name, ctx);
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, user, amount, token_name);
         // myvaa::destroy(vaa);
     }
 
-    public entry fun read_vaa(pool_state: &PoolState, index: u64) {
+    public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
         if (index == 0) {
-            index = table::length(&pool_state.cache_vaas);
+            index = pool_state.nonce;
         };
-        event::emit(VaaEvent {
+        move_to(sender, VaaEvent {
             vaa: *table::borrow(&pool_state.cache_vaas, index)
-        })
+        });
     }
 
-    public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
+    public entry fun decode_receive_withdraw_payload(sender: &signer, vaa: vector<u8>) {
         let (pool_address, user, amount, token_name) =
             pool::decode_receive_withdraw_payload(vaa);
-        event::emit(VaaReciveWithdrawEvent {
+        move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
             user,
             amount,
