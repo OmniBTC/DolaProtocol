@@ -1,0 +1,15 @@
+# automatically fetch contract sources from Etherscan
+dotenv: .env
+networks:
+  aptos-mainnet:
+    node_url: https://aptos.coming.chat/v1
+    faucet_url: https://faucet.mainnet.aptoslabs.com
+    replace_address:
+  aptos-devnet:
+    node_url: https://fullnode.devnet.aptoslabs.com/v1
+    faucet_url: https://tap.devnet.prod.gcp.aptosdev.com
+    replace_address:
+  aptos-testnet:
+    node_url: https://aptos-testnet.coming.chat/v1
+    faucet_url: https://faucet.testnet.aptoslabs.com
+    replace_address:

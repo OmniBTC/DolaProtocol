@@ -1,0 +1,30 @@
+[package]
+name = "LendingPortal"
+version = "0.0.1"
+
+[addresses]
+lending_portal = "0x0"
+serde = "0x0"
+wormhole_bridge = "0x0"
+wormhole = "0x0"
+omnipool = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "79100a5687881eef489f347629bf5b19e417cc8e"
+
+[dependencies.Wormhole]
+git = "https://github.com/OmniBTC/wormhole.git"
+subdir = "sui/wormhole"
+rev = "ecd696e362e16f77daf9b38b20d2f873e50df72e"
+
+[dependencies.OmniPool]
+local = "../omnipool"
+
+[dependencies.Serde]
+local = "../serde"
+
+[dependencies.WormholeBridge]
+local = "../wormhole_bridge"
