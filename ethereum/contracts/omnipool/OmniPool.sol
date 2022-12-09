@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../libraries/LibPool.sol";
+import "../../libraries/LibPool.sol";
 
 contract OmniPool {
     uint16 public _chainId;
@@ -33,11 +33,11 @@ contract OmniPool {
         return ERC20(_token).decimals();
     }
 
-    function rely(address bridge) external isBridge(_bridge) {
+    function rely(address bridge) external isBridge(msg.sender) {
         _allowances[bridge] = true;
     }
 
-    function deny(address bridge) external isBridge(_bridge) {
+    function deny(address bridge) external isBridge(msg.sender) {
         _allowances[bridge] = false;
     }
 
