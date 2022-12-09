@@ -1,13 +1,19 @@
 module lending_portal::lending {
     use std::vector;
 
-    use omnipool::pool::Pool;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
-    use wormhole_bridge::bridge_pool::{send_deposit, PoolState, send_withdraw, send_deposit_and_withdraw};
+    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw};
+    use aptos_framework::coin::Coin;
+    use std::bcs;
+    use std::signer;
+    use wormhole::state;
+    use aptos_framework::coin;
+    use aptos_framework::aptos_coin::AptosCoin;
+    use serde::u16::{Self, U16};
 
     const EINVALID_LENGTH: u64 = 0;
 
-    const APPID: u16 = 0;
+    const APPID: u64 = 0;
 
     /// Call types for relayer call
     const SUPPLY: u8 = 0;
@@ -21,98 +27,89 @@ module lending_portal::lending {
     const LIQUIDATE: u8 = 4;
 
     public entry fun supply<CoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        pool: &mut Pool<CoinType>,
-        deposit_coin: Coin<CoinType>,
-        ctx: &mut TxContext
+        sender: &signer,
+        deposit_coin: u64,
     ) {
-        let user = to_bytes(&tx_context::sender(ctx));
-        let app_payload = encode_app_payload(SUPPLY, coin::value(&deposit_coin), user, 0);
-        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, APPID, app_payload, ctx);
+        let user = bcs::to_bytes(&signer::address_of(sender));
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+
+        let app_payload = encode_app_payload(SUPPLY, deposit_coin, user, u16::from_u64(0));
+        let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
+
+        send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(APPID), app_payload);
     }
 
     public entry fun withdraw<CoinType>(
-        pool: &mut Pool<CoinType>,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
+        sender: &signer,
+        dst_chain: u64,
         amount: u64,
-        ctx: &mut TxContext
     ) {
-        let user = to_bytes(&tx_context::sender(ctx));
-        let app_payload = encode_app_payload(WITHDRAW, amount, user, dst_chain);
-        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
+        let user = bcs::to_bytes(&signer::address_of(sender));
+
+        let app_payload = encode_app_payload(WITHDRAW, amount, user, u16::from_u64(dst_chain));
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+        send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
     }
 
     public entry fun borrow<CoinType>(
-        pool: &mut Pool<CoinType>,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
+        sender: &signer,
+        dst_chain: u64,
         amount: u64,
-        ctx: &mut TxContext
     ) {
-        let user = to_bytes(&tx_context::sender(ctx));
-        let app_payload = encode_app_payload(BORROW, amount, user, dst_chain);
-        send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
+        let user = bcs::to_bytes(&signer::address_of(sender));
+
+        let app_payload = encode_app_payload(BORROW, amount, user, u16::from_u64(dst_chain));
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+
+        send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
     }
 
     public entry fun repay<CoinType>(
-        pool: &mut Pool<CoinType>,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        repay_coin: Coin<CoinType>,
-        ctx: &mut TxContext
+        sender: &signer,
+        repay_coin: u64,
     ) {
-        let user = to_bytes(&tx_context::sender(ctx));
-        let app_payload = encode_app_payload(REPAY, coin::value(&repay_coin), user, 0);
-        send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, APPID, app_payload, ctx);
+        let user = bcs::to_bytes(&signer::address_of(sender));
+
+        let app_payload = encode_app_payload(REPAY, repay_coin, user, u16::from_u64(0));
+        let repay_coin = coin::withdraw<CoinType>(sender, repay_coin);
+
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+
+        send_deposit(sender, wormhole_message_fee, repay_coin, u16::from_u64(APPID), app_payload);
     }
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
-        debt_pool: &mut Pool<DebtCoinType>,
-        // liquidators repay debts to obtain collateral
-        debt_coin: Coin<DebtCoinType>,
-        collateral_pool: &mut Pool<CollateralCoinType>,
+        sender: &signer,
+        dst_chain: u64,
+        wormhole_message_fee: Coin<AptosCoin>,
+        debt_coin: u64,
         // punished person
         punished: address,
-        ctx: &mut TxContext
     ) {
-        let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), to_bytes(&punished), dst_chain);
+        let app_payload = encode_app_payload(LIQUIDATE, debt_coin, bcs::to_bytes(&punished), u16::from_u64(dst_chain));
+        let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
+
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
-            pool_state,
-            wormhole_state,
+            sender,
             wormhole_message_fee,
-            debt_pool,
             debt_coin,
-            collateral_pool,
             punished,
-            APPID,
+            u16::from_u64(APPID),
             app_payload,
-            ctx
         );
     }
 
-    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: u16): vector<u8> {
+    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: U16): vector<u8> {
         let payload = vector::empty<u8>();
         serialize_u16(&mut payload, dst_chain);
         serialize_u64(&mut payload, amount);
-        serialize_u16(&mut payload, (vector::length(&user) as u16));
+        serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
         serialize_vector(&mut payload, user);
         serialize_u8(&mut payload, call_type);
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
+    public fun decode_app_payload(app_payload: vector<u8>): (U16, u8, u64, vector<u8>) {
         let index = 0;
         let data_len;
 
@@ -128,7 +125,7 @@ module lending_portal::lending {
         let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = (user_length as u64);
+        data_len = u16::to_u64(user_length);
         let user = vector_slice(&app_payload, index, index + data_len);
         index = index + data_len;
 
