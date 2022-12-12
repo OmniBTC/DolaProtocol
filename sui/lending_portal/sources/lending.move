@@ -1,7 +1,7 @@
 module lending_portal::lending {
     use std::vector;
 
-    use omnipool::pool::Pool;
+    use omnipool::pool::{Pool, normal_amount};
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use sui::bcs::to_bytes;
     use sui::coin::{Self, Coin};
@@ -78,7 +78,7 @@ module lending_portal::lending {
         let user = to_bytes(&tx_context::sender(ctx));
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(SUPPLY, coin::value(&deposit_coin), user, 0);
+        let app_payload = encode_app_payload(SUPPLY, normal_amount(pool,coin::value(&deposit_coin)), user, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, APPID, app_payload, ctx);
     }
 
@@ -94,7 +94,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(WITHDRAW, amount, user, dst_chain);
+        let app_payload = encode_app_payload(WITHDRAW, normal_amount(pool,amount), user, dst_chain);
         send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
 
@@ -110,7 +110,7 @@ module lending_portal::lending {
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(BORROW, amount, user, dst_chain);
+        let app_payload = encode_app_payload(BORROW, normal_amount(pool,amount), user, dst_chain);
         send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
 
@@ -127,7 +127,7 @@ module lending_portal::lending {
         let user = to_bytes(&tx_context::sender(ctx));
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(REPAY, coin::value(&repay_coin), user, 0);
+        let app_payload = encode_app_payload(REPAY, normal_amount(pool,coin::value(&repay_coin)), user, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, APPID, app_payload, ctx);
     }
 
@@ -149,7 +149,7 @@ module lending_portal::lending {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), to_bytes(&punished), dst_chain);
+        let app_payload = encode_app_payload(LIQUIDATE, normal_amount(debt_pool,coin::value(&debt_coin)), to_bytes(&punished), dst_chain);
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
             wormhole_state,

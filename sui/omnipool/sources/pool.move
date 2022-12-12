@@ -24,7 +24,8 @@ module omnipool::pool {
     /// The user's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
         id: UID,
-        balance: Balance<CoinType>
+        balance: Balance<CoinType>,
+        decimal: u8
     }
 
     /// Give permission to the bridge when Pool is in use
@@ -44,11 +45,44 @@ module omnipool::pool {
         object::delete(id);
     }
 
-    public entry fun create_pool<CoinType>(ctx: &mut TxContext) {
+    public entry fun create_pool<CoinType>(decimal: u8, ctx: &mut TxContext) {
         share_object(Pool<CoinType> {
             id: object::new(ctx),
-            balance: zero<CoinType>()
+            balance: zero<CoinType>(),
+            decimal
         })
+    }
+
+    public fun get_coin_decimal<CoinType>(pool: &Pool<CoinType>): u8 {
+        pool.decimal
+    }
+
+    public fun convert_amount(amount: u64, cur_decimal: u8, target_decimal: u8): u64 {
+        while (cur_decimal != target_decimal) {
+            if (cur_decimal < target_decimal) {
+                amount = amount * 10;
+                cur_decimal = cur_decimal + 1;
+            }else {
+                amount = amount / 10;
+                cur_decimal = cur_decimal - 1;
+            };
+        };
+        amount
+    }
+
+    /// Normal amount in dola protocol
+    /// 1. Pool class normal
+    /// 2. Application class normal
+    public fun normal_amount<CoinType>(pool: &Pool<CoinType>, amount: u64): u64 {
+        let cur_decimal = get_coin_decimal<CoinType>(pool);
+        let target_decimal = 8;
+        convert_amount(amount, cur_decimal, target_decimal)
+    }
+
+    public fun unnormal_amount<CoinType>(pool: &Pool<CoinType>, amount: u64): u64 {
+        let cur_decimal = 8;
+        let target_decimal = get_coin_decimal<CoinType>(pool);
+        convert_amount(amount, cur_decimal, target_decimal)
     }
 
     /// call by user or application
@@ -59,7 +93,7 @@ module omnipool::pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ): vector<u8> {
-        let amount = coin::value(&deposit_coin);
+        let amount = normal_amount(pool,coin::value(&deposit_coin));
         let user = tx_context::sender(ctx);
         let pool_address = uid_to_address(&pool.id);
         let token_name = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
@@ -91,6 +125,7 @@ module omnipool::pool {
         token_name: vector<u8>,
         ctx: &mut TxContext
     ) {
+        amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
         assert!(token_name == ascii::into_bytes(type_name::into_string(type_name::get<CoinType>())), EINVALID_TOKEN);
@@ -106,7 +141,7 @@ module omnipool::pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ): vector<u8> {
-        let amount = coin::value(&deposit_coin);
+        let amount = normal_amount(deposit_pool, coin::value(&deposit_coin));
         let depoist_user = tx_context::sender(ctx);
         let deposit_pool_address = uid_to_address(&deposit_pool.id);
         let deposit_token_name = ascii::into_bytes(type_name::into_string(type_name::get<DepositCoinType>()));
@@ -408,7 +443,7 @@ module omnipool::pool {
         let scenario = &mut scenario_val;
         {
             let ctx = test_scenario::ctx(scenario);
-            create_pool<SUI>(ctx);
+            create_pool<SUI>(9, ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
@@ -433,7 +468,7 @@ module omnipool::pool {
         let scenario = &mut scenario_val;
         {
             let ctx = test_scenario::ctx(scenario);
-            create_pool<SUI>(ctx);
+            create_pool<SUI>(9, ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
@@ -448,7 +483,7 @@ module omnipool::pool {
 
             assert!(balance::value(&pool.balance) == 100, 0);
 
-            inner_withdraw<SUI>(&manager_cap, &mut pool, user, 100, token_name, ctx);
+            inner_withdraw<SUI>(&manager_cap, &mut pool, user, 10, token_name, ctx);
 
             assert!(balance::value(&pool.balance) == 0, 0);
 
