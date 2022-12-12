@@ -9,8 +9,13 @@ module lending_portal::lending {
     use sui::tx_context::{Self, TxContext};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_pool::{send_deposit, PoolState, send_withdraw, send_deposit_and_withdraw};
+    use sui::transfer;
 
     const EINVALID_LENGTH: u64 = 0;
+
+    const ENOT_ENOUGH_AMOUNT: u64 = 1;
+
+    const EMUST_ZERO: u64 = 2;
 
     const APPID: u16 = 0;
 
@@ -25,15 +30,54 @@ module lending_portal::lending {
 
     const LIQUIDATE: u8 = 4;
 
+    const U64_MAX: u64 = 18446744073709551615;
+
+    public fun merge_coin<CoinType>(
+        coins: vector<Coin<CoinType>>,
+        amount: u64,
+        ctx: &mut TxContext
+    ): Coin<CoinType> {
+        let len = vector::length(&coins);
+        if (len > 0) {
+            vector::reverse(&mut coins);
+            let base_coin = vector::pop_back(&mut coins);
+            while (!vector::is_empty(&coins)) {
+                coin::join(&mut base_coin, vector::pop_back(&mut coins));
+            };
+            vector::destroy_empty(coins);
+            let sum_amount = coin::value(&base_coin);
+            let split_amount = amount;
+            if (amount == U64_MAX) {
+                split_amount = sum_amount;
+            };
+            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            if (coin::value(&base_coin) > split_amount) {
+                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
+                transfer::transfer(base_coin, tx_context::sender(ctx));
+                split_coin
+            }else {
+                base_coin
+            }
+        }else {
+            vector::destroy_empty(coins);
+            assert!(amount == 0, EMUST_ZERO);
+            coin::zero<CoinType>(ctx)
+        }
+    }
+
     public entry fun supply<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         pool: &mut Pool<CoinType>,
-        deposit_coin: Coin<CoinType>,
+        deposit_coins: vector<Coin<CoinType>>,
+        deposit_amount: u64,
         ctx: &mut TxContext
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
+        let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(SUPPLY, coin::value(&deposit_coin), user, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, APPID, app_payload, ctx);
     }
@@ -43,11 +87,13 @@ module lending_portal::lending {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(WITHDRAW, amount, user, dst_chain);
         send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
@@ -57,11 +103,13 @@ module lending_portal::lending {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(BORROW, amount, user, dst_chain);
         send_withdraw(pool, pool_state, wormhole_state, wormhole_message_fee, APPID, app_payload, ctx);
     }
@@ -70,11 +118,15 @@ module lending_portal::lending {
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        repay_coin: Coin<CoinType>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
+        repay_coins: vector<Coin<CoinType>>,
+        repay_amount: u64,
         ctx: &mut TxContext
     ) {
         let user = to_bytes(&tx_context::sender(ctx));
+        let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(REPAY, coin::value(&repay_coin), user, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, APPID, app_payload, ctx);
     }
@@ -83,15 +135,20 @@ module lending_portal::lending {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         dst_chain: u16,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
-        debt_coin: Coin<DebtCoinType>,
+        debt_coins: vector<Coin<DebtCoinType>>,
+        debt_amount: u64,
         collateral_pool: &mut Pool<CollateralCoinType>,
         // punished person
         punished: address,
         ctx: &mut TxContext
     ) {
+        let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
+
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), to_bytes(&punished), dst_chain);
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
