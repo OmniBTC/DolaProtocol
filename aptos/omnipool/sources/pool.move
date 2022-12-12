@@ -88,6 +88,38 @@ module omnipool::pool {
         account::create_resource_address(&@omnipool, SEED)
     }
 
+    public fun get_coin_decimal<CoinType>(): u8 {
+        coin::decimals<CoinType>()
+    }
+
+    public fun convert_amount(amount: u64, cur_decimal: u8, target_decimal: u8): u64 {
+        while (cur_decimal != target_decimal) {
+            if (cur_decimal < target_decimal) {
+                amount = amount * 10;
+                cur_decimal = cur_decimal + 1;
+            }else {
+                amount = amount / 10;
+                cur_decimal = cur_decimal - 1;
+            };
+        };
+        amount
+    }
+
+    /// Normal amount in dola protocol
+    /// 1. Pool class normal
+    /// 2. Application class normal
+    public fun normal_amount<CoinType>(amount: u64): u64 {
+        let cur_decimal = get_coin_decimal<CoinType>();
+        let target_decimal = 8;
+        convert_amount(amount, cur_decimal, target_decimal)
+    }
+
+    public fun unnormal_amount<CoinType>(amount: u64): u64 {
+        let cur_decimal = 8;
+        let target_decimal = get_coin_decimal<CoinType>();
+        convert_amount(amount, cur_decimal, target_decimal)
+    }
+
     public entry fun create_pool<CoinType>(sender: &signer) acquires PoolManager {
         assert!(ensure_admin(sender), EINVALID_ADMIN);
         assert!(ensure_init(), EMUST_INIT);
@@ -105,7 +137,7 @@ module omnipool::pool {
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
-        let amount = coin::value(&deposit_coin);
+        let amount = normal_amount<CoinType>(coin::value(&deposit_coin));
         let user = signer::address_of(sender);
         let token_name = *string::bytes(&type_info::type_name<CoinType>());
         let pool_address = vector_slice(&sha3_256(token_name), 0, 40);
@@ -148,6 +180,7 @@ module omnipool::pool {
         amount: u64,
         token_name: vector<u8>,
     ) acquires Pool {
+        amount = unnormal_amount<CoinType>(amount);
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         let balance = coin::extract(&mut pool.balance, amount);
         assert!(token_name == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
@@ -161,7 +194,7 @@ module omnipool::pool {
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
-        let amount = coin::value(&deposit_coin);
+        let amount = normal_amount<DepositCoinType>(coin::value(&deposit_coin));
         let depoist_user = signer::address_of(sender);
         let deposit_token_name = *string::bytes(&type_info::type_name<DepositCoinType>());
         let deposit_pool_address = vector_slice(&sha3_256(deposit_token_name), 0, 40);

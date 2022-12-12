@@ -10,6 +10,7 @@ module lending_portal::lending {
     use aptos_framework::coin;
     use aptos_framework::aptos_coin::AptosCoin;
     use serde::u16::{Self, U16};
+    use omnipool::pool::normal_amount;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -33,7 +34,12 @@ module lending_portal::lending {
         let user = bcs::to_bytes(&signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        let app_payload = encode_app_payload(SUPPLY, deposit_coin, user, u16::from_u64(0));
+        let app_payload = encode_app_payload(
+            SUPPLY,
+            normal_amount<CoinType>(deposit_coin),
+            user,
+            u16::from_u64(0)
+        );
         let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
 
         send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(APPID), app_payload);
@@ -45,8 +51,11 @@ module lending_portal::lending {
         amount: u64,
     ) {
         let user = bcs::to_bytes(&signer::address_of(sender));
-
-        let app_payload = encode_app_payload(WITHDRAW, amount, user, u16::from_u64(dst_chain));
+        let app_payload = encode_app_payload(
+            WITHDRAW,
+            normal_amount<CoinType>(amount),
+            user,
+            u16::from_u64(dst_chain));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
     }
@@ -57,8 +66,11 @@ module lending_portal::lending {
         amount: u64,
     ) {
         let user = bcs::to_bytes(&signer::address_of(sender));
-
-        let app_payload = encode_app_payload(BORROW, amount, user, u16::from_u64(dst_chain));
+        let app_payload = encode_app_payload(
+            BORROW,
+            normal_amount<CoinType>(amount),
+            user,
+            u16::from_u64(dst_chain));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
@@ -70,7 +82,11 @@ module lending_portal::lending {
     ) {
         let user = bcs::to_bytes(&signer::address_of(sender));
 
-        let app_payload = encode_app_payload(REPAY, repay_coin, user, u16::from_u64(0));
+        let app_payload = encode_app_payload(
+            REPAY,
+            normal_amount<CoinType>(repay_coin),
+            user,
+            u16::from_u64(0));
         let repay_coin = coin::withdraw<CoinType>(sender, repay_coin);
 
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
@@ -86,7 +102,11 @@ module lending_portal::lending {
         // punished person
         punished: address,
     ) {
-        let app_payload = encode_app_payload(LIQUIDATE, debt_coin, bcs::to_bytes(&punished), u16::from_u64(dst_chain));
+        let app_payload = encode_app_payload(
+            LIQUIDATE,
+            normal_amount<DebtCoinType>(debt_coin),
+            bcs::to_bytes(&punished),
+            u16::from_u64(dst_chain));
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
 
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
