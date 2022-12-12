@@ -267,6 +267,62 @@ module omnipool::pool {
         pool_payload
     }
 
+    /// decode deposit msg
+    public fun decode_send_deposit_payload(
+        pool_payload: vector<u8>
+    ): (vector<u8>, DolaAddress, u64, vector<u8>, U16, vector<u8>) {
+        let length = vector::length(&pool_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let pool_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = pool_address_len;
+        let pool_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let user_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = user_address_len;
+        let user_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 8;
+        let amount = deserialize_u64(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let token_name_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = token_name_len ;
+        let token_name = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        let app_payload = vector::empty<u8>();
+        if (length > index) {
+            data_len = 2;
+            let app_payload_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+            index = index + data_len;
+
+            data_len = app_payload_len ;
+            app_payload = vector_slice(&pool_payload, index, index + data_len);
+            index = index + data_len;
+        };
+
+        assert!(length == index, EINVALID_LENGTH);
+
+        (pool_address, convert_vector_to_dola(user_address), amount, token_name, app_id, app_payload)
+    }
+
     /// encode whihdraw msg
     public fun encode_send_withdraw_payload(
         pool: vector<u8>,
@@ -288,6 +344,58 @@ module omnipool::pool {
             serialize_vector(&mut pool_payload, app_payload);
         };
         pool_payload
+    }
+
+    /// decode withdraw msg
+    public fun decode_send_withdraw_payload(
+        pool_payload: vector<u8>
+    ): (vector<u8>, DolaAddress, vector<u8>, U16, vector<u8>) {
+        let length = vector::length(&pool_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let pool_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = pool_address_len;
+        let pool_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let user_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = user_address_len;
+        let user_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let token_name_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = token_name_len ;
+        let token_name = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        let app_payload = vector::empty<u8>();
+        if (length > index) {
+            data_len = 2;
+            let app_payload_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+            index = index + data_len;
+
+            data_len = app_payload_len ;
+            app_payload = vector_slice(&pool_payload, index, index + data_len);
+            index = index + data_len;
+        };
+
+        assert!(length == index, EINVALID_LENGTH);
+
+        (pool_address, convert_vector_to_dola(user_address), token_name, app_id, app_payload)
     }
 
     public fun encode_send_deposit_and_withdraw_payload(
@@ -322,6 +430,101 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
         serialize_vector(&mut pool_payload, app_payload);
         pool_payload
+    }
+
+    public fun decode_send_deposit_and_withdraw_payload(
+        pool_payload: vector<u8>
+    ): (vector<u8>, DolaAddress, u64, vector<u8>, vector<u8>, DolaAddress, vector<u8>, U16, vector<u8>) {
+        let length = vector::length(&pool_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let deposit_pool_address_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = deposit_pool_address_len;
+        let deposit_pool_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let deposit_user_address_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = deposit_user_address_len;
+        let deposit_user_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 8;
+        let deposit_amount = deserialize_u64(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let deposit_token_name_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = deposit_token_name_len;
+        let deposit_token_name = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let withdraw_pool_address_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = withdraw_pool_address_len;
+        let withdraw_pool_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let withdraw_user_address_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = withdraw_user_address_len;
+        let withdraw_user_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let withdraw_token_name_len = u16::to_u64(
+            deserialize_u16(&vector_slice(&pool_payload, index, index + data_len))
+        );
+        index = index + data_len;
+
+        data_len = withdraw_token_name_len;
+        let withdraw_token_name = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        let app_payload = vector::empty<u8>();
+        if (length > index) {
+            data_len = 2;
+            let app_payload_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+            index = index + data_len;
+
+            data_len = app_payload_len ;
+            app_payload = vector_slice(&pool_payload, index, index + data_len);
+            index = index + data_len;
+        };
+
+        assert!(length == index, EINVALID_LENGTH);
+
+        (deposit_pool_address, convert_vector_to_dola(
+            deposit_user_address
+        ), deposit_amount, deposit_token_name, withdraw_pool_address, convert_vector_to_dola(
+            withdraw_user_address
+        ), withdraw_token_name, app_id, app_payload)
     }
 
     /// encode deposit msg

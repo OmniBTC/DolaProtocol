@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
+    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw, DolaAddress};
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};
@@ -33,8 +33,8 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaReciveWithdrawEvent has copy, drop {
-        pool_address: address,
-        user: address,
+        pool_address: vector<u8>,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>
     }
@@ -117,7 +117,7 @@ module wormhole_bridge::bridge_pool {
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
         withdraw_pool: &mut Pool<WithdrawCoinType>,
-        withdraw_user: address,
+        withdraw_user: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
