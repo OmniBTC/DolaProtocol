@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 import {IDiamond} from "../interfaces/IDiamond.sol";
 import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
+import {LibBytes} from "../libraries/LibBytes.sol";
 
 // Remember to add the loupe functions from DiamondLoupeFacet to the diamond.
 // The loupe functions are required by the EIP2535 Diamonds standard
@@ -31,8 +32,11 @@ error InitializationFunctionReverted(
     address _initializationContractAddress,
     bytes _calldata
 );
+error DecodeFacetCutError();
+error DecodeDiamondCutError();
 
 library LibDiamond {
+    using LibBytes for bytes;
     bytes32 constant DIAMOND_STORAGE_POSITION =
         keccak256("diamond.standard.diamond.storage");
 
@@ -284,5 +288,132 @@ library LibDiamond {
         if (contractSize == 0) {
             revert NoBytecodeAtAddress(_contract, _errorMessage);
         }
+    }
+
+    function encodeFacetCut(IDiamondCut.FacetCut memory _facetCut)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 funcSigLength = _facetCut.functionSelectors.length;
+        bytes memory encodeData = abi.encodePacked(
+            _facetCut.facetAddress,
+            _facetCut.action,
+            uint16(funcSigLength)
+        );
+        for (uint256 i; i < funcSigLength; i++) {
+            encodeData.concat(abi.encodePacked(_facetCut.functionSelectors[i]));
+        }
+        return encodeData;
+    }
+
+    function decodeFacetCut(bytes memory _payload)
+        internal
+        pure
+        returns (IDiamondCut.FacetCut memory)
+    {
+        uint256 length = _payload.length;
+        uint256 index;
+        uint256 dataLen;
+        IDiamondCut.FacetCut memory decodeData;
+
+        dataLen = 20;
+        decodeData.facetAddress = _payload.toAddress(index);
+        index += dataLen;
+
+        dataLen = 1;
+        decodeData.action = IDiamond.FacetCutAction(_payload.toUint8(index));
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 funcSigLength = _payload.toUint16(index);
+        index += dataLen;
+
+        for (uint256 i; i < funcSigLength; i++) {
+            dataLen = 4;
+            decodeData.functionSelectors[i] = bytes4(
+                _payload.slice(index, index + dataLen)
+            );
+            index += dataLen;
+        }
+
+        if (index != length) {
+            revert DecodeFacetCutError();
+        }
+        return decodeData;
+    }
+
+    function encodeDiamondCut(
+        IDiamondCut.FacetCut[] memory _diamondCut,
+        address _init,
+        bytes memory _calldata
+    ) internal pure returns (bytes memory) {
+        uint256 facetCutLength = _diamondCut.length;
+        bytes memory encodeData = abi.encodePacked(
+            _init,
+            uint16(_calldata.length),
+            _calldata,
+            uint16(facetCutLength)
+        );
+
+        bytes memory encodeCutData;
+        for (uint256 i; i < facetCutLength; i++) {
+            encodeCutData = encodeFacetCut(_diamondCut[i]);
+            encodeData.concat(
+                abi.encodePacked(uint16(encodeCutData.length), encodeCutData)
+            );
+        }
+        return encodeData;
+    }
+
+    struct diamondCutParams {
+        IDiamondCut.FacetCut[] _diamondCut;
+        address _init;
+        bytes _calldata;
+    }
+
+    function decodeDiamondCut(bytes memory _payload)
+        internal
+        pure
+        returns (diamondCutParams memory)
+    {
+        uint256 length = _payload.length;
+        uint256 index;
+        uint256 dataLen;
+        diamondCutParams memory decodeData;
+
+        dataLen = 20;
+        decodeData._init = _payload.toAddress(index);
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 calldataLength = _payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = calldataLength;
+        decodeData._calldata = _payload.slice(index, index + dataLen);
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 diamondCutLength = _payload.toUint16(index);
+        index += dataLen;
+
+        uint16 facetCutLength;
+        for (uint256 i; i < diamondCutLength; i++) {
+            dataLen = 2;
+            facetCutLength = _payload.toUint16(index);
+            index += dataLen;
+
+            dataLen = facetCutLength;
+            decodeData._diamondCut[i] = decodeFacetCut(
+                _payload.slice(index, index + dataLen)
+            );
+            index += dataLen;
+        }
+
+        if (index != length) {
+            revert DecodeDiamondCutError();
+        }
+        return decodeData;
     }
 }

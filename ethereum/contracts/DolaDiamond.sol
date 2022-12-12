@@ -35,6 +35,8 @@ contract DolaDiamond {
         LibDiamond.diamondCut(_diamondCut, _args.init, _args.initCalldata);
 
         // Code can be added here to perform actions and set state variables.
+        // todo: init governance
+        // todo: init wormhole
     }
 
     // Find facet for function that is called and execute the

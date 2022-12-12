@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./LibDiamond.sol";
 import "../interfaces/IWormhole.sol";
 import "../interfaces/IOmniPool.sol";
 
@@ -20,27 +19,27 @@ library LibWormhole {
         mapping(bytes32 => bool) completeVAA;
     }
 
-    function wormholeMessageFee() public view returns (uint256) {
+    function wormholeMessageFee() internal view returns (uint256) {
         Storage storage ds = diamondStorage();
         return IWormhole(ds.wormholeBridge).messageFee();
     }
 
-    function wormhole() public view returns (IWormhole) {
+    function wormhole() internal view returns (IWormhole) {
         Storage storage ds = diamondStorage();
         return IWormhole(ds.wormholeBridge);
     }
 
-    function nonce() public view returns (uint32) {
+    function nonce() internal view returns (uint32) {
         Storage storage ds = diamondStorage();
         return ds.nonce;
     }
 
-    function finality() public view returns (uint8) {
+    function finality() internal view returns (uint8) {
         Storage storage ds = diamondStorage();
         return ds.finality;
     }
 
-    function omnipool() public view returns (IOmniPool) {
+    function omnipool() internal view returns (IOmniPool) {
         Storage storage ds = diamondStorage();
         return IOmniPool(ds.omnipool);
     }
@@ -50,8 +49,7 @@ library LibWormhole {
         uint16 _chainId,
         uint8 _finality,
         address _remoteBridge
-    ) external {
-        LibDiamond.enforceIsContractOwner();
+    ) internal {
         Storage storage ds = diamondStorage();
         ds.wormholeBridge = _wormholeBridge;
         ds.chainId = _chainId;
@@ -69,7 +67,7 @@ library LibWormhole {
         ds.completeVAA[_hash] = true;
     }
 
-    function isCompleteVAA(bytes32 _hash) public view returns (bool) {
+    function isCompleteVAA(bytes32 _hash) internal view returns (bool) {
         Storage storage ds = diamondStorage();
         return ds.completeVAA[_hash];
     }

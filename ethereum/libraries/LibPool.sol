@@ -43,7 +43,7 @@ library LibPool {
     }
 
     function fixAmountDecimals(uint256 amount, uint8 decimals)
-        public
+        internal
         pure
         returns (uint64)
     {
@@ -60,7 +60,7 @@ library LibPool {
     }
 
     function restoreAmountDecimals(uint64 amount, uint8 decimals)
-        public
+        internal
         pure
         returns (uint256)
     {
@@ -82,7 +82,7 @@ library LibPool {
         bytes memory tokenName,
         uint16 appId,
         bytes memory appPayload
-    ) public pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         bytes memory payload = abi.encodePacked(
             pool,
             user,
@@ -100,7 +100,7 @@ library LibPool {
     }
 
     function decodeSendDepositPayload(bytes memory payload)
-        public
+        internal
         pure
         returns (SendDepositPayload memory)
     {
@@ -153,7 +153,7 @@ library LibPool {
         bytes memory tokenName,
         uint16 appId,
         bytes memory appPayload
-    ) public pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         bytes memory payload = abi.encodePacked(
             pool,
             user,
@@ -170,7 +170,7 @@ library LibPool {
     }
 
     function decodeSendWithdrawPayload(bytes memory payload)
-        public
+        internal
         pure
         returns (SendWithdrawPayload memory)
     {
@@ -223,7 +223,7 @@ library LibPool {
         bytes memory withdrawTokenName,
         uint16 appId,
         bytes memory appPayload
-    ) public pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         bytes memory payload = abi.encodePacked(
             depositPool,
             depositUser,
@@ -246,7 +246,7 @@ library LibPool {
     }
 
     function decodeSendDepositAndWithdrawPayload(bytes memory payload)
-        public
+        internal
         pure
         returns (SendDepositAndWithdrawPayload memory)
     {
@@ -317,7 +317,7 @@ library LibPool {
         address user,
         uint64 amount,
         bytes memory tokenName
-    ) public pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         bytes memory payload = abi.encodePacked(
             pool,
             user,
@@ -330,7 +330,7 @@ library LibPool {
     }
 
     function decodeReceiveWithdrawPayload(bytes memory payload)
-        public
+        internal
         pure
         returns (ReceiveWithdrawPayload memory)
     {
