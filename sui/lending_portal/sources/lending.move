@@ -139,12 +139,15 @@ module lending_portal::lending {
         wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
-        debt_coin: Coin<DebtCoinType>,
+        debt_coins: vector<Coin<DebtCoinType>>,
+        debt_amount: u64,
         collateral_pool: &mut Pool<CollateralCoinType>,
         // punished person
         punished: address,
         ctx: &mut TxContext
     ) {
+        let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
+
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(LIQUIDATE, coin::value(&debt_coin), to_bytes(&punished), dst_chain);
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(

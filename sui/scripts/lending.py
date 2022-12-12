@@ -7,6 +7,8 @@ import load
 from init import btc, usdt, force_claim_test_coin
 from init import coin, pool
 
+U64_MAX = 18446744073709551615
+
 
 def portal_supply(coin_type):
     """
@@ -30,9 +32,11 @@ def portal_supply(coin_type):
     lending_portal.lending.supply(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0,
         CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
-        CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
+        [CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1]],
+        U64_MAX,
         ty_args=[coin_type]
     )
     return wormhole_bridge.bridge_pool.read_vaa.simulate(
@@ -96,6 +100,7 @@ def portal_withdraw(coin_type, amount):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
+        [],
         0,
         amount,
         ty_args=[coin_type]
@@ -189,6 +194,7 @@ def portal_borrow(coin_type, amount):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
+        [],
         0,
         amount,
         ty_args=[coin_type]
@@ -255,8 +261,10 @@ def portal_repay(coin_type):
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0,
-        CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1],
+        [CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1]],
+        U64_MAX,
         ty_args=[coin_type]
     )
     return wormhole_bridge.bridge_pool.read_vaa.simulate(
@@ -323,9 +331,11 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
         dst_chain,
+        [],
         0,
         CacheObject[ObjectType.from_type(pool(debt_coin_type))][account_address][-1],
-        CacheObject[ObjectType.from_type(coin(debt_coin_type))][account_address][-1],
+        [CacheObject[ObjectType.from_type(coin(debt_coin_type))][account_address][-1]],
+        U64_MAX,
         CacheObject[ObjectType.from_type(pool(collateral_coin_type))][account_address][-1],
         punished,
         ty_args=[debt_coin_type, collateral_coin_type]
