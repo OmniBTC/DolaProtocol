@@ -45,9 +45,14 @@ module lending_portal::lending {
                 coin::join(&mut base_coin, vector::pop_back(&mut coins));
             };
             vector::destroy_empty(coins);
-            assert!(coin::value(&base_coin) >= amount, ENOT_ENOUGH_AMOUNT);
-            if (coin::value(&base_coin) > amount) {
-                let split_coin = coin::split(&mut base_coin, amount, ctx);
+            let sum_amount = coin::value(&base_coin);
+            let split_amount = amount;
+            if (amount == U64_MAX) {
+                split_amount = sum_amount;
+            };
+            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            if (coin::value(&base_coin) > split_amount) {
+                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
                 transfer::transfer(base_coin, tx_context::sender(ctx));
                 split_coin
             }else {
