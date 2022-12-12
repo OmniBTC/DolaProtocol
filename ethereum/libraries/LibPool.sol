@@ -6,7 +6,7 @@ import "./LibBytes.sol";
 library LibPool {
     using LibBytes for bytes;
 
-    struct DepositPayload {
+    struct SendDepositPayload {
         address pool;
         address user;
         uint64 amount;
@@ -15,7 +15,7 @@ library LibPool {
         bytes appPayload;
     }
 
-    struct WithdrawPayload {
+    struct SendWithdrawPayload {
         address pool;
         address user;
         bytes tokenName;
@@ -23,7 +23,7 @@ library LibPool {
         bytes appPayload;
     }
 
-    struct DepositAndWithdrawPayload {
+    struct SendDepositAndWithdrawPayload {
         address depositPool;
         address depositUser;
         uint64 depositAmount;
@@ -33,6 +33,13 @@ library LibPool {
         bytes withdrawTokenName;
         uint16 appId;
         bytes appPayload;
+    }
+
+    struct ReceiveWithdrawPayload {
+        address pool;
+        address user;
+        uint64 amount;
+        bytes tokenName;
     }
 
     function fixAmountDecimals(uint256 amount, uint8 decimals)
@@ -95,12 +102,12 @@ library LibPool {
     function decodeSendDepositPayload(bytes memory payload)
         public
         pure
-        returns (DepositPayload memory)
+        returns (SendDepositPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
-        DepositPayload memory decodeData;
+        SendDepositPayload memory decodeData;
 
         dataLen = 20;
         decodeData.pool = payload.toAddress(index);
@@ -135,7 +142,7 @@ library LibPool {
             decodeData.appPayload = payload.slice(index, dataLen);
             index += dataLen;
         }
-        require(index == length, "Decode deposit payload error");
+        require(index == length, "Decode send deposit payload error");
 
         return decodeData;
     }
@@ -165,12 +172,12 @@ library LibPool {
     function decodeSendWithdrawPayload(bytes memory payload)
         public
         pure
-        returns (WithdrawPayload memory)
+        returns (SendWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
-        WithdrawPayload memory decodeData;
+        SendWithdrawPayload memory decodeData;
 
         dataLen = 20;
         decodeData.pool = payload.toAddress(index);
@@ -201,7 +208,7 @@ library LibPool {
             decodeData.appPayload = payload.slice(index, dataLen);
             index += dataLen;
         }
-        require(index == length, "Decode withdraw payload error");
+        require(index == length, "Decode send withdraw payload error");
 
         return decodeData;
     }
@@ -241,12 +248,12 @@ library LibPool {
     function decodeSendDepositAndWithdrawPayload(bytes memory payload)
         public
         pure
-        returns (DepositAndWithdrawPayload memory)
+        returns (SendDepositAndWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
-        DepositAndWithdrawPayload memory decodeData;
+        SendDepositAndWithdrawPayload memory decodeData;
 
         dataLen = 20;
         decodeData.depositPool = payload.toAddress(index);
@@ -297,7 +304,62 @@ library LibPool {
             decodeData.appPayload = payload.slice(index, dataLen);
             index += dataLen;
         }
-        require(index == length, "Decode deposit and withdraw payload error");
+        require(
+            index == length,
+            "Decode send deposit and withdraw payload error"
+        );
+
+        return decodeData;
+    }
+
+    function encodeReceiveWithdrawPayload(
+        address pool,
+        address user,
+        uint64 amount,
+        bytes memory tokenName
+    ) public pure returns (bytes memory) {
+        bytes memory payload = abi.encodePacked(
+            pool,
+            user,
+            amount,
+            uint16(tokenName.length),
+            tokenName
+        );
+
+        return payload;
+    }
+
+    function decodeReceiveWithdrawPayload(bytes memory payload)
+        public
+        pure
+        returns (ReceiveWithdrawPayload memory)
+    {
+        uint256 length = payload.length;
+        uint256 index;
+        uint256 dataLen;
+        ReceiveWithdrawPayload memory decodeData;
+
+        dataLen = 20;
+        decodeData.pool = payload.toAddress(index);
+        index += dataLen;
+
+        dataLen = 20;
+        decodeData.user = payload.toAddress(index);
+        index += dataLen;
+
+        dataLen = 8;
+        decodeData.amount = payload.toUint64(index);
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 tokenNameLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = tokenNameLength;
+        decodeData.tokenName = payload.slice(index, dataLen);
+        index += dataLen;
+
+        require(index == length, "Decode receive withdraw payload error");
 
         return decodeData;
     }

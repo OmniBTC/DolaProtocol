@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../../interfaces/IERC20.sol";
 import "../../libraries/LibPool.sol";
 
 contract OmniPool {
@@ -30,7 +30,7 @@ contract OmniPool {
     }
 
     function decimals() public view returns (uint8) {
-        return ERC20(_token).decimals();
+        return IERC20(_token).decimals();
     }
 
     function rely(address bridge) external isBridge(msg.sender) {
@@ -46,7 +46,7 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) external returns (bytes memory) {
-        ERC20(_token).transfer(address(this), amount);
+        IERC20(_token).transfer(address(this), amount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             address(this),
@@ -78,7 +78,7 @@ contract OmniPool {
         external
         isBridge(msg.sender)
     {
-        ERC20(_token).transferFrom(
+        IERC20(_token).transferFrom(
             address(this),
             to,
             LibPool.restoreAmountDecimals(amount, decimals())
@@ -93,7 +93,7 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) public returns (bytes memory) {
-        ERC20(_token).transfer(address(this), depositAmount);
+        IERC20(_token).transfer(address(this), depositAmount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             address(this),
