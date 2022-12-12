@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/IERC20.sol";
 import "../../libraries/LibPool.sol";
+import "../../libraries/LibDecimals.sol";
 
 contract OmniPool {
     uint16 public _chainId;
@@ -51,7 +52,7 @@ contract OmniPool {
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             address(this),
             tx.origin,
-            LibPool.fixAmountDecimals(amount, decimals()),
+            LibDecimals.fixAmountDecimals(amount, decimals()),
             _name,
             appId,
             appPayload
@@ -81,7 +82,7 @@ contract OmniPool {
         IERC20(_token).transferFrom(
             address(this),
             to,
-            LibPool.restoreAmountDecimals(amount, decimals())
+            LibDecimals.restoreAmountDecimals(amount, decimals())
         );
     }
 
@@ -98,7 +99,7 @@ contract OmniPool {
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             address(this),
             tx.origin,
-            LibPool.fixAmountDecimals(depositAmount, decimals()),
+            LibDecimals.fixAmountDecimals(depositAmount, decimals()),
             _name,
             withdrawPool,
             withdrawUser,

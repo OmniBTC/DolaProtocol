@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../libraries/LibDiamond.sol";
 import "../../libraries/LibWormhole.sol";
 import "../../libraries/LibPool.sol";
-import "../../interfaces/IWormhole.sol";
-import "../../interfaces/IOmniPool.sol";
 
 contract WormholeFacet {
     function sendDeposit(

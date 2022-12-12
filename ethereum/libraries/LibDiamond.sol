@@ -38,7 +38,7 @@ error DecodeDiamondCutError();
 library LibDiamond {
     using LibBytes for bytes;
     bytes32 constant DIAMOND_STORAGE_POSITION =
-        keccak256("diamond.standard.diamond.storage");
+        keccak256("omnibtc.dola.diamond");
 
     struct FacetAddressAndSelectorPosition {
         address facetAddress;
