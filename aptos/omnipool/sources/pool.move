@@ -1,7 +1,7 @@
 module omnipool::pool {
     use std::vector;
 
-    use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, deserialize_address, vector_slice, serialize_u16, deserialize_u16};
+    use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use aptos_framework::coin::{Coin, is_account_registered};
     use std::signer;
     use aptos_framework::account;
@@ -15,6 +15,7 @@ module omnipool::pool {
     use std::bcs;
     use aptos_framework::aptos_account;
     use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::util::address_from_bytes;
 
     const SEED: vector<u8> = b"Dola omnipool";
 
@@ -44,6 +45,26 @@ module omnipool::pool {
 
     /// Give permission to the bridge when Pool is in use
     struct PoolCap has key, store {}
+
+    struct DolaAddress has copy, drop, store {
+        addr: vector<u8>
+    }
+
+    public fun convert_address_to_dola(addr: address): DolaAddress {
+        DolaAddress { addr: bcs::to_bytes(&addr) }
+    }
+
+    public fun convert_vector_to_dola(addr: vector<u8>): DolaAddress {
+        DolaAddress { addr }
+    }
+
+    public fun convert_dola_to_address(addr: DolaAddress): address {
+        address_from_bytes(addr.addr)
+    }
+
+    public fun convert_dola_to_vector(addr: DolaAddress): vector<u8> {
+        addr.addr
+    }
 
     /// Make sure the user has aptos coin, and help register if they don't.
     fun transfer<X>(coin_x: Coin<X>, to: address) {
@@ -138,12 +159,12 @@ module omnipool::pool {
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
         let amount = normal_amount<CoinType>(coin::value(&deposit_coin));
-        let user = signer::address_of(sender);
+        let user = convert_address_to_dola(signer::address_of(sender));
         let token_name = *string::bytes(&type_info::type_name<CoinType>());
         let pool_address = vector_slice(&sha3_256(token_name), 0, 40);
         let pool_payload = encode_send_deposit_payload(
             pool_address,
-            bcs::to_bytes(&user),
+            user,
             amount,
             token_name,
             app_id,
@@ -160,12 +181,12 @@ module omnipool::pool {
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> {
-        let user = signer::address_of(sender);
+        let user = convert_address_to_dola(signer::address_of(sender));
         let token_name = *string::bytes(&type_info::type_name<CoinType>());
         let pool_address = vector_slice(&sha3_256(token_name), 0, 40);
         let pool_payload = encode_send_withdraw_payload(
             pool_address,
-            bcs::to_bytes(&user),
+            user,
             token_name,
             app_id,
             app_payload
@@ -176,10 +197,11 @@ module omnipool::pool {
     /// call by bridge
     public fun inner_withdraw<CoinType>(
         _: &PoolCap,
-        user: address,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>,
     ) acquires Pool {
+        let user = convert_dola_to_address(user);
         amount = unnormal_amount<CoinType>(amount);
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         let balance = coin::extract(&mut pool.balance, amount);
@@ -187,15 +209,16 @@ module omnipool::pool {
         transfer(balance, user);
     }
 
+    // todo! Should this action be moved to the application level or delete
     public fun deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         sender: &signer,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_user: address,
+        withdraw_user: DolaAddress,
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
         let amount = normal_amount<DepositCoinType>(coin::value(&deposit_coin));
-        let depoist_user = signer::address_of(sender);
+        let depoist_user = convert_address_to_dola(signer::address_of(sender));
         let deposit_token_name = *string::bytes(&type_info::type_name<DepositCoinType>());
         let deposit_pool_address = vector_slice(&sha3_256(deposit_token_name), 0, 40);
 
@@ -206,11 +229,11 @@ module omnipool::pool {
         let withdraw_pool_address = vector_slice(&sha3_256(withdraw_token_name), 0, 40);
         let pool_payload = encode_send_deposit_and_withdraw_payload(
             deposit_pool_address,
-            bcs::to_bytes(&depoist_user),
+            depoist_user,
             amount,
             deposit_token_name,
             withdraw_pool_address,
-            bcs::to_bytes(&withdraw_user),
+            withdraw_user,
             withdraw_token_name,
             app_id,
             app_payload
@@ -218,44 +241,11 @@ module omnipool::pool {
         pool_payload
     }
 
-    public fun encode_send_deposit_and_withdraw_payload(
-        deposit_pool: vector<u8>,
-        deposit_user: vector<u8>,
-        deposit_amount: u64,
-        deposit_token: vector<u8>,
-        withdraw_pool: vector<u8>,
-        withdraw_user: vector<u8>,
-        withdraw_token: vector<u8>,
-        app_id: U16,
-        app_payload: vector<u8>
-    ): vector<u8> {
-        let pool_payload = vector::empty<u8>();
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_pool)));
-        serialize_vector(&mut pool_payload, deposit_pool);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_user)));
-        serialize_vector(&mut pool_payload, deposit_user);
-        serialize_u64(&mut pool_payload, deposit_amount);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_token)));
-        serialize_vector(&mut pool_payload, deposit_token);
-
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_pool)));
-        serialize_vector(&mut pool_payload, withdraw_pool);
-
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_user)));
-        serialize_vector(&mut pool_payload, withdraw_user);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_token)));
-        serialize_vector(&mut pool_payload, withdraw_token);
-
-        serialize_u16(&mut pool_payload, app_id);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
-        serialize_vector(&mut pool_payload, app_payload);
-        pool_payload
-    }
 
     /// encode deposit msg
     public fun encode_send_deposit_payload(
         pool: vector<u8>,
-        user: vector<u8>,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>,
         app_id: U16,
@@ -264,8 +254,8 @@ module omnipool::pool {
         let pool_payload = vector::empty<u8>();
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool)));
         serialize_vector(&mut pool_payload, pool);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut pool_payload, user);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user.addr)));
+        serialize_vector(&mut pool_payload, user.addr);
         serialize_u64(&mut pool_payload, amount);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
@@ -280,7 +270,7 @@ module omnipool::pool {
     /// encode whihdraw msg
     public fun encode_send_withdraw_payload(
         pool: vector<u8>,
-        user: vector<u8>,
+        user: DolaAddress,
         token_name: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>
@@ -288,8 +278,8 @@ module omnipool::pool {
         let pool_payload = vector::empty<u8>();
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool)));
         serialize_vector(&mut pool_payload, pool);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut pool_payload, user);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user.addr)));
+        serialize_vector(&mut pool_payload, user.addr);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
         serialize_u16(&mut pool_payload, app_id);
@@ -300,18 +290,52 @@ module omnipool::pool {
         pool_payload
     }
 
+    public fun encode_send_deposit_and_withdraw_payload(
+        deposit_pool: vector<u8>,
+        deposit_user: DolaAddress,
+        deposit_amount: u64,
+        deposit_token: vector<u8>,
+        withdraw_pool: vector<u8>,
+        withdraw_user: DolaAddress,
+        withdraw_token: vector<u8>,
+        app_id: U16,
+        app_payload: vector<u8>
+    ): vector<u8> {
+        let pool_payload = vector::empty<u8>();
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_pool)));
+        serialize_vector(&mut pool_payload, deposit_pool);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_user.addr)));
+        serialize_vector(&mut pool_payload, deposit_user.addr);
+        serialize_u64(&mut pool_payload, deposit_amount);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&deposit_token)));
+        serialize_vector(&mut pool_payload, deposit_token);
+
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_pool)));
+        serialize_vector(&mut pool_payload, withdraw_pool);
+
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_user.addr)));
+        serialize_vector(&mut pool_payload, withdraw_user.addr);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&withdraw_token)));
+        serialize_vector(&mut pool_payload, withdraw_token);
+
+        serialize_u16(&mut pool_payload, app_id);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&app_payload)));
+        serialize_vector(&mut pool_payload, app_payload);
+        pool_payload
+    }
+
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
         pool: vector<u8>,
-        user: vector<u8>,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool)));
         serialize_vector(&mut pool_payload, pool);
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut pool_payload, user);
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user.addr)));
+        serialize_vector(&mut pool_payload, user.addr);
         serialize_u64(&mut pool_payload, amount);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&token_name)));
         serialize_vector(&mut pool_payload, token_name);
@@ -319,17 +343,25 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (address, address, u64, vector<u8>) {
+    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (vector<u8>, DolaAddress, u64, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
 
-        data_len = 20;
-        let pool_address = deserialize_address(&vector_slice(&pool_payload, index, index + data_len));
+        data_len = 2;
+        let pool_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
         index = index + data_len;
 
-        data_len = 20;
-        let app_address = deserialize_address(&vector_slice(&pool_payload, index, index + data_len));
+        data_len = pool_address_len;
+        let pool_address = vector_slice(&pool_payload, index, index + data_len);
+        index = index + data_len;
+
+        data_len = 2;
+        let user_address_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
+        index = index + data_len;
+
+        data_len = user_address_len;
+        let user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
         data_len = 8;
@@ -337,15 +369,15 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = 2;
-        let token_name_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        let token_name_len = u16::to_u64(deserialize_u16(&vector_slice(&pool_payload, index, index + data_len)));
         index = index + data_len;
 
-        data_len = u16::to_u64(token_name_len);
+        data_len = token_name_len;
         let token_name = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_address, app_address, amount, token_name)
+        (pool_address, convert_vector_to_dola(user_address), amount, token_name)
     }
 }

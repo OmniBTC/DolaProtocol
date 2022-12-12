@@ -4,13 +4,12 @@ module lending_portal::lending {
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw};
     use aptos_framework::coin::Coin;
-    use std::bcs;
     use std::signer;
     use wormhole::state;
     use aptos_framework::coin;
     use aptos_framework::aptos_coin::AptosCoin;
     use serde::u16::{Self, U16};
-    use omnipool::pool::normal_amount;
+    use omnipool::pool::{normal_amount, DolaAddress, convert_dola_to_vector, convert_address_to_dola, convert_vector_to_dola};
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -31,7 +30,7 @@ module lending_portal::lending {
         sender: &signer,
         deposit_coin: u64,
     ) {
-        let user = bcs::to_bytes(&signer::address_of(sender));
+        let user = convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let app_payload = encode_app_payload(
@@ -50,7 +49,7 @@ module lending_portal::lending {
         dst_chain: u64,
         amount: u64,
     ) {
-        let user = bcs::to_bytes(&signer::address_of(sender));
+        let user = convert_address_to_dola(signer::address_of(sender));
         let app_payload = encode_app_payload(
             WITHDRAW,
             normal_amount<CoinType>(amount),
@@ -65,7 +64,7 @@ module lending_portal::lending {
         dst_chain: u64,
         amount: u64,
     ) {
-        let user = bcs::to_bytes(&signer::address_of(sender));
+        let user = convert_address_to_dola(signer::address_of(sender));
         let app_payload = encode_app_payload(
             BORROW,
             normal_amount<CoinType>(amount),
@@ -80,7 +79,7 @@ module lending_portal::lending {
         sender: &signer,
         repay_coin: u64,
     ) {
-        let user = bcs::to_bytes(&signer::address_of(sender));
+        let user = convert_address_to_dola(signer::address_of(sender));
 
         let app_payload = encode_app_payload(
             REPAY,
@@ -100,12 +99,12 @@ module lending_portal::lending {
         wormhole_message_fee: Coin<AptosCoin>,
         debt_coin: u64,
         // punished person
-        punished: address,
+        punished: vector<u8>,
     ) {
         let app_payload = encode_app_payload(
             LIQUIDATE,
             normal_amount<DebtCoinType>(debt_coin),
-            bcs::to_bytes(&punished),
+            convert_vector_to_dola(vector_slice(&punished, 0, vector::length(&punished))),
             u16::from_u64(dst_chain));
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
 
@@ -119,17 +118,18 @@ module lending_portal::lending {
         );
     }
 
-    public fun encode_app_payload(call_type: u8, amount: u64, user: vector<u8>, dst_chain: U16): vector<u8> {
+    public fun encode_app_payload(call_type: u8, amount: u64, user: DolaAddress, dst_chain: U16): vector<u8> {
         let payload = vector::empty<u8>();
         serialize_u16(&mut payload, dst_chain);
         serialize_u64(&mut payload, amount);
+        let user  = convert_dola_to_vector(user);
         serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
         serialize_vector(&mut payload, user);
         serialize_u8(&mut payload, call_type);
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (U16, u8, u64, vector<u8>) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, U16) {
         let index = 0;
         let data_len;
 
@@ -155,6 +155,6 @@ module lending_portal::lending {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (chain_id, call_type, amount, user)
+        (call_type, amount, convert_vector_to_dola(user), chain_id)
     }
 }

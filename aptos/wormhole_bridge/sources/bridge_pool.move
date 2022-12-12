@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw};
+    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, convert_vector_to_dola, DolaAddress};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::wormhole;
@@ -38,8 +38,8 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaReciveWithdrawEvent has key, copy, drop {
-        pool_address: address,
-        user: address,
+        pool_address: vector<u8>,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>
     }
@@ -132,14 +132,14 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_user: address,
+        withdraw_user: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             sender,
             deposit_coin,
-            withdraw_user,
+            convert_vector_to_dola(withdraw_user),
             app_id,
             app_payload,
         );
