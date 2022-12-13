@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/IWormhole.sol";
-import "../interfaces/IOmniPool.sol";
 
 library LibWormhole {
     bytes32 internal constant DIAMOND_STORAGE_POSITION =
@@ -10,8 +9,6 @@ library LibWormhole {
 
     struct Storage {
         address wormholeBridge;
-        // todo: fix multiple pools
-        mapping(bytes => address) omnipool;
         uint32 nonce;
         uint16 chainId;
         uint8 finality;
@@ -19,12 +16,17 @@ library LibWormhole {
         mapping(bytes32 => bool) completeVAA;
     }
 
+    function wormhole() internal view returns (IWormhole) {
+        Storage storage ds = diamondStorage();
+        return IWormhole(ds.wormholeBridge);
+    }
+
     function wormholeMessageFee() internal view returns (uint256) {
         Storage storage ds = diamondStorage();
         return IWormhole(ds.wormholeBridge).messageFee();
     }
 
-    function wormhole() internal view returns (address) {
+    function wormholeBridge() internal view returns (address) {
         Storage storage ds = diamondStorage();
         return ds.wormholeBridge;
     }
@@ -39,11 +41,6 @@ library LibWormhole {
         return ds.finality;
     }
 
-    function omnipool(bytes memory tokenName) internal view returns (address) {
-        Storage storage ds = diamondStorage();
-        return ds.omnipool[tokenName];
-    }
-
     function initWormhole(
         address _wormholeBridge,
         uint16 _chainId,
@@ -55,11 +52,6 @@ library LibWormhole {
         ds.chainId = _chainId;
         ds.finality = _finality;
         ds.remoteBridge = _remoteBridge;
-    }
-
-    function addPool(bytes memory _tokenName, address _pool) internal {
-        Storage storage ds = diamondStorage();
-        ds.omnipool[_tokenName] = _pool;
     }
 
     function increaseNonce() internal {

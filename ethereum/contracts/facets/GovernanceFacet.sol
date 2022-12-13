@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../../libraries/LibWormhole.sol";
 import "../../libraries/LibGovernance.sol";
 import "../../libraries/LibDiamond.sol";
+import "../../libraries/LibPool.sol";
 
 contract GovernanceFacet {
     function receiveDiamondCut(bytes memory vaa) external {
@@ -30,5 +31,9 @@ contract GovernanceFacet {
             cutParams._init,
             cutParams._calldata
         );
+    }
+
+    function addPool(address pool) external {
+        LibPool.addPool(pool);
     }
 }
