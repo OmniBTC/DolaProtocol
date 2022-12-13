@@ -33,10 +33,9 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaReciveWithdrawEvent has copy, drop {
-        pool_address: vector<u8>,
+        pool_address: DolaAddress,
         user: DolaAddress,
-        amount: u64,
-        token_name: vector<u8>
+        amount: u64
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
@@ -116,7 +115,6 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_pool: &mut Pool<WithdrawCoinType>,
         withdraw_user: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>,
@@ -125,7 +123,6 @@ module wormhole_bridge::bridge_pool {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             deposit_pool,
             deposit_coin,
-            withdraw_pool,
             withdraw_user,
             app_id,
             app_payload,
@@ -153,9 +150,9 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, token_name) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (_pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
-        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, token_name, ctx);
+        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
     }
 
@@ -170,13 +167,12 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         event::emit(VaaReciveWithdrawEvent {
             pool_address,
             user,
-            amount,
-            token_name
+            amount
         })
     }
 }

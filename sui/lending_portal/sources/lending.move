@@ -1,7 +1,7 @@
 module lending_portal::lending {
     use std::vector;
 
-    use omnipool::pool::{Pool, normal_amount, DolaAddress, convert_dola_to_vector, convert_vector_to_dola, convert_address_to_dola};
+    use omnipool::pool::{Pool, normal_amount, DolaAddress, convert_address_to_dola, encode_dola_address, decode_dola_address, convert_external_address_to_dola};
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -140,7 +140,6 @@ module lending_portal::lending {
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
         debt_amount: u64,
-        collateral_pool: &mut Pool<CollateralCoinType>,
         // punished person
         punished: vector<u8>,
         ctx: &mut TxContext
@@ -149,15 +148,14 @@ module lending_portal::lending {
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(LIQUIDATE, normal_amount(debt_pool,coin::value(&debt_coin)),
-            convert_vector_to_dola(vector_slice(&punished,0, vector::length(&punished))), dst_chain);
+            convert_external_address_to_dola(vector_slice(&punished,0, vector::length(&punished))), dst_chain);
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
             wormhole_state,
             wormhole_message_fee,
             debt_pool,
             debt_coin,
-            collateral_pool,
-            convert_vector_to_dola(punished),
+            convert_external_address_to_dola(punished),
             APPID,
             app_payload,
             ctx
@@ -168,7 +166,7 @@ module lending_portal::lending {
         let payload = vector::empty<u8>();
         serialize_u16(&mut payload, dst_chain);
         serialize_u64(&mut payload, amount);
-        let user = convert_dola_to_vector(user);
+        let user = encode_dola_address(user);
         serialize_u16(&mut payload, (vector::length(&user) as u16));
         serialize_vector(&mut payload, user);
         serialize_u8(&mut payload, call_type);
@@ -192,7 +190,7 @@ module lending_portal::lending {
         index = index + data_len;
 
         data_len = (user_length as u64);
-        let user = vector_slice(&app_payload, index, index + data_len);
+        let user = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -201,17 +199,17 @@ module lending_portal::lending {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, convert_vector_to_dola(user), chain_id)
+        (call_type, amount, user, chain_id)
     }
 
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, convert_vector_to_dola(to_bytes(&user)), 1);
+        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user), 1);
         let ( call_type, amount, user_addr, chain_id) = decode_app_payload(payload);
         assert!(chain_id == 1, 0);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_addr == convert_vector_to_dola(to_bytes(&user)), 0);
+        assert!(user_addr == convert_address_to_dola(user), 0);
     }
 }
