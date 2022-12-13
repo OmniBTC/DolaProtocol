@@ -24,9 +24,9 @@ library LibWormhole {
         return IWormhole(ds.wormholeBridge).messageFee();
     }
 
-    function wormhole() internal view returns (IWormhole) {
+    function wormhole() internal view returns (address) {
         Storage storage ds = diamondStorage();
-        return IWormhole(ds.wormholeBridge);
+        return ds.wormholeBridge;
     }
 
     function nonce() internal view returns (uint32) {
@@ -39,13 +39,9 @@ library LibWormhole {
         return ds.finality;
     }
 
-    function omnipool(bytes memory tokenName)
-        internal
-        view
-        returns (IOmniPool)
-    {
+    function omnipool(bytes memory tokenName) internal view returns (address) {
         Storage storage ds = diamondStorage();
-        return IOmniPool(ds.omnipool[tokenName]);
+        return ds.omnipool[tokenName];
     }
 
     function initWormhole(

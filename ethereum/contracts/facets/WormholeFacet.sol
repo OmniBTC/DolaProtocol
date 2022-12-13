@@ -5,6 +5,7 @@ import "../../libraries/LibWormhole.sol";
 import "../../libraries/LibPool.sol";
 import "../../libraries/LibAsset.sol";
 import "../../interfaces/IOmniPool.sol";
+import "../../interfaces/IWormhole.sol";
 
 contract WormholeFacet {
     function sendDeposit(
@@ -13,16 +14,19 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        address token = LibWormhole.omnipool(tokenName).getTokenAddress();
+        address token = IOmniPool(LibWormhole.omnipool(tokenName))
+            .getTokenAddress();
         if (!LibAsset.isNativeAsset(token)) {
             LibAsset.depositAsset(token, amount);
         }
-        bytes memory payload = LibWormhole.omnipool(tokenName).depositTo(
-            amount,
-            appId,
-            appPayload
+        LibAsset.maxApproveERC20(
+            IERC20(token),
+            LibWormhole.omnipool(tokenName),
+            amount
         );
-        LibWormhole.wormhole().publishMessage{value: msg.value}(
+        bytes memory payload = IOmniPool(LibWormhole.omnipool(tokenName))
+            .depositTo(amount, appId, appPayload);
+        IWormhole(LibWormhole.wormhole()).publishMessage{value: msg.value}(
             LibWormhole.nonce(),
             payload,
             LibWormhole.finality()
@@ -35,11 +39,9 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = LibWormhole.omnipool(tokenName).withdrawTo(
-            appId,
-            appPayload
-        );
-        LibWormhole.wormhole().publishMessage{value: msg.value}(
+        bytes memory payload = IOmniPool(LibWormhole.omnipool(tokenName))
+            .withdrawTo(appId, appPayload);
+        IWormhole(LibWormhole.wormhole()).publishMessage{value: msg.value}(
             LibWormhole.nonce(),
             payload,
             LibWormhole.finality()
@@ -56,14 +58,17 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        address token = LibWormhole
-            .omnipool(depositTokenName)
+        address token = IOmniPool(LibWormhole.omnipool(depositTokenName))
             .getTokenAddress();
         if (!LibAsset.isNativeAsset(token)) {
             LibAsset.depositAsset(token, depositAmount);
         }
-        bytes memory payload = LibWormhole
-            .omnipool(depositTokenName)
+        LibAsset.maxApproveERC20(
+            IERC20(token),
+            LibWormhole.omnipool(depositTokenName),
+            depositAmount
+        );
+        bytes memory payload = IOmniPool(LibWormhole.omnipool(depositTokenName))
             .depositAndWithdraw(
                 depositAmount,
                 withdrawPool,
@@ -72,7 +77,7 @@ contract WormholeFacet {
                 appId,
                 appPayload
             );
-        LibWormhole.wormhole().publishMessage{value: msg.value}(
+        IWormhole(LibWormhole.wormhole()).publishMessage{value: msg.value}(
             LibWormhole.nonce(),
             payload,
             LibWormhole.finality()
@@ -81,9 +86,8 @@ contract WormholeFacet {
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        (IWormhole.VM memory vm, , ) = LibWormhole.wormhole().parseAndVerifyVM(
-            vaa
-        );
+        (IWormhole.VM memory vm, , ) = IWormhole(LibWormhole.wormhole())
+            .parseAndVerifyVM(vaa);
         require(
             !LibWormhole.isCompleteVAA(vm.hash),
             "withdraw already completed"
@@ -92,7 +96,7 @@ contract WormholeFacet {
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
             .decodeReceiveWithdrawPayload(vm.payload);
-        LibWormhole.omnipool(payload.tokenName).innerWithdraw(
+        IOmniPool(LibWormhole.omnipool(payload.tokenName)).innerWithdraw(
             payload.user,
             payload.amount
         );

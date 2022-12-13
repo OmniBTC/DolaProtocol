@@ -50,7 +50,7 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) external returns (bytes memory) {
-        IERC20(token).transfer(address(this), amount);
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             address(this),
@@ -97,7 +97,7 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) public returns (bytes memory) {
-        IERC20(token).transfer(address(this), depositAmount);
+        IERC20(token).transferFrom(msg.sender, address(this), depositAmount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             address(this),
