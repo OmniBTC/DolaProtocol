@@ -6,11 +6,12 @@ import "../../libraries/LibPool.sol";
 
 contract WormholeFacet {
     function sendDeposit(
+        bytes memory tokenName,
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = LibWormhole.omnipool().depositTo(
+        bytes memory payload = LibWormhole.omnipool(tokenName).depositTo(
             amount,
             appId,
             appPayload
@@ -23,11 +24,12 @@ contract WormholeFacet {
         LibWormhole.increaseNonce();
     }
 
-    function sendWithdraw(uint16 appId, bytes memory appPayload)
-        external
-        payable
-    {
-        bytes memory payload = LibWormhole.omnipool().withdrawTo(
+    function sendWithdraw(
+        bytes memory tokenName,
+        uint16 appId,
+        bytes memory appPayload
+    ) external payable {
+        bytes memory payload = LibWormhole.omnipool(tokenName).withdrawTo(
             appId,
             appPayload
         );
@@ -40,6 +42,7 @@ contract WormholeFacet {
     }
 
     function sendDepositAndWithdraw(
+        bytes memory depositTokenName,
         uint256 depositAmount,
         address withdrawPool,
         address withdrawUser,
@@ -47,14 +50,16 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = LibWormhole.omnipool().depositAndWithdraw(
-            depositAmount,
-            withdrawPool,
-            withdrawUser,
-            withdrawTokenName,
-            appId,
-            appPayload
-        );
+        bytes memory payload = LibWormhole
+            .omnipool(depositTokenName)
+            .depositAndWithdraw(
+                depositAmount,
+                withdrawPool,
+                withdrawUser,
+                withdrawTokenName,
+                appId,
+                appPayload
+            );
         LibWormhole.wormhole().publishMessage{value: msg.value}(
             LibWormhole.nonce(),
             payload,
@@ -75,6 +80,14 @@ contract WormholeFacet {
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
             .decodeReceiveWithdrawPayload(vm.payload);
-        LibWormhole.omnipool().innerWithdraw(payload.user, payload.amount);
+        LibWormhole.omnipool(payload.tokenName).innerWithdraw(
+            payload.user,
+            payload.amount
+        );
+    }
+
+    // todo: add this to governance
+    function addOmniPool(bytes memory tokenName, address pool) external {
+        LibWormhole.addPool(tokenName, pool);
     }
 }

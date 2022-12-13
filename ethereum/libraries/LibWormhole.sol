@@ -11,7 +11,7 @@ library LibWormhole {
     struct Storage {
         address wormholeBridge;
         // todo: fix multiple pools
-        address omnipool;
+        mapping(bytes => address) omnipool;
         uint32 nonce;
         uint16 chainId;
         uint8 finality;
@@ -39,9 +39,13 @@ library LibWormhole {
         return ds.finality;
     }
 
-    function omnipool() internal view returns (IOmniPool) {
+    function omnipool(bytes memory tokenName)
+        internal
+        view
+        returns (IOmniPool)
+    {
         Storage storage ds = diamondStorage();
-        return IOmniPool(ds.omnipool);
+        return IOmniPool(ds.omnipool[tokenName]);
     }
 
     function initWormhole(
@@ -55,6 +59,11 @@ library LibWormhole {
         ds.chainId = _chainId;
         ds.finality = _finality;
         ds.remoteBridge = _remoteBridge;
+    }
+
+    function addPool(bytes memory _tokenName, address _pool) internal {
+        Storage storage ds = diamondStorage();
+        ds.omnipool[_tokenName] = _pool;
     }
 
     function increaseNonce() internal {

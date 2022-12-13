@@ -13,21 +13,23 @@ contract LendingPortal {
     uint8 private constant BORROW = 2;
     uint8 private constant REPAY = 3;
     uint8 private constant LIQUIDATE = 4;
-    address public bridge;
+    address public dolaDiamond;
 
-    constructor(address _bridge) {
-        bridge = _bridge;
+    constructor(address diamond) {
+        dolaDiamond = diamond;
     }
 
     function supply(address _token, uint256 _amount) external payable {
         uint8 decimal = IERC20(_token).decimals();
+        bytes memory tokenName = bytes(IERC20(_token).name());
         bytes memory appPayload = LibLending.encodeAppPayload(
             SUPPLY,
             LibDecimals.fixAmountDecimals(_amount, decimal),
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(bridge).sendDeposit{value: msg.value}(
+        IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
+            tokenName,
             _amount,
             APPID,
             appPayload
@@ -35,33 +37,47 @@ contract LendingPortal {
     }
 
     // withdraw use 8 decimal
-    function withdraw(uint64 _amount, uint16 _dstChainId) external payable {
+    function withdraw(
+        bytes memory _tokenName,
+        uint64 _amount,
+        uint16 _dstChainId
+    ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             WITHDRAW,
             _amount,
             abi.encodePacked(tx.origin),
             _dstChainId
         );
-        IWormholeFacet(bridge).sendWithdraw{value: msg.value}(
+        IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
+            _tokenName,
             APPID,
             appPayload
         );
     }
 
-    function borrow(uint64 _amount, uint16 _dstChainId) external payable {
+    function borrow(
+        bytes memory _tokenName,
+        uint64 _amount,
+        uint16 _dstChainId
+    ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             BORROW,
             _amount,
             abi.encodePacked(tx.origin),
             _dstChainId
         );
-        IWormholeFacet(bridge).sendWithdraw{value: msg.value}(
+        IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
+            _tokenName,
             APPID,
             appPayload
         );
     }
 
-    function repay(address _token, uint256 _amount) external payable {
+    function repay(
+        bytes memory _tokenName,
+        address _token,
+        uint256 _amount
+    ) external payable {
         uint8 decimal = IERC20(_token).decimals();
         bytes memory appPayload = LibLending.encodeAppPayload(
             REPAY,
@@ -69,7 +85,8 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(bridge).sendDeposit{value: msg.value}(
+        IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
+            _tokenName,
             _amount,
             APPID,
             appPayload
@@ -83,14 +100,16 @@ contract LendingPortal {
         address _punished
     ) external {
         uint8 decimal = IERC20(_depositToken).decimals();
-        bytes memory withdrawTokenName = bytes(IERC20(_withdrawToken).symbol());
+        bytes memory depositTokenName = bytes(IERC20(_depositToken).name());
+        bytes memory withdrawTokenName = bytes(IERC20(_withdrawToken).name());
         bytes memory appPayload = LibLending.encodeAppPayload(
             LIQUIDATE,
             LibDecimals.fixAmountDecimals(_amount, decimal),
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(bridge).sendDepositAndWithdraw(
+        IWormholeFacet(dolaDiamond).sendDepositAndWithdraw(
+            depositTokenName,
             _amount,
             _withdrawToken,
             _punished,
