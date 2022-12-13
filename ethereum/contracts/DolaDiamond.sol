@@ -19,7 +19,13 @@ import {IERC165} from "../interfaces/IERC165.sol";
 // When no function exists for function called
 error FunctionNotFound(bytes4 _functionSelector);
 
-struct InitArgs {
+// This is used in diamond constructor
+// more arguments are added to this struct
+// this avoids stack too deep errors
+struct DiamondArgs {
+    address owner;
+    address init;
+    bytes initCalldata;
     address wormholeBridge;
     uint16 chainId;
     uint8 finality;
@@ -27,31 +33,20 @@ struct InitArgs {
 }
 
 contract DolaDiamond {
+    // InitArgs memory initArgs
     constructor(
-        address contractOwner,
-        address diamondCutFacet,
-        InitArgs memory initArgs
+        IDiamondCut.FacetCut[] memory _diamondCut,
+        DiamondArgs memory _args
     ) payable {
-        LibDiamond.setContractOwner(contractOwner);
-
-        // Add the diamondCut external function from the diamondCutFacet
-        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
-        bytes4[] memory functionSelectors = new bytes4[](1);
-        functionSelectors[0] = IDiamondCut.diamondCut.selector;
-        cut[0] = IDiamond.FacetCut({
-            facetAddress: diamondCutFacet,
-            action: IDiamond.FacetCutAction.Add,
-            functionSelectors: functionSelectors
-        });
-        LibDiamond.diamondCut(cut, address(0), "");
+        LibDiamond.setContractOwner(_args.owner);
+        LibDiamond.diamondCut(_diamondCut, _args.init, _args.initCalldata);
 
         // Code can be added here to perform actions and set state variables.
-        // todo: init governance
         LibWormhole.initWormhole(
-            initArgs.wormholeBridge,
-            initArgs.chainId,
-            initArgs.finality,
-            initArgs.remoteBridge
+            _args.wormholeBridge,
+            _args.chainId,
+            _args.finality,
+            _args.remoteBridge
         );
     }
 
