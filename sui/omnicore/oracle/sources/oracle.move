@@ -5,6 +5,7 @@ module oracle::oracle {
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
+    use std::ascii::String;
 
     const ENONEXISTENT_ORACLE: u64 = 0;
 
@@ -18,8 +19,8 @@ module oracle::oracle {
         id: UID,
         // todo: use sui timestamp
         timestamp: u64,
-        // token name => price
-        price_oracles: Table<vector<u8>, Price>
+        // catalog => price
+        price_oracles: Table<String, Price>
     }
 
     struct Price has store {
@@ -43,14 +44,14 @@ module oracle::oracle {
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
         timestamp: u64,
-        token_name: vector<u8>,
+        catalog: String,
         token_price: u64,
         price_decimal: u8
     ) {
         price_oracle.timestamp = timestamp;
         let price_oracles = &mut price_oracle.price_oracles;
-        assert!(!table::contains(price_oracles, token_name), EALREADY_EXIST_ORACLE);
-        table::add(price_oracles, token_name, Price {
+        assert!(!table::contains(price_oracles, catalog), EALREADY_EXIST_ORACLE);
+        table::add(price_oracles, catalog, Price {
             value: token_price,
             decimal: price_decimal
         })
@@ -59,19 +60,19 @@ module oracle::oracle {
     public entry fun update_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
-        token_name: vector<u8>,
+        catalog: String,
         token_price: u64
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
-        assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
-        let price = table::borrow_mut(price_oracles, token_name);
+        assert!(table::contains(price_oracles, catalog), ENONEXISTENT_ORACLE);
+        let price = table::borrow_mut(price_oracles, catalog);
         price.value = token_price;
     }
 
-    public fun get_token_price(price_oracle: &mut PriceOracle, token_name: vector<u8>): (u64, u8) {
+    public fun get_token_price(price_oracle: &mut PriceOracle, catalog: String): (u64, u8) {
         let price_oracles = &mut price_oracle.price_oracles;
-        assert!(table::contains(price_oracles, token_name), ENONEXISTENT_ORACLE);
-        let price = table::borrow(price_oracles, token_name);
+        assert!(table::contains(price_oracles, catalog), ENONEXISTENT_ORACLE);
+        let price = table::borrow(price_oracles, catalog);
         (price.value, price.decimal)
     }
 

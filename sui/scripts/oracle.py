@@ -19,7 +19,7 @@ def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
     return prices
 
 
-def feed(symbol, token_name):
+def feed(symbol, catalog):
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
     while True:
@@ -31,7 +31,7 @@ def feed(symbol, token_name):
         oracle.oracle.update_token_price(
             oracle.oracle.OracleCap[-1],
             oracle.oracle.PriceOracle[-1],
-            list(bytes(token_name.replace("0x", ""), 'ascii')),
+            list(bytes(catalog.replace("0x", ""), 'ascii')),
             int(price * 100)
         )
         timestamp = time.time()

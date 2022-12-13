@@ -103,10 +103,10 @@ def bridge_core():
             time.sleep(10)
             continue
         decode_vaa = list(base64.b64decode(vaa))
-        token_name = wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
+        catalog = wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
             decode_vaa
-        )["events"][-1]["moveEvent"]["fields"]["token_name"]
-        token_name = "0x" + base64.b64decode(token_name).decode("ascii")
+        )["events"][-1]["moveEvent"]["fields"]["catalog"]
+        catalog = "0x" + base64.b64decode(catalog).decode("ascii")
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
@@ -120,9 +120,9 @@ def bridge_core():
                     wormhole_bridge.bridge_pool.receive_withdraw(
                         wormhole.state.State[-1],
                         wormhole_bridge.bridge_pool.PoolState[-1],
-                        CacheObject[ObjectType.from_type(pool(token_name))][account_address][-1],
+                        CacheObject[ObjectType.from_type(pool(catalog))][account_address][-1],
                         list(base64.b64decode(vaa)),
-                        ty_args=[token_name]
+                        ty_args=[catalog]
                     )
                     break
                 except:

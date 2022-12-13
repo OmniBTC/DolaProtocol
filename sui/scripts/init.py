@@ -65,13 +65,13 @@ def register_lending_storage_admin_cap():
     return result['events'][-1]['moveEvent']['fields']['hash']
 
 
-def register_token_price(token_name, price, decimal):
+def register_token_price(catalog, price, decimal):
     """
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
         timestamp: u64,
-        token_name: vector<u8>,
+        catalog: String,
         token_price: u64,
         price_decimal: u8
     )
@@ -83,7 +83,7 @@ def register_token_price(token_name, price, decimal):
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
         int(time.time()),
-        list(bytes(token_name.replace("0x", ""), 'ascii')),
+        list(bytes(catalog.replace("0x", ""), 'ascii')),
         price,
         decimal
     )
@@ -162,14 +162,14 @@ def vote_app_cap_proposal():
     )
 
 
-def vote_register_new_reserve_proposal(token_name):
+def vote_register_new_reserve_proposal(catalog):
     '''
     public entry fun vote_register_new_reserve_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         oracle: &mut PriceOracle,
-        token_name: vector<u8>,
+        catalog: String,
         treasury: address,
         treasury_factor: u64,
         collateral_coefficient: u64,
@@ -188,7 +188,7 @@ def vote_register_new_reserve_proposal(token_name):
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
-        list(bytes(token_name.replace("0x", ""), 'ascii')),
+        list(bytes(catalog.replace("0x", ""), 'ascii')),
         example_proposal.account.account_address,
         int(0.01 * RAY),
         int(0.01 * RAY),
