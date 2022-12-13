@@ -6,40 +6,35 @@ import "../../libraries/LibPool.sol";
 import "../../libraries/LibDecimals.sol";
 
 contract OmniPool {
-    uint16 public _chainId;
-    uint256 public _balance;
-    address public _bridge;
-    address public _token;
-    // use the token name defined by the omnicore
-    bytes public _name;
-    mapping(address => bool) private _allowances;
+    uint256 public balance;
+    address public dolaDiamond;
+    address public token;
+    // todo: use the token name defined by the omnicore
+    bytes public tokenName;
+    mapping(address => bool) private allowances;
 
-    modifier isBridge(address bridge) {
-        require(_allowances[bridge], "Not bridge!");
+    modifier isBridgePool(address diamond) {
+        require(allowances[diamond], "Not bridge pool!");
         _;
     }
 
-    constructor(
-        address bridge,
-        address token,
-        bytes memory name
-    ) {
-        _bridge = bridge;
-        _token = token;
-        _name = name;
-        _allowances[bridge] = true;
+    constructor(address diamond, address tokenAddress) {
+        dolaDiamond = diamond;
+        token = tokenAddress;
+        tokenName = bytes(IERC20(token).name());
+        allowances[dolaDiamond] = true;
     }
 
     function decimals() public view returns (uint8) {
-        return IERC20(_token).decimals();
+        return IERC20(token).decimals();
     }
 
-    function rely(address bridge) external isBridge(msg.sender) {
-        _allowances[bridge] = true;
+    function rely(address diamond) external isBridgePool(msg.sender) {
+        allowances[diamond] = true;
     }
 
-    function deny(address bridge) external isBridge(msg.sender) {
-        _allowances[bridge] = false;
+    function deny(address diamond) external isBridgePool(msg.sender) {
+        allowances[diamond] = false;
     }
 
     function depositTo(
@@ -47,13 +42,13 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) external returns (bytes memory) {
-        IERC20(_token).transfer(address(this), amount);
+        IERC20(token).transfer(address(this), amount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             address(this),
             tx.origin,
             LibDecimals.fixAmountDecimals(amount, decimals()),
-            _name,
+            tokenName,
             appId,
             appPayload
         );
@@ -68,7 +63,7 @@ contract OmniPool {
         bytes memory poolPayload = LibPool.encodeSendWithdrawPayload(
             address(this),
             tx.origin,
-            _name,
+            tokenName,
             appId,
             appPayload
         );
@@ -77,9 +72,9 @@ contract OmniPool {
 
     function innerWithdraw(address to, uint64 amount)
         external
-        isBridge(msg.sender)
+        isBridgePool(msg.sender)
     {
-        IERC20(_token).transferFrom(
+        IERC20(token).transferFrom(
             address(this),
             to,
             LibDecimals.restoreAmountDecimals(amount, decimals())
@@ -94,13 +89,13 @@ contract OmniPool {
         uint16 appId,
         bytes memory appPayload
     ) public returns (bytes memory) {
-        IERC20(_token).transfer(address(this), depositAmount);
+        IERC20(token).transfer(address(this), depositAmount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             address(this),
             tx.origin,
             LibDecimals.fixAmountDecimals(depositAmount, decimals()),
-            _name,
+            tokenName,
             withdrawPool,
             withdrawUser,
             withdrawTokenName,

@@ -19,18 +19,18 @@ contract LendingPortal {
         dolaDiamond = diamond;
     }
 
-    function supply(address _token, uint256 _amount) external payable {
-        uint8 decimal = IERC20(_token).decimals();
-        bytes memory tokenName = bytes(IERC20(_token).name());
+    function supply(address token, uint256 amount) external payable {
+        uint8 decimal = IERC20(token).decimals();
+        bytes memory tokenName = bytes(IERC20(token).name());
         bytes memory appPayload = LibLending.encodeAppPayload(
             SUPPLY,
-            LibDecimals.fixAmountDecimals(_amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, decimal),
             abi.encodePacked(tx.origin),
             0
         );
         IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
             tokenName,
-            _amount,
+            amount,
             APPID,
             appPayload
         );
@@ -38,81 +38,81 @@ contract LendingPortal {
 
     // withdraw use 8 decimal
     function withdraw(
-        bytes memory _tokenName,
-        uint64 _amount,
-        uint16 _dstChainId
+        bytes memory tokenName,
+        uint64 amount,
+        uint16 dstChainId
     ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             WITHDRAW,
-            _amount,
+            amount,
             abi.encodePacked(tx.origin),
-            _dstChainId
+            dstChainId
         );
         IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
-            _tokenName,
+            tokenName,
             APPID,
             appPayload
         );
     }
 
     function borrow(
-        bytes memory _tokenName,
-        uint64 _amount,
-        uint16 _dstChainId
+        bytes memory tokenName,
+        uint64 amount,
+        uint16 dstChainId
     ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             BORROW,
-            _amount,
+            amount,
             abi.encodePacked(tx.origin),
-            _dstChainId
+            dstChainId
         );
         IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
-            _tokenName,
+            tokenName,
             APPID,
             appPayload
         );
     }
 
     function repay(
-        bytes memory _tokenName,
-        address _token,
-        uint256 _amount
+        bytes memory tokenName,
+        address token,
+        uint256 amount
     ) external payable {
-        uint8 decimal = IERC20(_token).decimals();
+        uint8 decimal = IERC20(token).decimals();
         bytes memory appPayload = LibLending.encodeAppPayload(
             REPAY,
-            LibDecimals.fixAmountDecimals(_amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, decimal),
             abi.encodePacked(tx.origin),
             0
         );
         IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
-            _tokenName,
-            _amount,
+            tokenName,
+            amount,
             APPID,
             appPayload
         );
     }
 
     function liquidate(
-        address _depositToken,
-        uint256 _amount,
-        address _withdrawToken,
-        address _punished
+        address depositToken,
+        uint256 amount,
+        address withdrawToken,
+        address punished
     ) external {
-        uint8 decimal = IERC20(_depositToken).decimals();
-        bytes memory depositTokenName = bytes(IERC20(_depositToken).name());
-        bytes memory withdrawTokenName = bytes(IERC20(_withdrawToken).name());
+        uint8 decimal = IERC20(depositToken).decimals();
+        bytes memory depositTokenName = bytes(IERC20(depositToken).name());
+        bytes memory withdrawTokenName = bytes(IERC20(withdrawToken).name());
         bytes memory appPayload = LibLending.encodeAppPayload(
             LIQUIDATE,
-            LibDecimals.fixAmountDecimals(_amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, decimal),
             abi.encodePacked(tx.origin),
             0
         );
         IWormholeFacet(dolaDiamond).sendDepositAndWithdraw(
             depositTokenName,
-            _amount,
-            _withdrawToken,
-            _punished,
+            amount,
+            withdrawToken,
+            punished,
             withdrawTokenName,
             APPID,
             appPayload
