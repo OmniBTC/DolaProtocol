@@ -1,6 +1,7 @@
 __pycache__
 .env
 .history
+.vscode
 .hypothesis/
 build/
 reports/

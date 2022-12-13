@@ -29,6 +29,10 @@ contract OmniPool {
         return IERC20(token).decimals();
     }
 
+    function getTokenName() public view returns (bytes memory) {
+        return tokenName;
+    }
+
     function rely(address diamond) external isBridgePool(msg.sender) {
         allowances[diamond] = true;
     }

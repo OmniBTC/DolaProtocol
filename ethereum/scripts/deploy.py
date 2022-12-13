@@ -17,8 +17,8 @@ def deploy():
         print(f"deploy {facet._name}...")
         facet.deploy({'from': account})
 
-    print("deploy SoDiamond...")
-    DolaDiamond.deploy(account, DiamondCutFacet[-1], [get_wormhole(
+    print("deploy DolaDiamond...")
+    DolaDiamond.deploy(account.address, DiamondCutFacet[-1], [get_wormhole(
     ), get_wormhole_chain_id(), 1, zero_address()], {'from': account})
 
     deploy_omnipool("USDT", account)

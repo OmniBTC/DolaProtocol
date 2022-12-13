@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 interface IOmniPool {
     function decimals() external view returns (uint8);
 
+    function getTokenName() external view returns (bytes memory);
+
     function rely(address bridge) external;
 
     function deny(address bridge) external;

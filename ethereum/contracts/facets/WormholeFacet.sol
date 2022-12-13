@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../libraries/LibWormhole.sol";
 import "../../libraries/LibPool.sol";
+import "../../interfaces/IOmniPool.sol";
 
 contract WormholeFacet {
     function sendDeposit(
@@ -87,7 +88,8 @@ contract WormholeFacet {
     }
 
     // todo: add this to governance
-    function addOmniPool(bytes memory tokenName, address pool) external {
+    function addOmniPool(address pool) external {
+        bytes memory tokenName = IOmniPool(pool).getTokenName();
         LibWormhole.addPool(tokenName, pool);
     }
 }
