@@ -6,9 +6,10 @@ module lending::logic {
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
-    use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use pool_manager::pool_manager::{Self, PoolManagerInfo, DolaAddress};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
     use sui::math::pow;
+    use std::ascii::String;
 
     const RAY: u64 = 100000000;
 
@@ -33,9 +34,9 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        collateral: vector<u8>,
-        loan_token: vector<u8>,
+        user_address: DolaAddress,
+        collateral: String,
+        loan_token: String,
         repay_debt: u64,
     ): u64 {
         update_state(cap, storage, oracle, loan_token);
@@ -60,16 +61,16 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
+        user_address: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        assert!(!is_loan(storage, user_address, token_name), ENOT_LOAN);
-        update_state(cap, storage, oracle, token_name);
-        mint_otoken(cap, storage, user_address, token_name, token_amount);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
-        if (!is_collateral(storage, user_address, token_name)) {
-            add_user_collateral(cap, storage, user_address, token_name);
+        assert!(!is_loan(storage, user_address, catalog), ENOT_LOAN);
+        update_state(cap, storage, oracle, catalog);
+        mint_otoken(cap, storage, user_address, catalog, token_amount);
+        update_interest_rate(cap, pool_manager_info, storage, catalog);
+        if (!is_collateral(storage, user_address, catalog)) {
+            add_user_collateral(cap, storage, user_address, catalog);
         }
     }
 
@@ -79,21 +80,21 @@ module lending::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         pool_manager_info: &PoolManagerInfo,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
+        user_address: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        update_state(cap, storage, oracle, token_name);
+        update_state(cap, storage, oracle, catalog);
         // check otoken amount
-        let otoken_amount = user_collateral_balance(storage, user_address, token_name);
+        let otoken_amount = user_collateral_balance(storage, user_address, catalog);
         assert!(token_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
-        burn_otoken(cap, storage, user_address, token_name, token_amount);
+        burn_otoken(cap, storage, user_address, catalog, token_amount);
 
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
+        update_interest_rate(cap, pool_manager_info, storage, catalog);
 
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
         if (token_amount == otoken_amount) {
-            remove_user_collateral(cap, storage, user_address, token_name);
+            remove_user_collateral(cap, storage, user_address, catalog);
         }
     }
 
@@ -102,22 +103,22 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
+        user_address: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        update_state(cap, storage, oracle, token_name);
+        update_state(cap, storage, oracle, catalog);
 
-        assert!(!is_collateral(storage, user_address, token_name), ECOLLATERAL_AS_LOAN);
-        if (!is_loan(storage, user_address, token_name)) {
-            add_user_loan(cap, storage, user_address, token_name);
+        assert!(!is_collateral(storage, user_address, catalog), ECOLLATERAL_AS_LOAN);
+        if (!is_loan(storage, user_address, catalog)) {
+            add_user_loan(cap, storage, user_address, catalog);
         };
-        mint_dtoken(cap, storage, user_address, token_name, token_amount);
+        mint_dtoken(cap, storage, user_address, catalog, token_amount);
 
-        let liquidity = pool_manager::get_app_liquidity(pool_manager_info, token_name, get_app_id(storage));
+        let liquidity = pool_manager::get_app_liquidity_by_catalog(pool_manager_info, catalog, get_app_id(storage));
         assert!((token_amount as u128) < liquidity, ENOT_ENOUGH_LIQUIDITY);
         assert!(check_health_factor(storage, oracle, user_address), ENOT_HEALTH);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
+        update_interest_rate(cap, pool_manager_info, storage, catalog);
     }
 
     public fun execute_repay(
@@ -125,34 +126,34 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>,
+        user_address: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        update_state(cap, storage, oracle, token_name);
-        let debt = user_loan_balance(storage, user_address, token_name);
+        update_state(cap, storage, oracle, catalog);
+        let debt = user_loan_balance(storage, user_address, catalog);
         let repay_debt = if (debt > token_amount) { token_amount } else { debt };
-        burn_dtoken(cap, storage, user_address, token_name, repay_debt);
-        update_interest_rate(cap, pool_manager_info, storage, token_name);
+        burn_dtoken(cap, storage, user_address, catalog, repay_debt);
+        update_interest_rate(cap, pool_manager_info, storage, catalog);
         if (token_amount == repay_debt) {
-            remove_user_loan(cap, storage, user_address, token_name);
+            remove_user_loan(cap, storage, user_address, catalog);
         }
     }
 
-    public fun check_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>): bool {
+    public fun check_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, user_address: DolaAddress): bool {
         let collateral_value = user_total_collateral_value(storage, oracle, user_address);
         let loan_value = user_total_loan_value(storage, oracle, user_address);
         collateral_value >= loan_value
     }
 
-    public fun is_collateral(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
+    public fun is_collateral(storage: &mut Storage, user_address: DolaAddress, catalog: String): bool {
         let collaterals = get_user_collaterals(storage, user_address);
-        vector::contains(&collaterals, &token_name)
+        vector::contains(&collaterals, &catalog)
     }
 
-    public fun is_loan(storage: &mut Storage, user_address: vector<u8>, token_name: vector<u8>): bool {
+    public fun is_loan(storage: &mut Storage, user_address: DolaAddress, catalog: String): bool {
         let loans = get_user_loans(storage, user_address);
-        vector::contains(&loans, &token_name)
+        vector::contains(&loans, &catalog)
     }
 
     public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
@@ -187,47 +188,47 @@ module lending::logic {
     public fun user_collateral_value(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>
+        user_address: DolaAddress,
+        catalog: String
     ): u64 {
-        let balance = user_collateral_balance(storage, user_address, token_name);
-        let (price, decimal) = get_token_price(oracle, token_name);
+        let balance = user_collateral_balance(storage, user_address, catalog);
+        let (price, decimal) = get_token_price(oracle, catalog);
         (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_collateral_balance(
         storage: &mut Storage,
-        user_address: vector<u8>,
-        token_name: vector<u8>
+        user_address: DolaAddress,
+        catalog: String
     ): u64 {
-        let scaled_balance = get_user_scaled_otoken(storage, user_address, token_name);
-        let current_index = get_liquidity_index(storage, token_name);
+        let scaled_balance = get_user_scaled_otoken(storage, user_address, catalog);
+        let current_index = get_liquidity_index(storage, catalog);
         balance_of(scaled_balance, current_index)
     }
 
-    public fun calculate_value(oracle: &mut PriceOracle, token_name: vector<u8>, amount: u64): u64 {
-        let (price, decimal) = get_token_price(oracle, token_name);
+    public fun calculate_value(oracle: &mut PriceOracle, catalog: String, amount: u64): u64 {
+        let (price, decimal) = get_token_price(oracle, catalog);
         (((amount as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_loan_value(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>,
-        token_name: vector<u8>
+        user_address: DolaAddress,
+        catalog: String
     ): u64 {
-        let balance = user_loan_balance(storage, user_address, token_name);
-        let (price, decimal) = get_token_price(oracle, token_name);
+        let balance = user_loan_balance(storage, user_address, catalog);
+        let (price, decimal) = get_token_price(oracle, catalog);
         (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
     }
 
     public fun user_loan_balance(
         storage: &mut Storage,
-        user_address: vector<u8>,
-        token_name: vector<u8>
+        user_address: DolaAddress,
+        catalog: String
     ): u64 {
-        let scaled_balance = get_user_scaled_dtoken(storage, user_address, token_name);
-        let current_index = get_liquidity_index(storage, token_name);
+        let scaled_balance = get_user_scaled_dtoken(storage, user_address, catalog);
+        let current_index = get_liquidity_index(storage, catalog);
         balance_of(scaled_balance, current_index)
     }
 
@@ -235,7 +236,7 @@ module lending::logic {
     public fun user_total_collateral_value(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: vector<u8>
+        user_address: DolaAddress
     ): u64 {
         let collaterals = get_user_collaterals(storage, user_address);
         let length = vector::length(&collaterals);
@@ -251,7 +252,7 @@ module lending::logic {
         value
     }
 
-    public fun user_total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>): u64 {
+    public fun user_total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, user_address: DolaAddress): u64 {
         let loans = get_user_collaterals(storage, user_address);
         let length = vector::length(&loans);
         let value = 0;
@@ -266,30 +267,30 @@ module lending::logic {
         value
     }
 
-    public fun total_otoken_supply(storage: &mut Storage, token_name: vector<u8>): u128 {
-        let scaled_total_otoken_supply = get_otoken_scaled_total_supply(storage, token_name);
-        let current_index = get_liquidity_index(storage, token_name);
+    public fun total_otoken_supply(storage: &mut Storage, catalog: String): u128 {
+        let scaled_total_otoken_supply = get_otoken_scaled_total_supply(storage, catalog);
+        let current_index = get_liquidity_index(storage, catalog);
         scaled_total_otoken_supply * (current_index as u128) / (RAY as u128)
     }
 
-    public fun total_dtoken_supply(storage: &mut Storage, token_name: vector<u8>): u128 {
-        let scaled_total_dtoken_supply = get_dtoken_scaled_total_supply(storage, token_name);
-        let current_index = get_borrow_index(storage, token_name);
+    public fun total_dtoken_supply(storage: &mut Storage, catalog: String): u128 {
+        let scaled_total_dtoken_supply = get_dtoken_scaled_total_supply(storage, catalog);
+        let current_index = get_borrow_index(storage, catalog);
         scaled_total_dtoken_supply * (current_index as u128) / (RAY as u128)
     }
 
     public fun mint_otoken(
         cap: &StorageCap, // todo! Where manage this?
         storage: &mut Storage,
-        user: vector<u8>,
-        token_name: vector<u8>,
+        user: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, catalog));
         storage::mint_otoken_scaled(
             cap,
             storage,
-            token_name,
+            catalog,
             user,
             scaled_amount
         );
@@ -298,15 +299,15 @@ module lending::logic {
     public fun burn_otoken(
         cap: &StorageCap,
         storage: &mut Storage,
-        user: vector<u8>,
-        token_name: vector<u8>,
+        user: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, catalog));
         storage::burn_otoken_scaled(
             cap,
             storage,
-            token_name,
+            catalog,
             user,
             scaled_amount
         );
@@ -315,15 +316,15 @@ module lending::logic {
     public fun mint_dtoken(
         cap: &StorageCap,
         storage: &mut Storage,
-        user: vector<u8>,
-        token_name: vector<u8>,
+        user: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, catalog));
         storage::mint_dtoken_scaled(
             cap,
             storage,
-            token_name,
+            catalog,
             user,
             scaled_amount
         );
@@ -332,15 +333,15 @@ module lending::logic {
     public fun burn_dtoken(
         cap: &StorageCap,
         storage: &mut Storage,
-        user: vector<u8>,
-        token_name: vector<u8>,
+        user: DolaAddress,
+        catalog: String,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, token_name));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, catalog));
         storage::burn_dtoken_scaled(
             cap,
             storage,
-            token_name,
+            catalog,
             user,
             scaled_amount
         );
@@ -350,45 +351,45 @@ module lending::logic {
         cap: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        token_name: vector<u8>,
+        catalog: String,
     ) {
         // todo: use sui timestamp
         let current_timestamp = get_timestamp(oracle);
 
-        let last_update_timestamp = storage::get_last_update_timestamp(storage, token_name);
-        let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, token_name);
-        let current_borrow_index = storage::get_borrow_index(storage, token_name);
-        let current_liquidity_index = storage::get_liquidity_index(storage, token_name);
+        let last_update_timestamp = storage::get_last_update_timestamp(storage, catalog);
+        let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, catalog);
+        let current_borrow_index = storage::get_borrow_index(storage, catalog);
+        let current_liquidity_index = storage::get_liquidity_index(storage, catalog);
 
-        let treasury_factor = storage::get_treasury_factor(storage, token_name);
+        let treasury_factor = storage::get_treasury_factor(storage, catalog);
 
         let new_borrow_index = math::ray_mul(calculate_compounded_interest(
             current_timestamp,
             last_update_timestamp,
-            storage::get_borrow_rate(storage, token_name)
+            storage::get_borrow_rate(storage, catalog)
         ), current_borrow_index) ;
 
         let new_liquidity_index = math::ray_mul(calculate_linear_interest(
             current_timestamp,
             last_update_timestamp,
-            storage::get_liquidity_rate(storage, token_name)
+            storage::get_liquidity_rate(storage, catalog)
         ), current_liquidity_index);
 
         let mint_to_treasury = ((dtoken_scaled_total_supply *
             ((new_borrow_index - current_borrow_index) as u128) /
             (RAY as u128) * (treasury_factor as u128) / (RAY as u128)) as u64);
-        storage::update_state(cap, storage, token_name, new_borrow_index, new_liquidity_index, mint_to_treasury);
+        storage::update_state(cap, storage, catalog, new_borrow_index, new_liquidity_index, mint_to_treasury);
     }
 
     public fun update_interest_rate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
-        token_name: vector<u8>,
+        catalog: String,
     ) {
-        let liquidity = pool_manager::get_app_liquidity(pool_manager_info, token_name, get_app_id(storage));
-        let borrow_rate = rates::calculate_borrow_rate(storage, token_name, liquidity);
-        let liquidity_rate = rates::calculate_liquidity_rate(storage, token_name, borrow_rate, liquidity);
-        storage::update_interest_rate(cap, storage, token_name, borrow_rate, liquidity_rate);
+        let liquidity = pool_manager::get_app_liquidity_by_catalog(pool_manager_info, catalog, get_app_id(storage));
+        let borrow_rate = rates::calculate_borrow_rate(storage, catalog, liquidity);
+        let liquidity_rate = rates::calculate_liquidity_rate(storage, catalog, borrow_rate, liquidity);
+        storage::update_interest_rate(cap, storage, catalog, borrow_rate, liquidity_rate);
     }
 }
