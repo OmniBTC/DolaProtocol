@@ -33,6 +33,10 @@ contract OmniPool {
         return tokenName;
     }
 
+    function getTokenAddress() public view returns (address) {
+        return token;
+    }
+
     function rely(address diamond) external isBridgePool(msg.sender) {
         allowances[diamond] = true;
     }

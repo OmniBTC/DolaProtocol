@@ -7,6 +7,8 @@ interface IOmniPool {
 
     function getTokenName() external view returns (bytes memory);
 
+    function getTokenAddress() external view returns (address);
+
     function rely(address bridge) external;
 
     function deny(address bridge) external;

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../libraries/LibWormhole.sol";
 import "../../libraries/LibPool.sol";
+import "../../libraries/LibAsset.sol";
 import "../../interfaces/IOmniPool.sol";
 
 contract WormholeFacet {
@@ -12,6 +13,10 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
+        address token = LibWormhole.omnipool(tokenName).getTokenAddress();
+        if (!LibAsset.isNativeAsset(token)) {
+            LibAsset.depositAsset(token, amount);
+        }
         bytes memory payload = LibWormhole.omnipool(tokenName).depositTo(
             amount,
             appId,
@@ -51,6 +56,12 @@ contract WormholeFacet {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
+        address token = LibWormhole
+            .omnipool(depositTokenName)
+            .getTokenAddress();
+        if (!LibAsset.isNativeAsset(token)) {
+            LibAsset.depositAsset(token, depositAmount);
+        }
         bytes memory payload = LibWormhole
             .omnipool(depositTokenName)
             .depositAndWithdraw(
