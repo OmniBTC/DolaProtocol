@@ -221,7 +221,7 @@ module omnipool::pool {
         let pool_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = pool_address_len;
+        data_len = (pool_address_len as u64);
         let pool_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -229,7 +229,7 @@ module omnipool::pool {
         let user_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = user_address_len;
+        data_len = (user_address_len as u64);
         let user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -300,7 +300,7 @@ module omnipool::pool {
         let pool_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = pool_address_len;
+        data_len = (pool_address_len as u64);
         let pool_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -308,7 +308,7 @@ module omnipool::pool {
         let user_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = user_address_len;
+        data_len = (user_address_len as u64);
         let user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -384,7 +384,7 @@ module omnipool::pool {
         let deposit_pool_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = deposit_pool_address_len;
+        data_len = (deposit_pool_address_len as u64);
         let deposit_pool_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -392,7 +392,7 @@ module omnipool::pool {
         let deposit_user_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = deposit_user_address_len;
+        data_len = (deposit_user_address_len as u64);
         let deposit_user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -412,7 +412,7 @@ module omnipool::pool {
         let withdraw_pool_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = withdraw_pool_address_len;
+        data_len = (withdraw_pool_address_len as u64);
         let withdraw_pool_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -420,7 +420,7 @@ module omnipool::pool {
         let withdraw_user_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = withdraw_user_address_len;
+        data_len = (withdraw_user_address_len as u64);
         let withdraw_user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -480,7 +480,7 @@ module omnipool::pool {
         let pool_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = pool_address_len;
+        data_len = (pool_address_len as u64);
         let pool_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 
@@ -488,7 +488,7 @@ module omnipool::pool {
         let user_address_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = user_address_len;
+        data_len = (user_address_len as u64);
         let user_address = vector_slice(&pool_payload, index, index + data_len);
         index = index + data_len;
 

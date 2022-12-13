@@ -2,7 +2,7 @@ module wormhole_bridge::bridge_core {
     use std::option::{Self, Option};
 
     use app_manager::app_manager::{Self, AppCap};
-    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
+    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload, DolaAddress};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::bcs::to_bytes;
     use sui::coin::Coin;
@@ -81,7 +81,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (vector<u8>, address, u64, vector<u8>) {
+    ): (vector<u8>, DolaAddress, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -120,7 +120,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (address, address, u64, vector<u8>, address, address, vector<u8>, u16, vector<u8>) {
+    ): (vector<u8>, DolaAddress, u64, vector<u8>, vector<u8>, DolaAddress, vector<u8>, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -160,7 +160,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         _ctx: &mut TxContext
-    ): (address, address, vector<u8>, vector<u8>) {
+    ): (vector<u8>, DolaAddress, vector<u8>, vector<u8>) {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -184,10 +184,10 @@ module wormhole_bridge::bridge_core {
         core_state: &mut CoreState,
         app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
-        pool_address: address,
+        pool_address: vector<u8>,
         chainid: u16,
         // todo: fix address
-        user: address,
+        user: DolaAddress,
         amount: u64,
         token_name: vector<u8>,
         wormhole_message_fee: Coin<SUI>,

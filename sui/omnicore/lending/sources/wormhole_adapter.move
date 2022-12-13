@@ -5,7 +5,6 @@ module lending::wormhole_adapter {
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::PoolManagerInfo;
-    use sui::bcs;
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -13,6 +12,7 @@ module lending::wormhole_adapter {
     use sui::tx_context::TxContext;
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
+    use omnipool::pool::convert_dola_to_vector;
 
     const EMUST_NONE: u64 = 0;
 
@@ -62,7 +62,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        execute_supply(cap, pool_manager_info, storage, oracle, bcs::to_bytes(&user), token_name, amount);
+        execute_supply(cap, pool_manager_info, storage, oracle, convert_dola_to_vector(user), token_name, amount);
     }
 
     public entry fun withdraw(
@@ -90,7 +90,7 @@ module lending::wormhole_adapter {
             storage,
             oracle,
             pool_manager_info,
-            bcs::to_bytes(&user),
+            convert_dola_to_vector(user),
             token_name,
             token_amount,
         );
@@ -128,7 +128,7 @@ module lending::wormhole_adapter {
             vaa,
             ctx
         );
-        let user_address = bcs::to_bytes(&user);
+        let user_address = convert_dola_to_vector(user);
         let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
         execute_borrow(cap, pool_manager_info, storage, oracle, user_address, token_name, token_amount);
         bridge_core::send_withdraw(
@@ -164,7 +164,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        execute_repay(cap, pool_manager_info, storage, oracle, bcs::to_bytes(&user), token_name, amount);
+        execute_repay(cap, pool_manager_info, storage, oracle, convert_dola_to_vector(user), token_name, amount);
     }
 
     public entry fun liquidate(
@@ -193,7 +193,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             storage,
             oracle,
-            bcs::to_bytes(&withdraw_user),
+            convert_dola_to_vector(withdraw_user),
             withdraw_token,
             deposit_token,
             deposit_amount,
