@@ -11,6 +11,18 @@ autofetch_sources: True
 dotenv: .env
 networks:
   default: development
+  goerli:
+    wormhole_chainid: 2
+    wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
+  bsc-test:
+    wormhole_chainid: 4
+    wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
+  polygon-test:
+    wormhole_chainid: 5
+    wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
+  avax-test:
+    wormhole_chainid: 6
+    wormhole: "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C"
 wallets:
   from_key: ${PRIVATE_KEY}
   from_mnemonic: ${MNEMONIC}

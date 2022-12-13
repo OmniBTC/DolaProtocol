@@ -9,7 +9,9 @@ pragma solidity ^0.8.0;
 /******************************************************************************/
 
 import {LibDiamond} from "../libraries/LibDiamond.sol";
+import {LibWormhole} from "../libraries/LibWormhole.sol";
 import {IDiamondCut} from "../interfaces/IDiamondCut.sol";
+import {IDiamond} from "../interfaces/IDiamond.sol";
 import {IDiamondLoupe} from "../interfaces/IDiamondLoupe.sol";
 import {IERC173} from "../interfaces/IERC173.sol";
 import {IERC165} from "../interfaces/IERC165.sol";
@@ -17,26 +19,40 @@ import {IERC165} from "../interfaces/IERC165.sol";
 // When no function exists for function called
 error FunctionNotFound(bytes4 _functionSelector);
 
-// This is used in diamond constructor
-// more arguments are added to this struct
-// this avoids stack too deep errors
-struct DiamondArgs {
-    address owner;
-    address init;
-    bytes initCalldata;
+struct InitArgs {
+    address wormholeBridge;
+    uint16 chainId;
+    uint8 finality;
+    address remoteBridge;
 }
 
 contract DolaDiamond {
     constructor(
-        IDiamondCut.FacetCut[] memory _diamondCut,
-        DiamondArgs memory _args
+        address contractOwner,
+        address diamondCutFacet,
+        InitArgs memory initArgs
     ) payable {
-        LibDiamond.setContractOwner(_args.owner);
-        LibDiamond.diamondCut(_diamondCut, _args.init, _args.initCalldata);
+        LibDiamond.setContractOwner(contractOwner);
+
+        // Add the diamondCut external function from the diamondCutFacet
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
+        bytes4[] memory functionSelectors = new bytes4[](1);
+        functionSelectors[0] = IDiamondCut.diamondCut.selector;
+        cut[0] = IDiamond.FacetCut({
+            facetAddress: diamondCutFacet,
+            action: IDiamond.FacetCutAction.Add,
+            functionSelectors: functionSelectors
+        });
+        LibDiamond.diamondCut(cut, address(0), "");
 
         // Code can be added here to perform actions and set state variables.
         // todo: init governance
-        // todo: init wormhole
+        LibWormhole.initWormhole(
+            initArgs.wormholeBridge,
+            initArgs.chainId,
+            initArgs.finality,
+            initArgs.remoteBridge
+        );
     }
 
     // Find facet for function that is called and execute the
