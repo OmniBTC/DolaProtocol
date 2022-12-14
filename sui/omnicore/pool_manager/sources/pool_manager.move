@@ -1,23 +1,24 @@
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
+    use std::ascii::String;
     use std::hash;
     use std::option::{Self, Option};
+    use std::vector;
 
+    use dola_types::types::{DolaAddress, dola_id, create_dola_address};
     use governance::governance::{Self, GovernanceExternalCap};
     use sui::bcs;
-    use sui::object::{Self, UID, uid_to_address, address_from_bytes};
+    use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
     #[test_only]
-    use sui::test_scenario;
-    use std::ascii::String;
-    use std::ascii;
-    use std::type_name;
+    use dola_types::types::convert_external_address_to_dola;
     #[test_only]
     use std::ascii::string;
-    use std::vector;
+    #[test_only]
+    use sui::test_scenario;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -29,61 +30,16 @@ module pool_manager::pool_manager {
 
     const ENONEXISTENT_RESERVE: u64 = 4;
 
-    const DOLAID: u16 = 0;
 
     struct PoolManagerAdminCap has store, drop {
         pool_manager: address,
         count: u64
     }
 
-    /// Used to represent user address and pool address
-    /// todo! convert a single module?
-    struct DolaAddress has copy, drop, store {
-        dola_id: u16,
-        dola_address: vector<u8>
-    }
 
-    public fun convert_address_to_dola(addr: address): DolaAddress {
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address: bcs::to_bytes(&addr)
-        }
-    }
-
-    public fun convert_dola_to_address(addr: DolaAddress): address {
-        address_from_bytes(addr.dola_address)
-    }
-
-    public fun convert_pool_to_dola<CoinType>(): DolaAddress {
-        let dola_address = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address
-        }
-    }
-
-    public fun convert_dola_to_pool(addr: DolaAddress): vector<u8> {
-        addr.dola_address
-    }
-
-    public fun convert_external_address_to_dola(addr: vector<u8>): DolaAddress {
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address: addr
-        }
-    }
-
-    public fun convert_dola_to_external_address(addr: DolaAddress): vector<u8> {
-        addr.dola_address
-    }
-
-    public fun unpack_dola(addr: DolaAddress): (u16, vector<u8>) {
-        let DolaAddress { dola_id, dola_address } = addr;
-        (dola_id, dola_address)
-    }
-
-    public fun pack_dola(dola_id: u16, dola_address: vector<u8>): DolaAddress {
-        DolaAddress { dola_id, dola_address }
+    struct TokenCategory has copy, drop, store {
+        token_id: u16,
+        token_name: String
     }
 
     struct PoolManagerCap has store, drop {}
@@ -158,7 +114,7 @@ module pool_manager::pool_manager {
         let i = 0;
         while (i < len) {
             let d = *vector::borrow(catalog_to_pool, i);
-            if (d.dola_id == dst_chain) {
+            if (dola_id(&d) == dst_chain) {
                 return option::some(d)
             };
             i = i + 1;
@@ -197,7 +153,7 @@ module pool_manager::pool_manager {
         catalog: String,
         ctx: &mut TxContext
     ) {
-        let pool = DolaAddress { dola_id, dola_address };
+        let pool = create_dola_address(dola_id, dola_address);
         let pool_info = PoolInfo {
             reserve: zero_liquidity(),
             pools: table::new(ctx)
@@ -279,7 +235,7 @@ module pool_manager::pool_manager {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let chainid = pool.dola_id;
+        let chainid = dola_id(&pool);
         let catalog = get_pool_catalog(pool_manager_info, pool);
         let pool_infos = &mut pool_manager_info.pool_infos;
         let app_infos = &mut pool_manager_info.app_infos;
@@ -337,7 +293,7 @@ module pool_manager::pool_manager {
         amount: u64,
     )
     {
-        let chainid = pool.dola_id;
+        let chainid = dola_id(&pool);
         let catalog = get_pool_catalog(pool_manager_info, pool);
 
         let pool_infos = &mut pool_manager_info.pool_infos;

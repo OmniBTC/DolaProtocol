@@ -3,10 +3,11 @@ module omnipool::pool {
     use std::type_name;
     use std::vector;
 
+    use dola_types::types::{convert_address_to_dola, convert_pool_to_dola, DolaAddress, convert_dola_to_address, dola_address, encode_dola_address, decode_dola_address};
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
-    use sui::object::{Self, UID, address_from_bytes};
+    use sui::object::{Self, UID};
     use sui::transfer::{Self, share_object};
     use sui::tx_context::{Self, TxContext};
 
@@ -14,7 +15,6 @@ module omnipool::pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario;
-    use std::bcs;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -23,6 +23,7 @@ module omnipool::pool {
     const EINVALID_TOKEN: u64 = 2;
 
     const DOLAID: u16 = 0;
+
 
     /// The user's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
@@ -35,80 +36,6 @@ module omnipool::pool {
     struct PoolCap has key, store {
         id: UID
     }
-
-    /// Used to represent user address and pool address
-    struct DolaAddress has copy, drop, store {
-        dola_id: u16,
-        dola_address: vector<u8>
-    }
-
-    public fun convert_address_to_dola(addr: address): DolaAddress {
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address: bcs::to_bytes(&addr)
-        }
-    }
-
-    public fun convert_dola_to_address(addr: DolaAddress): address {
-        address_from_bytes(addr.dola_address)
-    }
-
-    public fun convert_pool_to_dola<CoinType>(): DolaAddress {
-        let dola_address = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address
-        }
-    }
-
-    public fun convert_dola_to_pool(addr: DolaAddress): vector<u8> {
-        addr.dola_address
-    }
-
-    public fun convert_external_address_to_dola(addr: vector<u8>): DolaAddress {
-        DolaAddress {
-            dola_id: DOLAID,
-            dola_address: addr
-        }
-    }
-
-    public fun convert_dola_to_external_address(addr: DolaAddress): vector<u8> {
-        addr.dola_address
-    }
-
-    public fun unpack_dola(addr: DolaAddress): (u16, vector<u8>) {
-        let DolaAddress { dola_id, dola_address } = addr;
-        (dola_id, dola_address)
-    }
-
-    public fun pack_dola(dola_id: u16, dola_address: vector<u8>): DolaAddress {
-        DolaAddress { dola_id, dola_address }
-    }
-
-
-    public fun encode_dola_address(addr: DolaAddress): vector<u8> {
-        let data = vector::empty();
-        serialize_u16(&mut data, addr.dola_id);
-        serialize_vector(&mut data, addr.dola_address);
-        data
-    }
-
-    public fun decode_dola_address(addr: vector<u8>): DolaAddress {
-        let len = vector::length(&addr);
-        let index = 0;
-        let data_len;
-
-        data_len = 2;
-        let dola_id = deserialize_u16(&vector_slice(&addr, index, index + data_len));
-        index = index + data_len;
-
-        let dola_address = vector_slice(&addr, index, len);
-        DolaAddress {
-            dola_id,
-            dola_address
-        }
-    }
-
 
     public fun register_cap(ctx: &mut TxContext): PoolCap {
         // todo! consider into govern
@@ -206,7 +133,7 @@ module omnipool::pool {
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
         assert!(
-            pool_addr.dola_address == ascii::into_bytes(type_name::into_string(type_name::get<CoinType>())),
+            dola_address(&pool_addr) == ascii::into_bytes(type_name::into_string(type_name::get<CoinType>())),
             EINVALID_TOKEN
         );
         transfer::transfer(coin, user);
@@ -498,8 +425,8 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
         serialize_vector(&mut pool_payload, pool);
 
-        serialize_u16(&mut pool_payload, (vector::length(&user.dola_address) as u16));
-        serialize_vector(&mut pool_payload, user.dola_address);
+        serialize_u16(&mut pool_payload, (vector::length(&dola_address(&user)) as u16));
+        serialize_vector(&mut pool_payload, dola_address(&user));
 
         serialize_u64(&mut pool_payload, amount);
 

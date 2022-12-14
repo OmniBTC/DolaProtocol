@@ -4,6 +4,7 @@ version = "0.0.1"
 
 [addresses]
 omnipool = "0x0"
+dola_types = "0x0"
 serde = "0x0"
 sui = "0x2"
 
@@ -14,3 +15,6 @@ rev = "21fcff72bef3b12f600da861b7708ca5f30d9512"
 
 [dependencies.Serde]
 local = "../serde"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

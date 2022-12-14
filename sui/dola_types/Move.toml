@@ -1,10 +1,8 @@
 [package]
-name = "PoolManager"
+name = "DolaTypes"
 version = "0.0.1"
 
 [addresses]
-pool_manager = "0x0"
-governance = "0x0"
 dola_types = "0x0"
 serde = "0x0"
 sui = "0x2"
@@ -15,10 +13,4 @@ subdir = "crates/sui-framework"
 rev = "21fcff72bef3b12f600da861b7708ca5f30d9512"
 
 [dependencies.Serde]
-local = "../../serde"
-
-[dependencies.Governance]
-local = "../governance"
-
-[dependencies.DolaTypes]
-local = "../../dola_types"
+local = "../serde"
