@@ -4,7 +4,6 @@ module lending::storage {
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
-    use dola_types::types::DolaAddress;
     use governance::governance::{Self, GovernanceExternalCap};
     use oracle::oracle::{PriceOracle, get_timestamp};
     use sui::bcs;
@@ -34,8 +33,8 @@ module lending::storage {
         app_cap: Option<AppCap>,
         // token category -> reserve data
         reserves: Table<u16, ReserveData>,
-        // users address -> user info
-        user_infos: Table<DolaAddress, UserInfo>
+        // dola dola_user_id id -> dola_user_id info
+        user_infos: Table<u64, UserInfo>
     }
 
     struct UserInfo has store {
@@ -52,8 +51,8 @@ module lending::storage {
         // Timestamp of last update
         // todo: use sui timestamp
         last_update_timestamp: u64,
-        // Treasury
-        treasury: DolaAddress,
+        // Treasury (dora_user_id)
+        treasury: u64,
         // Treasury interest factor
         treasury_factor: u64,
         // Current borrow rate.
@@ -77,8 +76,8 @@ module lending::storage {
     }
 
     struct ScaledBalance has store {
-        // user address => scale balance
-        user_state: Table<DolaAddress, u64>,
+        // dola_user_id address => scale balance
+        user_state: Table<u64, u64>,
         // total supply of scale balance
         total_supply: u128,
     }
@@ -142,7 +141,7 @@ module lending::storage {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
-        treasury: DolaAddress,
+        treasury: u64,
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,
@@ -171,47 +170,47 @@ module lending::storage {
                 optimal_utilization
             },
             otoken_scaled: ScaledBalance {
-                user_state: table::new<DolaAddress, u64>(ctx),
+                user_state: table::new<u64, u64>(ctx),
                 total_supply: 0,
             },
             dtoken_scaled: ScaledBalance {
-                user_state: table::new<DolaAddress, u64>(ctx),
+                user_state: table::new<u64, u64>(ctx),
                 total_supply: 0,
             },
         });
     }
 
-    public fun get_user_collaterals(storage: &mut Storage, user_address: DolaAddress): vector<u16> {
-        if (!table::contains(&mut storage.user_infos, user_address)) {
-            table::add(&mut storage.user_infos, user_address, UserInfo {
+    public fun get_user_collaterals(storage: &mut Storage, dola_user_id: u64): vector<u16> {
+        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
+            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
         };
-        let user_info = table::borrow(&mut storage.user_infos, user_address);
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
         user_info.collaterals
     }
 
-    public fun get_user_loans(storage: &mut Storage, user_address: DolaAddress): vector<u16> {
-        if (!table::contains(&mut storage.user_infos, user_address)) {
-            table::add(&mut storage.user_infos, user_address, UserInfo {
+    public fun get_user_loans(storage: &mut Storage, dola_user_id: u64): vector<u16> {
+        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
+            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
         };
-        let user_info = table::borrow(&mut storage.user_infos, user_address);
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
         user_info.loans
     }
 
     public fun get_user_scaled_otoken(
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ): u64 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, dola_pool_id);
-        if (table::contains(&reserve.otoken_scaled.user_state, user_address)) {
-            *table::borrow(&reserve.otoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.otoken_scaled.user_state, dola_user_id)) {
+            *table::borrow(&reserve.otoken_scaled.user_state, dola_user_id)
         } else {
             0
         }
@@ -219,13 +218,13 @@ module lending::storage {
 
     public fun get_user_scaled_dtoken(
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ): u64 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow(&storage.reserves, dola_pool_id);
-        if (table::contains(&reserve.dtoken_scaled.user_state, user_address)) {
-            *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
+        if (table::contains(&reserve.dtoken_scaled.user_state, dola_user_id)) {
+            *table::borrow(&reserve.dtoken_scaled.user_state, dola_user_id)
         } else {
             0
         }
@@ -308,19 +307,19 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        user: DolaAddress,
+        dola_user_id: u64,
         scaled_amount: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
 
-        if (table::contains(&otoken_scaled.user_state, user)) {
-            current_amount = table::remove(&mut otoken_scaled.user_state, user);
+        if (table::contains(&otoken_scaled.user_state, dola_user_id)) {
+            current_amount = table::remove(&mut otoken_scaled.user_state, dola_user_id);
         }else {
             current_amount = 0
         };
-        table::add(&mut otoken_scaled.user_state, user, scaled_amount + current_amount);
+        table::add(&mut otoken_scaled.user_state, dola_user_id, scaled_amount + current_amount);
         otoken_scaled.total_supply = otoken_scaled.total_supply + (scaled_amount as u128);
     }
 
@@ -328,20 +327,20 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        user: DolaAddress,
+        dola_user_id: u64,
         scaled_amount: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
 
-        if (table::contains(&otoken_scaled.user_state, user)) {
-            current_amount = table::remove(&mut otoken_scaled.user_state, user);
+        if (table::contains(&otoken_scaled.user_state, dola_user_id)) {
+            current_amount = table::remove(&mut otoken_scaled.user_state, dola_user_id);
         } else {
             current_amount = 0
         };
         assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
-        table::add(&mut otoken_scaled.user_state, user, current_amount - scaled_amount);
+        table::add(&mut otoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
         otoken_scaled.total_supply = otoken_scaled.total_supply - (scaled_amount as u128);
     }
 
@@ -349,19 +348,19 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        user: DolaAddress,
+        dola_user_id: u64,
         scaled_amount: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
 
-        if (table::contains(&dtoken_scaled.user_state, user)) {
-            current_amount = table::remove(&mut dtoken_scaled.user_state, user);
+        if (table::contains(&dtoken_scaled.user_state, dola_user_id)) {
+            current_amount = table::remove(&mut dtoken_scaled.user_state, dola_user_id);
         }else {
             current_amount = 0
         };
-        table::add(&mut dtoken_scaled.user_state, user, scaled_amount + current_amount);
+        table::add(&mut dtoken_scaled.user_state, dola_user_id, scaled_amount + current_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply + (scaled_amount as u128);
     }
 
@@ -369,36 +368,36 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        user: DolaAddress,
+        dola_user_id: u64,
         scaled_amount: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
 
-        if (table::contains(&dtoken_scaled.user_state, user)) {
-            current_amount = table::remove(&mut dtoken_scaled.user_state, user);
+        if (table::contains(&dtoken_scaled.user_state, dola_user_id)) {
+            current_amount = table::remove(&mut dtoken_scaled.user_state, dola_user_id);
         } else {
             current_amount = 0
         };
         assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
-        table::add(&mut dtoken_scaled.user_state, user, current_amount - scaled_amount);
+        table::add(&mut dtoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
     }
 
     public fun add_user_collateral(
         _: &StorageCap,
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ) {
-        if (!table::contains(&mut storage.user_infos, user_address)) {
-            table::add(&mut storage.user_infos, user_address, UserInfo {
+        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
+            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
         };
-        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
         if (!vector::contains(&user_info.collaterals, &dola_pool_id)) {
             vector::push_back(&mut user_info.collaterals, dola_pool_id)
         }
@@ -407,11 +406,11 @@ module lending::storage {
     public fun remove_user_collateral(
         _: &StorageCap,
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ) {
-        assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
-        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
+        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
 
         let (exist, index) = vector::index_of(&user_info.collaterals, &dola_pool_id);
         if (exist) {
@@ -422,16 +421,16 @@ module lending::storage {
     public fun add_user_loan(
         _: &StorageCap,
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ) {
-        if (!table::contains(&mut storage.user_infos, user_address)) {
-            table::add(&mut storage.user_infos, user_address, UserInfo {
+        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
+            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
         };
-        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
         if (!vector::contains(&user_info.loans, &dola_pool_id)) {
             vector::push_back(&mut user_info.loans, dola_pool_id)
         }
@@ -440,11 +439,11 @@ module lending::storage {
     public fun remove_user_loan(
         _: &StorageCap,
         storage: &mut Storage,
-        user_address: DolaAddress,
+        dola_user_id: u64,
         dola_pool_id: u16
     ) {
-        assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
-        let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
+        assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
+        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
 
         let (exist, index) = vector::index_of(&user_info.loans, &dola_pool_id);
         if (exist) {
@@ -483,12 +482,12 @@ module lending::storage {
         reserve.current_liquidity_index = new_liquidity_index;
 
         // Mint to treasury
-        let user = table::borrow(&storage.reserves, dola_pool_id).treasury;
+        let dola_user_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
         mint_otoken_scaled(
             cap,
             storage,
             dola_pool_id,
-            user,
+            dola_user_id,
             mint_to_treasury_scaled
         );
     }

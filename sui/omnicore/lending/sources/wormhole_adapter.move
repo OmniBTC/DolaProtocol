@@ -1,6 +1,7 @@
 module lending::wormhole_adapter {
     use std::option::{Self, Option};
 
+    use dola_types::types::dola_chain_id;
     use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
@@ -10,9 +11,9 @@ module lending::wormhole_adapter {
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::TxContext;
+    use user_manager::user_manager::{UserManagerInfo, get_dola_user_id};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
-    use dola_types::types::dola_chain_id;
 
     const EMUST_NONE: u64 = 0;
 
@@ -46,6 +47,7 @@ module lending::wormhole_adapter {
     public entry fun supply(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -60,15 +62,17 @@ module lending::wormhole_adapter {
             get_app_cap(cap, storage),
             vaa,
             pool_manager_info,
+            user_manager_info,
             ctx
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = get_dola_user_id(user_manager_info, user);
         execute_supply(
             cap,
             pool_manager_info,
             storage,
             oracle,
-            user,
+            dola_user_id,
             dola_pool_id,
             amount
         );
@@ -77,6 +81,7 @@ module lending::wormhole_adapter {
     public entry fun withdraw(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -94,6 +99,7 @@ module lending::wormhole_adapter {
             ctx
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = get_dola_user_id(user_manager_info, user);
         let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
@@ -106,7 +112,7 @@ module lending::wormhole_adapter {
             storage,
             oracle,
             pool_manager_info,
-            user,
+            dola_user_id,
             dola_pool_id,
             token_amount,
         );
@@ -126,6 +132,7 @@ module lending::wormhole_adapter {
     public entry fun borrow(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -143,14 +150,14 @@ module lending::wormhole_adapter {
             ctx
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let user_address = user;
+        let dola_user_id = get_dola_user_id(user_manager_info, user);
         let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
-        execute_borrow(cap, pool_manager_info, storage, oracle, user_address, dola_pool_id, token_amount);
+        execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, token_amount);
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -166,6 +173,7 @@ module lending::wormhole_adapter {
     public entry fun repay(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -180,15 +188,18 @@ module lending::wormhole_adapter {
             get_app_cap(cap, storage),
             vaa,
             pool_manager_info,
+            user_manager_info,
             ctx
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        execute_repay(cap, pool_manager_info, storage, oracle, user, dola_pool_id, amount);
+        let dola_user_id = get_dola_user_id(user_manager_info, user);
+        execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
     }
 
     public entry fun liquidate(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -210,7 +221,8 @@ module lending::wormhole_adapter {
 
         let dst_chain = dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
-        let withdraw_dola_pool_id= get_id_by_pool(pool_manager_info, withdraw_pool);
+        let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
+        let withdraw_dola_user_id = get_dola_user_id(user_manager_info, withdraw_user);
         let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
@@ -220,7 +232,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             storage,
             oracle,
-            withdraw_user,
+            withdraw_dola_user_id,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
             deposit_amount,
