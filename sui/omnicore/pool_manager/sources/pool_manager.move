@@ -64,7 +64,7 @@ module pool_manager::pool_manager {
     struct PoolInfo has store {
         // token liquidity
         reserve: Liquidity,
-        // chainid => PoolLiquidity
+        // pool address => PoolLiquidity
         pools: Table<DolaAddress, Liquidity>,
     }
 
