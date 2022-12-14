@@ -1,9 +1,11 @@
 module lending::storage {
+    use std::ascii::String;
     use std::hash;
     use std::option::{Self, Option};
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
+    use dola_types::types::DolaAddress;
     use governance::governance::{Self, GovernanceExternalCap};
     use oracle::oracle::{PriceOracle, get_timestamp};
     use sui::bcs;
@@ -11,8 +13,6 @@ module lending::storage {
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use std::ascii::String;
-    use pool_manager::pool_manager::DolaAddress;
 
     const RAY: u64 = 100000000;
 
@@ -33,16 +33,16 @@ module lending::storage {
     struct Storage has key {
         id: UID,
         app_cap: Option<AppCap>,
-        // catalog -> reserve data
+        // token category -> reserve data
         reserves: Table<String, ReserveData>,
         // users address -> user info
         user_infos: Table<DolaAddress, UserInfo>
     }
 
     struct UserInfo has store {
-        // catalogs
+        // tokens as collateral, such as ETH, BTC etc.
         collaterals: vector<String>,
-        // catalogs
+        // tokens as loan, such as USDT, USDC, DAI etc.
         loans: vector<String>
     }
 

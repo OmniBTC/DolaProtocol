@@ -2,8 +2,9 @@ module wormhole_bridge::bridge_core {
     use std::option::{Self, Option};
 
     use app_manager::app_manager::{Self, AppCap};
-    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload, DolaAddress, unpack_dola, pack_dola};
-    use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo, DolaAddress as ManagerDolaAddress};
+    use dola_types::types::{DolaAddress, unpack_dola, pack_dola};
+    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
+    use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};
@@ -40,13 +41,13 @@ module wormhole_bridge::bridge_core {
         nonce: u64
     }
 
-    public fun convert_dola_address_into_manager(addr: DolaAddress): ManagerDolaAddress {
+    public fun convert_dola_address_into_manager(addr: DolaAddress): DolaAddress {
         let (dola_id, dola_address) = unpack_dola(addr);
-        pool_manager::pack_dola(dola_id, dola_address)
+        pack_dola(dola_id, dola_address)
     }
 
-    public fun convert_dola_address_into_pool(addr: ManagerDolaAddress): DolaAddress {
-        let (dola_id, dola_address) = pool_manager::unpack_dola(addr);
+    public fun convert_dola_address_into_pool(addr: DolaAddress): DolaAddress {
+        let (dola_id, dola_address) = unpack_dola(addr);
         pack_dola(dola_id, dola_address)
     }
 
@@ -90,7 +91,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (ManagerDolaAddress, ManagerDolaAddress, u64, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -128,7 +129,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (ManagerDolaAddress, ManagerDolaAddress, u64, ManagerDolaAddress, ManagerDolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, DolaAddress, DolaAddress, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -169,7 +170,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         _ctx: &mut TxContext
-    ): (ManagerDolaAddress, ManagerDolaAddress, vector<u8>) {
+    ): (DolaAddress, DolaAddress, vector<u8>) {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -195,9 +196,9 @@ module wormhole_bridge::bridge_core {
         core_state: &mut CoreState,
         app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
-        pool_address: ManagerDolaAddress,
+        pool_address: DolaAddress,
         // todo: fix address
-        user: ManagerDolaAddress,
+        user: DolaAddress,
         amount: u64,
         wormhole_message_fee: Coin<SUI>,
     ) {

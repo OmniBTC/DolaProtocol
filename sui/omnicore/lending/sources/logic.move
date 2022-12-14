@@ -1,15 +1,16 @@
 module lending::logic {
+    use std::ascii::String;
     use std::vector;
 
+    use dola_types::types::DolaAddress;
     use lending::math::{Self, calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
-    use pool_manager::pool_manager::{Self, PoolManagerInfo, DolaAddress};
+    use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
     use sui::math::pow;
-    use std::ascii::String;
 
     const RAY: u64 = 100000000;
 

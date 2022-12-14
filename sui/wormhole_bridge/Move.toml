@@ -7,6 +7,7 @@ wormhole_bridge = "0x0"
 wormhole = "0x0"
 serde = "0x0"
 omnipool = "0x0"
+dola_types = "0x0"
 app_manager = "0x0"
 pool_manager = "0x0"
 sui = "0x2"
@@ -23,6 +24,9 @@ rev = "e6e160614e1b2aeaaad3fd1c587571a3ee8a082d"
 
 [dependencies.OmniPool]
 local = "../omnipool"
+
+[dependencies.DolaTypes]
+local = "../dola_types"
 
 [dependencies.Serde]
 local = "../serde"

@@ -65,12 +65,7 @@ module pool_manager::pool_manager {
         // token liquidity
         reserve: Liquidity,
         // chainid => PoolLiquidity
-        pools: Table<u16, PoolLiquidity>,
-    }
-
-    struct PoolLiquidity has store {
-        // address => Liquidity
-        liquidity: Table<DolaAddress, Liquidity>
+        pools: Table<DolaAddress, Liquidity>,
     }
 
     struct Liquidity has store {
@@ -215,16 +210,13 @@ module pool_manager::pool_manager {
     public fun pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-        chainid: u16
     ): u64 {
         let catalog = get_pool_catalog(pool_manager_info, pool);
         assert!(table::contains(&pool_manager_info.pool_infos, catalog), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, catalog);
-        assert!(table::contains(&pool_info.pools, chainid), ENONEXISTENT_RESERVE);
-        let pool_liquidity = table::borrow(&pool_info.pools, chainid);
-        assert!(table::contains(&pool_liquidity.liquidity, pool), ENONEXISTENT_RESERVE);
-        let liquidity = table::borrow(&pool_liquidity.liquidity, pool);
-        liquidity.value
+        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
+        let pool_liquidity = table::borrow(&pool_info.pools, pool);
+        pool_liquidity.value
     }
 
     public fun add_liquidity(
@@ -235,7 +227,6 @@ module pool_manager::pool_manager {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let chainid = dola_id(&pool);
         let catalog = get_pool_catalog(pool_manager_info, pool);
         let pool_infos = &mut pool_manager_info.pool_infos;
         let app_infos = &mut pool_manager_info.app_infos;
@@ -269,19 +260,10 @@ module pool_manager::pool_manager {
 
         // update pool liquidity
         let pools_liquidity = &mut pool_info.pools;
-
-        if (!table::contains(pools_liquidity, chainid)) {
-            let pool_liquidity = PoolLiquidity {
-                liquidity: table::new(ctx)
-            };
-            table::add(pools_liquidity, chainid, pool_liquidity);
+        if (!table::contains(pools_liquidity, pool)) {
+            table::add(pools_liquidity, pool, zero_liquidity());
         };
-        let pool_liquidity = table::borrow_mut(pools_liquidity, chainid);
-        if (!table::contains(&mut pool_liquidity.liquidity, pool)) {
-            table::add(&mut pool_liquidity.liquidity, pool, zero_liquidity());
-        };
-
-        let liquidity = table::borrow_mut(&mut pool_liquidity.liquidity, pool);
+        let liquidity = table::borrow_mut(pools_liquidity, pool);
         liquidity.value = liquidity.value + amount;
     }
 
@@ -293,7 +275,6 @@ module pool_manager::pool_manager {
         amount: u64,
     )
     {
-        let chainid = dola_id(&pool);
         let catalog = get_pool_catalog(pool_manager_info, pool);
 
         let pool_infos = &mut pool_manager_info.pool_infos;
@@ -315,11 +296,8 @@ module pool_manager::pool_manager {
 
         // update pool liquidity
         let pools_liquidity = &mut pool_info.pools;
-        assert!(table::contains(pools_liquidity, chainid), ENONEXISTENT_RESERVE);
-        let pool_liquidity = table::borrow_mut(pools_liquidity, chainid);
-
-        assert!(table::contains(&pool_liquidity.liquidity, pool), ENONEXISTENT_RESERVE);
-        let liquidity = table::borrow_mut(&mut pool_liquidity.liquidity, pool);
+        assert!(table::contains(pools_liquidity, pool), ENONEXISTENT_RESERVE);
+        let liquidity = table::borrow_mut(pools_liquidity, pool);
         liquidity.value = liquidity.value - amount;
     }
 
@@ -395,7 +373,7 @@ module pool_manager::pool_manager {
             );
 
             assert!(token_liquidity(&mut pool_manager_info, pool) == amount, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool, chainid) == amount, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -447,7 +425,7 @@ module pool_manager::pool_manager {
             let cap = manager_cap_for_test();
 
             assert!(token_liquidity(&mut pool_manager_info, pool) == amount, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool, chainid) == amount, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             remove_liquidity(
                 &cap,
@@ -458,7 +436,7 @@ module pool_manager::pool_manager {
             );
 
             assert!(token_liquidity(&mut pool_manager_info, pool) == 0, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool, chainid) == 0, 0);
+            assert!(pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
 
             test_scenario::return_shared(pool_manager_info);
         };

@@ -1,5 +1,6 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw, DolaAddress};
+    use dola_types::types::DolaAddress;
+    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};

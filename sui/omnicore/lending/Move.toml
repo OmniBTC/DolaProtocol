@@ -11,6 +11,7 @@ governance = "0x0"
 oracle = "0x0"
 serde = "0x0"
 wormhole = "0x0"
+dola_types = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
@@ -22,6 +23,9 @@ rev = "21fcff72bef3b12f600da861b7708ca5f30d9512"
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
 rev = "e6e160614e1b2aeaaad3fd1c587571a3ee8a082d"
+
+[dependencies.DolaTypes]
+local = "../../dola_types"
 
 [dependencies.Serde]
 local = "../../serde"
