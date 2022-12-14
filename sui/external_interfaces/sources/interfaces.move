@@ -18,18 +18,18 @@ module external_interfaces::interfaces {
     struct PoolInfo has store, drop {}
 
     struct TokenLiquidityInfo has copy, drop {
-        catalog: String,
+        dola_pool_id: u16,
         token_liquidity: u64,
     }
 
     struct AppLiquidityInfo has copy, drop {
         app_id: u16,
-        catalog: String,
+        dola_pool_id: u16,
         token_liquidity: u128,
     }
 
     struct LendingReserveInfo has copy, drop {
-        catalog: String,
+        dola_pool_id: u16,
         borrow_apy: u64,
         supply_apy: u64,
         reserve: u128,
@@ -45,13 +45,13 @@ module external_interfaces::interfaces {
     }
 
     struct UserCollateralInfo has copy, drop {
-        catalog: String,
+        dola_pool_id: u16,
         collateral_amount: u64,
         collateral_value: u64
     }
 
     struct UserDebtInfo has copy, drop {
-        catalog: String,
+        dola_pool_id: u16,
         debt_amount: u64,
         debt_value: u64
     }
@@ -62,10 +62,10 @@ module external_interfaces::interfaces {
         reason: Option<String>
     }
 
-    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, catalog: String) {
-        let token_liquidity = token_liquidity(pool_manager_info, catalog);
+    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
+        let token_liquidity = token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
-            catalog,
+            dola_pool_id,
             token_liquidity
         })
     }
@@ -73,12 +73,12 @@ module external_interfaces::interfaces {
     public entry fun get_app_token_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         app_id: u16,
-        catalog: String
+        dola_pool_id: u16
     ) {
-        let token_liquidity = get_app_liquidity(pool_manager_info, catalog, app_id);
+        let token_liquidity = get_app_liquidity(pool_manager_info, dola_pool_id, app_id);
         emit(AppLiquidityInfo {
             app_id,
-            catalog,
+            dola_pool_id,
             token_liquidity
         })
     }
@@ -87,12 +87,12 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
-        let debt_amount = user_loan_balance(storage, user_address, catalog);
-        let debt_value = user_loan_value(storage, oracle, user_address, catalog);
+        let debt_amount = user_loan_balance(storage, user_address, dola_pool_id);
+        let debt_value = user_loan_value(storage, oracle, user_address, dola_pool_id);
         emit(UserDebtInfo {
-            catalog,
+            dola_pool_id,
             debt_amount,
             debt_value
         })
@@ -102,12 +102,12 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
-        let collateral_amount = user_collateral_balance(storage, user_address, catalog);
-        let collateral_value = user_collateral_value(storage, oracle, user_address, catalog);
+        let collateral_amount = user_collateral_balance(storage, user_address, dola_pool_id);
+        let collateral_value = user_collateral_value(storage, oracle, user_address, dola_pool_id);
         emit(UserCollateralInfo {
-            catalog,
+            dola_pool_id,
             collateral_amount,
             collateral_value
         })
@@ -128,7 +128,7 @@ module external_interfaces::interfaces {
             let collateral_amount = user_collateral_balance(storage, user_address, *collateral);
             let collateral_value = user_collateral_value(storage, oracle, user_address, *collateral);
             vector::push_back(&mut collateral_infos, UserCollateralInfo {
-                catalog: *collateral,
+                dola_pool_id: *collateral,
                 collateral_amount,
                 collateral_value
             });
@@ -143,7 +143,7 @@ module external_interfaces::interfaces {
             let debt_amount = user_loan_balance(storage, user_address, *loan);
             let debt_value = user_loan_value(storage, oracle, user_address, *loan);
             vector::push_back(&mut debt_infos, UserDebtInfo {
-                catalog: *loan,
+                dola_pool_id: *loan,
                 debt_amount,
                 debt_value
             });
@@ -162,18 +162,18 @@ module external_interfaces::interfaces {
     public entry fun get_reserve_info(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ) {
-        let borrow_rate = get_borrow_rate(storage, catalog);
+        let borrow_rate = get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / RAY;
-        let liquidity_rate = get_liquidity_rate(storage, catalog);
+        let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
         let supply_apy = liquidity_rate * 10000 / RAY;
-        let debt = total_dtoken_supply(storage, catalog);
-        let reserve = get_app_liquidity(pool_manager_info, catalog, get_app_id(storage));
-        let utilization = calculate_utilization(storage, catalog, reserve);
+        let debt = total_dtoken_supply(storage, dola_pool_id);
+        let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
+        let utilization = calculate_utilization(storage, dola_pool_id, reserve);
         let utilization_rate = utilization * 10000 / RAY;
         emit(LendingReserveInfo {
-            catalog,
+            dola_pool_id,
             borrow_apy,
             supply_apy,
             reserve,

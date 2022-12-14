@@ -149,7 +149,7 @@ module wormhole_bridge::bridge_pool {
         //     vaa,
         //     ctx
         // );
-        // let (_pool_address, user, amount, catalog) =
+        // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);

@@ -91,7 +91,7 @@ module wormhole_bridge::bridge_core {
         //     vaa,
         //     ctx
         // );
-        // let (pool, user, amount, catalog, app_id, app_payload) =
+        // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
         //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
         let (pool, user, amount, app_id, app_payload) =
@@ -127,7 +127,7 @@ module wormhole_bridge::bridge_core {
         //     vaa,
         //     ctx
         // );
-        // let (pool, user, amount, catalog, app_id, app_payload) =
+        // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
         //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
         let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, withdraw_user, app_id, app_payload) = decode_send_deposit_and_withdraw_payload(
@@ -163,7 +163,7 @@ module wormhole_bridge::bridge_core {
         //     vaa,
         //     ctx
         // );
-        // let (_pool, user, catalog, app_id, app_payload) =
+        // let (_pool, user, dola_pool_id, app_id, app_payload) =
         //     decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         let (pool, user, app_id, app_payload) =
             decode_send_withdraw_payload(vaa);

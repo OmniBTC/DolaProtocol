@@ -1,5 +1,4 @@
 module lending::storage {
-    use std::ascii::String;
     use std::hash;
     use std::option::{Self, Option};
     use std::vector;
@@ -34,16 +33,16 @@ module lending::storage {
         id: UID,
         app_cap: Option<AppCap>,
         // token category -> reserve data
-        reserves: Table<String, ReserveData>,
+        reserves: Table<u16, ReserveData>,
         // users address -> user info
         user_infos: Table<DolaAddress, UserInfo>
     }
 
     struct UserInfo has store {
-        // tokens as collateral, such as ETH, BTC etc.
-        collaterals: vector<String>,
-        // tokens as loan, such as USDT, USDC, DAI etc.
-        loans: vector<String>
+        // tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
+        collaterals: vector<u16>,
+        // tokens as loan, such as USDT, USDC, DAI etc. Represent by dola_pool_id.
+        loans: vector<u16>
     }
 
     struct ReserveData has store {
@@ -142,7 +141,7 @@ module lending::storage {
         _: &mut StorageAdminCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        catalog: String,
+        dola_pool_id: u16,
         treasury: DolaAddress,
         treasury_factor: u64,
         collateral_coefficient: u64,
@@ -153,8 +152,8 @@ module lending::storage {
         optimal_utilization: u64,
         ctx: &mut TxContext
     ) {
-        assert!(!table::contains(&storage.reserves, catalog), EALREADY_EXIST_RESERVE);
-        table::add(&mut storage.reserves, catalog, ReserveData {
+        assert!(!table::contains(&storage.reserves, dola_pool_id), EALREADY_EXIST_RESERVE);
+        table::add(&mut storage.reserves, dola_pool_id, ReserveData {
             flag: true,
             last_update_timestamp: get_timestamp(oracle),
             treasury,
@@ -182,7 +181,7 @@ module lending::storage {
         });
     }
 
-    public fun get_user_collaterals(storage: &mut Storage, user_address: DolaAddress): vector<String> {
+    public fun get_user_collaterals(storage: &mut Storage, user_address: DolaAddress): vector<u16> {
         if (!table::contains(&mut storage.user_infos, user_address)) {
             table::add(&mut storage.user_infos, user_address, UserInfo {
                 collaterals: vector::empty(),
@@ -193,7 +192,7 @@ module lending::storage {
         user_info.collaterals
     }
 
-    public fun get_user_loans(storage: &mut Storage, user_address: DolaAddress): vector<String> {
+    public fun get_user_loans(storage: &mut Storage, user_address: DolaAddress): vector<u16> {
         if (!table::contains(&mut storage.user_infos, user_address)) {
             table::add(&mut storage.user_infos, user_address, UserInfo {
                 collaterals: vector::empty(),
@@ -207,10 +206,10 @@ module lending::storage {
     public fun get_user_scaled_otoken(
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let reserve = table::borrow(&storage.reserves, catalog);
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow(&storage.reserves, dola_pool_id);
         if (table::contains(&reserve.otoken_scaled.user_state, user_address)) {
             *table::borrow(&reserve.otoken_scaled.user_state, user_address)
         } else {
@@ -221,10 +220,10 @@ module lending::storage {
     public fun get_user_scaled_dtoken(
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let reserve = table::borrow(&storage.reserves, catalog);
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow(&storage.reserves, dola_pool_id);
         if (table::contains(&reserve.dtoken_scaled.user_state, user_address)) {
             *table::borrow(&reserve.dtoken_scaled.user_state, user_address)
         } else {
@@ -234,86 +233,86 @@ module lending::storage {
 
     public fun get_treasury_factor(
         storage: &mut Storage,
-        catalog: String)
+        dola_pool_id: u16)
     : u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).treasury_factor
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
 
     public fun get_last_update_timestamp(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
         // todo! too much judge contains
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).last_update_timestamp
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).last_update_timestamp
     }
 
     public fun get_otoken_scaled_total_supply(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u128 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).otoken_scaled.total_supply
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).otoken_scaled.total_supply
     }
 
     public fun get_dtoken_scaled_total_supply(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u128 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).dtoken_scaled.total_supply
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).dtoken_scaled.total_supply
     }
 
     public fun get_liquidity_rate(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).current_liquidity_rate
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).current_liquidity_rate
     }
 
     public fun get_liquidity_index(
         storage: &mut Storage,
-        catalog: String): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).current_liquidity_index
+        dola_pool_id: u16): u64 {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).current_liquidity_index
     }
 
     public fun get_borrow_rate(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).current_borrow_rate
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).current_borrow_rate
     }
 
     public fun get_borrow_index(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): u64 {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        table::borrow(&storage.reserves, catalog).current_borrow_index
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).current_borrow_index
     }
 
     public fun get_borrow_rate_factors(
         storage: &mut Storage,
-        catalog: String
+        dola_pool_id: u16
     ): (u64, u64, u64, u64) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let borrow_rate_factors = &table::borrow(&storage.reserves, catalog).borrow_rate_factors;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let borrow_rate_factors = &table::borrow(&storage.reserves, dola_pool_id).borrow_rate_factors;
         (borrow_rate_factors.base_borrow_rate, borrow_rate_factors.borrow_rate_slope1, borrow_rate_factors.borrow_rate_slope2, borrow_rate_factors.optimal_utilization)
     }
 
     public fun mint_otoken_scaled(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         user: DolaAddress,
         scaled_amount: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, catalog).otoken_scaled;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
 
         if (table::contains(&otoken_scaled.user_state, user)) {
@@ -328,12 +327,12 @@ module lending::storage {
     public fun burn_otoken_scaled(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         user: DolaAddress,
         scaled_amount: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, catalog).otoken_scaled;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
 
         if (table::contains(&otoken_scaled.user_state, user)) {
@@ -349,12 +348,12 @@ module lending::storage {
     public fun mint_dtoken_scaled(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         user: DolaAddress,
         scaled_amount: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, catalog).dtoken_scaled;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
 
         if (table::contains(&dtoken_scaled.user_state, user)) {
@@ -369,12 +368,12 @@ module lending::storage {
     public fun burn_dtoken_scaled(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         user: DolaAddress,
         scaled_amount: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, catalog).dtoken_scaled;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
 
         if (table::contains(&dtoken_scaled.user_state, user)) {
@@ -391,7 +390,7 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
         if (!table::contains(&mut storage.user_infos, user_address)) {
             table::add(&mut storage.user_infos, user_address, UserInfo {
@@ -400,8 +399,8 @@ module lending::storage {
             });
         };
         let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
-        if (!vector::contains(&user_info.collaterals, &catalog)) {
-            vector::push_back(&mut user_info.collaterals, catalog)
+        if (!vector::contains(&user_info.collaterals, &dola_pool_id)) {
+            vector::push_back(&mut user_info.collaterals, dola_pool_id)
         }
     }
 
@@ -409,12 +408,12 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
         assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
         let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
 
-        let (exist, index) = vector::index_of(&user_info.collaterals, &catalog);
+        let (exist, index) = vector::index_of(&user_info.collaterals, &dola_pool_id);
         if (exist) {
             let _ = vector::remove(&mut user_info.collaterals, index);
         }
@@ -424,7 +423,7 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
         if (!table::contains(&mut storage.user_infos, user_address)) {
             table::add(&mut storage.user_infos, user_address, UserInfo {
@@ -433,8 +432,8 @@ module lending::storage {
             });
         };
         let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
-        if (!vector::contains(&user_info.loans, &catalog)) {
-            vector::push_back(&mut user_info.loans, catalog)
+        if (!vector::contains(&user_info.loans, &dola_pool_id)) {
+            vector::push_back(&mut user_info.loans, dola_pool_id)
         }
     }
 
@@ -442,12 +441,12 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         user_address: DolaAddress,
-        catalog: String
+        dola_pool_id: u16
     ) {
         assert!(table::contains(&mut storage.user_infos, user_address), ENONEXISTENT_USERINFO);
         let user_info = table::borrow_mut(&mut storage.user_infos, user_address);
 
-        let (exist, index) = vector::index_of(&user_info.loans, &catalog);
+        let (exist, index) = vector::index_of(&user_info.loans, &dola_pool_id);
         if (exist) {
             let _ = vector::remove(&mut user_info.loans, index);
         }
@@ -456,14 +455,14 @@ module lending::storage {
     public fun update_borrow_rate_factors(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         base_borrow_rate: u64,
         borrow_rate_slope1: u64,
         borrow_rate_slope2: u64,
         optimal_utilization: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let borrow_rate_factors = &mut table::borrow_mut(&mut storage.reserves, catalog).borrow_rate_factors;
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let borrow_rate_factors = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).borrow_rate_factors;
         borrow_rate_factors.base_borrow_rate = base_borrow_rate;
         borrow_rate_factors.borrow_rate_slope1 = borrow_rate_slope1;
         borrow_rate_factors.borrow_rate_slope2 = borrow_rate_slope2;
@@ -473,22 +472,22 @@ module lending::storage {
     public fun update_state(
         cap: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         new_borrow_index: u64,
         new_liquidity_index: u64,
         mint_to_treasury_scaled: u64
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let reserve = table::borrow_mut(&mut storage.reserves, catalog);
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_index = new_borrow_index;
         reserve.current_liquidity_index = new_liquidity_index;
 
         // Mint to treasury
-        let user = table::borrow(&storage.reserves, catalog).treasury;
+        let user = table::borrow(&storage.reserves, dola_pool_id).treasury;
         mint_otoken_scaled(
             cap,
             storage,
-            catalog,
+            dola_pool_id,
             user,
             mint_to_treasury_scaled
         );
@@ -497,12 +496,12 @@ module lending::storage {
     public fun update_interest_rate(
         _: &StorageCap,
         storage: &mut Storage,
-        catalog: String,
+        dola_pool_id: u16,
         new_borrow_rate: u64,
         new_liquidity_rate: u64,
     ) {
-        assert!(table::contains(&storage.reserves, catalog), ENONEXISTENT_RESERVE);
-        let reserve = table::borrow_mut(&mut storage.reserves, catalog);
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_rate = new_borrow_rate;
         reserve.current_liquidity_rate = new_liquidity_rate;
     }

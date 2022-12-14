@@ -136,7 +136,7 @@ module pool_manager::pool_manager {
         dola_pool_id: u16,
         ctx: &mut TxContext
     ) {
-        // register pool catalog
+        // register pool dola_pool_id
         let pool_catalog = &mut pool_manager_info.pool_catalog;
         if (!table::contains(&mut pool_catalog.id_to_pools, dola_pool_id)) {
             table::add(&mut pool_catalog.id_to_pools, dola_pool_id, vector::empty());

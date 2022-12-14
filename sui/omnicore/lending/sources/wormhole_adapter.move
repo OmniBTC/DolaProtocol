@@ -4,7 +4,7 @@ module lending::wormhole_adapter {
     use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
-    use pool_manager::pool_manager::{PoolManagerInfo, get_pool_catalog, find_pool_by_chain};
+    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain};
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -61,14 +61,14 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let catalog = get_pool_catalog(pool_manager_info, pool);
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         execute_supply(
             cap,
             pool_manager_info,
             storage,
             oracle,
             user,
-            catalog,
+            dola_pool_id,
             amount
         );
     }
@@ -92,10 +92,10 @@ module lending::wormhole_adapter {
             vaa,
             ctx
         );
-        let catalog = get_pool_catalog(pool_manager_info, pool);
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
 
-        let dst_pool = find_pool_by_chain(pool_manager_info, catalog, dst_chain);
+        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
@@ -105,7 +105,7 @@ module lending::wormhole_adapter {
             oracle,
             pool_manager_info,
             user,
-            catalog,
+            dola_pool_id,
             token_amount,
         );
         bridge_core::send_withdraw(
@@ -140,13 +140,13 @@ module lending::wormhole_adapter {
             vaa,
             ctx
         );
-        let catalog = get_pool_catalog(pool_manager_info, pool);
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let user_address = user;
         let (dst_chain, _, token_amount, _) = decode_app_payload(app_payload);
-        let dst_pool = find_pool_by_chain(pool_manager_info, catalog, dst_chain);
+        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
-        execute_borrow(cap, pool_manager_info, storage, oracle, user_address, catalog, token_amount);
+        execute_borrow(cap, pool_manager_info, storage, oracle, user_address, dola_pool_id, token_amount);
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -178,8 +178,8 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let catalog = get_pool_catalog(pool_manager_info, pool);
-        execute_repay(cap, pool_manager_info, storage, oracle, user, catalog, amount);
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        execute_repay(cap, pool_manager_info, storage, oracle, user, dola_pool_id, amount);
     }
 
     public entry fun liquidate(
@@ -203,8 +203,8 @@ module lending::wormhole_adapter {
             ctx
         );
         let (dst_chain, _, _, _) = decode_app_payload(app_payload);
-        let deposit_catalog = get_pool_catalog(pool_manager_info, deposit_pool);
-        let withdraw_catalog= get_pool_catalog(pool_manager_info, withdraw_pool);
+        let deposit_catalog = get_id_by_pool(pool_manager_info, deposit_pool);
+        let withdraw_catalog= get_id_by_pool(pool_manager_info, withdraw_pool);
         let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_catalog, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
