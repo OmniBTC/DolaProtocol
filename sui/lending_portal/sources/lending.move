@@ -75,10 +75,10 @@ module lending_portal::lending {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user = convert_address_to_dola(tx_context::sender(ctx));
+        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&deposit_coin)), user, 0);
+        let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&deposit_coin)), user_addr, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, deposit_coin, APPID, app_payload, ctx);
     }
 
@@ -126,10 +126,10 @@ module lending_portal::lending {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user = convert_address_to_dola(tx_context::sender(ctx));
+        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(REPAY, normal_amount(pool, coin::value(&repay_coin)), user, 0);
+        let app_payload = encode_app_payload(REPAY, normal_amount(pool, coin::value(&repay_coin)), user_addr, 0);
         send_deposit(pool_state, wormhole_state, wormhole_message_fee, pool, repay_coin, APPID, app_payload, ctx);
     }
 
@@ -210,11 +210,11 @@ module lending_portal::lending {
 
     #[test]
     fun test_encode_decode() {
-        let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user), 0);
+        let user_addr = @0x11;
+        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user_addr), 0);
         let (call_type, amount, user_addr, _) = decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_addr == convert_address_to_dola(user), 0);
+        assert!(user_addr == convert_address_to_dola(user_addr), 0);
     }
 }

@@ -25,7 +25,7 @@ module omnipool::pool {
     const DOLAID: u16 = 0;
 
 
-    /// The user's information is recorded in the protocol, and the pool only needs to record itself
+    /// The user_addr's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
         id: UID,
         balance: Balance<CoinType>,
@@ -90,7 +90,7 @@ module omnipool::pool {
         convert_amount(amount, cur_decimal, target_decimal)
     }
 
-    /// call by user or application
+    /// call by user_addr or application
     public fun deposit_to<CoinType>(
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
@@ -106,7 +106,7 @@ module omnipool::pool {
         pool_payload
     }
 
-    /// call by user or application
+    /// call by user_addr or application
     public fun withdraw_to<CoinType>(
         _pool: &mut Pool<CoinType>,
         app_id: u16,
@@ -123,12 +123,12 @@ module omnipool::pool {
     public fun inner_withdraw<CoinType>(
         _: &PoolCap,
         pool: &mut Pool<CoinType>,
-        user: DolaAddress,
+        user_addr: DolaAddress,
         amount: u64,
         pool_addr: DolaAddress,
         ctx: &mut TxContext
     ) {
-        let user = convert_dola_to_address(user);
+        let user_addr = convert_dola_to_address(user_addr);
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
@@ -136,7 +136,7 @@ module omnipool::pool {
             dola_address(&pool_addr) == ascii::into_bytes(type_name::into_string(type_name::get<CoinType>())),
             EINVALID_TOKEN
         );
-        transfer::transfer(coin, user);
+        transfer::transfer(coin, user_addr);
     }
 
     public fun deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
@@ -168,21 +168,21 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_send_deposit_payload(
-        pool: DolaAddress,
-        user: DolaAddress,
+        pool_addr: DolaAddress,
+        user_addr: DolaAddress,
         amount: u64,
         app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        let pool = encode_dola_address(pool);
-        serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
-        serialize_vector(&mut pool_payload, pool);
+        let pool_addr = encode_dola_address(pool_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&pool_addr) as u16));
+        serialize_vector(&mut pool_payload, pool_addr);
 
-        let user = encode_dola_address(user);
-        serialize_u16(&mut pool_payload, (vector::length(&user) as u16));
-        serialize_vector(&mut pool_payload, user);
+        let user_addr = encode_dola_address(user_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&user_addr) as u16));
+        serialize_vector(&mut pool_payload, user_addr);
 
         serialize_u64(&mut pool_payload, amount);
 
@@ -208,7 +208,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (pool_len as u64);
-        let pool = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let pool_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -216,7 +216,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (user_len as u64);
-        let user = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let user_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
@@ -240,25 +240,25 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool, user, amount, app_id, app_payload)
+        (pool_addr, user_addr, amount, app_id, app_payload)
     }
 
     /// encode whihdraw msg
     public fun encode_send_withdraw_payload(
-        pool: DolaAddress,
-        user: DolaAddress,
+        pool_addr: DolaAddress,
+        user_addr: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        let pool = encode_dola_address(pool);
-        serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
-        serialize_vector(&mut pool_payload, pool);
+        let pool_addr = encode_dola_address(pool_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&pool_addr) as u16));
+        serialize_vector(&mut pool_payload, pool_addr);
 
-        let user = encode_dola_address(user);
-        serialize_u16(&mut pool_payload, (vector::length(&user) as u16));
-        serialize_vector(&mut pool_payload, user);
+        let user_addr = encode_dola_address(user_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&user_addr) as u16));
+        serialize_vector(&mut pool_payload, user_addr);
 
         serialize_u16(&mut pool_payload, app_id);
 
@@ -282,7 +282,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (pool_len as u64);
-        let pool = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let pool_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -290,7 +290,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (user_len as u64);
-        let user = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let user_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -310,7 +310,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool, user, app_id, app_payload)
+        (pool_addr, user_addr, app_id, app_payload)
     }
 
     public fun encode_send_deposit_and_withdraw_payload(
@@ -416,7 +416,7 @@ module omnipool::pool {
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
         pool: DolaAddress,
-        user: DolaAddress,
+        user_addr: DolaAddress,
         amount: u64
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -425,8 +425,8 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
         serialize_vector(&mut pool_payload, pool);
 
-        serialize_u16(&mut pool_payload, (vector::length(&dola_address(&user)) as u16));
-        serialize_vector(&mut pool_payload, dola_address(&user));
+        serialize_u16(&mut pool_payload, (vector::length(&dola_address(&user_addr)) as u16));
+        serialize_vector(&mut pool_payload, dola_address(&user_addr));
 
         serialize_u64(&mut pool_payload, amount);
 
@@ -452,7 +452,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (user_len as u64);
-        let user = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let user_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
@@ -461,7 +461,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool, user, amount)
+        (pool, user_addr, amount)
     }
 
     #[test]
@@ -491,7 +491,7 @@ module omnipool::pool {
     #[test]
     public fun test_withdraw_to() {
         let manager = @0x0;
-        let user = @0xC;
+        let user_addr = @0xC;
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
@@ -512,7 +512,7 @@ module omnipool::pool {
 
             assert!(balance::value(&pool.balance) == 100, 0);
 
-            inner_withdraw<SUI>(&manager_cap, &mut pool, convert_address_to_dola(user), 10, pool_addr, ctx);
+            inner_withdraw<SUI>(&manager_cap, &mut pool, convert_address_to_dola(user_addr), 10, pool_addr, ctx);
 
             assert!(balance::value(&pool.balance) == 0, 0);
 
