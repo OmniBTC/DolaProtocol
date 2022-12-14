@@ -1,17 +1,20 @@
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
-    use std::ascii::{String, string};
+    use std::ascii::{String, string, into_bytes};
     use std::option::{Self, Option};
     use std::vector;
+
+    use dola_types::types::create_dola_address;
 
     use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral};
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{token_liquidity, PoolManagerInfo, get_app_liquidity};
+    use pool_manager::pool_manager::{token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
     use sui::event::emit;
     use sui::math::{pow, min};
+    use user_manager::user_manager::{get_dola_user_id, UserManagerInfo};
 
     const RAY: u64 = 100000000;
 
@@ -86,11 +89,15 @@ module external_interfaces::interfaces {
     public entry fun get_user_token_debt(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: DolaAddress,
+        user_manager_info: &mut UserManagerInfo,
+        user_address: vector<u8>,
+        dola_chain_id: u16,
         dola_pool_id: u16
     ) {
-        let debt_amount = user_loan_balance(storage, user_address, dola_pool_id);
-        let debt_value = user_loan_value(storage, oracle, user_address, dola_pool_id);
+        let dola_user_address = create_dola_address(dola_chain_id, user_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, dola_user_address);
+        let debt_amount = user_loan_balance(storage, dola_user_id, dola_pool_id);
+        let debt_value = user_loan_value(storage, oracle, dola_user_id, dola_pool_id);
         emit(UserDebtInfo {
             dola_pool_id,
             debt_amount,
@@ -101,11 +108,15 @@ module external_interfaces::interfaces {
     public entry fun get_user_collateral(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: DolaAddress,
+        user_manager_info: &mut UserManagerInfo,
+        user_address: vector<u8>,
+        dola_chain_id: u16,
         dola_pool_id: u16
     ) {
-        let collateral_amount = user_collateral_balance(storage, user_address, dola_pool_id);
-        let collateral_value = user_collateral_value(storage, oracle, user_address, dola_pool_id);
+        let dola_user_address = create_dola_address(dola_chain_id, user_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, dola_user_address);
+        let collateral_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
+        let collateral_value = user_collateral_value(storage, oracle, dola_user_id, dola_pool_id);
         emit(UserCollateralInfo {
             dola_pool_id,
             collateral_amount,
@@ -113,20 +124,28 @@ module external_interfaces::interfaces {
         })
     }
 
-    public entry fun get_user_lending_info(storage: &mut Storage, oracle: &mut PriceOracle, user_address: DolaAddress) {
+    public entry fun get_user_lending_info(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        user_manager_info: &mut UserManagerInfo,
+        user_address: vector<u8>,
+        dola_chain_id: u16
+    ) {
+        let dola_user_address = create_dola_address(dola_chain_id, user_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, dola_user_address);
         let collateral_infos = vector::empty<UserCollateralInfo>();
-        let collaterals = get_user_collaterals(storage, user_address);
+        let collaterals = get_user_collaterals(storage, dola_user_id);
         let total_collateral_value = 0;
         let debt_infos = vector::empty<UserDebtInfo>();
-        let loans = get_user_loans(storage, user_address);
+        let loans = get_user_loans(storage, dola_user_id);
         let total_debt_value = 0;
 
         let length = vector::length(&collaterals);
         let i = 0;
         while (i < length) {
             let collateral = vector::borrow(&collaterals, i);
-            let collateral_amount = user_collateral_balance(storage, user_address, *collateral);
-            let collateral_value = user_collateral_value(storage, oracle, user_address, *collateral);
+            let collateral_amount = user_collateral_balance(storage, dola_user_id, *collateral);
+            let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
             vector::push_back(&mut collateral_infos, UserCollateralInfo {
                 dola_pool_id: *collateral,
                 collateral_amount,
@@ -140,8 +159,8 @@ module external_interfaces::interfaces {
         i = 0;
         while (i < length) {
             let loan = vector::borrow(&loans, i);
-            let debt_amount = user_loan_balance(storage, user_address, *loan);
-            let debt_value = user_loan_value(storage, oracle, user_address, *loan);
+            let debt_amount = user_loan_balance(storage, dola_user_id, *loan);
+            let debt_value = user_loan_value(storage, oracle, dola_user_id, *loan);
             vector::push_back(&mut debt_infos, UserDebtInfo {
                 dola_pool_id: *loan,
                 debt_amount,
@@ -184,12 +203,17 @@ module external_interfaces::interfaces {
 
     public entry fun get_user_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        borrow_token: vector<u8>,
-        user_address: DolaAddress
+        borrow_pool_id: u16,
+        user_address: vector<u8>,
+        dola_chain_id: u16
     ) {
-        if (is_collateral(storage, user_address, borrow_token)) {
+        let dola_user_address = create_dola_address(dola_chain_id, user_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, dola_user_address);
+        let borrow_token = into_bytes(get_pool_name_by_id(pool_manager_info, borrow_pool_id));
+        if (is_collateral(storage, dola_user_id, borrow_pool_id)) {
             emit(UserAllowedBorrow {
                 borrow_token,
                 borrow_amount: 0,
@@ -197,12 +221,12 @@ module external_interfaces::interfaces {
             });
             return
         };
-        let user_total_collateral_value = user_total_collateral_value(storage, oracle, user_address);
-        let user_total_loan_value = user_total_loan_value(storage, oracle, user_address);
-        let (price, decimal) = get_token_price(oracle, borrow_token);
+        let user_total_collateral_value = user_total_collateral_value(storage, oracle, dola_user_id);
+        let user_total_loan_value = user_total_loan_value(storage, oracle, dola_user_id);
+        let (price, decimal) = get_token_price(oracle, borrow_pool_id);
         let can_borrow_value = user_total_collateral_value - user_total_loan_value;
         let borrow_amount = can_borrow_value * pow(10, decimal) / price;
-        let reserve = get_app_liquidity(pool_manager_info, borrow_token, get_app_id(storage));
+        let reserve = get_app_liquidity(pool_manager_info, borrow_pool_id, get_app_id(storage));
         if (reserve == 0) {
             emit(UserAllowedBorrow {
                 borrow_token,

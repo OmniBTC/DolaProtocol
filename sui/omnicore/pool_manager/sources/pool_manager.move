@@ -94,6 +94,13 @@ module pool_manager::pool_manager {
         *table::borrow(&mut pool_catalog.pool_to_id, pool)
     }
 
+    public fun get_pool_name_by_id(pool_manager: &mut PoolManagerInfo, dola_pool_id: u16): String {
+        let pool_infos = &mut pool_manager.pool_infos;
+        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        let pool_info = table::borrow(pool_infos, dola_pool_id);
+        pool_info.name
+    }
+
     public entry fun register_admin_cap(pool_manager: &mut PoolManagerInfo, govern: &mut GovernanceExternalCap) {
         let admin = PoolManagerAdminCap { pool_manager: uid_to_address(&pool_manager.id), count: 0 };
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
@@ -184,15 +191,13 @@ module pool_manager::pool_manager {
 
     public fun get_app_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
-        pool: DolaAddress,
+        dola_pool_id: u16,
         app_id: u16
     ): u128 {
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         get_app_liquidity_by_pool_id(pool_manager_info, dola_pool_id, app_id)
     }
 
-    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, pool: DolaAddress): u64 {
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): u64 {
         assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
         pool_info.reserve.value
