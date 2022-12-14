@@ -134,7 +134,6 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_user: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -142,7 +141,6 @@ module wormhole_bridge::bridge_pool {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             deposit_pool,
             deposit_coin,
-            withdraw_user,
             app_id,
             app_payload,
             ctx

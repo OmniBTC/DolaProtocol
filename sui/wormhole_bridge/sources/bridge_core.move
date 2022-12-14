@@ -142,7 +142,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         ctx: &mut TxContext
-    ): (DolaAddress, DolaAddress, u64, DolaAddress, DolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -155,7 +155,7 @@ module wormhole_bridge::bridge_core {
         // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
         //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
-        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, withdraw_user, app_id, app_payload) = decode_send_deposit_and_withdraw_payload(
+        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = decode_send_deposit_and_withdraw_payload(
             vaa
         );
         assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
@@ -170,7 +170,7 @@ module wormhole_bridge::bridge_core {
             ctx
         );
         // myvaa::destroy(vaa);
-        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, withdraw_user, app_id, app_payload)
+        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload)
     }
 
     public fun receive_withdraw(

@@ -161,7 +161,6 @@ module lending_portal::lending {
             wormhole_message_fee,
             debt_pool,
             debt_coin,
-            receiver,
             APPID,
             app_payload,
             ctx
@@ -210,11 +209,11 @@ module lending_portal::lending {
 
     #[test]
     fun test_encode_decode() {
-        let user_addr = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user_addr), 0);
+        let user = @0x11;
+        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user), 0);
         let (call_type, amount, user_addr, _) = decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_addr == convert_address_to_dola(user_addr), 0);
+        assert!(user_addr == convert_address_to_dola(user), 0);
     }
 }

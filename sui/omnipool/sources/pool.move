@@ -142,7 +142,6 @@ module omnipool::pool {
     public fun deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_user: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -159,7 +158,6 @@ module omnipool::pool {
             depoist_user,
             amount,
             withdraw_pool_address,
-            withdraw_user,
             app_id,
             app_payload
         );
@@ -318,7 +316,6 @@ module omnipool::pool {
         deposit_user: DolaAddress,
         deposit_amount: u64,
         withdraw_pool: DolaAddress,
-        withdraw_user: DolaAddress,
         app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
@@ -338,10 +335,6 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, (vector::length(&withdraw_pool) as u16));
         serialize_vector(&mut pool_payload, withdraw_pool);
 
-        let withdraw_user = encode_dola_address(withdraw_user);
-        serialize_u16(&mut pool_payload, (vector::length(&withdraw_user) as u16));
-        serialize_vector(&mut pool_payload, withdraw_user);
-
         serialize_u16(&mut pool_payload, app_id);
 
         serialize_u16(&mut pool_payload, (vector::length(&app_payload) as u16));
@@ -352,7 +345,7 @@ module omnipool::pool {
 
     public fun decode_send_deposit_and_withdraw_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u64, DolaAddress, DolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -386,14 +379,6 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = 2;
-        let withdraw_user_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (withdraw_user_len as u64);
-        let withdraw_user = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
         let app_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
@@ -410,7 +395,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, withdraw_user, app_id, app_payload)
+        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload)
     }
 
     /// encode deposit msg

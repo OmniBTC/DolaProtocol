@@ -208,7 +208,7 @@ module lending::wormhole_adapter {
         ctx: &mut TxContext
     ) {
         let cap = get_storage_cap(wormhole_adapter);
-        let (deposit_pool, _deposit_user, deposit_amount, withdraw_pool, _withdraw_user, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
+        let (deposit_pool, _deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
