@@ -1,7 +1,8 @@
 module user_manager::user_manager {
     use std::vector;
 
-    use dola_types::types::DolaAddress;
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
+    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -13,6 +14,8 @@ module user_manager::user_manager {
 
     const EDUPLICATED_BINDING: u64 = 2;
 
+    const EINVALID_LENGTH: u64 = 3;
+
     struct UserManagerInfo has key, store {
         id: UID,
         user_address_catalog: UserAddressCatalog
@@ -23,9 +26,7 @@ module user_manager::user_manager {
         user_id_to_addresses: Table<u64, vector<DolaAddress>>
     }
 
-    struct UserManagerCap has key, store {
-        id: UID
-    }
+    struct UserManagerCap has store, drop {}
 
     fun init(ctx: &mut TxContext) {
         transfer::share_object(UserManagerInfo {
@@ -37,16 +38,14 @@ module user_manager::user_manager {
         })
     }
 
-    public fun register_cap(ctx: &mut TxContext): UserManagerCap {
+    public fun register_cap(): UserManagerCap {
         // todo! consider into govern
-        UserManagerCap {
-            id: object::new(ctx)
-        }
+        UserManagerCap {}
     }
 
-    public fun delete_cap(user_manager_cap: UserManagerCap) {
-        let UserManagerCap { id } = user_manager_cap;
-        object::delete(id);
+    public fun is_dora_user(user_manager: &mut UserManagerInfo, user: DolaAddress): bool {
+        let user_catalog = &mut user_manager.user_address_catalog;
+        table::contains(&mut user_catalog.user_address_to_user_id, user)
     }
 
     public fun get_dola_user_id(user_manager: &mut UserManagerInfo, user: DolaAddress): u64 {
@@ -60,7 +59,6 @@ module user_manager::user_manager {
         assert!(table::contains(&mut user_catalog.user_id_to_addresses, dola_user_id), ENOT_EXIST_USER);
         *table::borrow(&mut user_catalog.user_id_to_addresses, dola_user_id)
     }
-
 
     public fun register_dola_user_id(_: &UserManagerCap, user_manager: &mut UserManagerInfo, user: DolaAddress) {
         let user_catalog = &mut user_manager.user_address_catalog;
@@ -86,5 +84,43 @@ module user_manager::user_manager {
         let user_addresses = table::borrow_mut(&mut user_catalog.user_id_to_addresses, dola_user_id);
         assert!(vector::contains(user_addresses, &bind_address), ENOT_EXIST_USER);
         vector::push_back(user_addresses, bind_address);
+    }
+
+    public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
+        let binding_payload = vector::empty<u8>();
+
+        let user = encode_dola_address(user);
+        serialize_u16(&mut binding_payload, (vector::length(&user) as u16));
+        serialize_vector(&mut binding_payload, user);
+
+        let bind_address = encode_dola_address(bind_address);
+        serialize_u16(&mut binding_payload, (vector::length(&bind_address) as u16));
+        serialize_vector(&mut binding_payload, bind_address);
+        binding_payload
+    }
+
+    public fun decode_binding(binding_payload: vector<u8>): (DolaAddress, DolaAddress) {
+        let length = vector::length(&binding_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let user_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (user_len as u64);
+        let user = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let bind_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (bind_len as u64);
+        let bind_address = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(length == index, EINVALID_LENGTH);
+        (user, bind_address)
     }
 }

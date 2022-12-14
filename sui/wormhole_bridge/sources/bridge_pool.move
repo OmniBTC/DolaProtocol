@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use dola_types::types::DolaAddress;
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
     use sui::event;
@@ -8,8 +8,9 @@ module wormhole_bridge::bridge_pool {
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
+    use user_manager::user_manager::encode_binding;
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -66,6 +67,23 @@ module wormhole_bridge::bridge_pool {
             emitter_chain_id,
             external_address::from_bytes(emitter_address)
         );
+    }
+
+    public entry fun send_binding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        dora_chain_id: u16,
+        bind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let bind_address = create_dola_address(dora_chain_id, bind_address);
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let msg = encode_binding(user, bind_address);
+        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&pool_state.cache_vaas) + 1;
+        table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
     public fun send_deposit<CoinType>(

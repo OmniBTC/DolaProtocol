@@ -14,6 +14,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
+    use user_manager::user_manager::{is_dora_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -28,6 +29,7 @@ module wormhole_bridge::bridge_core {
 
     struct CoreState has key, store {
         id: UID,
+        user_manager_cap: Option<UserManagerCap>,
         pool_manager_cap: Option<PoolManagerCap>,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
@@ -45,6 +47,7 @@ module wormhole_bridge::bridge_core {
         transfer::share_object(
             CoreState {
                 id: object::new(ctx),
+                user_manager_cap: option::none(),
                 pool_manager_cap: option::none(),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
@@ -56,6 +59,10 @@ module wormhole_bridge::bridge_core {
 
     public fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
         core_state.pool_manager_cap = option::some(pool_manager_cap);
+    }
+
+    public fun transfer_user_manager_cap(core_state: &mut CoreState, user_manager_cap: UserManagerCap) {
+        core_state.user_manager_cap = option::some(user_manager_cap);
     }
 
     public entry fun register_remote_bridge(
@@ -74,15 +81,30 @@ module wormhole_bridge::bridge_core {
         );
     }
 
+    public fun receive_binding(
+        _wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        user_manager_info: &mut UserManagerInfo,
+        vaa: vector<u8>
+    ) {
+        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
+        let (user, bind_address) = decode_binding(vaa);
+        if (!is_dora_user(user_manager_info, user)) {
+            binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
+        };
+    }
+
     public fun receive_deposit(
         _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
+        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -106,6 +128,9 @@ module wormhole_bridge::bridge_core {
             amount,
             ctx
         );
+        if (!is_dora_user(user_manager_info, user)) {
+            register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
+        };
         // myvaa::destroy(vaa);
         (pool, user, amount, app_payload)
     }
