@@ -7,29 +7,29 @@ module dola_types::types {
     use sui::bcs;
     use sui::object::address_from_bytes;
 
-    const DOLAID: u16 = 0;
+    const DOLACHAINID: u16 = 0;
 
     /// Used to represent user address and pool address
     struct DolaAddress has copy, drop, store {
-        dola_id: u16,
+        dola_chain_id: u16,
         dola_address: vector<u8>
     }
 
-    public fun dola_id(dola_address: &DolaAddress): u16 {
-        dola_address.dola_id
+    public fun dola_chain_id(dola_address: &DolaAddress): u16 {
+        dola_address.dola_chain_id
     }
 
     public fun dola_address(dola_address: &DolaAddress): vector<u8> {
         dola_address.dola_address
     }
 
-    public fun create_dola_address(dola_id: u16, dola_address: vector<u8>): DolaAddress {
-        DolaAddress { dola_id, dola_address }
+    public fun create_dola_address(dola_chain_id: u16, dola_address: vector<u8>): DolaAddress {
+        DolaAddress { dola_chain_id, dola_address }
     }
 
     public fun convert_address_to_dola(addr: address): DolaAddress {
         DolaAddress {
-            dola_id: DOLAID,
+            dola_chain_id: DOLACHAINID,
             dola_address: bcs::to_bytes(&addr)
         }
     }
@@ -41,7 +41,7 @@ module dola_types::types {
     public fun convert_pool_to_dola<CoinType>(): DolaAddress {
         let dola_address = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
         DolaAddress {
-            dola_id: DOLAID,
+            dola_chain_id: DOLACHAINID,
             dola_address
         }
     }
@@ -52,7 +52,7 @@ module dola_types::types {
 
     public fun convert_external_address_to_dola(addr: vector<u8>): DolaAddress {
         DolaAddress {
-            dola_id: DOLAID,
+            dola_chain_id: DOLACHAINID,
             dola_address: addr
         }
     }
@@ -61,18 +61,9 @@ module dola_types::types {
         addr.dola_address
     }
 
-    public fun unpack_dola(addr: DolaAddress): (u16, vector<u8>) {
-        let DolaAddress { dola_id, dola_address } = addr;
-        (dola_id, dola_address)
-    }
-
-    public fun pack_dola(dola_id: u16, dola_address: vector<u8>): DolaAddress {
-        DolaAddress { dola_id, dola_address }
-    }
-
     public fun encode_dola_address(addr: DolaAddress): vector<u8> {
         let data = vector::empty();
-        serialize_u16(&mut data, addr.dola_id);
+        serialize_u16(&mut data, addr.dola_chain_id);
         serialize_vector(&mut data, addr.dola_address);
         data
     }
@@ -83,12 +74,12 @@ module dola_types::types {
         let data_len;
 
         data_len = 2;
-        let dola_id = deserialize_u16(&vector_slice(&addr, index, index + data_len));
+        let dola_chain_id = deserialize_u16(&vector_slice(&addr, index, index + data_len));
         index = index + data_len;
 
         let dola_address = vector_slice(&addr, index, len);
         DolaAddress {
-            dola_id,
+            dola_chain_id,
             dola_address
         }
     }
