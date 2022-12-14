@@ -1,0 +1,18 @@
+[package]
+name = "UserManager"
+version = "0.0.1"
+
+[addresses]
+user_manager = "0x0"
+governance = "0x0"
+dola_types = "0x0"
+serde = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "21fcff72bef3b12f600da861b7708ca5f30d9512"
+
+[dependencies.DolaTypes]
+local = "../../dola_types"
