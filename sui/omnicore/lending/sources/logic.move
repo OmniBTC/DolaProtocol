@@ -1,14 +1,14 @@
 module lending::logic {
     use std::vector;
 
-    use dola_types::types::DolaAddress;
+    use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
     use lending::math::{Self, calculate_compounded_interest, calculate_linear_interest};
     use lending::rates;
     use lending::scaled_balance::{Self, balance_of};
     use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
-    use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16};
+    use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
     use sui::math::pow;
 
     const RAY: u64 = 100000000;
@@ -156,24 +156,35 @@ module lending::logic {
         vector::contains(&loans, &dola_pool_id)
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u16, u8, u64, vector<u8>) {
+    public fun encode_app_payload(call_type: u8, amount: u64, receiver: DolaAddress, liquidate_user_id: u64): vector<u8> {
+        let payload = vector::empty<u8>();
+        serialize_u64(&mut payload, amount);
+        let receiver = encode_dola_address(receiver);
+        serialize_u16(&mut payload, (vector::length(&receiver) as u16));
+        serialize_vector(&mut payload, receiver);
+        serialize_u64(&mut payload, liquidate_user_id);
+        serialize_u8(&mut payload, call_type);
+        payload
+    }
+
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
-
-        data_len = 2;
-        let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = (user_length as u64);
-        let user = vector_slice(&app_payload, index, index + data_len);
+        data_len = (receive_length as u64);
+        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -182,7 +193,7 @@ module lending::logic {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (chain_id, call_type, amount, user)
+        (call_type, amount, receiver, liquidate_user_id)
     }
 
     public fun user_collateral_value(

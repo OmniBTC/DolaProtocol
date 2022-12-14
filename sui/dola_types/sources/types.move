@@ -23,6 +23,11 @@ module dola_types::types {
         dola_address.dola_address
     }
 
+    public fun update_dola_chain_id(addr: DolaAddress, dola_chain_id: u16): DolaAddress {
+        addr.dola_chain_id = dola_chain_id;
+        addr
+    }
+
     public fun create_dola_address(dola_chain_id: u16, dola_address: vector<u8>): DolaAddress {
         DolaAddress { dola_chain_id, dola_address }
     }
