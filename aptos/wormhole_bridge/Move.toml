@@ -10,6 +10,7 @@ aptos_std = "0x1"
 wormhole_bridge = "0x0"
 serde = "0x0"
 omnipool = "0x0"
+dola_types = "0x0"
 wormhole = "_"
 deployer = "_"
 
@@ -33,3 +34,6 @@ local = "../omnipool"
 
 [dependencies.Serde]
 local = "../serde"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, convert_vector_to_dola, DolaAddress};
+    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::wormhole;
@@ -13,6 +13,7 @@ module wormhole_bridge::bridge_pool {
     use aptos_std::table;
     use aptos_framework::coin::Coin;
     use aptos_framework::aptos_coin::AptosCoin;
+    use dola_types::types::DolaAddress;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -38,10 +39,9 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaReciveWithdrawEvent has key, copy, drop {
-        pool_address: vector<u8>,
+        pool_address: DolaAddress,
         user: DolaAddress,
         amount: u64,
-        token_name: vector<u8>
     }
 
     public fun ensure_admin(sender: &signer): bool {
@@ -132,14 +132,12 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_user: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             sender,
             deposit_coin,
-            convert_vector_to_dola(withdraw_user),
             app_id,
             app_payload,
         );
@@ -163,11 +161,11 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, token_name) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (_pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
 
-        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, user, amount, token_name);
+        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, user, amount, pool_address);
         // myvaa::destroy(vaa);
     }
 
@@ -182,13 +180,12 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(sender: &signer, vaa: vector<u8>) {
-        let (pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
             user,
-            amount,
-            token_name
+            amount
         })
     }
 }
