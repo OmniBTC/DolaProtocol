@@ -73,11 +73,11 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        dora_chain_id: u16,
+        dola_chain_id: u16,
         bind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let bind_address = create_dola_address(dora_chain_id, bind_address);
+        let bind_address = create_dola_address(dola_chain_id, bind_address);
         let user = tx_context::sender(ctx);
         let user = convert_address_to_dola(user);
         let msg = encode_binding(user, bind_address);

@@ -14,7 +14,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{is_dora_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
+    use user_manager::user_manager::{is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -89,7 +89,7 @@ module wormhole_bridge::bridge_core {
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
         let (user, bind_address) = decode_binding(vaa);
-        if (!is_dora_user(user_manager_info, user)) {
+        if (!is_dola_user(user_manager_info, user)) {
             binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
         };
     }
@@ -128,7 +128,7 @@ module wormhole_bridge::bridge_core {
             amount,
             ctx
         );
-        if (!is_dora_user(user_manager_info, user)) {
+        if (!is_dola_user(user_manager_info, user)) {
             register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
         };
         // myvaa::destroy(vaa);

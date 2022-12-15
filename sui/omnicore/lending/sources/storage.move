@@ -51,7 +51,7 @@ module lending::storage {
         // Timestamp of last update
         // todo: use sui timestamp
         last_update_timestamp: u64,
-        // Treasury (dora_user_id)
+        // Treasury (dola_user_id)
         treasury: u64,
         // Treasury interest factor
         treasury_factor: u64,

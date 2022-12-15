@@ -43,7 +43,7 @@ module user_manager::user_manager {
         UserManagerCap {}
     }
 
-    public fun is_dora_user(user_manager: &mut UserManagerInfo, user: DolaAddress): bool {
+    public fun is_dola_user(user_manager: &mut UserManagerInfo, user: DolaAddress): bool {
         let user_catalog = &mut user_manager.user_address_catalog;
         table::contains(&mut user_catalog.user_address_to_user_id, user)
     }
