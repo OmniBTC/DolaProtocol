@@ -199,6 +199,15 @@ class TopCacheDict(RWDict):
         super(TopCacheDict, self).__setitem__(key, kv)
         persist_cache()
 
+    def fuzzy_search_package(self, key):
+        keys = {k.lower().replace("_", ""): k for k in list(self.keys()) if isinstance(k, str)}
+        key = key.lower().replace("_", "")
+        if key in keys:
+            data = self[keys[key]].get("Shared", [])
+            if len(data):
+                return data[-1]
+        return None
+
 
 CacheObject: Dict[Union[ObjectType, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
 
@@ -632,7 +641,12 @@ class SuiPackage:
     def replace_toml(move_toml: MoveToml, replace_address: dict = None):
         for k in list(move_toml.get("addresses", dict()).keys()):
             if k in replace_address:
-                move_toml["addresses"][k] = replace_address[k]
+                if replace_address[k] is not None:
+                    move_toml["addresses"][k] = replace_address[k]
+                elif CacheObject.fuzzy_search_package(k) is not None:
+                    move_toml["addresses"][k] = CacheObject.fuzzy_search_package(k)
+                else:
+                    assert False, "replace address is None"
         return move_toml
 
     def replace_addresses(
