@@ -7,13 +7,6 @@ import "../interfaces/IOmniPool.sol";
 library LibPool {
     using LibBytes for bytes;
 
-    bytes32 internal constant DIAMOND_STORAGE_POSITION =
-        keccak256("omnibtc.dola.omnipool");
-
-    struct Storage {
-        mapping(bytes => address) omnipool;
-    }
-
     struct SendDepositPayload {
         address pool;
         address user;
@@ -48,31 +41,6 @@ library LibPool {
         address user;
         uint64 amount;
         bytes tokenName;
-    }
-
-    function omnipool(bytes memory _tokenName)
-        internal
-        view
-        returns (IOmniPool)
-    {
-        Storage storage ds = diamondStorage();
-        return IOmniPool(ds.omnipool[_tokenName]);
-    }
-
-    function getPool(bytes memory _tokenName) internal view returns (address) {
-        Storage storage ds = diamondStorage();
-        return ds.omnipool[_tokenName];
-    }
-
-    function addPool(address _pool) internal {
-        bytes memory tokenName = IOmniPool(_pool).getTokenName();
-        Storage storage ds = diamondStorage();
-        ds.omnipool[tokenName] = _pool;
-    }
-
-    function removePool(bytes memory _tokenName) internal {
-        Storage storage ds = diamondStorage();
-        ds.omnipool[_tokenName] = address(0);
     }
 
     function encodeSendDepositPayload(
@@ -362,12 +330,5 @@ library LibPool {
         require(index == length, "Decode receive withdraw payload error");
 
         return decodeData;
-    }
-
-    function diamondStorage() internal pure returns (Storage storage ds) {
-        bytes32 position = DIAMOND_STORAGE_POSITION;
-        assembly {
-            ds.slot := position
-        }
     }
 }

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IWormholeFacet {
+interface IWormholeBridge {
     function sendDeposit(
         bytes memory tokenName,
         uint256 amount,
