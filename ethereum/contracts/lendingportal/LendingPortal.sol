@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/IERC20.sol";
-import "../../interfaces/IWormholeFacet.sol";
+import "../../interfaces/IWormholeBridge.sol";
 import "../../libraries/LibLending.sol";
 import "../../libraries/LibDecimals.sol";
 
@@ -28,7 +28,7 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
+        IWormholeBridge(dolaDiamond).sendDeposit{value: msg.value}(
             tokenName,
             amount,
             APPID,
@@ -48,7 +48,7 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             dstChainId
         );
-        IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
+        IWormholeBridge(dolaDiamond).sendWithdraw{value: msg.value}(
             tokenName,
             APPID,
             appPayload
@@ -66,7 +66,7 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             dstChainId
         );
-        IWormholeFacet(dolaDiamond).sendWithdraw{value: msg.value}(
+        IWormholeBridge(dolaDiamond).sendWithdraw{value: msg.value}(
             tokenName,
             APPID,
             appPayload
@@ -85,7 +85,7 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(dolaDiamond).sendDeposit{value: msg.value}(
+        IWormholeBridge(dolaDiamond).sendDeposit{value: msg.value}(
             tokenName,
             amount,
             APPID,
@@ -108,7 +108,7 @@ contract LendingPortal {
             abi.encodePacked(tx.origin),
             0
         );
-        IWormholeFacet(dolaDiamond).sendDepositAndWithdraw(
+        IWormholeBridge(dolaDiamond).sendDepositAndWithdraw(
             depositTokenName,
             amount,
             withdrawToken,

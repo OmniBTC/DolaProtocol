@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../../libraries/LibPool.sol";
-import "../../libraries/LibAsset.sol";
 import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
