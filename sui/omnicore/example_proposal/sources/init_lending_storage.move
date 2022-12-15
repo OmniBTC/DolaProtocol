@@ -1,12 +1,11 @@
 module example_proposal::init_lending_storage {
     use std::option;
 
-    use oracle::oracle::PriceOracle;
-
     use app_manager::app_manager::{Self, AppManagerCap, TotalAppInfo};
     use governance::governance::{Self, Governance, GovernanceExternalCap, VoteExternalCap};
     use lending::storage::{StorageAdminCap, Storage};
     use lending::wormhole_adapter::WormholeAdapater;
+    use oracle::oracle::PriceOracle;
     use sui::tx_context::TxContext;
 
     public entry fun vote_storage_cap_proposal(
@@ -64,7 +63,7 @@ module example_proposal::init_lending_storage {
         vote: &mut VoteExternalCap,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
-        treasury: address,
+        treasury: u64,
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,

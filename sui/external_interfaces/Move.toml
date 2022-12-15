@@ -6,6 +6,7 @@ version = "0.0.1"
 external_interfaces = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
+dola_types = "0x0"
 lending = "0x0"
 oracle = "0x0"
 sui = "0x2"
@@ -26,3 +27,6 @@ local = "../omnicore/lending"
 
 [dependencies.Oracle]
 local = "../omnicore/oracle"
+
+[dependencies.DolaTypes]
+local = "../dola_types"
