@@ -8,8 +8,9 @@ module lending_portal::lending {
     use wormhole::state;
     use aptos_framework::coin;
     use aptos_framework::aptos_coin::AptosCoin;
-    use serde::u16::{Self, U16};
-    use omnipool::pool::{normal_amount, DolaAddress, convert_dola_to_vector, convert_address_to_dola, convert_vector_to_dola};
+    use serde::u16::{Self};
+    use omnipool::pool::{normal_amount};
+    use dola_types::types::{create_dola_address, decode_dola_address, DolaAddress, convert_address_to_dola, encode_dola_address};
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -37,7 +38,7 @@ module lending_portal::lending {
             SUPPLY,
             normal_amount<CoinType>(deposit_coin),
             user,
-            u16::from_u64(0)
+            0
         );
         let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
 
@@ -46,30 +47,34 @@ module lending_portal::lending {
 
     public entry fun withdraw<CoinType>(
         sender: &signer,
+        receiver: vector<u8>,
         dst_chain: u64,
         amount: u64,
     ) {
-        let user = convert_address_to_dola(signer::address_of(sender));
+        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
+
         let app_payload = encode_app_payload(
             WITHDRAW,
             normal_amount<CoinType>(amount),
-            user,
-            u16::from_u64(dst_chain));
+            receiver,
+            0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
     }
 
     public entry fun borrow<CoinType>(
         sender: &signer,
+        receiver: vector<u8>,
         dst_chain: u64,
         amount: u64,
     ) {
-        let user = convert_address_to_dola(signer::address_of(sender));
+        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
+
         let app_payload = encode_app_payload(
             BORROW,
             normal_amount<CoinType>(amount),
-            user,
-            u16::from_u64(dst_chain));
+            receiver,
+            0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
@@ -79,13 +84,13 @@ module lending_portal::lending {
         sender: &signer,
         repay_coin: u64,
     ) {
-        let user = convert_address_to_dola(signer::address_of(sender));
+        let user_addr = convert_address_to_dola(signer::address_of(sender));
 
         let app_payload = encode_app_payload(
             REPAY,
             normal_amount<CoinType>(repay_coin),
-            user,
-            u16::from_u64(0));
+            user_addr,
+            0);
         let repay_coin = coin::withdraw<CoinType>(sender, repay_coin);
 
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
@@ -97,56 +102,63 @@ module lending_portal::lending {
         sender: &signer,
         dst_chain: u64,
         wormhole_message_fee: Coin<AptosCoin>,
+        receiver: vector<u8>,
         debt_coin: u64,
         // punished person
-        punished: vector<u8>,
+        liquidate_user_id: u64,
     ) {
+        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
+
         let app_payload = encode_app_payload(
             LIQUIDATE,
             normal_amount<DebtCoinType>(debt_coin),
-            convert_vector_to_dola(vector_slice(&punished, 0, vector::length(&punished))),
-            u16::from_u64(dst_chain));
+            receiver, liquidate_user_id);
+
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
 
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             sender,
             wormhole_message_fee,
             debt_coin,
-            punished,
             u16::from_u64(APPID),
             app_payload,
         );
     }
 
-    public fun encode_app_payload(call_type: u8, amount: u64, user: DolaAddress, dst_chain: U16): vector<u8> {
+    public fun encode_app_payload(
+        call_type: u8,
+        amount: u64,
+        receiver: DolaAddress,
+        liquidate_user_id: u64
+    ): vector<u8> {
         let payload = vector::empty<u8>();
-        serialize_u16(&mut payload, dst_chain);
         serialize_u64(&mut payload, amount);
-        let user  = convert_dola_to_vector(user);
-        serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut payload, user);
+        let receiver = encode_dola_address(receiver);
+        serialize_u16(&mut payload, u16::from_u64(vector::length(&receiver)));
+        serialize_vector(&mut payload, receiver);
+        serialize_u64(&mut payload, liquidate_user_id);
         serialize_u8(&mut payload, call_type);
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, U16) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
-
-        data_len = 2;
-        let chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let user_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = u16::to_u64(user_length);
-        let user = vector_slice(&app_payload, index, index + data_len);
+        data_len = u16::to_u64(receive_length);
+        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -155,6 +167,6 @@ module lending_portal::lending {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, convert_vector_to_dola(user), chain_id)
+        (call_type, amount, receiver, liquidate_user_id)
     }
 }

@@ -149,7 +149,6 @@ module lending_portal::lending {
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
 
-
         let receiver = create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);

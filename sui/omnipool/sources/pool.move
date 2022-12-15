@@ -400,15 +400,15 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
-        pool: DolaAddress,
+        pool_addr: DolaAddress,
         user_addr: DolaAddress,
         amount: u64
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        let pool = encode_dola_address(pool);
-        serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
-        serialize_vector(&mut pool_payload, pool);
+        let pool_addr = encode_dola_address(pool_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&pool_addr) as u16));
+        serialize_vector(&mut pool_payload, pool_addr);
 
         serialize_u16(&mut pool_payload, (vector::length(&dola_address(&user_addr)) as u16));
         serialize_vector(&mut pool_payload, dola_address(&user_addr));
@@ -429,7 +429,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = (pool_len as u64);
-        let pool = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
+        let pool_addr = decode_dola_address(vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -446,7 +446,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool, user_addr, amount)
+        (pool_addr, user_addr, amount)
     }
 
     #[test]

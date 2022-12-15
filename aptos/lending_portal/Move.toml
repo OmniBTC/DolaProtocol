@@ -9,6 +9,7 @@ aptos_framework = "0x1"
 aptos_std = "0x1"
 lending_portal = "0x0"
 serde = "0x0"
+dola_types = "0x0"
 wormhole_bridge = "0x0"
 wormhole = "_"
 omnipool = "0x0"
@@ -37,3 +38,6 @@ local = "../serde"
 
 [dependencies.WormholeBridge]
 local = "../wormhole_bridge"
+
+[dependencies.DolaTypes]
+local = "../dola_types"
