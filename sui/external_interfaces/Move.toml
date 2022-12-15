@@ -5,6 +5,8 @@ version = "0.0.1"
 [addresses]
 external_interfaces = "0x0"
 pool_manager = "0x0"
+user_manager = "0x0"
+dola_types = "0x0"
 lending = "0x0"
 oracle = "0x0"
 sui = "0x2"
@@ -17,8 +19,14 @@ rev = "21fcff72bef3b12f600da861b7708ca5f30d9512"
 [dependencies.PoolManager]
 local = "../omnicore/pool_manager"
 
+[dependencies.UserManager]
+local = "../omnicore/user_manager"
+
 [dependencies.Lending]
 local = "../omnicore/lending"
 
 [dependencies.Oracle]
 local = "../omnicore/oracle"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

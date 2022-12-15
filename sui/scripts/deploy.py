@@ -12,15 +12,15 @@ serde_package = sui_brownie.SuiPackage(
 
 serde_package.publish_package()
 
-omnipool_package = sui_brownie.SuiPackage(
+dola_types_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
     network="sui-devnet",
     is_compile=True,
     package_id=None,
-    package_path="../omnipool"
+    package_path="../dola_types"
 )
 
-omnipool_package.publish_package(replace_address=dict(serde=serde_package.package_id))
+dola_types_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
 governance_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
@@ -31,6 +31,17 @@ governance_package = sui_brownie.SuiPackage(
 )
 
 governance_package.publish_package(replace_address=dict(serde=serde_package.package_id))
+
+user_manager_package = sui_brownie.SuiPackage(
+    brownie_config=Path("../"),
+    network="sui-devnet",
+    is_compile=True,
+    package_id=None,
+    package_path="../omnicore/user_manager"
+)
+
+user_manager_package.publish_package(
+    replace_address=dict(serde=serde_package.package_id, dola_types=dola_types_package.package_id))
 
 app_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
@@ -62,7 +73,19 @@ pool_manager_package = sui_brownie.SuiPackage(
 )
 
 pool_manager_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id))
+    replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id,
+                         dola_types=dola_types_package.package_id))
+
+omnipool_package = sui_brownie.SuiPackage(
+    brownie_config=Path("../"),
+    network="sui-devnet",
+    is_compile=True,
+    package_id=None,
+    package_path="../omnipool"
+)
+
+omnipool_package.publish_package(
+    replace_address=dict(serde=serde_package.package_id, dola_types=dola_types_package.package_id))
 
 wormhole_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
@@ -85,10 +108,12 @@ wormhole_bridge_package = sui_brownie.SuiPackage(
 
 wormhole_bridge_package.publish_package(replace_address=dict(
     serde=serde_package.package_id,
+    dola_types=dola_types_package.package_id,
     wormhole=wormhole_package.package_id,
     omnipool=omnipool_package.package_id,
     app_manager=app_manager_package.package_id,
-    pool_manager=pool_manager_package.package_id
+    pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id
 ))
 
 lending_package = sui_brownie.SuiPackage(
@@ -101,9 +126,11 @@ lending_package = sui_brownie.SuiPackage(
 
 lending_package.publish_package(replace_address=dict(
     serde=serde_package.package_id,
+    dola_types=dola_types_package.package_id,
     oracle=oracle_package.package_id,
     app_manager=app_manager_package.package_id,
     pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id,
     wormhole=wormhole_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id
@@ -119,6 +146,7 @@ lending_portal_package = sui_brownie.SuiPackage(
 
 lending_portal_package.publish_package(replace_address=dict(
     serde=serde_package.package_id,
+    dola_types=dola_types_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     wormhole=wormhole_package.package_id,
     omnipool=omnipool_package.package_id
@@ -134,6 +162,8 @@ external_interfaces_package = sui_brownie.SuiPackage(
 
 external_interfaces_package.publish_package(replace_address=dict(
     pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id,
+    dola_types=dola_types_package.package_id,
     lending=lending_package.package_id,
     oracle=oracle_package.package_id
 ))
@@ -148,10 +178,12 @@ example_proposal_package = sui_brownie.SuiPackage(
 
 example_proposal_package.publish_package(replace_address=dict(
     pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
     lending=lending_package.package_id,
     app_manager=app_manager_package.package_id,
+    dola_types=dola_types_package.package_id,
     oracle=oracle_package.package_id
 ))
 

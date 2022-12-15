@@ -5,6 +5,7 @@ version = "0.0.1"
 [addresses]
 lending_portal = "0x0"
 serde = "0x0"
+dola_types = "0x0"
 wormhole_bridge = "0x0"
 wormhole = "0x0"
 omnipool = "0x0"
@@ -28,3 +29,6 @@ local = "../serde"
 
 [dependencies.WormholeBridge]
 local = "../wormhole_bridge"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

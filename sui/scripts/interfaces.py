@@ -4,27 +4,27 @@ import init
 import load
 
 
-def get_dola_token_liquidity(catalog):
+def get_dola_token_liquidity(token_name):
     """
-    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, catalog: String)
+    public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, token_name: vector<u8>)
     :return:
     """
     external_interfaces = load.external_interfaces_package()
     pool_manager = load.pool_manager_package()
     result = external_interfaces.interfaces.get_dola_token_liquidity.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        list(bytes(catalog.replace("0x", ""), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
 
 
-def get_app_token_liquidity(app_id, catalog):
+def get_app_token_liquidity(app_id, token_name):
     """
     public entry fun get_app_token_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         app_id: u16,
-        catalog: String
+        token_name: vector<u8>
     )
     :return:
     """
@@ -33,22 +33,22 @@ def get_app_token_liquidity(app_id, catalog):
     result = external_interfaces.interfaces.get_app_token_liquidity.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
         app_id,
-        list(bytes(catalog.replace("0x", ""), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
 
 
-def get_user_token_debt(user, catalog):
+def get_user_token_debt(user, token_name):
     """
     public entry fun get_user_token_debt(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: DolaAddress,
-        catalog: String
+        user_address: vector<u8>,
+        token_name: vector<u8>
     )
     :param user:
-    :param catalog:
+    :param token_name:
     :return:
     """
     external_interfaces = load.external_interfaces_package()
@@ -58,18 +58,18 @@ def get_user_token_debt(user, catalog):
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
-        list(bytes(catalog.replace("0x", ""), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
     return result['events'][-1]['moveEvent']['fields']
 
 
-def get_user_collateral(user, catalog):
+def get_user_collateral(user, token_name):
     """
     public entry fun get_user_collateral(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_address: DolaAddress,
-        catalog: String
+        user_address: vector<u8>,
+        token_name: vector<u8>
     )
     :return:
     """
@@ -80,7 +80,7 @@ def get_user_collateral(user, catalog):
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
-        list(bytes(catalog.replace("0x", ""), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
@@ -88,7 +88,7 @@ def get_user_collateral(user, catalog):
 
 def get_user_lending_info(user):
     """
-    public entry fun get_user_lending_info(storage: &mut Storage, oracle: &mut PriceOracle, user_address: DolaAddress)
+    public entry fun get_user_lending_info(storage: &mut Storage, oracle: &mut PriceOracle, user_address: vector<u8>)
     :return:
     """
     external_interfaces = load.external_interfaces_package()
@@ -102,14 +102,14 @@ def get_user_lending_info(user):
     return result['events'][-1]['moveEvent']['fields']
 
 
-def get_reserve_info(catalog):
+def get_reserve_info(token_name):
     """
     public entry fun get_reserve_info(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
-        catalog: String
+        token_name: vector<u8>
     )
-    :param catalog:
+    :param token_name:
     :return:
     """
     external_interfaces = load.external_interfaces_package()
@@ -118,22 +118,22 @@ def get_reserve_info(catalog):
     result = external_interfaces.interfaces.get_reserve_info.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
-        list(bytes(catalog.replace("0x", ""), 'ascii'))
+        list(bytes(token_name.replace("0x", ""), 'ascii'))
     )
 
     return result['events'][-1]['moveEvent']['fields']
 
 
-def get_user_allowed_borrow(user, catalog):
+def get_user_allowed_borrow(user, token_name):
     """
     public entry fun get_user_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         borrow_token: vector<u8>,
-        user_address: DolaAddress
+        user_address: vector<u8>
     )
-    :param catalog:
+    :param token_name:
     :return:
     """
     external_interfaces = load.external_interfaces_package()
@@ -144,7 +144,7 @@ def get_user_allowed_borrow(user, catalog):
         pool_manager.pool_manager.PoolManagerInfo[-1],
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        list(bytes(catalog.replace("0x", ""), 'ascii')),
+        list(bytes(token_name.replace("0x", ""), 'ascii')),
         user
     )
 
