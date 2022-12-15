@@ -1,0 +1,19 @@
+[package]
+name = "DolaTypes"
+version = "0.0.1"
+
+[addresses]
+std = "0x1"
+aptos-stdlib = "0x1"
+aptos_framework = "0x1"
+aptos_std = "0x1"
+dola_types = "0x0"
+serde = "0x0"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.Serde]
+local = "../serde"
