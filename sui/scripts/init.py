@@ -291,19 +291,19 @@ def pool(coin_type):
 
 
 def main():
-    # # 1. init bridge
-    # init_bridge_core()
-    # init_bridge_pool()
-    #
-    # # 2. init omnipool
-    # create_pool(usdt())
-    # create_pool(btc())
-    # claim_test_coin(btc())
-    # force_claim_test_coin(usdt(), 100000)
-    #
-    # # 3. init oracle
-    # register_token_price(0, 2000000, 2)
-    # register_token_price(1, 100, 2)
+    # 1. init bridge
+    init_bridge_core()
+    init_bridge_pool()
+
+    # 2. init omnipool
+    create_pool(usdt())
+    create_pool(btc())
+    claim_test_coin(btc())
+    force_claim_test_coin(usdt(), 100000)
+
+    # 3. init oracle
+    register_token_price(0, 2000000, 2)
+    register_token_price(1, 100, 2)
 
     # 4. init user manager
     init_user_manager_cap_for_bridge()

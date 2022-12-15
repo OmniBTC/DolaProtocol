@@ -28,6 +28,11 @@ module dola_types::types {
         addr
     }
 
+    public fun update_dola_address(addr: DolaAddress, dola_address: vector<u8>): DolaAddress {
+        addr.dola_address = dola_address;
+        addr
+    }
+
     public fun create_dola_address(dola_chain_id: u16, dola_address: vector<u8>): DolaAddress {
         DolaAddress { dola_chain_id, dola_address }
     }
@@ -52,17 +57,6 @@ module dola_types::types {
     }
 
     public fun convert_dola_to_pool(addr: DolaAddress): vector<u8> {
-        addr.dola_address
-    }
-
-    public fun convert_external_address_to_dola(addr: vector<u8>): DolaAddress {
-        DolaAddress {
-            dola_chain_id: DOLACHAINID,
-            dola_address: addr
-        }
-    }
-
-    public fun convert_dola_to_external_address(addr: DolaAddress): vector<u8> {
         addr.dola_address
     }
 

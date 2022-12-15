@@ -14,7 +14,7 @@ module pool_manager::pool_manager {
     use sui::tx_context::TxContext;
 
     #[test_only]
-    use dola_types::types::convert_external_address_to_dola;
+    use dola_types::types::create_dola_address;
     #[test_only]
     use std::ascii::string;
     #[test_only]
@@ -314,7 +314,7 @@ module pool_manager::pool_manager {
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = convert_external_address_to_dola(b"USDT");
+            let pool = create_dola_address(0, b"USDT");
 
             let cap = manager_cap_for_test();
 
@@ -329,7 +329,7 @@ module pool_manager::pool_manager {
     public fun test_add_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = convert_external_address_to_dola(b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -374,7 +374,7 @@ module pool_manager::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = convert_external_address_to_dola(b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
