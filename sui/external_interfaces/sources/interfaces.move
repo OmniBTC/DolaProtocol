@@ -5,8 +5,7 @@ module external_interfaces::interfaces {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::create_dola_address;
-
+    use dola_types::types::{create_dola_address, convert_external_address_to_dola};
     use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral};
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id};
@@ -65,11 +64,23 @@ module external_interfaces::interfaces {
         reason: Option<String>
     }
 
+    struct DolaUserId has copy, drop {
+        dola_user_id: u64
+    }
+
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
         let token_liquidity = token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
             dola_pool_id,
             token_liquidity
+        })
+    }
+
+    public entry fun dola_user_id(user_manager_info: &mut UserManagerInfo, user: vector<u8>) {
+        let dola_address = convert_external_address_to_dola(user);
+        let dola_user_id = get_dola_user_id(user_manager_info, dola_address);
+        emit(DolaUserId {
+            dola_user_id
         })
     }
 

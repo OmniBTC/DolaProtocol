@@ -178,10 +178,12 @@ example_proposal_package = sui_brownie.SuiPackage(
 
 example_proposal_package.publish_package(replace_address=dict(
     pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
     lending=lending_package.package_id,
     app_manager=app_manager_package.package_id,
+    dola_types=dola_types_package.package_id,
     oracle=oracle_package.package_id
 ))
 
