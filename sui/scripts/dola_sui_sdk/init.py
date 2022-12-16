@@ -3,7 +3,7 @@ import time
 
 from sui_brownie import CacheObject
 
-import load
+from . import load
 
 RAY = 100000000
 

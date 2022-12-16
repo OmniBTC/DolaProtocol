@@ -1,7 +1,7 @@
 # @Time    : 2022/12/16 15:48
 # @Author  : WeiDai
 # @FileName: init.py
-import load
+from . import load
 
 
 def usdt():

@@ -1,8 +1,8 @@
 import base64
 
-import load
+from . import load
 
-from init import btc, usdt, bridge_pool_read_vaa
+from .init import btc, usdt, bridge_pool_read_vaa
 
 U64_MAX = 18446744073709551615
 

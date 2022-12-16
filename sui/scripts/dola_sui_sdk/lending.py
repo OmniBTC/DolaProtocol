@@ -3,9 +3,9 @@ from pprint import pprint
 
 from sui_brownie import CacheObject, ObjectType
 
-import load
-from init import btc, usdt, claim_test_coin
-from init import coin, pool
+from . import load
+from .init import btc, usdt, claim_test_coin
+from .init import coin, pool
 
 U64_MAX = 18446744073709551615
 
