@@ -5,16 +5,17 @@ networks:
     node_url: https://aptos.coming.chat/v1
     faucet_url: https://faucet.mainnet.aptoslabs.com
     replace_address:
+      wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
+      deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
   aptos-devnet:
     node_url: https://fullnode.devnet.aptoslabs.com/v1
     faucet_url: https://tap.devnet.prod.gcp.aptosdev.com
     replace_address:
+      wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
+      deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
   aptos-testnet:
     node_url: https://aptos-testnet.coming.chat/v1
     faucet_url: https://faucet.testnet.aptoslabs.com
     replace_address:
-      lending_portal: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
-      serde: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
-      dola_types: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
-      wormhole_bridge: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
-      omnipool: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
+      wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
+      deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"

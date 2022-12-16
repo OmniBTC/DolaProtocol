@@ -20,7 +20,7 @@ serde_package.publish_package()
 dola_types_package = aptos_brownie.AptosPackage(
     project_path=Path("../"),
     network=net,
-    is_compile=False,
+    is_compile=True,
     package_path="../dola_types"
 )
 
@@ -29,7 +29,7 @@ dola_types_package.publish_package()
 omnipool_package = aptos_brownie.AptosPackage(
     project_path=Path("../"),
     network=net,
-    is_compile=False,
+    is_compile=True,
     package_path="../omnipool"
 )
 
@@ -38,7 +38,7 @@ omnipool_package.publish_package()
 wormhole_bridge_package = aptos_brownie.AptosPackage(
     project_path=Path("../"),
     network=net,
-    is_compile=False,
+    is_compile=True,
     package_path="../wormhole_bridge"
 )
 
@@ -47,7 +47,7 @@ wormhole_bridge_package.publish_package()
 lending_portal_package = aptos_brownie.AptosPackage(
     project_path=Path("../"),
     network=net,
-    is_compile=False,
+    is_compile=True,
     package_path="../lending_portal"
 )
 
