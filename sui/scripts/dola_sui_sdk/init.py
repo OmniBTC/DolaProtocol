@@ -3,7 +3,7 @@ import time
 
 from sui_brownie import CacheObject
 
-import load
+from . import load
 
 RAY = 100000000
 
@@ -130,17 +130,21 @@ def vote_pool_manager_cap_proposal():
 
 def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
     '''
-    public entry fun vote_register_new_pool_proposal<CoinType>(
+    public entry fun vote_register_new_pool_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         pool_manager_info: &mut PoolManagerInfo,
+        pool_dola_chain_id: u16,
+        pool_dola_address: vector<u8>,
         dola_pool_name: vector<u8>,
         dola_pool_id: u16,
         ctx: &mut TxContext
     )
     :return:
     '''
+    if isinstance(coin_type, str):
+        coin_type = list(bytes(coin_type, "ascii"))
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
     pool_manager = load.pool_manager_package()
@@ -148,9 +152,11 @@ def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
                                                                        governance.governance.GovernanceExternalCap[-1],
                                                                        governance.governance.VoteExternalCap[-1],
                                                                        pool_manager.pool_manager.PoolManagerInfo[-1],
+                                                                       coin_type,
+                                                                       0,
                                                                        list(pool_name),
-                                                                       pool_id,
-                                                                       ty_args=[coin_type])
+                                                                       pool_id
+                                                                       )
 
 
 def vote_storage_cap_proposal():

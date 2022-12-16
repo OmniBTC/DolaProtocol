@@ -1,0 +1,39 @@
+[package]
+name = "WormholeBridge"
+version = "0.0.1"
+
+[addresses]
+std = "0x1"
+aptos-stdlib = "0x1"
+aptos_framework = "0x1"
+aptos_std = "0x1"
+wormhole_bridge = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+serde = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+omnipool = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+dola_types = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+wormhole = "_"
+deployer = "_"
+
+[dev-addresses]
+wormhole = "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
+deployer = "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
+
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.Wormhole]
+git = "https://github.com/OmniBTC/wormhole.git"
+rev = "9c2847d6e667851e9343227b5be4f0fa5c73ff6f"
+subdir = "aptos/wormhole"
+
+[dependencies.OmniPool]
+local = "../omnipool"
+
+[dependencies.Serde]
+local = "../serde"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

@@ -1,6 +1,6 @@
 import pprint
 
-import load
+from . import load
 
 
 # btc -> dola_pool_id 0

@@ -2,10 +2,12 @@ from pathlib import Path
 
 import sui_brownie
 
+net = "sui-devnet"
+
 serde_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../serde"
 )
@@ -14,8 +16,8 @@ serde_package.publish_package()
 
 dola_types_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../dola_types"
 )
@@ -24,8 +26,8 @@ dola_types_package.publish_package(replace_address=dict(serde=serde_package.pack
 
 governance_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/governance"
 )
@@ -34,8 +36,8 @@ governance_package.publish_package(replace_address=dict(serde=serde_package.pack
 
 user_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/user_manager"
 )
@@ -45,8 +47,8 @@ user_manager_package.publish_package(
 
 app_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/app_manager"
 )
@@ -56,8 +58,8 @@ app_manager_package.publish_package(
 
 oracle_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/oracle"
 )
@@ -66,8 +68,8 @@ oracle_package.publish_package()
 
 pool_manager_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/pool_manager"
 )
@@ -78,8 +80,8 @@ pool_manager_package.publish_package(
 
 omnipool_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnipool"
 )
@@ -89,8 +91,8 @@ omnipool_package.publish_package(
 
 wormhole_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path=Path.home().joinpath(Path(
         ".move/https___github_com_OmniBTC_wormhole_git_e6e160614e1b2aeaaad3fd1c587571a3ee8a082d/sui/wormhole")),
@@ -100,8 +102,8 @@ wormhole_package.publish_package()
 
 wormhole_bridge_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../wormhole_bridge"
 )
@@ -118,8 +120,8 @@ wormhole_bridge_package.publish_package(replace_address=dict(
 
 lending_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/lending"
 )
@@ -138,8 +140,8 @@ lending_package.publish_package(replace_address=dict(
 
 lending_portal_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../lending_portal"
 )
@@ -154,8 +156,8 @@ lending_portal_package.publish_package(replace_address=dict(
 
 external_interfaces_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../external_interfaces"
 )
@@ -170,8 +172,8 @@ external_interfaces_package.publish_package(replace_address=dict(
 
 example_proposal_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../omnicore/example_proposal"
 )
@@ -189,8 +191,8 @@ example_proposal_package.publish_package(replace_address=dict(
 
 test_coins_package = sui_brownie.SuiPackage(
     brownie_config=Path("../"),
-    network="sui-devnet",
-    is_compile=True,
+    network=net,
+    is_compile=False,
     package_id=None,
     package_path="../test_coins"
 )
