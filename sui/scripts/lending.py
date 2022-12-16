@@ -447,11 +447,12 @@ def export_objects():
     # Package id
     lending_portal = load.lending_portal_package()
     external_interfaces = load.external_interfaces_package()
+    wormhole_bridge = load.wormhole_bridge_package()
     print(f"lending_portal={lending_portal.package_id}")
     print(f"external_interfaces={external_interfaces.package_id}")
+    print(f"wormhole_bridge={wormhole_bridge.package_id}")
 
     # objects
-    wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
     oracle = load.oracle_package()
     lending = load.lending_package()
