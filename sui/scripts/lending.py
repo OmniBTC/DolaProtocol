@@ -513,7 +513,7 @@ def check_pool_info():
     pool_manager_info = pool_manager.get_object_with_super_detail(pool_manager.pool_manager.PoolManagerInfo[-1])
 
     print("\n --- app liquidity info ---")
-    print(pool_manager_info)
+    pprint(pool_manager_info)
 
 
 def check_app_storage():
@@ -524,5 +524,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    claim_test_coin(btc())
-    monitor_supply(btc())
+    # claim_test_coin(btc())
+    # monitor_supply(btc())
+    check_pool_info()
