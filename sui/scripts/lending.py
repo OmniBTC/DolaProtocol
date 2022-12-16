@@ -49,6 +49,7 @@ def core_supply(vaa):
     public entry fun supply(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -61,6 +62,7 @@ def core_supply(vaa):
     """
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
+    user_manager = load.user_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
@@ -68,6 +70,7 @@ def core_supply(vaa):
     lending.wormhole_adapter.supply(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
@@ -82,8 +85,10 @@ def portal_withdraw(coin_type, amount):
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
-        wormhole_message_fee: Coin<SUI>,
+        receiver: vector<u8>,
+        dst_chain: u16,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     )
@@ -93,12 +98,13 @@ def portal_withdraw(coin_type, amount):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 1
+    dst_chain = 0
 
     result = lending_portal.lending.withdraw(
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        account_address,
         dst_chain,
         [],
         0,
@@ -139,6 +145,7 @@ def core_withdraw(vaa):
     public entry fun withdraw(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -151,6 +158,7 @@ def core_withdraw(vaa):
     """
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
+    user_manager = load.user_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
@@ -158,6 +166,7 @@ def core_withdraw(vaa):
     result = lending.wormhole_adapter.withdraw(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
@@ -176,8 +185,10 @@ def portal_borrow(coin_type, amount):
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
-        wormhole_message_fee: Coin<SUI>,
+        receiver: vector<u8>,
+        dst_chain: u16,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     )
@@ -187,12 +198,13 @@ def portal_borrow(coin_type, amount):
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 1
+    dst_chain = 0
 
     result = lending_portal.lending.borrow(
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        account_address,
         dst_chain,
         [],
         0,
@@ -209,6 +221,7 @@ def core_borrow(vaa):
     public entry fun borrow(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -221,6 +234,7 @@ def core_borrow(vaa):
     """
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
+    user_manager = load.user_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
@@ -228,6 +242,7 @@ def core_borrow(vaa):
     result = lending.wormhole_adapter.borrow(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
@@ -246,8 +261,10 @@ def portal_repay(coin_type):
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        repay_coin: Coin<CoinType>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
+        repay_coins: vector<Coin<CoinType>>,
+        repay_amount: u64,
         ctx: &mut TxContext
     )
     :return:
@@ -277,6 +294,7 @@ def core_repay(vaa):
     public entry fun repay(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -288,6 +306,7 @@ def core_repay(vaa):
     """
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
+    user_manager = load.user_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     oracle = load.oracle_package()
@@ -295,6 +314,7 @@ def core_repay(vaa):
     lending.wormhole_adapter.repay(
         lending.wormhole_adapter.WormholeAdapater[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
@@ -308,14 +328,15 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u64,
-        wormhole_message_fee: Coin<SUI>,
+        receiver: vector<u8>,
+        dst_chain: u16,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
-        debt_coin: Coin<DebtCoinType>,
-        collateral_pool: &mut Pool<CollateralCoinType>,
-        // punished person
-        punished: address,
+        debt_coins: vector<Coin<DebtCoinType>>,
+        debt_amount: u64,
+        liquidate_user_id: u64,
         ctx: &mut TxContext
     )
     :return:
@@ -323,21 +344,20 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
-    dst_chain = 1
+    dst_chain = 0
     account_address = lending_portal.account.account_address
-    punished = lending_portal.account.account_address
 
     result = lending_portal.lending.liquidate(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        account_address,
         dst_chain,
         [],
         0,
         CacheObject[ObjectType.from_type(pool(debt_coin_type))][account_address][-1],
         [CacheObject[ObjectType.from_type(coin(debt_coin_type))][account_address][-1]],
         U64_MAX,
-        CacheObject[ObjectType.from_type(pool(collateral_coin_type))][account_address][-1],
-        punished,
+        0,
         ty_args=[debt_coin_type, collateral_coin_type]
     )
     return result['events'][-1]['moveEvent']['fields']['payload']
@@ -410,13 +430,13 @@ def export_objects():
 def monitor_supply(coin, amount=1):
     force_claim_test_coin(coin, amount)
     vaa = portal_supply(coin)
-    # core_supply(vaa)
+    core_supply(vaa)
 
 
-def monitor_withdraw():
-    to_core_vaa = portal_withdraw(btc(), 1e8)
-    # to_pool_vaa = core_withdraw(to_core_vaa)
-    # pool_withdraw(to_pool_vaa, btc())
+def monitor_withdraw(coin, amount=1e8):
+    to_core_vaa = portal_withdraw(coin, amount)
+    to_pool_vaa = core_withdraw(to_core_vaa)
+    pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_borrow(coin, amount=1):
@@ -451,4 +471,4 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    export_objects()
+    monitor_withdraw(usdt())
