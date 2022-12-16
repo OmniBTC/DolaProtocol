@@ -17,10 +17,8 @@ def main():
     # init pool manager
     governance = dola_sui_load.governance_package()
     governance_external_cap = governance.get_object_with_super_detail(governance.governance.GovernanceExternalCap[-1])
-    print(governance_external_cap)
-    hash = dola_sui_init.register_pool_manager_admin_cap()
-    dola_sui_init.create_vote_external_cap(hash)
-    dola_sui_init.vote_pool_manager_cap_proposal()
+
+    hash = "0x" + governance_external_cap["dynamic_field"][0].name
 
     dola_sui_init.create_vote_external_cap(hash)
     dola_sui_init.vote_register_new_pool_proposal(0, b"BTC", dola_aptos_init.btc())

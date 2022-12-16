@@ -13,10 +13,12 @@ from pathlib import Path
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ProcessExecutor
 
+import dola_sui_sdk
 import dola_sui_sdk.load as dola_sui_load
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 
+import dola_aptos_sdk
 import dola_aptos_sdk.load as dola_aptos_load
 import dola_aptos_sdk.init as dola_aptos_init
 
@@ -60,6 +62,8 @@ class BridgeDict(OrderedDict):
 
 
 def bridge_pool():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_aptos_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("bridge_pool.json")
     local_logger = logger.getChild(f"[bridge_pool]")
 
@@ -68,21 +72,21 @@ def bridge_pool():
         try:
             # Read sui
             vaa, nonce = dola_sui_init.bridge_pool_read_vaa()
-            pending_datas.append((vaa, nonce))
+            pending_datas.append((vaa, nonce, "sui"))
         except:
-            continue
+            pass
         try:
             # Read aptos
             vaa, nonce = dola_aptos_init.bridge_pool_read_vaa()
-            pending_datas.append((vaa, nonce))
+            pending_datas.append((vaa, nonce, "aptos"))
         except:
-            continue
-        for vaa, nonce in pending_datas:
+            pass
+        for vaa, nonce, source in pending_datas:
             dv = str(nonce) + vaa
             dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
             if dk not in data:
-                local_logger.info(nonce)
-                decode_vaa = list(base64.b64decode(vaa))
+                decode_vaa = list(bytes.fromhex(vaa[2:] if "0x" in vaa else vaa))
+                local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
                 if decode_vaa[-1] == 0:
                     dola_sui_lending.core_supply(vaa)
                 elif decode_vaa[-1] == 1:
@@ -98,6 +102,8 @@ def bridge_pool():
 
 
 def bridge_core():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_aptos_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("bridge_core.json")
     sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
     aptos_wormhole_bridge = dola_aptos_load.wormhole_bridge_package()
@@ -106,6 +112,7 @@ def bridge_core():
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
         except:
+            time.sleep(10)
             continue
 
         decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
@@ -151,4 +158,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    bridge_pool()

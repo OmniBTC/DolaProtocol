@@ -512,6 +512,6 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    # claim_test_coin(btc())
-    # monitor_supply(btc())
-    check_pool_info()
+    claim_test_coin(btc())
+    monitor_supply(btc())
+    # check_pool_info()

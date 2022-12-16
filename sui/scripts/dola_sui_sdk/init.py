@@ -91,7 +91,11 @@ def register_token_price(dola_pool_id, price, decimal):
 
 def create_vote_external_cap(hash):
     governance = load.governance_package()
-    governance.governance.create_vote_external_cap(governance.governance.Governance[-1], list(base64.b64decode(hash)))
+    try:
+        hash = list(base64.b64decode(hash))
+    except:
+        pass
+    governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
 
 
 def init_user_manager_cap_for_bridge():
