@@ -1,4 +1,5 @@
 module wormhole_bridge::bridge_pool {
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
     use sui::event;
@@ -7,8 +8,9 @@ module wormhole_bridge::bridge_pool {
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
+    use user_manager::user_manager::encode_binding;
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -33,10 +35,9 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaReciveWithdrawEvent has copy, drop {
-        pool_address: address,
-        user: address,
-        amount: u64,
-        token_name: vector<u8>
+        pool_address: DolaAddress,
+        user: DolaAddress,
+        amount: u64
     }
 
     public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
@@ -66,6 +67,23 @@ module wormhole_bridge::bridge_pool {
             emitter_chain_id,
             external_address::from_bytes(emitter_address)
         );
+    }
+
+    public entry fun send_binding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        dola_chain_id: u16,
+        bind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let bind_address = create_dola_address(dola_chain_id, bind_address);
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let msg = encode_binding(user, bind_address);
+        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&pool_state.cache_vaas) + 1;
+        table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
     public fun send_deposit<CoinType>(
@@ -116,8 +134,6 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_pool: &mut Pool<WithdrawCoinType>,
-        withdraw_user: address,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -125,8 +141,6 @@ module wormhole_bridge::bridge_pool {
         let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
             deposit_pool,
             deposit_coin,
-            withdraw_pool,
-            withdraw_user,
             app_id,
             app_payload,
             ctx
@@ -151,11 +165,11 @@ module wormhole_bridge::bridge_pool {
         //     vaa,
         //     ctx
         // );
-        // let (_pool_address, user, amount, token_name) =
+        // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (_pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
-        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, token_name, ctx);
+        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
     }
 
@@ -170,13 +184,13 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (pool_address, user, amount, token_name) =
+        let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
+
         event::emit(VaaReciveWithdrawEvent {
             pool_address,
             user,
-            amount,
-            token_name
+            amount
         })
     }
 }

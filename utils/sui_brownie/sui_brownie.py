@@ -199,6 +199,15 @@ class TopCacheDict(RWDict):
         super(TopCacheDict, self).__setitem__(key, kv)
         persist_cache()
 
+    def fuzzy_search_package(self, key):
+        keys = {k.lower().replace("_", ""): k for k in list(self.keys()) if isinstance(k, str)}
+        key = key.lower().replace("_", "")
+        if key in keys:
+            data = self[keys[key]].get("Shared", [])
+            if len(data):
+                return data[-1]
+        return None
+
 
 CacheObject: Dict[Union[ObjectType, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
 
@@ -461,13 +470,18 @@ class SuiDynamicFiled:
                 if k == "fields":
                     for m in d[k]:
                         try:
-                            d[k][m] = int(d[k][m])
+                            d[k][m] = cls.format_data(d[k][m])
                         except:
                             pass
-                if k in ["type", "fields"]:
-                    continue
-
-                d[k] = cls.format_data(d[k])
+                elif k == "type":
+                    pass
+                else:
+                    d[k] = cls.format_data(d[k])
+            if "type" in d:
+                del d["type"]
+            if "fields" in d:
+                d.update(d["fields"])
+                del d["fields"]
         elif isinstance(d, str):
             d = cls.b64decode(d)
         return d
@@ -476,7 +490,7 @@ class SuiDynamicFiled:
         self.owner = owner
         self.uid = uid
         self.name_type, self.value_type = self.format_type(ty)
-        self.name = self.b64decode(name)
+        self.name = self.format_data(name)
         self.value = self.format_data(value)
 
     @staticmethod
@@ -489,7 +503,7 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return str(pformat({self.name: self.value}, compact=True))
+        return str(pformat({str(pformat(self.name, compact=True)): self.value}, compact=True))
 
 
 class SuiPackage:
@@ -632,7 +646,12 @@ class SuiPackage:
     def replace_toml(move_toml: MoveToml, replace_address: dict = None):
         for k in list(move_toml.get("addresses", dict()).keys()):
             if k in replace_address:
-                move_toml["addresses"][k] = replace_address[k]
+                if replace_address[k] is not None:
+                    move_toml["addresses"][k] = replace_address[k]
+                elif CacheObject.fuzzy_search_package(k) is not None:
+                    move_toml["addresses"][k] = CacheObject.fuzzy_search_package(k)
+                else:
+                    assert False, "replace address is None"
         return move_toml
 
     def replace_addresses(

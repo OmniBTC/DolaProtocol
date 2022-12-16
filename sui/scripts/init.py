@@ -26,7 +26,7 @@ def init_bridge_pool():
 
 def create_pool(coin_type):
     omnipool = load.omnipool_package()
-    omnipool.pool.create_pool(ty_args=[coin_type])
+    omnipool.pool.create_pool(8, ty_args=[coin_type])
 
 
 def add_governance_member(member):
@@ -65,25 +65,25 @@ def register_lending_storage_admin_cap():
     return result['events'][-1]['moveEvent']['fields']['hash']
 
 
-def register_token_price(token_name, price, decimal):
-    """
+def register_token_price(dola_pool_id, price, decimal):
+    '''
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
         timestamp: u64,
-        token_name: vector<u8>,
+        dola_pool_id: u16,
         token_price: u64,
         price_decimal: u8
     )
     :return:
-    """
+    '''
     oracle = load.oracle_package()
 
     oracle.oracle.register_token_price(
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
         int(time.time()),
-        list(bytes(token_name.replace("0x", ""), 'ascii')),
+        dola_pool_id,
         price,
         decimal
     )
@@ -92,6 +92,17 @@ def register_token_price(token_name, price, decimal):
 def create_vote_external_cap(hash):
     governance = load.governance_package()
     governance.governance.create_vote_external_cap(governance.governance.Governance[-1], list(base64.b64decode(hash)))
+
+
+def init_user_manager_cap_for_bridge():
+    '''
+    public entry fun init_user_manager_cap_for_bridge(core_state: &mut CoreState)
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+
+    example_proposal.init_user_manager.init_user_manager_cap_for_bridge(wormhole_bridge.bridge_core.CoreState[-1])
 
 
 def vote_pool_manager_cap_proposal():
@@ -115,6 +126,31 @@ def vote_pool_manager_cap_proposal():
                                                                                  -1],
                                                                              governance.governance.VoteExternalCap[-1],
                                                                              wormhole_bridge.bridge_core.CoreState[-1])
+
+
+def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
+    '''
+    public entry fun vote_register_new_pool_proposal<CoinType>(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_name: vector<u8>,
+        dola_pool_id: u16,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    pool_manager = load.pool_manager_package()
+    example_proposal.init_pool_manager.vote_register_new_pool_proposal(governance.governance.Governance[-1],
+                                                                       governance.governance.GovernanceExternalCap[-1],
+                                                                       governance.governance.VoteExternalCap[-1],
+                                                                       pool_manager.pool_manager.PoolManagerInfo[-1],
+                                                                       list(pool_name),
+                                                                       pool_id,
+                                                                       ty_args=[coin_type])
 
 
 def vote_storage_cap_proposal():
@@ -162,18 +198,22 @@ def vote_app_cap_proposal():
     )
 
 
-def vote_register_new_reserve_proposal(token_name):
+def vote_register_new_reserve_proposal(dola_pool_id):
     '''
     public entry fun vote_register_new_reserve_proposal(
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         oracle: &mut PriceOracle,
-        token_name: vector<u8>,
-        treasury: address,
+        dola_pool_id: u16,
+        treasury: u64,
         treasury_factor: u64,
         collateral_coefficient: u64,
         borrow_coefficient: u64,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
         storage: &mut Storage,
         ctx: &mut TxContext
     )
@@ -188,8 +228,8 @@ def vote_register_new_reserve_proposal(token_name):
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
-        list(bytes(token_name.replace("0x", ""), 'ascii')),
-        example_proposal.account.account_address,
+        dola_pool_id,
+        0,
         int(0.01 * RAY),
         int(0.01 * RAY),
         int(0.01 * RAY),
@@ -262,16 +302,23 @@ def main():
     force_claim_test_coin(usdt(), 100000)
 
     # 3. init oracle
-    register_token_price(usdt(), 100, 2)
-    register_token_price(btc(), 2000000, 2)
+    register_token_price(0, 2000000, 2)
+    register_token_price(1, 100, 2)
 
-    # 4. init pool manager
+    # 4. init user manager
+    init_user_manager_cap_for_bridge()
+
+    # 5. init pool manager
     hash = register_pool_manager_admin_cap()
     create_vote_external_cap(hash)
-
     vote_pool_manager_cap_proposal()
 
-    # 5. init lending storage
+    create_vote_external_cap(hash)
+    vote_register_new_pool_proposal(0, b"BTC", btc())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool_proposal(1, b"USDT", usdt())
+    # 6. init lending storage
 
     hash = register_app_manager_cap()
     create_vote_external_cap(hash)
@@ -284,11 +331,11 @@ def main():
     # register reserves
     create_vote_external_cap(hash)
 
-    vote_register_new_reserve_proposal(usdt())
+    vote_register_new_reserve_proposal(0)
 
     create_vote_external_cap(hash)
 
-    vote_register_new_reserve_proposal(btc())
+    vote_register_new_reserve_proposal(1)
 
 
 if __name__ == '__main__':
