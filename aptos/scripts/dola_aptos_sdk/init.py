@@ -1,7 +1,7 @@
 # @Time    : 2022/12/16 15:48
 # @Author  : WeiDai
 # @FileName: init.py
-from . import load
+from dola_aptos_sdk import load
 
 
 def usdt():

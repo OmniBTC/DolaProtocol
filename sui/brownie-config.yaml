@@ -4,8 +4,6 @@ networks:
   default: bsc-test
   sui-devnet:
     node_url: https://fullnode.devnet.sui.io:443
-    notice_package:
-      wormhole: "0x"
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
   sui-localnet:

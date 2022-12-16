@@ -3,7 +3,7 @@ import time
 
 from sui_brownie import CacheObject
 
-from . import load
+from dola_sui_sdk import load
 
 RAY = 100000000
 
@@ -91,7 +91,11 @@ def register_token_price(dola_pool_id, price, decimal):
 
 def create_vote_external_cap(hash):
     governance = load.governance_package()
-    governance.governance.create_vote_external_cap(governance.governance.Governance[-1], list(base64.b64decode(hash)))
+    try:
+        hash = list(base64.b64decode(hash))
+    except:
+        pass
+    governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
 
 
 def init_user_manager_cap_for_bridge():
@@ -128,7 +132,7 @@ def vote_pool_manager_cap_proposal():
                                                                              wormhole_bridge.bridge_core.CoreState[-1])
 
 
-def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
+def vote_register_new_pool_proposal(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool_proposal(
         gov: &mut Governance,
@@ -153,7 +157,7 @@ def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
                                                                        governance.governance.VoteExternalCap[-1],
                                                                        pool_manager.pool_manager.PoolManagerInfo[-1],
                                                                        coin_type,
-                                                                       0,
+                                                                       dst_chain,
                                                                        list(pool_name),
                                                                        pool_id
                                                                        )
@@ -296,6 +300,22 @@ def pool(coin_type):
     return f"{CacheObject.OmniPool[-1]}::pool::Pool<{coin_type}>"
 
 
+def bridge_pool_read_vaa(index=0):
+    wormhole_bridge = load.wormhole_bridge_package()
+    result = wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], index
+    )["events"][-1]["moveEvent"]["fields"]
+    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+
+
+def bridge_core_read_vaa(index=0):
+    wormhole_bridge = load.wormhole_bridge_package()
+    result = wormhole_bridge.bridge_core.read_vaa.simulate(
+        wormhole_bridge.bridge_core.CoreState[-1], index
+    )["events"][-1]["moveEvent"]["fields"]
+    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+
+
 def main():
     # 1. init bridge
     init_bridge_core()
@@ -316,6 +336,7 @@ def main():
 
     # 5. init pool manager
     hash = register_pool_manager_admin_cap()
+    print("Pool manager admin cap hash:", hash)
     create_vote_external_cap(hash)
     vote_pool_manager_cap_proposal()
 

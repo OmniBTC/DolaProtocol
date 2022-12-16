@@ -3,9 +3,9 @@ from pprint import pprint
 
 from sui_brownie import CacheObject, ObjectType
 
-from . import load
-from .init import btc, usdt, claim_test_coin
-from .init import coin, pool
+from dola_sui_sdk import load
+from dola_sui_sdk.init import btc, usdt, claim_test_coin
+from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
 
 U64_MAX = 18446744073709551615
 
@@ -39,9 +39,7 @@ def portal_supply(coin_type):
         U64_MAX,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_supply(vaa):
@@ -75,7 +73,7 @@ def core_supply(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        list(base64.b64decode(vaa)),
+        vaa,
     )
 
 
@@ -111,9 +109,7 @@ def portal_withdraw(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def pool_withdraw(vaa, coin_type):
@@ -135,7 +131,7 @@ def pool_withdraw(vaa, coin_type):
         wormhole.state.State[-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
-        list(base64.b64decode(vaa)),
+        vaa,
         ty_args=[coin_type]
     )
 
@@ -172,11 +168,9 @@ def core_withdraw(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
-    return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_core.CoreState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_core_read_vaa()[0]
 
 
 def portal_borrow(coin_type, amount):
@@ -211,9 +205,7 @@ def portal_borrow(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_borrow(vaa):
@@ -248,11 +240,9 @@ def core_borrow(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
-    return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_core.CoreState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_core_read_vaa()[0]
 
 
 def portal_repay(coin_type):
@@ -284,9 +274,7 @@ def portal_repay(coin_type):
         U64_MAX,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_repay(vaa):
@@ -319,7 +307,7 @@ def core_repay(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        list(base64.b64decode(vaa))
+        vaa
     )
 
 
@@ -360,7 +348,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
         0,
         ty_args=[debt_coin_type, collateral_coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return bridge_pool_read_vaa()[0]
 
 
 def core_liquidate(vaa):
@@ -392,7 +380,7 @@ def core_liquidate(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
 
 
@@ -439,7 +427,7 @@ def core_binding(vaa):
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         user_manager.user_manager.UserManagerInfo[-1],
-        list(base64.b64decode(vaa))
+        vaa
     )
 
 
@@ -523,7 +511,16 @@ def check_app_storage():
     pprint(storage)
 
 
+def check_user_manager():
+    user_manager = load.user_manager_package()
+    storage = user_manager.get_object_with_super_detail(user_manager.user_manager.UserManagerInfo[-1])
+    print("\n --- user manager info ---")
+    pprint(storage)
+
+
 if __name__ == "__main__":
     # claim_test_coin(btc())
     # monitor_supply(btc())
     check_pool_info()
+    check_app_storage()
+    check_user_manager()

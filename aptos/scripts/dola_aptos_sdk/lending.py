@@ -1,8 +1,8 @@
 import base64
 
-from . import load
+from dola_aptos_sdk import load
 
-from .init import btc, usdt, bridge_pool_read_vaa
+from dola_aptos_sdk.init import btc, usdt, bridge_pool_read_vaa
 
 U64_MAX = 18446744073709551615
 
@@ -143,16 +143,16 @@ def monitor_supply(coin):
     print(portal_supply(coin, 1e8))
 
 
-def monitor_withdraw():
-    print(portal_withdraw(btc(), 1e8))
+def monitor_withdraw(coin):
+    print(portal_withdraw(coin, 1e8))
 
 
 def monitor_borrow(coin, amount=1):
     print(portal_borrow(coin, amount * 1e8))
 
 
-def monitor_repay():
-    print(portal_repay(usdt(), 1e8))
+def monitor_repay(coin):
+    print(portal_repay(coin, 1e8))
 
 
 def monitor_liquidate():
@@ -160,4 +160,5 @@ def monitor_liquidate():
 
 
 if __name__ == "__main__":
-    monitor_supply(btc())
+    # monitor_supply(btc())
+    monitor_withdraw(btc())
