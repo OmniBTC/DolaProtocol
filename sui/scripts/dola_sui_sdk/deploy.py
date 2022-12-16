@@ -1,77 +1,78 @@
 from pathlib import Path
 
 import sui_brownie
+from dola_sui_sdk import DOLA_CONFIG
 
 net = "sui-devnet"
 
 serde_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../serde"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde")
 )
 
 serde_package.publish_package()
 
 dola_types_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../dola_types"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_types")
 )
 
 dola_types_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
 governance_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/governance"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance")
 )
 
 governance_package.publish_package(replace_address=dict(serde=serde_package.package_id))
 
 user_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/user_manager"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/user_manager")
 )
 
 user_manager_package.publish_package(
     replace_address=dict(serde=serde_package.package_id, dola_types=dola_types_package.package_id))
 
 app_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/app_manager"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/app_manager")
 )
 
 app_manager_package.publish_package(
     replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id))
 
 oracle_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/oracle"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/oracle")
 )
 
 oracle_package.publish_package()
 
 pool_manager_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/pool_manager"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/pool_manager")
 )
 
 pool_manager_package.publish_package(
@@ -79,18 +80,18 @@ pool_manager_package.publish_package(
                          dola_types=dola_types_package.package_id))
 
 omnipool_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnipool"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnipool")
 )
 
 omnipool_package.publish_package(
     replace_address=dict(serde=serde_package.package_id, dola_types=dola_types_package.package_id))
 
 wormhole_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
@@ -101,11 +102,11 @@ wormhole_package = sui_brownie.SuiPackage(
 wormhole_package.publish_package()
 
 wormhole_bridge_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../wormhole_bridge"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_bridge")
 )
 
 wormhole_bridge_package.publish_package(replace_address=dict(
@@ -119,11 +120,11 @@ wormhole_bridge_package.publish_package(replace_address=dict(
 ))
 
 lending_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/lending"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/lending")
 )
 
 lending_package.publish_package(replace_address=dict(
@@ -139,11 +140,11 @@ lending_package.publish_package(replace_address=dict(
 ))
 
 lending_portal_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../lending_portal"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_portal")
 )
 
 lending_portal_package.publish_package(replace_address=dict(
@@ -155,11 +156,11 @@ lending_portal_package.publish_package(replace_address=dict(
 ))
 
 external_interfaces_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../external_interfaces"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
 )
 
 external_interfaces_package.publish_package(replace_address=dict(
@@ -171,11 +172,11 @@ external_interfaces_package.publish_package(replace_address=dict(
 ))
 
 example_proposal_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../omnicore/example_proposal"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/example_proposal")
 )
 
 example_proposal_package.publish_package(replace_address=dict(
@@ -190,11 +191,11 @@ example_proposal_package.publish_package(replace_address=dict(
 ))
 
 test_coins_package = sui_brownie.SuiPackage(
-    brownie_config=Path("../"),
+    brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
     network=net,
     is_compile=False,
     package_id=None,
-    package_path="../test_coins"
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
 )
 
 test_coins_package.publish_package()

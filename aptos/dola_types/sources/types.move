@@ -9,7 +9,7 @@ module dola_types::types {
     use serde::u16::U16;
     use serde::u16;
 
-    const DOLACHAINID: u64 = 0;
+    const DOLACHAINID: u64 = 1;
 
     /// Used to represent user address and pool address
     struct DolaAddress has copy, drop, store {

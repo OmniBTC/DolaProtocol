@@ -1,6 +1,6 @@
 import pprint
 
-from . import load
+from dola_sui_sdk import load
 
 
 # btc -> dola_pool_id 0

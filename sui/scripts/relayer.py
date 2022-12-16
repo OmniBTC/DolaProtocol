@@ -13,9 +13,14 @@ from pathlib import Path
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ProcessExecutor
 
-from dola_sui_sdk import load
-from dola_sui_sdk.init import pool
-from dola_sui_sdk.lending import core_supply, core_withdraw, core_borrow, core_repay, core_binding
+import dola_sui_sdk
+import dola_sui_sdk.load as dola_sui_load
+import dola_sui_sdk.init as dola_sui_init
+import dola_sui_sdk.lending as dola_sui_lending
+
+import dola_aptos_sdk
+import dola_aptos_sdk.load as dola_aptos_load
+import dola_aptos_sdk.init as dola_aptos_init
 
 FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -57,75 +62,90 @@ class BridgeDict(OrderedDict):
 
 
 def bridge_pool():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_aptos_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("bridge_pool.json")
     local_logger = logger.getChild(f"[bridge_pool]")
 
-    wormhole_bridge = load.wormhole_bridge_package()
     while True:
+        pending_datas = []
         try:
-            result = wormhole_bridge.bridge_pool.read_vaa.simulate(
-                wormhole_bridge.bridge_pool.PoolState[-1], 0
-            )["events"][-1]["moveEvent"]["fields"]
-            vaa = result["vaa"]
-            nonce = result["nonce"]
+            # Read sui
+            vaa, nonce = dola_sui_init.bridge_pool_read_vaa()
+            pending_datas.append((vaa, nonce, "sui"))
         except:
-            time.sleep(10)
-            continue
-        dv = str(nonce) + vaa
-        dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
-        if dk not in data:
-            local_logger.info(nonce)
-            decode_vaa = list(base64.b64decode(vaa))
-            if decode_vaa[-1] == 0:
-                core_supply(vaa)
-            elif decode_vaa[-1] == 1:
-                core_withdraw(vaa)
-            elif decode_vaa[-1] == 2:
-                core_borrow(vaa)
-            elif decode_vaa[-1] == 3:
-                core_repay(vaa)
-            elif decode_vaa[-1] == 5:
-                core_binding(vaa)
-            data[dk] = dv
+            pass
+        try:
+            # Read aptos
+            vaa, nonce = dola_aptos_init.bridge_pool_read_vaa()
+            pending_datas.append((vaa, nonce, "aptos"))
+        except:
+            pass
+        for vaa, nonce, source in pending_datas:
+            dv = str(nonce) + vaa
+            dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
+            if dk not in data:
+                decode_vaa = list(bytes.fromhex(vaa[2:] if "0x" in vaa else vaa))
+                local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
+                try:
+                    if decode_vaa[-1] == 0:
+                        dola_sui_lending.core_supply(vaa)
+                    elif decode_vaa[-1] == 1:
+                        dola_sui_lending.core_withdraw(vaa)
+                    elif decode_vaa[-1] == 2:
+                        dola_sui_lending.core_borrow(vaa)
+                    elif decode_vaa[-1] == 3:
+                        dola_sui_lending.core_repay(vaa)
+                    elif decode_vaa[-1] == 5:
+                        dola_sui_lending.core_binding(vaa)
+                except:
+                    pass
+                data[dk] = dv
         time.sleep(10)
 
 
 def bridge_core():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_aptos_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("bridge_core.json")
-    wormhole_bridge = load.wormhole_bridge_package()
+    sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
+    aptos_wormhole_bridge = dola_aptos_load.wormhole_bridge_package()
     local_logger = logger.getChild(f"[bridge_core]")
     while True:
         try:
-            result = wormhole_bridge.bridge_core.read_vaa.simulate(
-                wormhole_bridge.bridge_core.CoreState[-1], 0
-            )["events"][-1]["moveEvent"]["fields"]
-            vaa = result["vaa"]
-            nonce = result["nonce"]
+            vaa, nonce = dola_sui_init.bridge_core_read_vaa()
         except:
             time.sleep(10)
             continue
-        decode_vaa = list(base64.b64decode(vaa))
-        token_name = wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
-            decode_vaa
-        )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]["dola_address"]
+
+        decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
+            vaa
+        )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
+        token_name = decode_payload["dola_address"]
+        dola_chain_id = decode_payload["dola_chain_id"]
         token_name = "0x" + base64.b64decode(token_name).decode("ascii")
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
             local_logger.info(nonce)
-            wormhole = load.wormhole_package()
-            wormhole_bridge = load.wormhole_bridge_package()
-            account_address = wormhole_bridge.account.account_address
+            sui_wormhole = dola_sui_load.wormhole_package()
+            sui_account_address = sui_wormhole_bridge.account.account_address
             i = 0
             while i < 3:
                 try:
-                    wormhole_bridge.bridge_pool.receive_withdraw(
-                        wormhole.state.State[-1],
-                        wormhole_bridge.bridge_pool.PoolState[-1],
-                        CacheObject[ObjectType.from_type(pool(token_name))][account_address][-1],
-                        list(base64.b64decode(vaa)),
-                        ty_args=[token_name]
-                    )
+                    if dola_chain_id == 0:
+                        sui_wormhole_bridge.bridge_pool.receive_withdraw(
+                            sui_wormhole.state.State[-1],
+                            sui_wormhole_bridge.bridge_pool.PoolState[-1],
+                            CacheObject[ObjectType.from_type(dola_sui_init.pool(token_name))][sui_account_address][-1],
+                            vaa,
+                            ty_args=[token_name]
+                        )
+                    elif dola_chain_id == 1:
+                        aptos_wormhole_bridge.bridge_pool.receive_withdraw(
+                            vaa,
+                            ty_args=[token_name]
+                        )
                     break
                 except:
                     i = i + 1
@@ -141,4 +161,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    bridge_pool()
