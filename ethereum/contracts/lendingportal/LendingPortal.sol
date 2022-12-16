@@ -76,11 +76,7 @@ contract LendingPortal {
         );
     }
 
-    function repay(
-        address pool,
-        address token,
-        uint256 amount
-    ) external payable {
+    function repay(address pool, uint256 amount) external payable {
         uint8 decimal = IOmniPool(pool).decimals();
         bytes memory appPayload = LibLending.encodeAppPayload(
             REPAY,
