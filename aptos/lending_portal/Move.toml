@@ -7,12 +7,14 @@ std = "0x1"
 aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
+# App
 lending_portal = "0x0"
 serde = "0x0"
 dola_types = "0x0"
 wormhole_bridge = "0x0"
-wormhole = "_"
 omnipool = "0x0"
+# Wormhole
+wormhole = "_"
 deployer = "_"
 
 [dev-addresses]

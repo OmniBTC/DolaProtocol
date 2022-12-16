@@ -13,3 +13,8 @@ networks:
     node_url: https://aptos-testnet.coming.chat/v1
     faucet_url: https://faucet.testnet.aptoslabs.com
     replace_address:
+      lending_portal: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
+      serde: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
+      dola_types: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
+      wormhole_bridge: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
+      omnipool: "0x3b52fa49ef6577001619c56ba56c5c51d493fba0671dc15a7f41a99103e0e299"
