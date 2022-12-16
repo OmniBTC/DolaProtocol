@@ -202,22 +202,3 @@ def get_wormhole_chain_id():
 
 def get_wormhole():
     return config["networks"][network.show_active()]["wormhole"]
-
-
-def get_register_data(register_contracts):
-    register_funcs = {}
-    register_data = []
-    for reg in register_contracts:
-        reg_facet = reg[-1]
-        reg_funcs = get_method_signature_by_abi(reg.abi)
-        for func_name in list(reg_funcs.keys()):
-            if func_name in register_funcs:
-                if reg_funcs[func_name] in register_funcs[func_name]:
-                    print(f"function:{func_name} has been register!")
-                    del reg_funcs[func_name]
-                else:
-                    register_funcs[func_name].append(reg_funcs[func_name])
-            else:
-                register_funcs[func_name] = [reg_funcs[func_name]]
-        register_data.append([reg_facet, 0, list(reg_funcs.values())])
-    return register_data

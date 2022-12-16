@@ -25,10 +25,10 @@ contract OmniPool {
         address bridge,
         address tokenAddress
     ) {
-        bridegPool = bridge;
-        token = tokenAddress;
         dolaPoolId = poolId;
         dolaChainId = chainId;
+        bridegPool = bridge;
+        token = tokenAddress;
         allowances[bridegPool] = true;
     }
 

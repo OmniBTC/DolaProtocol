@@ -11,6 +11,9 @@ autofetch_sources: True
 dotenv: .env
 networks:
   default: development
+  development:
+    wormhole_chainid: 0
+    wormhole: "0x0000000000000000000000000000000000000000"
   goerli:
     wormhole_chainid: 2
     wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
