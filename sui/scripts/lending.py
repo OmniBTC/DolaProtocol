@@ -4,7 +4,7 @@ from pprint import pprint
 from sui_brownie import CacheObject, ObjectType
 
 import load
-from init import btc, usdt, force_claim_test_coin
+from init import btc, usdt, claim_test_coin
 from init import coin, pool
 
 U64_MAX = 18446744073709551615
@@ -396,6 +396,53 @@ def core_liquidate(vaa):
     )
 
 
+def pool_binding(bind_address):
+    '''
+    public entry fun send_binding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        dola_chain_id: u16,
+        bind_address: vector<u8>,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+    dola_chain_id = 0
+
+    wormhole_bridge.bridge_pool.send_binding(
+        wormhole_bridge.bridge_pool.PoolState[-1],
+        wormhole.state.State[-1],
+        0,
+        dola_chain_id,
+        bind_address
+    )
+
+
+def core_binding(vaa):
+    '''
+    public fun receive_binding(
+        _wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        user_manager_info: &mut UserManagerInfo,
+        vaa: vector<u8>
+    )
+    :return:
+    '''
+    wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+    user_manager = load.user_manager_package()
+
+    wormhole_bridge.bridge_core.receive_binding(
+        wormhole.state.State[-1],
+        wormhole_bridge.bridge_core.CoreState[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        list(base64.b64decode(vaa))
+    )
+
+
 def export_objects():
     # Package id
     lending_portal = load.lending_portal_package()
@@ -409,13 +456,15 @@ def export_objects():
     oracle = load.oracle_package()
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
+    user_manager = load.user_manager_package()
 
     data = {
         "PoolState": wormhole_bridge.bridge_pool.PoolState[-1],
         "WormholeState": wormhole.state.State[-1],
         "PriceOracle": oracle.oracle.PriceOracle[-1],
         "Storage": lending.storage.Storage[-1],
-        "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1]
+        "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
+        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1]
     }
     coin_types = [btc(), usdt()]
     for k in coin_types:
@@ -427,16 +476,15 @@ def export_objects():
     pprint(data)
 
 
-def monitor_supply(coin, amount=1):
-    force_claim_test_coin(coin, amount)
+def monitor_supply(coin):
     vaa = portal_supply(coin)
-    core_supply(vaa)
+    # core_supply(vaa)
 
 
-def monitor_withdraw(coin, amount=1e8):
-    to_core_vaa = portal_withdraw(coin, amount)
-    to_pool_vaa = core_withdraw(to_core_vaa)
-    pool_withdraw(to_pool_vaa, coin)
+def monitor_withdraw(coin, amount=1):
+    to_core_vaa = portal_withdraw(coin, amount * 1e8)
+    # to_pool_vaa = core_withdraw(to_core_vaa)
+    # pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_borrow(coin, amount=1):
@@ -445,14 +493,18 @@ def monitor_borrow(coin, amount=1):
     # pool_withdraw(to_pool_vaa, coin)
 
 
-def monitor_repay():
-    vaa = portal_repay(usdt())
+def monitor_repay(coin):
+    vaa = portal_repay(coin)
     # core_repay(vaa)
 
 
 def monitor_liquidate():
     vaa = portal_liquidate(usdt(), btc())
-    core_repay(vaa)
+    # core_repay(vaa)
+
+
+def monitor_binding(bind_address):
+    pool_binding(bind_address)
 
 
 def check_pool_info():
@@ -460,7 +512,7 @@ def check_pool_info():
     pool_manager_info = pool_manager.get_object_with_super_detail(pool_manager.pool_manager.PoolManagerInfo[-1])
 
     print("\n --- app liquidity info ---")
-    pprint(pool_manager_info)
+    print(pool_manager_info)
 
 
 def check_app_storage():
@@ -471,4 +523,5 @@ def check_app_storage():
 
 
 if __name__ == "__main__":
-    monitor_withdraw(usdt())
+    claim_test_coin(btc())
+    monitor_supply(btc())

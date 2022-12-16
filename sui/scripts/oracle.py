@@ -2,7 +2,6 @@ import time
 
 import ccxt
 
-import init
 import load
 
 
@@ -19,7 +18,7 @@ def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
     return prices
 
 
-def feed(symbol, token_name):
+def feed(symbol, dola_pool_id):
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
     while True:
@@ -31,7 +30,7 @@ def feed(symbol, token_name):
         oracle.oracle.update_token_price(
             oracle.oracle.OracleCap[-1],
             oracle.oracle.PriceOracle[-1],
-            list(bytes(token_name.replace("0x", ""), 'ascii')),
+            dola_pool_id,
             int(price * 100)
         )
         timestamp = time.time()
@@ -44,4 +43,4 @@ def feed(symbol, token_name):
 
 
 if __name__ == '__main__':
-    feed("BTC/USDT", init.btc())
+    feed("BTC/USDT", 0)
