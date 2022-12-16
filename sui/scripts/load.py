@@ -39,6 +39,10 @@ def pool_manager_package(package_id: str = CacheObject.PoolManager[-1]):
     return sui_package(package_id, "../omnicore/pool_manager")
 
 
+def user_manager_package(package_id: str = CacheObject.UserManager[-1]):
+    return sui_package(package_id, "../omnicore/user_manager")
+
+
 def wormhole_package(package_id: str = CacheObject.Wormhole[-1]):
     return sui_package(package_id,
                        Path.home().joinpath(Path(

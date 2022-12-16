@@ -88,7 +88,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (user, bind_address) = decode_binding(vaa);
+        let (user, bind_address, _) = decode_binding(vaa);
         if (!is_dola_user(user_manager_info, user)) {
             binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
         };

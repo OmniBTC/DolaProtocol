@@ -187,6 +187,7 @@ module lending_portal::lending {
 
         data_len = 2;
         let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+
         index = index + data_len;
 
         data_len = (receive_length as u64);
