@@ -1,19 +1,15 @@
 [package]
-name = "DolaTypes"
-version = "0.0.1"
+name = "TestCoins"
+version = "1.0.0"
 
 [addresses]
 std = "0x1"
 aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
-dola_types = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
-serde = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
+test_coins = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
 rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
 subdir = "aptos-move/framework/aptos-framework"
-
-[dependencies.Serde]
-local = "../serde"

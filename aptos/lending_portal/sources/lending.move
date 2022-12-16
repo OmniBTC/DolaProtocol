@@ -3,7 +3,6 @@ module lending_portal::lending {
 
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw};
-    use aptos_framework::coin::Coin;
     use std::signer;
     use wormhole::state;
     use aptos_framework::coin;
@@ -100,9 +99,8 @@ module lending_portal::lending {
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
         sender: &signer,
-        dst_chain: u64,
-        wormhole_message_fee: Coin<AptosCoin>,
         receiver: vector<u8>,
+        dst_chain: u64,
         debt_coin: u64,
         // punished person
         liquidate_user_id: u64,
@@ -115,6 +113,7 @@ module lending_portal::lending {
             receiver, liquidate_user_id);
 
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             sender,
