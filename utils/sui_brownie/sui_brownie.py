@@ -476,7 +476,7 @@ class SuiDynamicFiled:
         self.owner = owner
         self.uid = uid
         self.name_type, self.value_type = self.format_type(ty)
-        self.name = self.b64decode(name)
+        self.name = self.format_data(name)
         self.value = self.format_data(value)
 
     @staticmethod
@@ -489,7 +489,7 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return str(pformat({self.name: self.value}, compact=True))
+        return str(pformat({str(self.name): self.value}, compact=True))
 
 
 class SuiPackage:

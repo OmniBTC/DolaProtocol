@@ -35,7 +35,8 @@ module wormhole_bridge::bridge_pool {
     }
 
     struct VaaEvent has key, copy, drop {
-        vaa: vector<u8>
+        vaa: vector<u8>,
+        nonce: u64
     }
 
     struct VaaReciveWithdrawEvent has key, copy, drop {
@@ -175,7 +176,8 @@ module wormhole_bridge::bridge_pool {
             index = pool_state.nonce;
         };
         move_to(sender, VaaEvent {
-            vaa: *table::borrow(&pool_state.cache_vaas, index)
+            vaa: *table::borrow(&pool_state.cache_vaas, index),
+            nonce: index
         });
     }
 

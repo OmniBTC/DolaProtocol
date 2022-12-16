@@ -7,9 +7,9 @@ std = "0x1"
 aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
-omnipool = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
-serde = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
-dola_types = "0x38e78c11434f91f2138ab82a8e737acab6995d01577177fb6d64f09297b60fb2"
+omnipool = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+serde = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+dola_types = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
