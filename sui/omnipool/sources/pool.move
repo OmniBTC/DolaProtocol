@@ -410,8 +410,9 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, (vector::length(&pool) as u16));
         serialize_vector(&mut pool_payload, pool);
 
-        serialize_u16(&mut pool_payload, (vector::length(&dola_address(&user_addr)) as u16));
-        serialize_vector(&mut pool_payload, dola_address(&user_addr));
+        let user = encode_dola_address(user_addr);
+        serialize_u16(&mut pool_payload, (vector::length(&user) as u16));
+        serialize_vector(&mut pool_payload, user);
 
         serialize_u64(&mut pool_payload, amount);
 
@@ -447,6 +448,75 @@ module omnipool::pool {
         assert!(length == index, EINVALID_LENGTH);
 
         (pool, user_addr, amount)
+    }
+
+
+    #[test]
+    fun test_encode_decode() {
+        let pool = @0x11;
+        let user = @0x22;
+        let amount = 100;
+        let app_id = 0;
+        let app_payload = vector[0u8];
+        // test encode and decode send_deposit_payload
+        let send_deposit_payload = encode_send_deposit_payload(
+            convert_address_to_dola(pool),
+            convert_address_to_dola(user),
+            amount,
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_amount, decoded_app_id, decoded_app_payload) = decode_send_deposit_payload(
+            send_deposit_payload
+        );
+        assert!(convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode send_withdraw_payload
+        let send_withdraw_payload = encode_send_withdraw_payload(
+            convert_address_to_dola(pool),
+            convert_address_to_dola(user),
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_app_id, decoded_app_payload) = decode_send_withdraw_payload(
+            send_withdraw_payload
+        );
+        assert!(convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode send_deposit_and_withdraw_payload
+        let withdraw_pool = @0x33;
+        let send_deposit_and_withdraw_payload = encode_send_deposit_and_withdraw_payload(
+            convert_address_to_dola(pool),
+            convert_address_to_dola(user),
+            amount,
+            convert_address_to_dola(withdraw_pool),
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_amount, decoded_withdraw_pool, decoded_app_id, decoded_app_payload) = decode_send_deposit_and_withdraw_payload(
+            send_deposit_and_withdraw_payload
+        );
+        assert!(convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
+        assert!(convert_dola_to_address(decoded_withdraw_pool) == withdraw_pool, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode receive_withdraw_payload
+        let receive_withdraw_payload = encode_receive_withdraw_payload(
+            convert_address_to_dola(pool),
+            convert_address_to_dola(user),
+            amount
+        );
+        let (decoded_pool, decoded_user, decoded_amount) = decode_receive_withdraw_payload(receive_withdraw_payload);
+        assert!(convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
     }
 
     #[test]

@@ -2,7 +2,7 @@ module user_manager::user_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
-    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
+    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -15,6 +15,9 @@ module user_manager::user_manager {
     const EDUPLICATED_BINDING: u64 = 2;
 
     const EINVALID_LENGTH: u64 = 3;
+
+    // todo: fix message type
+    const BINDING: u8 = 5;
 
     struct UserManagerInfo has key, store {
         id: UID,
@@ -96,10 +99,12 @@ module user_manager::user_manager {
         let bind_address = encode_dola_address(bind_address);
         serialize_u16(&mut binding_payload, (vector::length(&bind_address) as u16));
         serialize_vector(&mut binding_payload, bind_address);
+
+        serialize_u8(&mut binding_payload, BINDING);
         binding_payload
     }
 
-    public fun decode_binding(binding_payload: vector<u8>): (DolaAddress, DolaAddress) {
+    public fun decode_binding(binding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
         let length = vector::length(&binding_payload);
         let index = 0;
         let data_len;
@@ -120,7 +125,11 @@ module user_manager::user_manager {
         let bind_address = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
         assert!(length == index, EINVALID_LENGTH);
-        (user, bind_address)
+        (user, bind_address, call_type)
     }
 }

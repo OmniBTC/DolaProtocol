@@ -7,6 +7,8 @@ module dola_types::types {
     use sui::bcs;
     use sui::object::address_from_bytes;
 
+    const EINVALID_ADDRESS: u64 = 0;
+
     const DOLACHAINID: u16 = 0;
 
     /// Used to represent user address and pool address
@@ -45,6 +47,7 @@ module dola_types::types {
     }
 
     public fun convert_dola_to_address(addr: DolaAddress): address {
+        assert!(vector::length(&addr.dola_address) == 20, EINVALID_ADDRESS);
         address_from_bytes(addr.dola_address)
     }
 

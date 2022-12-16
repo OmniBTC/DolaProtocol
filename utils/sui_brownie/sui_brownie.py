@@ -470,13 +470,18 @@ class SuiDynamicFiled:
                 if k == "fields":
                     for m in d[k]:
                         try:
-                            d[k][m] = int(d[k][m])
+                            d[k][m] = cls.format_data(d[k][m])
                         except:
                             pass
-                if k in ["type", "fields"]:
-                    continue
-
-                d[k] = cls.format_data(d[k])
+                elif k == "type":
+                    pass
+                else:
+                    d[k] = cls.format_data(d[k])
+            if "type" in d:
+                del d["type"]
+            if "fields" in d:
+                d.update(d["fields"])
+                del d["fields"]
         elif isinstance(d, str):
             d = cls.b64decode(d)
         return d
@@ -485,7 +490,7 @@ class SuiDynamicFiled:
         self.owner = owner
         self.uid = uid
         self.name_type, self.value_type = self.format_type(ty)
-        self.name = self.b64decode(name)
+        self.name = self.format_data(name)
         self.value = self.format_data(value)
 
     @staticmethod
@@ -498,7 +503,7 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return str(pformat({self.name: self.value}, compact=True))
+        return str(pformat({str(pformat(self.name, compact=True)): self.value}, compact=True))
 
 
 class SuiPackage:

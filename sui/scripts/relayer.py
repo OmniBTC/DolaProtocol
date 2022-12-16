@@ -15,7 +15,7 @@ from sui_brownie.parallelism import ProcessExecutor
 
 import load
 from init import pool
-from lending import core_supply, core_withdraw, core_borrow, core_repay
+from lending import core_supply, core_withdraw, core_borrow, core_repay, core_binding
 
 FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -84,6 +84,8 @@ def bridge_pool():
                 core_borrow(vaa)
             elif decode_vaa[-1] == 3:
                 core_repay(vaa)
+            elif decode_vaa[-1] == 5:
+                core_binding(vaa)
             data[dk] = dv
         time.sleep(10)
 
@@ -105,7 +107,7 @@ def bridge_core():
         decode_vaa = list(base64.b64decode(vaa))
         token_name = wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
             decode_vaa
-        )["events"][-1]["moveEvent"]["fields"]["token_name"]
+        )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]["dola_address"]
         token_name = "0x" + base64.b64decode(token_name).decode("ascii")
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())

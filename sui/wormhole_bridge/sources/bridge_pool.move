@@ -186,6 +186,7 @@ module wormhole_bridge::bridge_pool {
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
         let (pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
+
         event::emit(VaaReciveWithdrawEvent {
             pool_address,
             user,
