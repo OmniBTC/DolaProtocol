@@ -3,7 +3,7 @@ import time
 
 from sui_brownie import CacheObject
 
-from . import load
+from dola_sui_sdk import load
 
 RAY = 100000000
 
@@ -316,6 +316,7 @@ def main():
 
     # 5. init pool manager
     hash = register_pool_manager_admin_cap()
+    print("Pool manager admin cap hash:", hash)
     create_vote_external_cap(hash)
     vote_pool_manager_cap_proposal()
 

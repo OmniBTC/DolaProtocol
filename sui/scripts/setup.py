@@ -5,7 +5,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='dola-sui-sdk',
-    version='0.0.2',
+    version='0.0.3',
     description='Dola Sui SDK',
     # The project's main homepage.
     url='https://github.com/OmniBTC/DolaProtocol/blob/main/sui/scripts/dola_sui_sdk',
