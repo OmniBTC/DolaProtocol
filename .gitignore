@@ -37,3 +37,5 @@ aptos/interfaces
 aptos/reports
 aptos/tests
 
+.pytest_cache/
+

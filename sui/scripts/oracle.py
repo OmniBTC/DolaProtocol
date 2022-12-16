@@ -2,7 +2,7 @@ import time
 
 import ccxt
 
-import load
+from dola_sui_sdk import load
 
 
 def get_prices(symbols=("BTC/USDT", "ETH/USDT")):

@@ -13,9 +13,9 @@ from pathlib import Path
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ProcessExecutor
 
-import load
-from init import pool
-from lending import core_supply, core_withdraw, core_borrow, core_repay, core_binding
+from dola_sui_sdk import load
+from dola_sui_sdk.init import pool
+from dola_sui_sdk.lending import core_supply, core_withdraw, core_borrow, core_repay, core_binding
 
 FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
 logging.basicConfig(format=FORMAT)
