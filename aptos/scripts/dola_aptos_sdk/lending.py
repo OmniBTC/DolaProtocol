@@ -1,8 +1,8 @@
 import base64
 
-from . import load
+from dola_aptos_sdk import load
 
-from .init import btc, usdt, bridge_pool_read_vaa
+from dola_aptos_sdk.init import btc, usdt, bridge_pool_read_vaa
 
 U64_MAX = 18446744073709551615
 
