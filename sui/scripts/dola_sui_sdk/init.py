@@ -132,7 +132,7 @@ def vote_pool_manager_cap_proposal():
                                                                              wormhole_bridge.bridge_core.CoreState[-1])
 
 
-def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
+def vote_register_new_pool_proposal(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool_proposal(
         gov: &mut Governance,
@@ -157,7 +157,7 @@ def vote_register_new_pool_proposal(pool_id, pool_name, coin_type):
                                                                        governance.governance.VoteExternalCap[-1],
                                                                        pool_manager.pool_manager.PoolManagerInfo[-1],
                                                                        coin_type,
-                                                                       0,
+                                                                       dst_chain,
                                                                        list(pool_name),
                                                                        pool_id
                                                                        )

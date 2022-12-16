@@ -21,10 +21,10 @@ def main():
     hash = "0x" + governance_external_cap["dynamic_field"][0].name
 
     dola_sui_init.create_vote_external_cap(hash)
-    dola_sui_init.vote_register_new_pool_proposal(0, b"BTC", dola_aptos_init.btc())
+    dola_sui_init.vote_register_new_pool_proposal(0, b"BTC", dola_aptos_init.btc(), dst_chain=1)
 
     dola_sui_init.create_vote_external_cap(hash)
-    dola_sui_init.vote_register_new_pool_proposal(1, b"USDT", dola_aptos_init.usdt())
+    dola_sui_init.vote_register_new_pool_proposal(1, b"USDT", dola_aptos_init.usdt(), dst_chain=1)
 
 
 if __name__ == "__main__":

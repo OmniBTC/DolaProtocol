@@ -87,16 +87,19 @@ def bridge_pool():
             if dk not in data:
                 decode_vaa = list(bytes.fromhex(vaa[2:] if "0x" in vaa else vaa))
                 local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
-                if decode_vaa[-1] == 0:
-                    dola_sui_lending.core_supply(vaa)
-                elif decode_vaa[-1] == 1:
-                    dola_sui_lending.core_withdraw(vaa)
-                elif decode_vaa[-1] == 2:
-                    dola_sui_lending.core_borrow(vaa)
-                elif decode_vaa[-1] == 3:
-                    dola_sui_lending.core_repay(vaa)
-                elif decode_vaa[-1] == 5:
-                    dola_sui_lending.core_binding(vaa)
+                try:
+                    if decode_vaa[-1] == 0:
+                        dola_sui_lending.core_supply(vaa)
+                    elif decode_vaa[-1] == 1:
+                        dola_sui_lending.core_withdraw(vaa)
+                    elif decode_vaa[-1] == 2:
+                        dola_sui_lending.core_borrow(vaa)
+                    elif decode_vaa[-1] == 3:
+                        dola_sui_lending.core_repay(vaa)
+                    elif decode_vaa[-1] == 5:
+                        dola_sui_lending.core_binding(vaa)
+                except:
+                    pass
                 data[dk] = dv
         time.sleep(10)
 

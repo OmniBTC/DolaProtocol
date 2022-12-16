@@ -73,7 +73,7 @@ def core_supply(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        list(base64.b64decode(vaa)),
+        vaa,
     )
 
 
@@ -131,7 +131,7 @@ def pool_withdraw(vaa, coin_type):
         wormhole.state.State[-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
-        list(base64.b64decode(vaa)),
+        vaa,
         ty_args=[coin_type]
     )
 
@@ -168,7 +168,7 @@ def core_withdraw(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
     return bridge_core_read_vaa()[0]
 
@@ -240,7 +240,7 @@ def core_borrow(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
     return bridge_core_read_vaa()[0]
 
@@ -307,7 +307,7 @@ def core_repay(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
-        list(base64.b64decode(vaa))
+        vaa
     )
 
 
@@ -380,7 +380,7 @@ def core_liquidate(vaa):
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
         0,
-        list(base64.b64decode(vaa)),
+        vaa,
     )
 
 
@@ -427,7 +427,7 @@ def core_binding(vaa):
         wormhole.state.State[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         user_manager.user_manager.UserManagerInfo[-1],
-        list(base64.b64decode(vaa))
+        vaa
     )
 
 
@@ -511,7 +511,16 @@ def check_app_storage():
     pprint(storage)
 
 
+def check_user_manager():
+    user_manager = load.user_manager_package()
+    storage = user_manager.get_object_with_super_detail(user_manager.user_manager.UserManagerInfo[-1])
+    print("\n --- user manager info ---")
+    pprint(storage)
+
+
 if __name__ == "__main__":
-    claim_test_coin(btc())
-    monitor_supply(btc())
-    # check_pool_info()
+    # claim_test_coin(btc())
+    # monitor_supply(btc())
+    check_pool_info()
+    check_app_storage()
+    check_user_manager()

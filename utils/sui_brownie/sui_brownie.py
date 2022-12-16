@@ -477,11 +477,6 @@ class SuiDynamicFiled:
                     pass
                 else:
                     d[k] = cls.format_data(d[k])
-            if "type" in d:
-                del d["type"]
-            if "fields" in d:
-                d.update(d["fields"])
-                del d["fields"]
         elif isinstance(d, str):
             d = cls.b64decode(d)
         return d
@@ -1543,6 +1538,22 @@ class SuiPackage:
                 data: SuiDynamicFiled = basic_info[k][i]
                 self.nest_process_table(data.value)
 
+    def normal_detail(self, data):
+        if isinstance(data, dict):
+            if "type" in data and "fields" in data:
+                d = data["fields"]
+                del data["fields"]
+                del data["type"]
+                data.update(d)
+            for k in list(data.keys()):
+                self.normal_detail(data[k])
+        elif isinstance(data, list):
+            for i in range(len(data)):
+                self.normal_detail(data[i])
+        elif isinstance(data, SuiDynamicFiled):
+            self.normal_detail(data.name)
+            self.normal_detail(data.value)
+
     def get_object_with_super_detail(self, object_id):
         basic_info = self.normal_object_info(self.get_object(object_id))
 
@@ -1550,4 +1561,5 @@ class SuiPackage:
 
         dynamic_info = self.get_dynamic_field(object_id)
         basic_info["dynamic_field"] = dynamic_info
+        self.normal_detail(basic_info)
         return basic_info
