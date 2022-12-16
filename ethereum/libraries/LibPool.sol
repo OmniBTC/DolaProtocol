@@ -2,63 +2,65 @@
 pragma solidity ^0.8.0;
 
 import "./LibBytes.sol";
-import "../interfaces/IOmniPool.sol";
+import "./LibDolaTypes.sol";
 
 library LibPool {
     using LibBytes for bytes;
 
     struct SendDepositPayload {
-        address pool;
-        address user;
+        LibDolaTypes.DolaAddress pool;
+        LibDolaTypes.DolaAddress user;
         uint64 amount;
-        bytes tokenName;
         uint16 appId;
         bytes appPayload;
     }
 
     struct SendWithdrawPayload {
-        address pool;
-        address user;
-        bytes tokenName;
+        LibDolaTypes.DolaAddress pool;
+        LibDolaTypes.DolaAddress user;
         uint16 appId;
         bytes appPayload;
     }
 
     struct SendDepositAndWithdrawPayload {
-        address depositPool;
-        address depositUser;
+        LibDolaTypes.DolaAddress depositPool;
+        LibDolaTypes.DolaAddress depositUser;
         uint64 depositAmount;
-        bytes depositTokenName;
-        address withdrawPool;
-        address withdrawUser;
-        bytes withdrawTokenName;
+        LibDolaTypes.DolaAddress withdrawPool;
         uint16 appId;
         bytes appPayload;
     }
 
     struct ReceiveWithdrawPayload {
-        address pool;
-        address user;
+        LibDolaTypes.DolaAddress pool;
+        LibDolaTypes.DolaAddress user;
         uint64 amount;
-        bytes tokenName;
     }
 
     function encodeSendDepositPayload(
-        address pool,
-        address user,
+        LibDolaTypes.DolaAddress memory pool,
+        LibDolaTypes.DolaAddress memory user,
         uint64 amount,
-        bytes memory tokenName,
         uint16 appId,
         bytes memory appPayload
     ) internal pure returns (bytes memory) {
+        bytes memory poolAddress = LibDolaTypes.encodeDolaAddress(
+            pool.dolaChainId,
+            pool.externalAddress
+        );
+        bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
+            user.dolaChainId,
+            user.externalAddress
+        );
         bytes memory payload = abi.encodePacked(
-            pool,
-            user,
+            uint16(poolAddress.length),
+            poolAddress,
+            uint16(userAddress.length),
+            userAddress,
             amount,
-            uint16(tokenName.length),
-            tokenName,
             appId
         );
+
         if (appPayload.length > 0) {
             payload = payload.concat(
                 abi.encodePacked(uint16(appPayload.length), appPayload)
@@ -77,24 +79,28 @@ library LibPool {
         uint256 dataLen;
         SendDepositPayload memory decodeData;
 
-        dataLen = 20;
-        decodeData.pool = payload.toAddress(index);
+        dataLen = 2;
+        uint16 poolLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = 20;
-        decodeData.user = payload.toAddress(index);
+        dataLen = poolLength;
+        decodeData.pool = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 userLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = userLength;
+        decodeData.user = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 8;
         decodeData.amount = payload.toUint64(index);
-        index += dataLen;
-
-        dataLen = 2;
-        uint16 tokenNameLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = tokenNameLength;
-        decodeData.tokenName = payload.slice(index, dataLen);
         index += dataLen;
 
         dataLen = 2;
@@ -116,19 +122,27 @@ library LibPool {
     }
 
     function encodeSendWithdrawPayload(
-        address pool,
-        address user,
-        bytes memory tokenName,
+        LibDolaTypes.DolaAddress memory pool,
+        LibDolaTypes.DolaAddress memory user,
         uint16 appId,
         bytes memory appPayload
     ) internal pure returns (bytes memory) {
+        bytes memory poolAddress = LibDolaTypes.encodeDolaAddress(
+            pool.dolaChainId,
+            pool.externalAddress
+        );
+        bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
+            user.dolaChainId,
+            user.externalAddress
+        );
         bytes memory payload = abi.encodePacked(
-            pool,
-            user,
-            uint16(tokenName.length),
-            tokenName,
+            uint16(poolAddress.length),
+            poolAddress,
+            uint16(userAddress.length),
+            userAddress,
             appId
         );
+
         if (appPayload.length > 0) {
             payload = payload.concat(
                 abi.encodePacked(uint16(appPayload.length), appPayload)
@@ -147,20 +161,24 @@ library LibPool {
         uint256 dataLen;
         SendWithdrawPayload memory decodeData;
 
-        dataLen = 20;
-        decodeData.pool = payload.toAddress(index);
+        dataLen = 2;
+        uint16 poolLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = 20;
-        decodeData.user = payload.toAddress(index);
+        dataLen = poolLength;
+        decodeData.pool = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 2;
-        uint16 tokenNameLength = payload.toUint16(index);
+        uint16 userLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = tokenNameLength;
-        decodeData.tokenName = payload.slice(index, dataLen);
+        dataLen = userLength;
+        decodeData.user = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 2;
@@ -176,32 +194,39 @@ library LibPool {
             decodeData.appPayload = payload.slice(index, dataLen);
             index += dataLen;
         }
-        require(index == length, "Decode send withdraw payload error");
+        require(index == length, "Decode send deposit payload error");
 
         return decodeData;
     }
 
     function encodeSendDepositAndWithdrawPayload(
-        address depositPool,
-        address depositUser,
+        LibDolaTypes.DolaAddress memory depositPool,
+        LibDolaTypes.DolaAddress memory depositUser,
         uint64 depositAmount,
-        bytes memory depositTokenName,
-        address withdrawPool,
-        address withdrawUser,
-        bytes memory withdrawTokenName,
+        LibDolaTypes.DolaAddress memory withdrawPool,
         uint16 appId,
         bytes memory appPayload
     ) internal pure returns (bytes memory) {
+        bytes memory depositPoolAddress = LibDolaTypes.encodeDolaAddress(
+            depositPool.dolaChainId,
+            depositPool.externalAddress
+        );
+        bytes memory depositUserAddress = LibDolaTypes.encodeDolaAddress(
+            depositUser.dolaChainId,
+            depositUser.externalAddress
+        );
+        bytes memory withdrawPoolAddress = LibDolaTypes.encodeDolaAddress(
+            withdrawPool.dolaChainId,
+            withdrawPool.externalAddress
+        );
         bytes memory payload = abi.encodePacked(
-            depositPool,
-            depositUser,
+            uint16(depositPoolAddress.length),
+            depositPoolAddress,
+            uint16(depositUserAddress.length),
+            depositUserAddress,
             depositAmount,
-            uint16(depositTokenName.length),
-            depositTokenName,
-            withdrawPool,
-            withdrawUser,
-            uint16(withdrawTokenName.length),
-            withdrawTokenName,
+            uint16(withdrawPoolAddress.length),
+            withdrawPoolAddress,
             appId
         );
 
@@ -223,12 +248,24 @@ library LibPool {
         uint256 dataLen;
         SendDepositAndWithdrawPayload memory decodeData;
 
-        dataLen = 20;
-        decodeData.depositPool = payload.toAddress(index);
+        dataLen = 2;
+        uint16 depositPoolLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = 20;
-        decodeData.depositUser = payload.toAddress(index);
+        dataLen = depositPoolLength;
+        decodeData.depositPool = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
+        index += dataLen;
+
+        dataLen = 2;
+        uint16 depositUserLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = depositUserLength;
+        decodeData.depositUser = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 8;
@@ -236,27 +273,13 @@ library LibPool {
         index += dataLen;
 
         dataLen = 2;
-        uint16 depositTokenNameLength = payload.toUint16(index);
+        uint16 withdrawPoolLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = depositTokenNameLength;
-        decodeData.depositTokenName = payload.slice(index, dataLen);
-        index += dataLen;
-
-        dataLen = 20;
-        decodeData.withdrawPool = payload.toAddress(index);
-        index += dataLen;
-
-        dataLen = 20;
-        decodeData.withdrawUser = payload.toAddress(index);
-        index += dataLen;
-
-        dataLen = 2;
-        uint16 withdrawTokenNameLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = withdrawTokenNameLength;
-        decodeData.withdrawTokenName = payload.slice(index, dataLen);
+        dataLen = withdrawPoolLength;
+        decodeData.withdrawPool = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 2;
@@ -307,24 +330,27 @@ library LibPool {
         uint256 dataLen;
         ReceiveWithdrawPayload memory decodeData;
 
-        dataLen = 20;
-        decodeData.pool = payload.toAddress(index);
+        dataLen = 2;
+        uint16 poolLength = payload.toUint16(index);
         index += dataLen;
 
-        dataLen = 20;
-        decodeData.user = payload.toAddress(index);
+        dataLen = poolLength;
+        decodeData.pool = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
+
+        dataLen = 2;
+        uint16 userLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = userLength;
+        decodeData.user = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, index + dataLen)
+        );
         index += dataLen;
 
         dataLen = 8;
         decodeData.amount = payload.toUint64(index);
-        index += dataLen;
-
-        dataLen = 2;
-        uint16 tokenNameLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = tokenNameLength;
-        decodeData.tokenName = payload.slice(index, dataLen);
         index += dataLen;
 
         require(index == length, "Decode receive withdraw payload error");

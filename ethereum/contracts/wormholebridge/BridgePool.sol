@@ -97,16 +97,12 @@ contract BridgePool {
         address depositPool,
         uint256 depositAmount,
         address withdrawPool,
-        address withdrawUser,
-        bytes memory withdrawTokenName,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
         bytes memory payload = IOmniPool(depositPool).depositAndWithdraw(
             depositAmount,
             withdrawPool,
-            withdrawUser,
-            withdrawTokenName,
             appId,
             appPayload
         );
@@ -125,6 +121,8 @@ contract BridgePool {
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
             .decodeReceiveWithdrawPayload(vm.payload);
-        IOmniPool(payload.pool).innerWithdraw(payload.user, payload.amount);
+        address pool = LibDolaTypes.dolaAddressToAddress(payload.pool);
+        address user = LibDolaTypes.dolaAddressToAddress(payload.user);
+        IOmniPool(pool).innerWithdraw(user, payload.amount);
     }
 }
