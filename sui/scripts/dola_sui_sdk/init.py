@@ -296,6 +296,22 @@ def pool(coin_type):
     return f"{CacheObject.OmniPool[-1]}::pool::Pool<{coin_type}>"
 
 
+def bridge_pool_read_vaa(index=0):
+    wormhole_bridge = load.wormhole_bridge_package()
+    result = wormhole_bridge.bridge_pool.read_vaa.simulate(
+        wormhole_bridge.bridge_pool.PoolState[-1], index
+    )["events"][-1]["moveEvent"]["fields"]
+    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+
+
+def bridge_core_read_vaa(index=0):
+    wormhole_bridge = load.wormhole_bridge_package()
+    result = wormhole_bridge.bridge_core.read_vaa.simulate(
+        wormhole_bridge.bridge_core.CoreState[-1], index
+    )["events"][-1]["moveEvent"]["fields"]
+    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+
+
 def main():
     # 1. init bridge
     init_bridge_core()

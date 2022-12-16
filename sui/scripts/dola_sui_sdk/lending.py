@@ -5,7 +5,7 @@ from sui_brownie import CacheObject, ObjectType
 
 from dola_sui_sdk import load
 from dola_sui_sdk.init import btc, usdt, claim_test_coin
-from dola_sui_sdk.init import coin, pool
+from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
 
 U64_MAX = 18446744073709551615
 
@@ -39,9 +39,7 @@ def portal_supply(coin_type):
         U64_MAX,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_supply(vaa):
@@ -111,9 +109,7 @@ def portal_withdraw(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def pool_withdraw(vaa, coin_type):
@@ -174,9 +170,7 @@ def core_withdraw(vaa):
         0,
         list(base64.b64decode(vaa)),
     )
-    return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_core.CoreState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_core_read_vaa()[0]
 
 
 def portal_borrow(coin_type, amount):
@@ -211,9 +205,7 @@ def portal_borrow(coin_type, amount):
         amount,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_borrow(vaa):
@@ -250,9 +242,7 @@ def core_borrow(vaa):
         0,
         list(base64.b64decode(vaa)),
     )
-    return wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_core.CoreState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_core_read_vaa()[0]
 
 
 def portal_repay(coin_type):
@@ -284,9 +274,7 @@ def portal_repay(coin_type):
         U64_MAX,
         ty_args=[coin_type]
     )
-    return wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], 0
-    )["events"][-1]["moveEvent"]["fields"]["vaa"]
+    return bridge_pool_read_vaa()[0]
 
 
 def core_repay(vaa):
@@ -360,7 +348,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
         0,
         ty_args=[debt_coin_type, collateral_coin_type]
     )
-    return result['events'][-1]['moveEvent']['fields']['payload']
+    return bridge_pool_read_vaa()[0]
 
 
 def core_liquidate(vaa):
