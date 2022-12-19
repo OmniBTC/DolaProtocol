@@ -441,6 +441,18 @@ class HttpClient(httpx.Client):
 class SuiDynamicFiled:
 
     @staticmethod
+    def format_bytes(d: bytes):
+        try:
+            da = d.decode("ascii")
+        except:
+            return "0x" + d.hex()
+        for v in da:
+            if '0' <= v <= "9" or 'a' <= v <= "z" or 'A' <= v <= "Z" or v == ":":
+                continue
+            return "0x" + d.hex()
+        return da
+
+    @staticmethod
     def b64decode(d):
         try:
             return int(d)
@@ -466,7 +478,7 @@ class SuiDynamicFiled:
             for k in range(len(d)):
                 d[k] = cls.format_data(d[k])
             try:
-                return "0x" + str(bytes(d).hex())
+                return cls.format_bytes(bytes(d))
             except:
                 pass
         elif isinstance(d, dict):
