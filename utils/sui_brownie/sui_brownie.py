@@ -14,7 +14,7 @@ from pprint import pprint, pformat
 from retrying import retry
 
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 from .account import Account
 
@@ -547,9 +547,9 @@ class SuiPackage:
         with self.config_path.open() as fp:
             self.config = yaml.safe_load(fp)
         try:
-            load_dotenv(self.brownie_config.joinpath(self.config["dotenv"]))
-            self.private_key = os.getenv("PRIVATE_KEY")
-            self.mnemonic = os.getenv("MNEMONIC")
+            env = dotenv_values(self.brownie_config.joinpath(self.config["dotenv"]))
+            self.private_key = env.get("PRIVATE_KEY", None)
+            self.mnemonic = env.get("MNEMONIC", None)
             if self.private_key is not None:
                 self.account = Account.load_key(self.private_key)
             elif self.mnemonic is not None:
