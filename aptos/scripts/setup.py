@@ -5,7 +5,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='dola-aptos-sdk',
-    version='0.0.6',
+    version='0.0.7',
     description='Dola Aptos SDK',
     # The project's main homepage.
     url='https://github.com/OmniBTC/DolaProtocol/blob/main/aptos/scripts/dola_aptos_sdk',
