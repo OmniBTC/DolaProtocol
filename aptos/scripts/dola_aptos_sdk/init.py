@@ -5,11 +5,11 @@ from dola_aptos_sdk import load
 
 
 def usdt():
-    return f"0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7::coins::USDT"
+    return f"0x46f31ff67d1c18824d69dfc4dadaedf6d9e892464d191784527a40b8626bb419::coins::USDT"
 
 
 def btc():
-    return f"0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7::coins::BTC"
+    return f"0x46f31ff67d1c18824d69dfc4dadaedf6d9e892464d191784527a40b8626bb419::coins::BTC"
 
 
 def aptos():
