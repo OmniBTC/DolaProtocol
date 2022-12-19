@@ -519,8 +519,8 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # claim_test_coin(btc())
-    # monitor_supply(btc())
+    claim_test_coin(btc())
+    monitor_supply(btc())
     check_pool_info()
     check_app_storage()
     check_user_manager()

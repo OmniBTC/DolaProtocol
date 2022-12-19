@@ -1,4 +1,3 @@
-import base64
 import time
 
 from sui_brownie import CacheObject
@@ -91,10 +90,6 @@ def register_token_price(dola_pool_id, price, decimal):
 
 def create_vote_external_cap(hash):
     governance = load.governance_package()
-    try:
-        hash = list(base64.b64decode(hash))
-    except:
-        pass
     governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
 
 
@@ -305,7 +300,7 @@ def bridge_pool_read_vaa(index=0):
     result = wormhole_bridge.bridge_pool.read_vaa.simulate(
         wormhole_bridge.bridge_pool.PoolState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def bridge_core_read_vaa(index=0):
@@ -313,7 +308,7 @@ def bridge_core_read_vaa(index=0):
     result = wormhole_bridge.bridge_core.read_vaa.simulate(
         wormhole_bridge.bridge_core.CoreState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def main():

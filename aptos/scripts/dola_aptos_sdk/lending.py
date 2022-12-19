@@ -68,7 +68,7 @@ def pool_withdraw(vaa, coin_type):
     """
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole_bridge.bridge_pool.receive_withdraw(
-        list(base64.b64decode(vaa)),
+        vaa,
         ty_args=[coin_type]
     )
 

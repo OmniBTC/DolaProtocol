@@ -123,7 +123,7 @@ def bridge_core():
         )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
         token_name = decode_payload["dola_address"]
         dola_chain_id = decode_payload["dola_chain_id"]
-        token_name = "0x" + base64.b64decode(token_name).decode("ascii")
+        token_name = "0x" + bytes(token_name).decode("ascii")
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
