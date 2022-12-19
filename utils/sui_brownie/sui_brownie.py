@@ -465,6 +465,10 @@ class SuiDynamicFiled:
         if isinstance(d, list):
             for k in range(len(d)):
                 d[k] = cls.format_data(d[k])
+            try:
+                return "0x" + str(bytes(d).hex())
+            except:
+                pass
         elif isinstance(d, dict):
             for k in list(d.keys()):
                 if k == "fields":
@@ -498,7 +502,12 @@ class SuiDynamicFiled:
         return self.__str__()
 
     def __str__(self):
-        return str(pformat({str(pformat(self.name, compact=True)): self.value}, compact=True))
+        if isinstance(self.name, str):
+            name = self.name
+        else:
+            name = str(pformat(self.name, compact=True))
+
+        return str(pformat({name: self.value}, compact=True))
 
 
 class SuiPackage:
