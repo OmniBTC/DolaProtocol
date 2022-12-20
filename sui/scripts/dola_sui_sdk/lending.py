@@ -106,7 +106,7 @@ def portal_withdraw(coin_type, amount):
         dst_chain,
         [],
         0,
-        amount,
+        int(amount),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()[0]
@@ -202,7 +202,7 @@ def portal_borrow(coin_type, amount):
         dst_chain,
         [],
         0,
-        amount,
+        int(amount),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()[0]
@@ -471,7 +471,7 @@ def monitor_supply(coin):
 
 
 def monitor_withdraw(coin, amount=1):
-    to_core_vaa = portal_withdraw(coin, amount * 1e8)
+    to_core_vaa = portal_withdraw(coin, amount * 1e7)
     # to_pool_vaa = core_withdraw(to_core_vaa)
     # pool_withdraw(to_pool_vaa, coin)
 
@@ -519,8 +519,8 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    claim_test_coin(btc())
-    monitor_supply(btc())
+    # claim_test_coin(btc())
+    # monitor_withdraw(btc())
     check_pool_info()
     check_app_storage()
     check_user_manager()

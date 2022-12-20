@@ -143,6 +143,9 @@ def vote_register_new_pool_proposal(pool_id, pool_name, coin_type, dst_chain=0):
     :return:
     '''
     if isinstance(coin_type, str):
+        if "0x" in coin_type[:2] and dst_chain == 0:
+            # Sui not with 0x, Aptos with 0x
+            coin_type = coin_type[2:]
         coin_type = list(bytes(coin_type, "ascii"))
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
