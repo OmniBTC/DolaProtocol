@@ -1,3 +1,4 @@
+import functools
 from pathlib import Path
 from typing import Union
 
@@ -6,6 +7,7 @@ from sui_brownie import CacheObject
 from dola_sui_sdk import DOLA_CONFIG
 
 
+@functools.lru_cache()
 def sui_package(package_id: str = None, package_path: Union[Path, str] = None):
     return sui_brownie.SuiPackage(
         brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],

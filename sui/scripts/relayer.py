@@ -6,6 +6,7 @@ import hashlib
 import json
 import logging
 import time
+import traceback
 from collections import OrderedDict
 from multiprocessing import set_start_method
 from pathlib import Path
@@ -99,7 +100,7 @@ def bridge_pool():
                     elif decode_vaa[-1] == 5:
                         dola_sui_lending.core_binding(vaa)
                 except:
-                    pass
+                    traceback.print_exc()
                 data[dk] = dv
         time.sleep(10)
 
@@ -123,11 +124,13 @@ def bridge_core():
         )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
         token_name = decode_payload["dola_address"]
         dola_chain_id = decode_payload["dola_chain_id"]
-        token_name = "0x" + bytes(token_name).decode("ascii")
+        token_name = bytes(token_name).decode("ascii")
+        if "0x" != token_name[:2]:
+            token_name = "0x" + token_name
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
-            local_logger.info(nonce)
+            local_logger.info(f"Withdraw nonce:{nonce}, dola_chain_id:{dola_chain_id}")
             sui_wormhole = dola_sui_load.wormhole_package()
             sui_account_address = sui_wormhole_bridge.account.account_address
             i = 0
@@ -148,6 +151,7 @@ def bridge_core():
                         )
                     break
                 except:
+                    traceback.print_exc()
                     i = i + 1
                     continue
             data[dk] = dv

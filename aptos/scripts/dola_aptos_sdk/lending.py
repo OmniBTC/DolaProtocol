@@ -34,7 +34,7 @@ def portal_supply(coin_type, amount):
     return bridge_pool_read_vaa()
 
 
-def portal_withdraw(coin_type, amount):
+def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
     """
     public entry fun withdraw<CoinType>(
         sender: &signer,
@@ -46,10 +46,12 @@ def portal_withdraw(coin_type, amount):
     """
     lending_portal = load.lending_portal_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 1
+    if receiver is None:
+        assert dst_chain == 1
+        receiver = account_address
 
     _result = lending_portal.lending.withdraw(
-        str(account_address),
+        str(receiver),
         dst_chain,
         int(amount),
         ty_args=[coin_type]
@@ -73,7 +75,7 @@ def pool_withdraw(vaa, coin_type):
     )
 
 
-def portal_borrow(coin_type, amount):
+def portal_borrow(coin_type, amount, dst_chain=1, receiver=None):
     """
     public entry fun borrow<CoinType>(
         sender: &signer,
@@ -85,10 +87,12 @@ def portal_borrow(coin_type, amount):
     """
     lending_portal = load.lending_portal_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 1
+    if receiver is None:
+        assert dst_chain == 1
+        receiver = account_address
 
     _result = lending_portal.lending.borrow(
-        str(account_address),
+        str(receiver),
         dst_chain,
         int(amount),
         ty_args=[coin_type]
@@ -113,7 +117,7 @@ def portal_repay(coin_type, amount):
     return bridge_pool_read_vaa()
 
 
-def portal_liquidate(debt_coin_type, collateral_coin_type, amount):
+def portal_liquidate(debt_coin_type, collateral_coin_type, amount, dst_chain=1, receiver=None):
     """
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
         sender: &signer,
@@ -126,11 +130,13 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, amount):
     :return:
     """
     lending_portal = load.lending_portal_package()
-    dst_chain = 1
     account_address = lending_portal.account.account_address
+    if receiver is None:
+        assert dst_chain == 1
+        receiver = account_address
 
     _result = lending_portal.lending.liquidate(
-        str(account_address),
+        str(receiver),
         dst_chain,
         int(amount),
         ty_args=[debt_coin_type, collateral_coin_type]
@@ -139,26 +145,28 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, amount):
 
 
 def monitor_supply(coin):
-    claim_test_coin(coin)
     print(portal_supply(coin, 1e8))
 
 
-def monitor_withdraw(coin):
-    print(portal_withdraw(coin, 1e8))
+def monitor_withdraw(coin, dst_chain=1, receiver=None):
+    print(portal_withdraw(coin, 1e7, dst_chain, receiver))
 
 
-def monitor_borrow(coin, amount=1):
-    print(portal_borrow(coin, amount * 1e8))
+def monitor_borrow(coin, amount=1e8, dst_chain=1, receiver=None):
+    print(portal_borrow(coin, amount, dst_chain, receiver))
 
 
-def monitor_repay(coin):
-    print(portal_repay(coin, 1e8))
+def monitor_repay(coin, amount=1e8):
+    print(portal_repay(coin, amount))
 
 
-def monitor_liquidate():
-    print(portal_liquidate(usdt(), btc(), 1e8))
+def monitor_liquidate(dst_chain=1, receiver=None):
+    print(portal_liquidate(usdt(), btc(), 1e8, dst_chain, receiver))
 
 
 if __name__ == "__main__":
+    # claim_test_coin(btc())
     # monitor_supply(btc())
-    monitor_withdraw(btc())
+    # monitor_withdraw(usdt())
+    # monitor_borrow(btc(), 100)
+    monitor_repay(btc(), 100)
