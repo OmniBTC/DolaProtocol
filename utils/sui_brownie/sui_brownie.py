@@ -896,13 +896,23 @@ class SuiPackage:
         result = result["result"]
         result = self.format_result(result)
         try:
+            transactions = result["EffectsCert"]["certificate"]["data"]["transactions"][0]["Call"]
+            module = transactions["module"]
+            function = transactions["function"]
+        except:
+            module = None
+            function = None
+        try:
             if result["EffectsCert"]["effects"]["effects"]["status"]["status"] != "success":
                 pprint(result)
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success"
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
                 self.add_details(result)
-            print(f"Execute success, transactionDigest: {result['transactionDigest']}")
+            if module is None:
+                print(f"Execute success, transactionDigest: {result['transactionDigest']}")
+            else:
+                print(f"Execute {module}::{function} success, transactionDigest: {result['transactionDigest']}")
             return result
         except:
             traceback.print_exc()
@@ -1269,7 +1279,7 @@ class SuiPackage:
                     break
             assert not isinstance(param_args[k], int), "Fail split amount"
 
-        print(f'\nExecute {abi["module_name"]}::{abi["func_name"]}...')
+        # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1340,6 +1350,7 @@ class SuiPackage:
         # Simulate before execute
         self.dry_run_transaction(result["txBytes"])
         # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self.execute_transaction(result["txBytes"])
 
     def simulate_transaction(
@@ -1355,6 +1366,7 @@ class SuiPackage:
             gas: return gas
         """
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
+        print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
         return self.dry_run_transaction(result["txBytes"])
 
     def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=100000):
