@@ -1,4 +1,3 @@
-import base64
 import time
 
 from sui_brownie import CacheObject
@@ -91,10 +90,6 @@ def register_token_price(dola_pool_id, price, decimal):
 
 def create_vote_external_cap(hash):
     governance = load.governance_package()
-    try:
-        hash = list(base64.b64decode(hash))
-    except:
-        pass
     governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
 
 
@@ -148,6 +143,9 @@ def vote_register_new_pool_proposal(pool_id, pool_name, coin_type, dst_chain=0):
     :return:
     '''
     if isinstance(coin_type, str):
+        if "0x" in coin_type[:2] and dst_chain == 0:
+            # Sui not with 0x, Aptos with 0x
+            coin_type = coin_type[2:]
         coin_type = list(bytes(coin_type, "ascii"))
     example_proposal = load.example_proposal_package()
     governance = load.governance_package()
@@ -305,7 +303,7 @@ def bridge_pool_read_vaa(index=0):
     result = wormhole_bridge.bridge_pool.read_vaa.simulate(
         wormhole_bridge.bridge_pool.PoolState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def bridge_core_read_vaa(index=0):
@@ -313,7 +311,7 @@ def bridge_core_read_vaa(index=0):
     result = wormhole_bridge.bridge_core.read_vaa.simulate(
         wormhole_bridge.bridge_core.CoreState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + base64.b64decode(result["vaa"]).hex(), result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def main():
@@ -336,7 +334,6 @@ def main():
 
     # 5. init pool manager
     hash = register_pool_manager_admin_cap()
-    print("Pool manager admin cap hash:", hash)
     create_vote_external_cap(hash)
     vote_pool_manager_cap_proposal()
 

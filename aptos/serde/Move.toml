@@ -7,7 +7,7 @@ std = "0x1"
 aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
-serde = "0x1d2c5ca9299e6e6222ab126750797e18ba0bfe55cf2aa431ddfd7f2778f17ff7"
+serde = "_"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"

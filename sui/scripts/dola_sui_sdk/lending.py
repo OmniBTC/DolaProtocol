@@ -1,4 +1,3 @@
-import base64
 from pprint import pprint
 
 from sui_brownie import CacheObject, ObjectType
@@ -77,7 +76,7 @@ def core_supply(vaa):
     )
 
 
-def portal_withdraw(coin_type, amount):
+def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
     """
     public entry fun withdraw<CoinType>(
         pool: &mut Pool<CoinType>,
@@ -96,17 +95,19 @@ def portal_withdraw(coin_type, amount):
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 0
+    if receiver is None:
+        assert dst_chain == 0
+        receiver = account_address
 
     result = lending_portal.lending.withdraw(
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        account_address,
+        receiver,
         dst_chain,
         [],
         0,
-        amount,
+        int(amount),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()[0]
@@ -173,7 +174,7 @@ def core_withdraw(vaa):
     return bridge_core_read_vaa()[0]
 
 
-def portal_borrow(coin_type, amount):
+def portal_borrow(coin_type, amount, dst_chain=0, receiver=None):
     """
     public entry fun borrow<CoinType>(
         pool: &mut Pool<CoinType>,
@@ -192,17 +193,19 @@ def portal_borrow(coin_type, amount):
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
     account_address = lending_portal.account.account_address
-    dst_chain = 0
+    if receiver is None:
+        assert dst_chain == 0
+        receiver = account_address
 
     result = lending_portal.lending.borrow(
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        account_address,
+        receiver,
         dst_chain,
         [],
         0,
-        amount,
+        int(amount),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()[0]
@@ -311,7 +314,7 @@ def core_repay(vaa):
     )
 
 
-def portal_liquidate(debt_coin_type, collateral_coin_type):
+def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver=None):
     """
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
         pool_state: &mut PoolState,
@@ -332,13 +335,14 @@ def portal_liquidate(debt_coin_type, collateral_coin_type):
     lending_portal = load.lending_portal_package()
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole = load.wormhole_package()
-    dst_chain = 0
     account_address = lending_portal.account.account_address
+    if receiver is None:
+        receiver = account_address
 
     result = lending_portal.lending.liquidate(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
-        account_address,
+        receiver,
         dst_chain,
         [],
         0,
@@ -470,14 +474,14 @@ def monitor_supply(coin):
     # core_supply(vaa)
 
 
-def monitor_withdraw(coin, amount=1):
-    to_core_vaa = portal_withdraw(coin, amount * 1e8)
+def monitor_withdraw(coin, amount=1, dst_chain=0, receiver=None):
+    to_core_vaa = portal_withdraw(coin, amount * 1e7, dst_chain, receiver)
     # to_pool_vaa = core_withdraw(to_core_vaa)
     # pool_withdraw(to_pool_vaa, coin)
 
 
-def monitor_borrow(coin, amount=1):
-    to_core_vaa = portal_borrow(coin, amount * 1e8)
+def monitor_borrow(coin, amount=1, dst_chain=0, receiver=None):
+    to_core_vaa = portal_borrow(coin, amount * 1e7, dst_chain, receiver)
     # to_pool_vaa = core_borrow(to_core_vaa)
     # pool_withdraw(to_pool_vaa, coin)
 
@@ -519,8 +523,8 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # claim_test_coin(btc())
-    # monitor_supply(btc())
+    # claim_test_coin(usdt())
+    # monitor_repay(usdt())
     check_pool_info()
     check_app_storage()
     check_user_manager()

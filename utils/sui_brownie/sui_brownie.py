@@ -14,7 +14,7 @@ from pprint import pprint, pformat
 from retrying import retry
 
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 from .account import Account
 
@@ -441,23 +441,25 @@ class HttpClient(httpx.Client):
 class SuiDynamicFiled:
 
     @staticmethod
-    def b64decode(d):
+    def format_bytes(d: bytes):
         try:
-            return int(d)
+            da = d.decode("ascii")
         except:
-            pass
-
-        try:
-            d = base64.b64decode(d).decode("ascii")
-        except:
-            try:
-                d = base64.b64decode(d).hex()
-            except:
-                d = d
-        return d
+            return "0x" + d.hex()
+        for v in da:
+            if '0' <= v <= "9" or 'a' <= v <= "z" or 'A' <= v <= "Z" or v == ":":
+                continue
+            return "0x" + d.hex()
+        return da
 
     @classmethod
     def format_data(cls, d):
+        """
+        :param d:
+            bytes --> ascii | hex (padding 0x)
+            str --> str
+        :return:
+        """
         try:
             return int(d)
         except:
@@ -466,7 +468,7 @@ class SuiDynamicFiled:
             for k in range(len(d)):
                 d[k] = cls.format_data(d[k])
             try:
-                return "0x" + str(bytes(d).hex())
+                return cls.format_bytes(bytes(d))
             except:
                 pass
         elif isinstance(d, dict):
@@ -481,8 +483,6 @@ class SuiDynamicFiled:
                     pass
                 else:
                     d[k] = cls.format_data(d[k])
-        elif isinstance(d, str):
-            d = cls.b64decode(d)
         return d
 
     def __init__(self, owner, uid, name, value, ty):
@@ -547,9 +547,9 @@ class SuiPackage:
         with self.config_path.open() as fp:
             self.config = yaml.safe_load(fp)
         try:
-            load_dotenv(self.brownie_config.joinpath(self.config["dotenv"]))
-            self.private_key = os.getenv("PRIVATE_KEY")
-            self.mnemonic = os.getenv("MNEMONIC")
+            env = dotenv_values(self.brownie_config.joinpath(self.config["dotenv"]))
+            self.private_key = env.get("PRIVATE_KEY", None)
+            self.mnemonic = env.get("MNEMONIC", None)
             if self.private_key is not None:
                 self.account = Account.load_key(self.private_key)
             elif self.mnemonic is not None:
@@ -896,13 +896,23 @@ class SuiPackage:
         result = result["result"]
         result = self.format_result(result)
         try:
+            transactions = result["EffectsCert"]["certificate"]["data"]["transactions"][0]["Call"]
+            module = transactions["module"]
+            function = transactions["function"]
+        except:
+            module = None
+            function = None
+        try:
             if result["EffectsCert"]["effects"]["effects"]["status"]["status"] != "success":
                 pprint(result)
             assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success"
             result = result["EffectsCert"]["effects"]["effects"]
             if index_object:
                 self.add_details(result)
-            print(f"Execute success, transactionDigest: {result['transactionDigest']}")
+            if module is None:
+                print(f"Execute success, transactionDigest: {result['transactionDigest']}")
+            else:
+                print(f"Execute {module}::{function} success, transactionDigest: {result['transactionDigest']}")
             return result
         except:
             traceback.print_exc()
@@ -1269,7 +1279,7 @@ class SuiPackage:
                     break
             assert not isinstance(param_args[k], int), "Fail split amount"
 
-        print(f'\nExecute {abi["module_name"]}::{abi["func_name"]}...')
+        # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1340,6 +1350,7 @@ class SuiPackage:
         # Simulate before execute
         self.dry_run_transaction(result["txBytes"])
         # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self.execute_transaction(result["txBytes"])
 
     def simulate_transaction(
@@ -1355,6 +1366,7 @@ class SuiPackage:
             gas: return gas
         """
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
+        print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
         return self.dry_run_transaction(result["txBytes"])
 
     def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=100000):
