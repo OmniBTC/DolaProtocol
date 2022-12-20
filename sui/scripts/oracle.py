@@ -1,8 +1,9 @@
 import time
+from pathlib import Path
 
 import ccxt
 
-from dola_sui_sdk import load
+from dola_sui_sdk import load, set_dola_project_path
 
 
 def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
@@ -19,6 +20,7 @@ def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
 
 
 def feed(symbol, dola_pool_id):
+    set_dola_project_path(Path("../.."))
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
     while True:
