@@ -452,24 +452,14 @@ class SuiDynamicFiled:
             return "0x" + d.hex()
         return da
 
-    @staticmethod
-    def b64decode(d):
-        try:
-            return int(d)
-        except:
-            pass
-
-        try:
-            d = base64.b64decode(d).decode("ascii")
-        except:
-            try:
-                d = base64.b64decode(d).hex()
-            except:
-                d = d
-        return d
-
     @classmethod
     def format_data(cls, d):
+        """
+        :param d:
+            bytes --> ascii | hex (padding 0x)
+            str --> str
+        :return:
+        """
         try:
             return int(d)
         except:
@@ -493,8 +483,6 @@ class SuiDynamicFiled:
                     pass
                 else:
                     d[k] = cls.format_data(d[k])
-        elif isinstance(d, str):
-            d = cls.b64decode(d)
         return d
 
     def __init__(self, owner, uid, name, value, ty):
