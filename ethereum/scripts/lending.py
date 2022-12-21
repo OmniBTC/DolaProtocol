@@ -124,4 +124,4 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    monitor_supply()
+    monitor_supply(usdt())

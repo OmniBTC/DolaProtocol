@@ -15,7 +15,7 @@ contract BridgePool {
     address remoteBridge;
     mapping(bytes32 => bool) completeVAA;
     // convenient for testing
-    mapping(uint32 => bytes) cachedVAA;
+    mapping(uint32 => bytes) public cachedVAA;
 
     constructor(
         address _wormholeBridge,
@@ -31,24 +31,28 @@ contract BridgePool {
         remoteBridge = _remoteBridge;
     }
 
-    function wormhole() internal view returns (IWormhole) {
+    function wormhole() public view returns (IWormhole) {
         return IWormhole(wormholeBridge);
     }
 
-    function getWormholeMessageFee() internal view returns (uint256) {
+    function getWormholeMessageFee() public view returns (uint256) {
         return IWormhole(wormholeBridge).messageFee();
     }
 
-    function getWormholeBridge() internal view returns (address) {
+    function getWormholeBridge() public view returns (address) {
         return wormholeBridge;
     }
 
-    function getNonce() internal view returns (uint32) {
+    function getNonce() public view returns (uint32) {
         return nonce;
     }
 
-    function getFinality() internal view returns (uint8) {
+    function getFinality() public view returns (uint8) {
         return finality;
+    }
+
+    function getLatestVAA() public view returns (bytes memory) {
+        return cachedVAA[getNonce() - 1];
     }
 
     function increaseNonce() internal {
@@ -138,12 +142,15 @@ contract BridgePool {
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        (IWormhole.VM memory vm, , ) = wormhole().parseAndVerifyVM(vaa);
-        require(!isCompleteVAA(vm.hash), "withdraw already completed");
-        setVAAComplete(vm.hash);
+        // todo: use this when more formal
+        // (IWormhole.VM memory vm, , ) = wormhole().parseAndVerifyVM(vaa);
+        // require(!isCompleteVAA(vm.hash), "withdraw already completed");
+        // setVAAComplete(vm.hash);
+        // LibPool.ReceiveWithdrawPayload memory payload = LibPool
+        //     .decodeReceiveWithdrawPayload(vm.payload);
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
-            .decodeReceiveWithdrawPayload(vm.payload);
+            .decodeReceiveWithdrawPayload(vaa);
         address pool = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
         IOmniPool(pool).innerWithdraw(user, payload.amount);
