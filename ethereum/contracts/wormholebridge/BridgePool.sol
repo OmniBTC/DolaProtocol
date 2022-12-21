@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../../libraries/LibPool.sol";
+import "../../libraries/LibBinding.sol";
 import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
@@ -60,6 +61,23 @@ contract BridgePool {
 
     function isCompleteVAA(bytes32 _hash) internal view returns (bool) {
         return completeVAA[_hash];
+    }
+
+    function sendBinding(uint16 bindDolaChainId, bytes memory bindAddress)
+        external
+        payable
+    {
+        bytes memory payload = LibBinding.encodeBindingPayload(
+            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
+            LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
+        );
+        cachedVAA[getNonce()] = payload;
+        wormhole().publishMessage{value: msg.value}(
+            getNonce(),
+            payload,
+            getFinality()
+        );
+        increaseNonce();
     }
 
     function sendDeposit(
