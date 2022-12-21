@@ -52,9 +52,9 @@ library LibDolaTypes {
 
         dataLen = 2;
         dolaAddress.dolaChainId = payload.toUint16(index);
-        index = index + dataLen;
+        index += dataLen;
 
-        dolaAddress.externalAddress = payload.slice(index, length);
+        dolaAddress.externalAddress = payload.slice(index, length - dataLen);
         return dolaAddress;
     }
 }

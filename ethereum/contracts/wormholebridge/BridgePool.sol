@@ -13,6 +13,8 @@ contract BridgePool {
     uint8 finality;
     address remoteBridge;
     mapping(bytes32 => bool) completeVAA;
+    // convenient for testing
+    mapping(uint32 => bytes) cachedVAA;
 
     constructor(
         address _wormholeBridge,
@@ -71,6 +73,7 @@ contract BridgePool {
             appId,
             appPayload
         );
+        cachedVAA[getNonce()] = payload;
         wormhole().publishMessage{value: msg.value}(
             getNonce(),
             payload,
@@ -85,6 +88,7 @@ contract BridgePool {
         bytes memory appPayload
     ) external payable {
         bytes memory payload = IOmniPool(pool).withdrawTo(appId, appPayload);
+        cachedVAA[getNonce()] = payload;
         IWormhole(wormhole()).publishMessage{value: msg.value}(
             getNonce(),
             payload,
@@ -106,6 +110,7 @@ contract BridgePool {
             appId,
             appPayload
         );
+        cachedVAA[getNonce()] = payload;
         IWormhole(wormhole()).publishMessage{value: msg.value}(
             getNonce(),
             payload,

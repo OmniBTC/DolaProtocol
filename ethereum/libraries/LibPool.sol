@@ -85,7 +85,7 @@ library LibPool {
 
         dataLen = poolLength;
         decodeData.pool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -95,7 +95,7 @@ library LibPool {
 
         dataLen = userLength;
         decodeData.user = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -167,7 +167,7 @@ library LibPool {
 
         dataLen = poolLength;
         decodeData.pool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -177,7 +177,7 @@ library LibPool {
 
         dataLen = userLength;
         decodeData.user = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -254,7 +254,7 @@ library LibPool {
 
         dataLen = depositPoolLength;
         decodeData.depositPool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -264,7 +264,7 @@ library LibPool {
 
         dataLen = depositUserLength;
         decodeData.depositUser = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -278,7 +278,7 @@ library LibPool {
 
         dataLen = withdrawPoolLength;
         decodeData.withdrawPool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -336,7 +336,7 @@ library LibPool {
 
         dataLen = poolLength;
         decodeData.pool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
 
         dataLen = 2;
@@ -345,7 +345,7 @@ library LibPool {
 
         dataLen = userLength;
         decodeData.user = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
