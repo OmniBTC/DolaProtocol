@@ -20,6 +20,8 @@ networks:
   bsc-test:
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
+    usdt: "0xdB51a2C9b0b1D9910b04F23AC8c58647f95C68A6"
+    btc: "0x5a0B225Cbe96a87e4173D386CAaB0AC79771E940"
   polygon-test:
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"

@@ -202,3 +202,11 @@ def get_wormhole_chain_id():
 
 def get_wormhole():
     return config["networks"][network.show_active()]["wormhole"]
+
+
+def usdt():
+    return config["networks"][network.show_active()]["usdt"]
+
+
+def btc():
+    return config["networks"][network.show_active()]["btc"]
