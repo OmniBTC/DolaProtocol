@@ -1,9 +1,12 @@
 module user_manager::user_manager {
+    use std::hash;
     use std::vector;
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
+    use governance::governance::{Self, GovernanceExternalCap};
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
-    use sui::object::{Self, UID};
+    use sui::bcs;
+    use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
@@ -29,6 +32,11 @@ module user_manager::user_manager {
         user_id_to_addresses: Table<u64, vector<DolaAddress>>
     }
 
+    struct UserManagerAdminCap has store, drop {
+        user_manager: address,
+        count: u64
+    }
+
     struct UserManagerCap has store, drop {}
 
     fun init(ctx: &mut TxContext) {
@@ -41,8 +49,13 @@ module user_manager::user_manager {
         })
     }
 
-    public fun register_cap(): UserManagerCap {
-        // todo! consider into govern
+    public entry fun register_admin_cap(user_manager: &mut UserManagerInfo, govern: &mut GovernanceExternalCap) {
+        let admin = UserManagerAdminCap { user_manager: uid_to_address(&user_manager.id), count: 0 };
+        governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
+    }
+
+    public fun register_cap_with_admin(admin: &mut UserManagerAdminCap): UserManagerCap {
+        admin.count = admin.count + 1;
         UserManagerCap {}
     }
 

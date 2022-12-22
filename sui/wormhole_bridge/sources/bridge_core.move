@@ -34,7 +34,7 @@ module wormhole_bridge::bridge_core {
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<u16, ExternalAddress>,
-        // todo! Deleta after wormhole running
+        // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>
     }
 
@@ -57,7 +57,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
+    public fun transfer_pool_manager_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
         core_state.pool_manager_cap = option::some(pool_manager_cap);
     }
 

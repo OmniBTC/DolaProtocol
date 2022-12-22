@@ -92,7 +92,7 @@ module governance::governance {
 
     /// Share a cap so that only the person who owns the key can use it,
     /// or the key can be wrapped in package for use.
-    struct Proposal<T: key + store> has key, store {
+    struct Proposal<T: key + store> has key {
         id: UID,
         cap: Option<T>
     }
