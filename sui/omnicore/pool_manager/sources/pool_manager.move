@@ -6,7 +6,7 @@ module pool_manager::pool_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, dola_chain_id};
-    use governance::governance::{Self, GovernanceExternalCap};
+    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
     use sui::bcs;
     use sui::object::{Self, UID, uid_to_address};
     use sui::table::{Self, Table};
@@ -108,6 +108,10 @@ module pool_manager::pool_manager {
 
     public fun register_cap_with_admin(admin: &mut PoolManagerAdminCap): PoolManagerCap {
         admin.count = admin.count + 1;
+        PoolManagerCap {}
+    }
+
+    public fun register_cap_with_governance(_: &GovernanceCap): PoolManagerCap {
         PoolManagerCap {}
     }
 

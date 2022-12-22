@@ -1,7 +1,7 @@
 module app_manager::app_manager {
     use std::hash;
 
-    use governance::governance::{Self, GovernanceExternalCap};
+    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
     use sui::bcs;
     use sui::object::{Self, UID, uid_to_address};
     use sui::transfer;
@@ -40,14 +40,22 @@ module app_manager::app_manager {
         ctx: &mut TxContext
     ): AppCap {
         admin.count = admin.count + 1;
-        register_app(admin, total_app_info, ctx)
+        register_app(total_app_info, ctx)
+    }
+
+    public fun register_cap_with_governance(
+        _: &GovernanceCap,
+        total_app_info: &mut TotalAppInfo,
+        ctx: &mut TxContext
+    ): AppCap {
+        register_app(total_app_info, ctx)
     }
 
     public fun app_id(app_id: &AppCap): u16 {
         app_id.app_id
     }
 
-    fun register_app(_: &AppManagerCap, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
+    fun register_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
         let count = total_app_info.count;
         let app_id = AppCap {
             id: object::new(ctx),

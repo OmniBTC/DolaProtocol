@@ -1,5 +1,6 @@
 module wormhole_bridge::bridge_pool {
     use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
+    use governance::governance::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
     use sui::event;
@@ -17,15 +18,13 @@ module wormhole_bridge::bridge_pool {
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
 
-    const EMUST_DEPLOYER: u64 = 0;
-
     struct PoolState has key, store {
         id: UID,
         pool_cap: PoolCap,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<u16, ExternalAddress>,
-        // todo! Deleta after wormhole running
+        // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>
     }
 
@@ -40,11 +39,15 @@ module wormhole_bridge::bridge_pool {
         amount: u64
     }
 
-    public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
+    public entry fun initialize_wormhole_with_governance(
+        governance: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        ctx: &mut TxContext
+    ) {
         transfer::share_object(
             PoolState {
                 id: object::new(ctx),
-                pool_cap: pool::register_cap(ctx),
+                pool_cap: pool::register_cap(governance, ctx),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
@@ -54,13 +57,12 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun register_remote_bridge(
+        _: &GovernanceCap,
         pool_state: &mut PoolState,
         emitter_chain_id: u16,
         emitter_address: vector<u8>,
         _ctx: &mut TxContext
     ) {
-        // todo! change into govern permission
-
         // todo! consider remote register
         vec_map::insert(
             &mut pool_state.registered_emitters,

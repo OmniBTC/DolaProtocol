@@ -3,7 +3,7 @@ module user_manager::user_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
-    use governance::governance::{Self, GovernanceExternalCap};
+    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::bcs;
     use sui::object::{Self, UID, uid_to_address};
@@ -52,6 +52,10 @@ module user_manager::user_manager {
     public entry fun register_admin_cap(user_manager: &mut UserManagerInfo, govern: &mut GovernanceExternalCap) {
         let admin = UserManagerAdminCap { user_manager: uid_to_address(&user_manager.id), count: 0 };
         governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
+    }
+
+    public fun register_cap_with_governance(_: &GovernanceCap): UserManagerCap {
+        UserManagerCap {}
     }
 
     public fun register_cap_with_admin(admin: &mut UserManagerAdminCap): UserManagerCap {

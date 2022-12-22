@@ -4,6 +4,7 @@ module omnipool::pool {
     use std::vector;
 
     use dola_types::types::{convert_address_to_dola, convert_pool_to_dola, DolaAddress, convert_dola_to_address, dola_address, encode_dola_address, decode_dola_address};
+    use governance::governance::GovernanceCap;
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
@@ -22,7 +23,7 @@ module omnipool::pool {
 
     const EINVALID_TOKEN: u64 = 2;
 
-    const DOLAID: u16 = 0;
+    const DOLA_CHAIN_ID: u16 = 0;
 
 
     /// The user_addr's information is recorded in the protocol, and the pool only needs to record itself
@@ -37,8 +38,7 @@ module omnipool::pool {
         id: UID
     }
 
-    public fun register_cap(ctx: &mut TxContext): PoolCap {
-        // todo! consider into govern
+    public fun register_cap(_: &GovernanceCap, ctx: &mut TxContext): PoolCap {
         PoolCap {
             id: object::new(ctx)
         }
@@ -451,7 +451,6 @@ module omnipool::pool {
         assert!(length == index, EINVALID_LENGTH);
 
         (pool_addr, user_addr, amount)
-
     }
 
 
