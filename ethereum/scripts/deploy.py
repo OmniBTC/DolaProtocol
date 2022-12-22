@@ -1,6 +1,6 @@
 from brownie import LendingPortal, OmniPool, BridgePool, MockToken
 
-from scripts.helpful_scripts import get_account, get_wormhole, get_wormhole_chain_id, zero_address
+from scripts.init import get_account, get_wormhole, get_wormhole_chain_id, zero_address
 
 
 def deploy():

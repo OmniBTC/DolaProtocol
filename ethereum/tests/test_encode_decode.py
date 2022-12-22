@@ -1,7 +1,7 @@
 from brownie import EncodeDecode
 from pytest import fixture
 
-from scripts.helpful_scripts import get_account, padding_to_bytes
+from scripts.init import get_account, padding_to_bytes
 
 
 @fixture

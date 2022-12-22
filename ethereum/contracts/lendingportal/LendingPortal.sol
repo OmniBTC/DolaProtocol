@@ -42,13 +42,14 @@ contract LendingPortal {
     // withdraw use 8 decimal
     function withdraw(
         address pool,
-        uint64 amount,
-        uint16 dstChainId
+        bytes memory receiver,
+        uint16 dstChainId,
+        uint64 amount
     ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             WITHDRAW,
             amount,
-            LibDolaTypes.addressToDolaAddress(dstChainId, msg.sender),
+            LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
         IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
@@ -60,13 +61,14 @@ contract LendingPortal {
 
     function borrow(
         address pool,
-        uint64 amount,
-        uint16 dstChainId
+        bytes memory receiver,
+        uint16 dstChainId,
+        uint64 amount
     ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             BORROW,
             amount,
-            LibDolaTypes.addressToDolaAddress(dstChainId, msg.sender),
+            LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
         IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
@@ -93,22 +95,24 @@ contract LendingPortal {
     }
 
     function liquidate(
-        address depositPool,
+        bytes memory receiver,
+        uint16 dstChainId,
+        address debtPool,
         uint256 amount,
-        address withdrawPool,
-        uint64 punished
+        address collateralPool,
+        uint64 liquidateUserId
     ) external {
-        uint8 decimal = IOmniPool(depositPool).decimals();
+        uint8 decimal = IOmniPool(debtPool).decimals();
         bytes memory appPayload = LibLending.encodeAppPayload(
             LIQUIDATE,
             LibDecimals.fixAmountDecimals(amount, decimal),
-            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
-            punished
+            LibDolaTypes.DolaAddress(dstChainId, receiver),
+            liquidateUserId
         );
         IWormholeBridge(bridgePool).sendDepositAndWithdraw(
-            depositPool,
+            debtPool,
             amount,
-            withdrawPool,
+            collateralPool,
             APPID,
             appPayload
         );
