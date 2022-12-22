@@ -7,7 +7,7 @@ module governance::governance {
     use sui::bcs;
     use sui::dynamic_field;
     use sui::event::emit;
-    use sui::object::{Self, UID, id_address};
+    use sui::object::{Self, UID, id_address, uid_to_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
@@ -55,8 +55,8 @@ module governance::governance {
 
     /// Govern the calls of other contracts, and other contracts
     /// using governance only need to take this cap parameter.
-    struct GovernanceCap has key, store {
-        id: UID
+    struct GovernanceCap has store, drop {
+        governance_manager: address
     }
 
     /// Current governance members
@@ -144,11 +144,10 @@ module governance::governance {
     }
 
     public entry fun register_governance_cap(
-        _: &GovernanceManagerCap,
+        governance_manager: &GovernanceManagerCap,
         governance_external_cap: &mut GovernanceExternalCap,
-        ctx: &mut TxContext
     ) {
-        let cap = GovernanceCap { id: object::new(ctx) };
+        let cap = GovernanceCap { governance_manager: uid_to_address(&governance_manager.id) };
         add_external_cap(governance_external_cap, hash::sha3_256(bcs::to_bytes(&cap)), cap);
     }
 

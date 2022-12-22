@@ -4,7 +4,7 @@ module lending::storage {
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
-    use governance::governance::{Self, GovernanceExternalCap};
+    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
     use oracle::oracle::{PriceOracle, get_timestamp};
     use sui::bcs;
     use sui::object::{Self, UID, uid_to_address};
@@ -103,6 +103,10 @@ module lending::storage {
 
     public fun register_cap_with_admin(admin: &mut StorageAdminCap): StorageCap {
         admin.count = admin.count + 1;
+        StorageCap {}
+    }
+
+    public fun register_cap_with_governance(_: &GovernanceCap): StorageCap {
         StorageCap {}
     }
 
