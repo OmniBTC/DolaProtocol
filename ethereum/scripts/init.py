@@ -16,7 +16,7 @@ from brownie.network import priority_fee
 from multiprocessing import Queue, Process, set_start_method
 
 from brownie.project import get_loaded_projects
-from brownie import Contract, OmniPool
+from brownie import Contract, OmniPool, BridgePool
 
 NON_FORKED_LOCAL_BLOCKCHAIN_ENVIRONMENTS = [
     "hardhat", "development", "ganache"]
@@ -224,3 +224,9 @@ def btc_pool():
 def get_pool_token(pool):
     omnipool = Contract.from_abi("OmniPool", pool, OmniPool.abi)
     return omnipool.token()
+
+
+def get_latest_vaa():
+    bridge_pool = Contract.from_abi(
+        "BridgePool", BridgePool[-1], BridgePool.abi)
+    return bridge_pool.getLatestVAA()
