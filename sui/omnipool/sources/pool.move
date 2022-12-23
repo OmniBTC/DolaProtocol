@@ -454,8 +454,15 @@ module omnipool::pool {
     }
 
 
+    #[test_only]
+    public fun register_pool_cap_for_testing(ctx: &mut TxContext): PoolCap {
+        PoolCap {
+            id: object::new(ctx),
+        }
+    }
+
     #[test]
-    fun test_encode_decode() {
+    public fun test_encode_decode() {
         let pool = @0x11;
         let user = @0x22;
         let amount = 100;
@@ -560,7 +567,7 @@ module omnipool::pool {
         test_scenario::next_tx(scenario, manager);
         {
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
-            let manager_cap = register_cap(test_scenario::ctx(scenario));
+            let manager_cap = register_pool_cap_for_testing(test_scenario::ctx(scenario));
             let ctx = test_scenario::ctx(scenario);
             let pool_addr = convert_pool_to_dola<SUI>();
 

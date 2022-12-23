@@ -2,18 +2,17 @@ module example_proposal::governance_actions {
     use std::ascii::string;
     use std::option;
 
-    use wormhole::state::State;
-
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::create_dola_address;
     use governance::governance::{Self, Governance, GovernanceExternalCap, VoteExternalCap, GovernanceCap};
-    use lending::storage::{Storage, StorageAdminCap};
+    use lending::storage::Storage;
     use lending::wormhole_adapter::WormholeAdapater;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::tx_context::TxContext;
-    use wormhole_bridge::bridge_core;
-    use wormhole_bridge::bridge_pool;
+    use wormhole::state::State;
+    use wormhole_bridge::bridge_core::{Self, CoreState};
+    use wormhole_bridge::bridge_pool::{Self, PoolState};
 
     public entry fun vote_init_bridge_cap(
         gov: &mut Governance,
@@ -71,6 +70,44 @@ module example_proposal::governance_actions {
         governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
     }
 
+    public entry fun vote_register_core_remote_bridge(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        core_state: &mut CoreState,
+        emitter_chain_id: u16,
+        emitter_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, governance_external_cap, vote, ctx);
+
+        if (option::is_some(&flash_cap)) {
+            let governance_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
+            bridge_core::register_remote_bridge(governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
+        };
+
+        governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
+    }
+
+    public entry fun vote_register_pool_remote_bridge(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        pool_state: &mut PoolState,
+        emitter_chain_id: u16,
+        emitter_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, governance_external_cap, vote, ctx);
+
+        if (option::is_some(&flash_cap)) {
+            let governance_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
+            bridge_pool::register_remote_bridge(governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
+        };
+
+        governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
+    }
+
 
     public entry fun vote_register_new_pool(
         gov: &mut Governance,
@@ -120,12 +157,13 @@ module example_proposal::governance_actions {
         storage: &mut Storage,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<StorageAdminCap>(gov, governance_external_cap, vote, ctx);
+        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, governance_external_cap, vote, ctx);
 
         if (option::is_some(&flash_cap)) {
-            let external_cap = governance::borrow_external_cap<StorageAdminCap>(&mut flash_cap);
+            let external_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
+            let storage_cap = lending::storage::register_cap_with_governance(external_cap);
             lending::storage::register_new_reserve(
-                external_cap,
+                &storage_cap,
                 storage,
                 oracle,
                 dola_pool_id,

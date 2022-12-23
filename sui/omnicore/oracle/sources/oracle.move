@@ -1,5 +1,7 @@
 /// Simply update the prices and get them for testing purposes only,
 /// prices will be obtained from other oracles subsequently.
+///
+/// Note: This module is currently only used for testing
 module oracle::oracle {
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};

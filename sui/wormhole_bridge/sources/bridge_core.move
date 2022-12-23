@@ -44,21 +44,7 @@ module wormhole_bridge::bridge_core {
         nonce: u64
     }
 
-    public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
-        transfer::share_object(
-            CoreState {
-                id: object::new(ctx),
-                user_manager_cap: option::none(),
-                pool_manager_cap: option::none(),
-                sender: wormhole::register_emitter(wormhole_state, ctx),
-                consumed_vaas: object_table::new(ctx),
-                registered_emitters: vec_map::empty(),
-                cache_vaas: table::new(ctx)
-            }
-        );
-    }
-
-    public entry fun initialize_wormhole_with_governance(
+    public fun initialize_wormhole_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
@@ -76,15 +62,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun transfer_pool_manager_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
-        core_state.pool_manager_cap = option::some(pool_manager_cap);
-    }
-
-    public fun transfer_user_manager_cap(core_state: &mut CoreState, user_manager_cap: UserManagerCap) {
-        core_state.user_manager_cap = option::some(user_manager_cap);
-    }
-
-    public entry fun register_remote_bridge(
+    public fun register_remote_bridge(
         _: &GovernanceCap,
         core_state: &mut CoreState,
         emitter_chain_id: u16,

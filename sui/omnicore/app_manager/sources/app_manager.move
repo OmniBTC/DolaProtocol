@@ -1,16 +1,8 @@
 module app_manager::app_manager {
-    use std::hash;
-
-    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
-    use sui::bcs;
-    use sui::object::{Self, UID, uid_to_address};
+    use governance::governance::GovernanceCap;
+    use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::TxContext;
-
-    struct AppManagerCap has store, drop {
-        total_app_info: address,
-        count: u16
-    }
 
     struct TotalAppInfo has key, store {
         id: UID,
@@ -27,20 +19,6 @@ module app_manager::app_manager {
             id: object::new(ctx),
             count: 0
         })
-    }
-
-    public entry fun register_admin_cap(total_app_info: &mut TotalAppInfo, govern: &mut GovernanceExternalCap) {
-        let admin = AppManagerCap { total_app_info: uid_to_address(&total_app_info.id), count: 0 };
-        governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
-    }
-
-    public fun register_cap_with_admin(
-        admin: &mut AppManagerCap,
-        total_app_info: &mut TotalAppInfo,
-        ctx: &mut TxContext
-    ): AppCap {
-        admin.count = admin.count + 1;
-        register_app(total_app_info, ctx)
     }
 
     public fun register_cap_with_governance(

@@ -1,14 +1,12 @@
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
     use std::ascii::String;
-    use std::hash;
     use std::option::{Self, Option};
     use std::vector;
 
     use dola_types::types::{DolaAddress, dola_chain_id};
-    use governance::governance::{Self, GovernanceExternalCap, GovernanceCap};
-    use sui::bcs;
-    use sui::object::{Self, UID, uid_to_address};
+    use governance::governance::GovernanceCap;
+    use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
@@ -31,11 +29,6 @@ module pool_manager::pool_manager {
     const ENONEXISTENT_RESERVE: u64 = 4;
 
     const ENONEXISTENT_CATALOG: u64 = 5;
-
-    struct PoolManagerAdminCap has store, drop {
-        pool_manager: address,
-        count: u64
-    }
 
     struct PoolManagerCap has store, drop {}
 
@@ -101,24 +94,8 @@ module pool_manager::pool_manager {
         pool_info.name
     }
 
-    public entry fun register_admin_cap(pool_manager: &mut PoolManagerInfo, govern: &mut GovernanceExternalCap) {
-        let admin = PoolManagerAdminCap { pool_manager: uid_to_address(&pool_manager.id), count: 0 };
-        governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
-    }
-
-    public fun register_cap_with_admin(admin: &mut PoolManagerAdminCap): PoolManagerCap {
-        admin.count = admin.count + 1;
-        PoolManagerCap {}
-    }
-
     public fun register_cap_with_governance(_: &GovernanceCap): PoolManagerCap {
         PoolManagerCap {}
-    }
-
-    public fun register_cap(admin: &mut Option<PoolManagerAdminCap>): PoolManagerCap {
-        assert!(option::is_some(admin), EMUST_SOME);
-        let admin = option::borrow_mut(admin);
-        register_cap_with_admin(admin)
     }
 
     public fun find_pool_by_chain(

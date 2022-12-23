@@ -39,7 +39,7 @@ module wormhole_bridge::bridge_pool {
         amount: u64
     }
 
-    public entry fun initialize_wormhole_with_governance(
+    public fun initialize_wormhole_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
@@ -56,7 +56,7 @@ module wormhole_bridge::bridge_pool {
         );
     }
 
-    public entry fun register_remote_bridge(
+    public fun register_remote_bridge(
         _: &GovernanceCap,
         pool_state: &mut PoolState,
         emitter_chain_id: u16,
