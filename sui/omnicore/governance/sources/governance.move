@@ -56,7 +56,7 @@ module governance::governance {
     /// Govern the calls of other contracts, and other contracts
     /// using governance only need to take this cap parameter.
     struct GovernanceCap has store, drop {
-        governance_manager: address
+        governance_external: address
     }
 
     /// Current governance members
@@ -144,10 +144,9 @@ module governance::governance {
     }
 
     public entry fun register_governance_cap(
-        governance_manager: &GovernanceManagerCap,
         governance_external_cap: &mut GovernanceExternalCap,
     ) {
-        let cap = GovernanceCap { governance_manager: uid_to_address(&governance_manager.id) };
+        let cap = GovernanceCap { governance_external: uid_to_address(&governance_external_cap.id) };
         add_external_cap(governance_external_cap, hash::sha3_256(bcs::to_bytes(&cap)), cap);
     }
 

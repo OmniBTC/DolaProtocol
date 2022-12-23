@@ -1,8 +1,7 @@
 import time
 
-from sui_brownie import CacheObject
-
 from dola_sui_sdk import load
+from sui_brownie import CacheObject
 
 RAY = 100000000
 
@@ -64,6 +63,14 @@ def register_lending_storage_admin_cap():
     return result['events'][-1]['moveEvent']['fields']['hash']
 
 
+def register_governnace_cap():
+    governance = load.governance_package()
+    result = governance.governance.register_governance_cap(
+        governance.governance.GovernanceExternalCap[-1]
+    )
+    return result['events'][-1]['moveEvent']['fields']['hash']
+
+
 def register_token_price(dola_pool_id, price, decimal):
     '''
     public entry fun register_token_price(
@@ -91,6 +98,156 @@ def register_token_price(dola_pool_id, price, decimal):
 def create_vote_external_cap(hash):
     governance = load.governance_package()
     governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
+
+
+def vote_init_bridge_cap():
+    '''
+    public entry fun vote_init_bridge_cap(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        state: &mut State,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    wormhole = load.wormhole_package()
+
+    example_proposal.governance_actions.vote_init_bridge_cap(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        wormhole.state.State[-1]
+    )
+
+
+def vote_init_lending_storage():
+    '''
+    public entry fun vote_init_lending_storage(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        storage: &mut Storage,
+        total_app_info: &mut TotalAppInfo,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    app_manager = load.app_manager_package()
+    governance = load.governance_package()
+    lending = load.lending_package()
+
+    example_proposal.governance_actions.vote_init_lending_storage(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        lending.storage.Storage[-1],
+        app_manager.app_manager.TotalAppInfo[-1],
+    )
+
+
+def vote_init_lending_wormhole_adapter():
+    '''
+    public entry fun vote_init_lending_wormhole_adapter(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        wormhole_adapater: &mut WormholeAdapater,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    lending = load.lending_package()
+
+    example_proposal.governance_actions.vote_init_lending_wormhole_adapter(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        lending.wormhole_adapter.WormholeAdapater[-1]
+    )
+
+
+def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
+    '''
+    public entry fun vote_register_new_pool(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        pool_dola_address: vector<u8>,
+        pool_dola_chain_id: u16,
+        dola_pool_name: vector<u8>,
+        dola_pool_id: u16,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    if isinstance(coin_type, str):
+        if "0x" in coin_type[:2] and dst_chain == 0:
+            # Sui not with 0x, Aptos with 0x
+            coin_type = coin_type[2:]
+        coin_type = list(bytes(coin_type, "ascii"))
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    pool_manager = load.pool_manager_package()
+    example_proposal.governance_actions.vote_register_new_pool(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        coin_type,
+        dst_chain,
+        list(pool_name),
+        pool_id
+    )
+
+
+def vote_register_new_reserve(dola_pool_id):
+    '''
+    public entry fun vote_register_new_reserve(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        treasury: u64,
+        treasury_factor: u64,
+        collateral_coefficient: u64,
+        borrow_coefficient: u64,
+        base_borrow_rate: u64,
+        borrow_rate_slope1: u64,
+        borrow_rate_slope2: u64,
+        optimal_utilization: u64,
+        storage: &mut Storage,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    example_proposal = load.example_proposal_package()
+    governance = load.governance_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+    example_proposal.init_lending_storage.vote_register_new_reserve_proposal(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        oracle.oracle.PriceOracle[-1],
+        dola_pool_id,
+        0,
+        int(0.01 * RAY),
+        int(0.01 * RAY),
+        int(0.01 * RAY),
+        int(0.02 * RAY),
+        int(0.07 * RAY),
+        int(3 * RAY),
+        int(0.45 * RAY),
+        lending.storage.Storage[-1]
+    )
 
 
 def init_user_manager_cap_for_bridge():
@@ -315,51 +472,47 @@ def bridge_core_read_vaa(index=0):
 
 
 def main():
-    # 1. init bridge
-    init_bridge_core()
-    init_bridge_pool()
-
-    # 2. init omnipool
+    # 1. init omnipool
     create_pool(usdt())
     create_pool(btc())
     claim_test_coin(btc())
     force_claim_test_coin(usdt(), 100000)
 
-    # 3. init oracle
+    # 2. init oracle
     register_token_price(0, 2000000, 2)
     register_token_price(1, 100, 2)
 
-    # 4. init user manager
-    init_user_manager_cap_for_bridge()
+    # 3. register governance
+    hash = register_governnace_cap()
+
+    # 4. init bridge
+    create_vote_external_cap(hash)
+    vote_init_bridge_cap()
 
     # 5. init pool manager
-    hash = register_pool_manager_admin_cap()
     create_vote_external_cap(hash)
-    vote_pool_manager_cap_proposal()
+    vote_register_new_pool(0, b"BTC", btc())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool_proposal(0, b"BTC", btc())
-
-    create_vote_external_cap(hash)
-    vote_register_new_pool_proposal(1, b"USDT", usdt())
+    vote_register_new_pool(1, b"USDT", usdt())
     # 6. init lending storage
-
-    hash = register_app_manager_cap()
     create_vote_external_cap(hash)
-    vote_app_cap_proposal()
-    # register storage cap
-    hash = register_lending_storage_admin_cap()
+    vote_init_lending_storage()
+
     create_vote_external_cap(hash)
 
-    vote_storage_cap_proposal()
+    vote_init_lending_wormhole_adapter()
+
     # register reserves
-    create_vote_external_cap(hash)
-
-    vote_register_new_reserve_proposal(0)
+    hash = register_lending_storage_admin_cap()
 
     create_vote_external_cap(hash)
 
-    vote_register_new_reserve_proposal(1)
+    vote_register_new_reserve(0)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(1)
 
 
 if __name__ == '__main__':
