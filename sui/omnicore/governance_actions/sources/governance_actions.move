@@ -1,4 +1,4 @@
-module example_proposal::governance_actions {
+module governance_actions::governance_actions {
     use std::ascii::string;
     use std::option;
 

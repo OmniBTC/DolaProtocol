@@ -176,7 +176,7 @@ example_proposal_package = sui_brownie.SuiPackage(
     network=net,
     is_compile=False,
     package_id=None,
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/example_proposal")
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance_actions")
 )
 
 example_proposal_package.publish_package(replace_address=dict(
@@ -212,5 +212,5 @@ print(f"wormhole_bridge={wormhole_bridge_package.package_id}")
 print(f"lending={lending_package.package_id}")
 print(f"lending_portal={lending_portal_package.package_id}")
 print(f"external_interfaces={external_interfaces_package.package_id}")
-print(f"example_proposal={example_proposal_package.package_id}")
+print(f"governance_actions={example_proposal_package.package_id}")
 print(f"test_coins={test_coins_package.package_id}")

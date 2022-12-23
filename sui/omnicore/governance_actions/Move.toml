@@ -1,9 +1,9 @@
 [package]
-name = "ExampleProposal"
+name = "GovernanceActions"
 version = "0.0.1"
 
 [addresses]
-example_proposal = "0x0"
+governance_actions = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
 wormhole = "0x0"
