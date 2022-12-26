@@ -1,7 +1,8 @@
 import time
 
-from dola_sui_sdk import load
 from sui_brownie import CacheObject
+
+from dola_sui_sdk import load
 
 RAY = 100000000
 
@@ -65,11 +66,11 @@ def vote_init_bridge_cap():
     )
     :return:
     '''
-    example_proposal = load.example_proposal_package()
+    governance_actions = load.governance_actions_package()
     governance = load.governance_package()
     wormhole = load.wormhole_package()
 
-    example_proposal.governance_actions.vote_init_bridge_cap(
+    governance_actions.governance_actions.vote_init_bridge_cap(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
@@ -89,12 +90,12 @@ def vote_init_lending_storage():
     )
     :return:
     '''
-    example_proposal = load.example_proposal_package()
+    governance_actions = load.governance_actions_package()
     app_manager = load.app_manager_package()
     governance = load.governance_package()
     lending = load.lending_package()
 
-    example_proposal.governance_actions.vote_init_lending_storage(
+    governance_actions.governance_actions.vote_init_lending_storage(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
@@ -114,11 +115,11 @@ def vote_init_lending_wormhole_adapter():
     )
     :return:
     '''
-    example_proposal = load.example_proposal_package()
+    governance_actions = load.governance_actions_package()
     governance = load.governance_package()
     lending = load.lending_package()
 
-    example_proposal.governance_actions.vote_init_lending_wormhole_adapter(
+    governance_actions.governance_actions.vote_init_lending_wormhole_adapter(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
@@ -146,10 +147,10 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
             # Sui not with 0x, Aptos with 0x
             coin_type = coin_type[2:]
         coin_type = list(bytes(coin_type, "ascii"))
-    example_proposal = load.example_proposal_package()
+    governance_actions = load.governance_actions_package()
     governance = load.governance_package()
     pool_manager = load.pool_manager_package()
-    example_proposal.governance_actions.vote_register_new_pool(
+    governance_actions.governance_actions.vote_register_new_pool(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
@@ -182,11 +183,11 @@ def vote_register_new_reserve(dola_pool_id):
     )
     :return:
     '''
-    example_proposal = load.example_proposal_package()
+    governance_actions = load.governance_actions_package()
     governance = load.governance_package()
     lending = load.lending_package()
     oracle = load.oracle_package()
-    example_proposal.init_lending_storage.vote_register_new_reserve_proposal(
+    governance_actions.governance_actions.vote_register_new_reserve_proposal(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],

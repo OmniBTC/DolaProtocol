@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import sui_brownie
+
 from dola_sui_sdk import DOLA_CONFIG
 
 net = "sui-devnet"
@@ -185,6 +186,7 @@ governance_actions_package = sui_brownie.SuiPackage(
 governance_actions_package.publish_package(replace_address=dict(
     pool_manager=pool_manager_package.package_id,
     user_manager=user_manager_package.package_id,
+    wormhole=wormhole_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
     lending=lending_package.package_id,
