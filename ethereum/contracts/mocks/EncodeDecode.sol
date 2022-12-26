@@ -76,13 +76,11 @@ contract EncodeDecode {
     }
 
     function encodeReceiveWithdrawPayload(
-        address pool,
-        address user,
-        uint64 amount,
-        bytes memory tokenName
+        LibDolaTypes.DolaAddress memory pool,
+        LibDolaTypes.DolaAddress memory user,
+        uint64 amount
     ) external pure returns (bytes memory) {
-        return
-            LibPool.encodeReceiveWithdrawPayload(pool, user, amount, tokenName);
+        return LibPool.encodeReceiveWithdrawPayload(pool, user, amount);
     }
 
     function decodeReceiveWithdrawPayload(bytes memory payload)

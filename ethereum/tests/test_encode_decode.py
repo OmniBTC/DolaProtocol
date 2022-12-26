@@ -1,18 +1,19 @@
-from brownie import EncodeDecode
+from brownie import EncodeDecode, accounts
 from pytest import fixture
 
-from scripts.init import get_account, padding_to_bytes
+
+def account():
+    return accounts[0]
 
 
 @fixture
 def encode_decode():
-    account = get_account()
-    return EncodeDecode.deploy({'from': account})
+    return EncodeDecode.deploy({'from': account()})
 
 
 def test_encode_decode(encode_decode):
-    pool = padding_to_bytes("1", "left", 20)
-    user = padding_to_bytes("2", "left", 20)
+    pool = "0x" + "1".zfill(39)
+    user = "0x" + "2".zfill(39)
     amount = 1e8
     app_id = 0
     app_payload = b"test"
@@ -42,7 +43,7 @@ def test_encode_decode(encode_decode):
     assert result == ((dola_chain_id, pool),
                       (dola_chain_id, user), app_id, f"0x{app_payload.hex()}")
 
-    withdraw_pool = padding_to_bytes("3", "left", 20)
+    withdraw_pool = "0x" + "3".zfill(39)
     send_deposit_withdraw_payload = encode_decode.encodeSendDepositAndWithdrawPayload(
         [dola_chain_id, pool],
         [dola_chain_id, user],
@@ -55,3 +56,12 @@ def test_encode_decode(encode_decode):
         send_deposit_withdraw_payload)
     assert result == ((dola_chain_id, pool), (dola_chain_id, user),
                       amount, (dola_chain_id, withdraw_pool), app_id, f"0x{app_payload.hex()}")
+
+    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+        [dola_chain_id, pool],
+        [dola_chain_id, user],
+        amount,
+    )
+    result = encode_decode.decodeReceiveWithdrawPayload(
+        receive_withdraw_payload)
+    assert result == ((dola_chain_id, pool), (dola_chain_id, user), amount)

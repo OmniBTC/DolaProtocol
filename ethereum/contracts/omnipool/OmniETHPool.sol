@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../libraries/LibPool.sol";
-import "../../libraries/LibDecimals.sol";
-import "../../libraries/LibDolaTypes.sol";
+import "../libraries/LibPool.sol";
+import "../libraries/LibDecimals.sol";
+import "../libraries/LibDolaTypes.sol";
 
 contract OmniETHPool {
     uint256 public balance;
@@ -82,6 +82,7 @@ contract OmniETHPool {
             amount,
             decimals()
         );
+        balance -= fixedAmount;
         (bool success, ) = to.call{value: fixedAmount}("");
         require(success, "WETH: ETH transfer failed");
     }
