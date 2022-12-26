@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../libraries/LibDolaTypes.sol";
-import "../../libraries/LibLending.sol";
-import "../../libraries/LibPool.sol";
+import "../libraries//LibDolaTypes.sol";
+import "../libraries//LibLending.sol";
+import "../libraries//LibPool.sol";
 
 contract EncodeDecode {
     function encodeSendDepositPayload(

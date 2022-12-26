@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "../../interfaces/IERC20.sol";
-import "../../libraries/LibPool.sol";
-import "../../libraries/LibDecimals.sol";
-import "../../libraries/LibDolaTypes.sol";
+import "../libraries//LibPool.sol";
+import "../libraries//LibDecimals.sol";
+import "../libraries//LibDolaTypes.sol";
 
 contract OmniPool {
     uint256 public balance;
