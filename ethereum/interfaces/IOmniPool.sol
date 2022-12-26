@@ -3,6 +3,8 @@
 pragma solidity ^0.8.0;
 
 interface IOmniPool {
+    function token() external view returns (address);
+
     function decimals() external view returns (uint8);
 
     function rely(address bridge) external;
@@ -13,7 +15,7 @@ interface IOmniPool {
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external returns (bytes memory);
+    ) external payable returns (bytes memory);
 
     function withdrawTo(uint16 appId, bytes memory appPayload)
         external
@@ -27,5 +29,5 @@ interface IOmniPool {
         address withdrawPool,
         uint16 appId,
         bytes memory appPayload
-    ) external returns (bytes memory);
+    ) external payable returns (bytes memory);
 }

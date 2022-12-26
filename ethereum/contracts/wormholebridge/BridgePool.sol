@@ -90,13 +90,19 @@ contract BridgePool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = IOmniPool(pool).depositTo(
-            amount,
-            appId,
-            appPayload
-        );
+        bytes memory payload;
+        if (IOmniPool(pool).token() == address(0) && msg.value >= amount) {
+            payload = IOmniPool(pool).depositTo{value: amount}(
+                amount,
+                appId,
+                appPayload
+            );
+        } else {
+            payload = IOmniPool(pool).depositTo(amount, appId, appPayload);
+        }
+
         cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: msg.value}(
+        wormhole().publishMessage{value: getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
@@ -111,7 +117,7 @@ contract BridgePool {
     ) external payable {
         bytes memory payload = IOmniPool(pool).withdrawTo(appId, appPayload);
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: msg.value}(
+        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
@@ -126,14 +132,25 @@ contract BridgePool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = IOmniPool(depositPool).depositAndWithdraw(
-            depositAmount,
-            withdrawPool,
-            appId,
-            appPayload
-        );
+        bytes memory payload;
+        if (
+            IOmniPool(depositPool).token() == address(0) &&
+            msg.value >= depositAmount
+        ) {
+            payload = IOmniPool(depositPool).depositAndWithdraw{
+                value: depositAmount
+            }(depositAmount, withdrawPool, appId, appPayload);
+        } else {
+            payload = IOmniPool(depositPool).depositAndWithdraw(
+                depositAmount,
+                withdrawPool,
+                appId,
+                appPayload
+            );
+        }
+
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: msg.value}(
+        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
