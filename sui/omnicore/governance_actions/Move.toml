@@ -1,11 +1,12 @@
 [package]
-name = "ExampleProposal"
+name = "GovernanceActions"
 version = "0.0.1"
 
 [addresses]
-example_proposal = "0x0"
+governance_actions = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
+wormhole = "0x0"
 wormhole_bridge = "0x0"
 governance = "0x0"
 lending = "0x0"
@@ -18,6 +19,11 @@ sui = "0x2"
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
 rev = "a8af20d94e951ecfb6d0cd47c23cf6393013d8a8"
+
+[dependencies.Wormhole]
+git = "https://github.com/OmniBTC/wormhole.git"
+subdir = "sui/wormhole"
+rev = "1e65074c0df5900a881d053147d61300ad67f501"
 
 [dependencies.AppManager]
 local = "../app_manager"

@@ -4,6 +4,7 @@ version = "0.0.1"
 
 [addresses]
 user_manager = "0x0"
+governance = "0x0"
 dola_types = "0x0"
 serde = "0x0"
 sui = "0x2"
@@ -18,3 +19,6 @@ local = "../../dola_types"
 
 [dependencies.Serde]
 local = "../../serde"
+
+[dependencies.Governance]
+local = "../governance"

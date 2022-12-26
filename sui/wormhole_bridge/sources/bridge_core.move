@@ -3,6 +3,7 @@ module wormhole_bridge::bridge_core {
 
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::types::DolaAddress;
+    use governance::governance::GovernanceCap;
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
@@ -14,7 +15,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
+    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -34,7 +35,7 @@ module wormhole_bridge::bridge_core {
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<u16, ExternalAddress>,
-        // todo! Deleta after wormhole running
+        // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>
     }
 
@@ -43,12 +44,16 @@ module wormhole_bridge::bridge_core {
         nonce: u64
     }
 
-    public entry fun initialize_wormhole(wormhole_state: &mut WormholeState, ctx: &mut TxContext) {
+    public fun initialize_wormhole_with_governance(
+        governance: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        ctx: &mut TxContext
+    ) {
         transfer::share_object(
             CoreState {
                 id: object::new(ctx),
-                user_manager_cap: option::none(),
-                pool_manager_cap: option::none(),
+                user_manager_cap: option::some(user_manager::register_cap_with_governance(governance)),
+                pool_manager_cap: option::some(pool_manager::register_cap_with_governance(governance)),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
@@ -57,22 +62,13 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun transfer_pool_manage_cap(core_state: &mut CoreState, pool_manager_cap: PoolManagerCap) {
-        core_state.pool_manager_cap = option::some(pool_manager_cap);
-    }
-
-    public fun transfer_user_manager_cap(core_state: &mut CoreState, user_manager_cap: UserManagerCap) {
-        core_state.user_manager_cap = option::some(user_manager_cap);
-    }
-
-    public entry fun register_remote_bridge(
+    public fun register_remote_bridge(
+        _: &GovernanceCap,
         core_state: &mut CoreState,
         emitter_chain_id: u16,
         emitter_address: vector<u8>,
         _ctx: &mut TxContext
     ) {
-        // todo! change into govern permission
-
         // todo! consider remote register
         vec_map::insert(
             &mut core_state.registered_emitters,
