@@ -1,11 +1,13 @@
 /// Manage permissions for modules in the protocol
 module governance::governance {
+    use std::hash;
     use std::option::{Self, Option};
     use std::vector;
 
+    use sui::bcs;
     use sui::dynamic_field;
     use sui::event::emit;
-    use sui::object::{Self, UID, id_address};
+    use sui::object::{Self, UID, id_address, uid_to_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
@@ -45,9 +47,16 @@ module governance::governance {
         id: UID
     }
 
-    /// Manage governance members
-    struct GovernanceCap has key, store {
+    /// Manage governance module
+    /// todo: need a more democratic way to use it.
+    struct GovernanceManagerCap has key, store {
         id: UID
+    }
+
+    /// Govern the calls of other contracts, and other contracts
+    /// using governance only need to take this cap parameter.
+    struct GovernanceCap has store, drop {
+        governance_external: address
     }
 
     /// Current governance members
@@ -57,7 +66,7 @@ module governance::governance {
     }
 
     /// Vote by governance members to send a key for a proposal
-    /// or retrun cap from governance
+    /// or retrun cap from governance.
     struct Vote<phantom T> has key {
         id: UID,
         // members address
@@ -92,7 +101,7 @@ module governance::governance {
 
     /// Share a cap so that only the person who owns the key can use it,
     /// or the key can be wrapped in package for use.
-    struct Proposal<T: key + store> has key, store {
+    struct Proposal<T: key + store> has key {
         id: UID,
         cap: Option<T>
     }
@@ -110,7 +119,7 @@ module governance::governance {
     fun init(ctx: &mut TxContext) {
         let members = vector::empty<address>();
         vector::push_back(&mut members, tx_context::sender(ctx));
-        transfer::transfer(GovernanceCap {
+        transfer::transfer(GovernanceManagerCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
         transfer::share_object(Governance {
@@ -134,12 +143,19 @@ module governance::governance {
         })
     }
 
-    public entry fun add_member(_: &GovernanceCap, goverance: &mut Governance, member: address) {
+    public entry fun register_governance_cap(
+        governance_external_cap: &mut GovernanceExternalCap,
+    ) {
+        let cap = GovernanceCap { governance_external: uid_to_address(&governance_external_cap.id) };
+        add_external_cap(governance_external_cap, hash::sha3_256(bcs::to_bytes(&cap)), cap);
+    }
+
+    public entry fun add_member(_: &GovernanceManagerCap, goverance: &mut Governance, member: address) {
         assert!(!vector::contains(&mut goverance.members, &member), EALREADY_MEMBER);
         vector::push_back(&mut goverance.members, member)
     }
 
-    public entry fun remove_member(_: &GovernanceCap, governance: &mut Governance, member: address) {
+    public entry fun remove_member(_: &GovernanceManagerCap, governance: &mut Governance, member: address) {
         is_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
         vector::remove(&mut governance.members, index);
@@ -149,6 +165,7 @@ module governance::governance {
         assert!(vector::contains(&mut goverance.members, &member), ENOT_MEMBER)
     }
 
+    // todo: maybe through number of proxy votes when there is a governance token
     public fun ensure_two_thirds(members_num: u64, votes_num: u64): bool {
         let threshold =
             if (members_num % 3 == 0) {
@@ -426,7 +443,7 @@ module governance::governance {
         };
         test_scenario::next_tx(scenario, first_member);
         {
-            let goverance_cap = test_scenario::take_from_sender<GovernanceCap>(scenario);
+            let goverance_cap = test_scenario::take_from_sender<GovernanceManagerCap>(scenario);
             let goverance = test_scenario::take_shared<Governance>(scenario);
             add_member(&goverance_cap, &mut goverance, second_member);
 
@@ -435,7 +452,7 @@ module governance::governance {
         };
         test_scenario::next_tx(scenario, first_member);
         {
-            let goverance_cap = test_scenario::take_from_sender<GovernanceCap>(scenario);
+            let goverance_cap = test_scenario::take_from_sender<GovernanceManagerCap>(scenario);
             let goverance = test_scenario::take_shared<Governance>(scenario);
             add_member(&goverance_cap, &mut goverance, third_member);
 

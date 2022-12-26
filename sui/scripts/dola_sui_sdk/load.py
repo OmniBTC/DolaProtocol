@@ -4,6 +4,7 @@ from typing import Union
 
 import sui_brownie
 from sui_brownie import CacheObject
+
 from dola_sui_sdk import DOLA_CONFIG
 
 
@@ -92,10 +93,10 @@ def external_interfaces_package(package_id: str = None):
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces"))
 
 
-def example_proposal_package(package_id: str = None):
+def governance_actions_package(package_id: str = None):
     if package_id is None:
-        package_id: str = CacheObject.ExampleProposal[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/example_proposal"))
+        package_id: str = CacheObject.GovernanceActions[-1]
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance_actions"))
 
 
 def test_coins_package(package_id: str = None):

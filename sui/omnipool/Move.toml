@@ -5,6 +5,7 @@ version = "0.0.1"
 [addresses]
 omnipool = "0x0"
 dola_types = "0x0"
+governance = "0x0"
 serde = "0x0"
 sui = "0x2"
 
@@ -18,3 +19,6 @@ local = "../serde"
 
 [dependencies.DolaTypes]
 local = "../dola_types"
+
+[dependencies.Governance]
+local = "../omnicore/governance"

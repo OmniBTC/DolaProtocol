@@ -1,13 +1,11 @@
 module lending::storage {
-    use std::hash;
     use std::option::{Self, Option};
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
-    use governance::governance::{Self, GovernanceExternalCap};
+    use governance::governance::GovernanceCap;
     use oracle::oracle::{PriceOracle, get_timestamp};
-    use sui::bcs;
-    use sui::object::{Self, UID, uid_to_address};
+    use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
@@ -89,22 +87,8 @@ module lending::storage {
         optimal_utilization: u64
     }
 
-    struct StorageAdminCap has store, drop {
-        storage: address,
-        count: u64
-    }
-
     struct StorageCap has store, drop {}
 
-    public entry fun register_admin_cap(storage: &mut Storage, govern: &mut GovernanceExternalCap) {
-        let admin = StorageAdminCap { storage: uid_to_address(&storage.id), count: 0 };
-        governance::add_external_cap(govern, hash::sha3_256(bcs::to_bytes(&admin)), admin);
-    }
-
-    public fun register_cap_with_admin(admin: &mut StorageAdminCap): StorageCap {
-        admin.count = admin.count + 1;
-        StorageCap {}
-    }
 
     fun init(ctx: &mut TxContext) {
         transfer::share_object(Storage {
@@ -113,6 +97,10 @@ module lending::storage {
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
         });
+    }
+
+    public fun register_cap_with_governance(_: &GovernanceCap): StorageCap {
+        StorageCap {}
     }
 
     public fun transfer_app_cap(
@@ -137,7 +125,7 @@ module lending::storage {
     }
 
     public fun register_new_reserve(
-        _: &mut StorageAdminCap,
+        _: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
