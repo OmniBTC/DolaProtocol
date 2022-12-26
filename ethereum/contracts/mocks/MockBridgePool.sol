@@ -6,7 +6,7 @@ import "../libraries//LibBinding.sol";
 import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
-contract BridgePool {
+contract MockBridgePool {
     address wormholeBridge;
     uint32 nonce;
     uint16 dolaChainId;
@@ -76,11 +76,7 @@ contract BridgePool {
             LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
         );
         cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: msg.value}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
+
         increaseNonce();
     }
 
@@ -102,11 +98,6 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
@@ -117,11 +108,6 @@ contract BridgePool {
     ) external payable {
         bytes memory payload = IOmniPool(pool).withdrawTo(appId, appPayload);
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
@@ -150,22 +136,10 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        // todo: use this when more formal
-        // (IWormhole.VM memory vm, , ) = wormhole().parseAndVerifyVM(vaa);
-        // require(!isCompleteVAA(vm.hash), "withdraw already completed");
-        // setVAAComplete(vm.hash);
-        // LibPool.ReceiveWithdrawPayload memory payload = LibPool
-        //     .decodeReceiveWithdrawPayload(vm.payload);
-
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
             .decodeReceiveWithdrawPayload(vaa);
         address pool = LibDolaTypes.dolaAddressToAddress(payload.pool);

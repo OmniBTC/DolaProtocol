@@ -10,7 +10,7 @@ compiler:
 autofetch_sources: True
 dotenv: .env
 networks:
-  default: bsc-test
+  default: development
   development:
     wormhole_chainid: 0
     wormhole: "0x0000000000000000000000000000000000000000"

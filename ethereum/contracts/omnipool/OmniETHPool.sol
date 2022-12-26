@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "../../interfaces/IERC20.sol";
-import "../libraries//LibPool.sol";
-import "../libraries//LibDecimals.sol";
-import "../libraries//LibDolaTypes.sol";
+import "../libraries/LibPool.sol";
+import "../libraries/LibDecimals.sol";
+import "../libraries/LibDolaTypes.sol";
 
-contract OmniPool {
+contract OmniETHPool {
     uint256 public balance;
     address public bridegPool;
     address public token;
@@ -22,18 +21,17 @@ contract OmniPool {
     constructor(
         uint16 poolId,
         uint16 chainId,
-        address bridge,
-        address tokenAddress
+        address bridge
     ) {
         dolaPoolId = poolId;
         dolaChainId = chainId;
         bridegPool = bridge;
-        token = tokenAddress;
+        token = address(0);
         allowances[bridegPool] = true;
     }
 
-    function decimals() public view returns (uint8) {
-        return IERC20(token).decimals();
+    function decimals() public pure returns (uint8) {
+        return 18;
     }
 
     function rely(address bridge) external isBridgePool(msg.sender) {
@@ -48,9 +46,8 @@ contract OmniPool {
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external isBridgePool(msg.sender) returns (bytes memory) {
+    ) external payable isBridgePool(msg.sender) returns (bytes memory) {
         balance += amount;
-        IERC20(token).transferFrom(tx.origin, address(this), amount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
@@ -86,7 +83,8 @@ contract OmniPool {
             decimals()
         );
         balance -= fixedAmount;
-        IERC20(token).transferFrom(address(this), to, fixedAmount);
+        (bool success, ) = to.call{value: fixedAmount}("");
+        require(success, "WETH: ETH transfer failed");
     }
 
     function depositAndWithdraw(
@@ -96,7 +94,6 @@ contract OmniPool {
         bytes memory appPayload
     ) public isBridgePool(msg.sender) returns (bytes memory) {
         balance += depositAmount;
-        IERC20(token).transferFrom(tx.origin, address(this), depositAmount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
@@ -109,4 +106,6 @@ contract OmniPool {
 
         return poolPayload;
     }
+
+    receive() external payable {}
 }

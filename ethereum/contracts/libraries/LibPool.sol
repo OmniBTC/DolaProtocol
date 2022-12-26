@@ -304,19 +304,25 @@ library LibPool {
     }
 
     function encodeReceiveWithdrawPayload(
-        address pool,
-        address user,
-        uint64 amount,
-        bytes memory tokenName
+        LibDolaTypes.DolaAddress memory pool,
+        LibDolaTypes.DolaAddress memory user,
+        uint64 amount
     ) internal pure returns (bytes memory) {
-        bytes memory payload = abi.encodePacked(
-            pool,
-            user,
-            amount,
-            uint16(tokenName.length),
-            tokenName
+        bytes memory poolAddress = LibDolaTypes.encodeDolaAddress(
+            pool.dolaChainId,
+            pool.externalAddress
         );
-
+        bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
+            user.dolaChainId,
+            user.externalAddress
+        );
+        bytes memory payload = abi.encodePacked(
+            uint16(poolAddress.length),
+            poolAddress,
+            uint16(userAddress.length),
+            userAddress,
+            amount
+        );
         return payload;
     }
 
@@ -338,6 +344,7 @@ library LibPool {
         decodeData.pool = LibDolaTypes.decodeDolaAddress(
             payload.slice(index, dataLen)
         );
+        index += dataLen;
 
         dataLen = 2;
         uint16 userLength = payload.toUint16(index);
