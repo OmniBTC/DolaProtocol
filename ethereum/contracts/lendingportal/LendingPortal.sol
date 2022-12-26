@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "../../interfaces/IERC20.sol";
 import "../../interfaces/IWormholeBridge.sol";
 import "../../interfaces/IOmniPool.sol";
-import "../../libraries/LibLending.sol";
-import "../../libraries/LibDecimals.sol";
-import "../../libraries/LibDolaTypes.sol";
+import "../libraries//LibLending.sol";
+import "../libraries//LibDecimals.sol";
+import "../libraries//LibDolaTypes.sol";
 
 contract LendingPortal {
     uint8 public constant APPID = 0;
