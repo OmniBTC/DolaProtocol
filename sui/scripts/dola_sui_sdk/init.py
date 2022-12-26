@@ -187,7 +187,7 @@ def vote_register_new_reserve(dola_pool_id):
     governance = load.governance_package()
     lending = load.lending_package()
     oracle = load.oracle_package()
-    governance_actions.governance_actions.vote_register_new_reserve_proposal(
+    governance_actions.governance_actions.vote_register_new_reserve(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
