@@ -1,6 +1,12 @@
+from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
+from brownie import Contract
+from dola_ethereum_sdk.init import btc_pool, get_pool_token, usdt_pool
 
-from brownie import LendingPortal, BridgePool, ERC20, Contract
-from scripts.init import btc_pool, get_account, get_pool_token, usdt, btc, usdt_pool
+ERC20 = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"]
+LendingPortal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"]
+OmniPool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"]
+BridgePool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"]
+MockToken = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"]
 
 
 def portal_supply(pool, amount):
@@ -140,3 +146,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 def main():
     monitor_supply(usdt_pool())
+
+
+if __name__ == "__main__":
+    set_ethereum_network("bsc-test")
+    main()

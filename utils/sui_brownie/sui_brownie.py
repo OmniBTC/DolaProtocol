@@ -548,14 +548,23 @@ class SuiPackage:
             self.config = yaml.safe_load(fp)
         try:
             env = dotenv_values(self.brownie_config.joinpath(self.config["dotenv"]))
-            self.private_key = env.get("PRIVATE_KEY", None)
-            self.mnemonic = env.get("MNEMONIC", None)
+            self.private_key = None
+            self.mnemonic = None
+            if env.get("PRIVATE_KEY_SUI", None) is not None:
+                self.private_key = env.get("PRIVATE_KEY_SUI")
+            elif env.get("PRIVATE_KEY", None) is not None:
+                self.private_key = env.get("PRIVATE_KEY")
+            elif env.get("MNEMONIC_SUI", None) is not None:
+                self.mnemonic = env.get("MNEMONIC_SUI")
+            elif env.get("MNEMONIC", None) is not None:
+                self.mnemonic = env.get("MNEMONIC")
+            else:
+                raise EnvironmentError
+
             if self.private_key is not None:
                 self.account = Account.load_key(self.private_key)
             elif self.mnemonic is not None:
                 self.account = Account.load_mnemonic(self.mnemonic)
-            else:
-                raise EnvironmentError
         except Exception as e:
             raise e
 
