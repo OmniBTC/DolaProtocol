@@ -1,7 +1,6 @@
 # @Time    : 2022/12/7 17:21
 # @Author  : WeiDai
 # @FileName: relayer.py
-import base64
 import hashlib
 import json
 import logging
@@ -22,6 +21,10 @@ import dola_sui_sdk.lending as dola_sui_lending
 import dola_aptos_sdk
 import dola_aptos_sdk.load as dola_aptos_load
 import dola_aptos_sdk.init as dola_aptos_init
+
+import dola_ethereum_sdk
+import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_ethereum_sdk.init as dola_ethereum_init
 
 FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -65,6 +68,9 @@ class BridgeDict(OrderedDict):
 def bridge_pool():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network("bsc-test")
+
     data = BridgeDict("bridge_pool.json")
     local_logger = logger.getChild(f"[bridge_pool]")
 
@@ -82,6 +88,13 @@ def bridge_pool():
             pending_datas.append((vaa, nonce, "aptos"))
         except:
             pass
+        try:
+            # Read ethereum (todo! support multi ethereum)
+            vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
+            pending_datas.append((vaa, nonce, "ethereum"))
+        except:
+            pass
+
         for vaa, nonce, source in pending_datas:
             dv = str(nonce) + vaa
             dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
@@ -108,9 +121,15 @@ def bridge_pool():
 def bridge_core():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    data = BridgeDict("bridge_core.json")
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network("bsc-test")
+
     sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
     aptos_wormhole_bridge = dola_aptos_load.wormhole_bridge_package()
+    ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
+    ethereum_account = dola_ethereum_sdk.get_account()
+
+    data = BridgeDict("bridge_core.json")
     local_logger = logger.getChild(f"[bridge_core]")
     while True:
         try:
@@ -149,6 +168,8 @@ def bridge_core():
                             vaa,
                             ty_args=[token_name]
                         )
+                    else:
+                        ethereum_wormhole_bridge.receive_withdraw(vaa, {"from": ethereum_account})
                     break
                 except:
                     traceback.print_exc()
