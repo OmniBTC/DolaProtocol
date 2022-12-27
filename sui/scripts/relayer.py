@@ -10,21 +10,19 @@ from collections import OrderedDict
 from multiprocessing import set_start_method
 from pathlib import Path
 
+import dola_aptos_sdk
+import dola_aptos_sdk.init as dola_aptos_init
+import dola_aptos_sdk.load as dola_aptos_load
+import dola_ethereum_sdk
+import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_ethereum_sdk.load as dola_ethereum_load
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ProcessExecutor
 
 import dola_sui_sdk
-import dola_sui_sdk.load as dola_sui_load
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
-
-import dola_aptos_sdk
-import dola_aptos_sdk.load as dola_aptos_load
-import dola_aptos_sdk.init as dola_aptos_init
-
-import dola_ethereum_sdk
-import dola_ethereum_sdk.load as dola_ethereum_load
-import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_sui_sdk.load as dola_sui_load
 
 FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
 logging.basicConfig(format=FORMAT)
@@ -96,10 +94,10 @@ def bridge_pool():
             pass
 
         for vaa, nonce, source in pending_datas:
-            dv = str(nonce) + vaa
+            dv = str(nonce) + str(vaa)
             dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
             if dk not in data:
-                decode_vaa = list(bytes.fromhex(vaa[2:] if "0x" in vaa else vaa))
+                decode_vaa = list(bytes.fromhex(str(vaa).removeprefix("0x")))
                 local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
                 try:
                     if decode_vaa[-1] == 0:
@@ -186,4 +184,4 @@ def main():
 
 
 if __name__ == "__main__":
-    bridge_pool()
+    main()
