@@ -140,9 +140,10 @@ def bridge_core():
         )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
         token_name = decode_payload["dola_address"]
         dola_chain_id = decode_payload["dola_chain_id"]
-        token_name = bytes(token_name).decode("ascii")
-        if "0x" != token_name[:2]:
-            token_name = "0x" + token_name
+        if dola_chain_id in [0, 1]:
+            token_name = bytes(token_name).decode("ascii")
+            if "0x" != token_name[:2]:
+                token_name = "0x" + token_name
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
@@ -166,7 +167,7 @@ def bridge_core():
                             ty_args=[token_name]
                         )
                     else:
-                        ethereum_wormhole_bridge.receive_withdraw(vaa, {"from": ethereum_account})
+                        ethereum_wormhole_bridge.receiveWithdraw(vaa, {"from": ethereum_account})
                     break
                 except:
                     traceback.print_exc()

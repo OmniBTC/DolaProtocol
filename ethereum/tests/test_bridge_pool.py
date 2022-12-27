@@ -63,8 +63,17 @@ def test_supply(lending_portal, usdt, usdt_pool, eth_pool):
     assert eth_pool.balance() == amount
 
 
-def test_withdraw(lending_portal, eth_pool, bridge_pool, encode_decode):
+def test_withdraw(lending_portal, usdt, usdt_pool, eth_pool, bridge_pool, encode_decode):
     amount = 1e18
+
+    usdt.mint(account(), amount, {'from': account()})
+    usdt.approve(usdt_pool.address, amount, {'from': account()})
+    lending_portal.supply(usdt_pool.address, amount, {'from': account()})
+    assert usdt_pool.balance() == amount
+    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+        [1, usdt_pool.address], [1, account().address], 1e8, {'from': account()})
+    bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
+    assert usdt_pool.balance() == 0
 
     lending_portal.supply(eth_pool.address, amount, {
                           'from': account(), 'value': amount})
