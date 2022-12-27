@@ -3,7 +3,7 @@ from brownie import (
     config,
 )
 from brownie import Contract
-from dola_ethereum_sdk import DOLA_CONFIG, set_ethereum_network
+from dola_ethereum_sdk import DOLA_CONFIG
 
 
 def get_wormhole_chain_id():
@@ -38,5 +38,5 @@ def get_pool_token(pool):
 
 def bridge_pool_read_vaa():
     bridge_pool = Contract.from_abi(
-        "BridgePool", DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"].abi)
+        "MockBridgePool", DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"].abi)
     return (str(bridge_pool.getLatestVAA()), bridge_pool.getNonce())

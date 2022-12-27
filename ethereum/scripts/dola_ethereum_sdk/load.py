@@ -6,7 +6,7 @@ def omnipool_package():
 
 
 def wormhole_bridge_package():
-    return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1]
+    return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1]
 
 
 def lending_portal_package():
