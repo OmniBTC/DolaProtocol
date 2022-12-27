@@ -3,16 +3,18 @@
 # @FileName: init_ethereum_pool.py
 from pathlib import Path
 
-import dola_sui_sdk
 import dola_ethereum_sdk
+from dola_ethereum_sdk import init as dola_ethereum_init
+
+import dola_sui_sdk
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
-from dola_ethereum_sdk import init as dola_ethereum_init
 
 
 def main():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network("bsc-test")
 
     # init pool manager
     governance = dola_sui_load.governance_package()

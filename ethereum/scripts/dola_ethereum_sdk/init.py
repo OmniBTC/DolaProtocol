@@ -3,10 +3,7 @@ from brownie import (
     config,
 )
 from brownie import Contract
-from dola_ethereum_sdk import DOLA_CONFIG
-
-OmniPool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"]
-BridgePool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"]
+from dola_ethereum_sdk import DOLA_CONFIG, set_ethereum_network
 
 
 def get_wormhole_chain_id():
@@ -34,11 +31,12 @@ def btc_pool():
 
 
 def get_pool_token(pool):
-    omnipool = Contract.from_abi("OmniPool", pool, OmniPool.abi)
+    omnipool = Contract.from_abi(
+        "OmniPool", pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].abi)
     return omnipool.token()
 
 
 def bridge_pool_read_vaa():
     bridge_pool = Contract.from_abi(
-        "BridgePool", BridgePool[-1], BridgePool.abi)
-    return bridge_pool.getLatestVAA()
+        "BridgePool", DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"].abi)
+    return (bridge_pool.getLatestVAA(), bridge_pool.getNonce())

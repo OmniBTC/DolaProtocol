@@ -2,11 +2,6 @@ from brownie import config, network
 
 from dola_ethereum_sdk import DOLA_CONFIG, get_account, zero_address, set_ethereum_network
 
-LendingPortal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"]
-OmniPool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"]
-BridgePool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"]
-MockToken = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"]
-
 
 def deploy():
     account = get_account()
@@ -16,7 +11,7 @@ def deploy():
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
 
     print("deploy bridge pool...")
-    bridge_pool = BridgePool.deploy(
+    bridge_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"].deploy(
         wormhole_address,
         wormhole_chainid,
         wormhole_chainid,
@@ -26,22 +21,24 @@ def deploy():
     )
 
     print("deploy test token btc...")
-    btc = MockToken.deploy("BTC", "BTC", {'from': account})
+    btc = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].deploy("BTC", "BTC", {
+                                                                   'from': account})
 
     print("deploy btc pool...")
-    btc_pool = OmniPool.deploy(0, wormhole_chainid,
-                               BridgePool[-1].address, MockToken[-1].address, {'from': account})
+    btc_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(0, wormhole_chainid,
+                                                                       DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
 
     print("deploy test token usdt...")
-    usdt = MockToken.deploy("USDT", "USDT", {'from': account})
+    usdt = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].deploy(
+        "USDT", "USDT", {'from': account})
 
     print("deploy usdt pool...")
-    usdt_pool = OmniPool.deploy(1, wormhole_chainid,
-                                BridgePool[-1].address, MockToken[-1].address, {'from': account})
+    usdt_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(1, wormhole_chainid,
+                                                                        DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
 
     print("deploy lending portal...")
-    lending_portal = LendingPortal.deploy(BridgePool[-1].address,
-                                          wormhole_chainid, {'from': account})
+    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address,
+                                                                                  wormhole_chainid, {'from': account})
 
     print("----- deploy result -----")
     print(f"bridge_pool={bridge_pool}")

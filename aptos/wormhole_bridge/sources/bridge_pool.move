@@ -82,7 +82,7 @@ module wormhole_bridge::bridge_pool {
         });
     }
 
-    public entry fun register_remote_bridge(
+    public fun register_remote_bridge(
         sender: &signer,
         emitter_chain_id: U16,
         emitter_address: vector<u8>,
