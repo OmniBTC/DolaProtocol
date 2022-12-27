@@ -143,10 +143,17 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     :return:
     '''
     if isinstance(coin_type, str):
-        if "0x" in coin_type[:2] and dst_chain == 0:
-            # Sui not with 0x, Aptos with 0x
+        if "0x" in coin_type[:2] and dst_chain != 1:
             coin_type = coin_type[2:]
-        coin_type = list(bytes(coin_type, "ascii"))
+
+        if dst_chain not in [0, 1]:
+            coin_type = coin_type.lower()
+
+        if dst_chain in [0, 1]:
+            coin_type = list(bytes(coin_type, "ascii"))
+        else:
+            # for eth, use hex string
+            coin_type = list(bytes.fromhex(coin_type))
     governance_actions = load.governance_actions_package()
     governance = load.governance_package()
     pool_manager = load.pool_manager_package()

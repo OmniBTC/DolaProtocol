@@ -86,7 +86,7 @@ contract OmniPool {
             decimals()
         );
         balance -= fixedAmount;
-        IERC20(token).transferFrom(address(this), to, fixedAmount);
+        IERC20(token).transfer(to, fixedAmount);
     }
 
     function depositAndWithdraw(

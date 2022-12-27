@@ -26,10 +26,10 @@ def main():
             governance_external_hash = d.name
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
-    dola_sui_init.vote_register_new_pool(0, b"BTC", dola_ethereum_init.btc(), dst_chain=4)
+    dola_sui_init.vote_register_new_pool(0, b"BTC", dola_ethereum_init.btc_pool(), dst_chain=4)
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
-    dola_sui_init.vote_register_new_pool(1, b"USDT", dola_ethereum_init.usdt(), dst_chain=4)
+    dola_sui_init.vote_register_new_pool(1, b"USDT", dola_ethereum_init.usdt_pool(), dst_chain=4)
 
 
 if __name__ == "__main__":
