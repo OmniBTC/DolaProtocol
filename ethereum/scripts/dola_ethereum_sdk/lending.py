@@ -139,8 +139,8 @@ def monitor_borrow(pool, amount=1, dst_chain=4, receiver=None):
     print(portal_borrow(pool, amount * 1e8, dst_chain, receiver))
 
 
-def monitor_repay(pool, amount=1e18):
-    print(portal_repay(pool, amount))
+def monitor_repay(pool, amount=1):
+    print(portal_repay(pool, amount * 1e18))
 
 
 def monitor_liquidate(dst_chain=4, receiver=None):
@@ -148,7 +148,10 @@ def monitor_liquidate(dst_chain=4, receiver=None):
 
 
 def main():
-    monitor_borrow(usdt_pool(), receiver=get_account().address)
+    # monitor_supply(btc_pool(), 10)
+    # monitor_withdraw(btc_pool(), receiver=get_account().address)
+    # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
+    monitor_repay(usdt_pool())
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ def deploy():
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
 
     print("deploy bridge pool...")
-    bridge_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"].deploy(
+    bridge_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"].deploy(
         wormhole_address,
         wormhole_chainid,
         wormhole_chainid,
@@ -26,7 +26,7 @@ def deploy():
 
     print("deploy btc pool...")
     btc_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(0, wormhole_chainid,
-                                                                       DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
+                                                                       DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
 
     print("deploy test token usdt...")
     usdt = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].deploy(
@@ -34,10 +34,10 @@ def deploy():
 
     print("deploy usdt pool...")
     usdt_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(1, wormhole_chainid,
-                                                                        DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
+                                                                        DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
 
     print("deploy lending portal...")
-    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address,
+    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address,
                                                                                   wormhole_chainid, {'from': account})
 
     print("----- deploy result -----")

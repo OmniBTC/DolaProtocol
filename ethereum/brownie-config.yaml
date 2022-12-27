@@ -20,13 +20,20 @@ networks:
   bsc-test:
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
-    usdt: "0x6edEb01556116295Ec48B1c125c59d49C2EA7bfC"
-    usdt_pool: "0x9a2E6b46a6dA57bb2aD6e411aB0d497DAd8fB595"
-    btc: "0x7Ccc725Ed9F881F112Eff42012838667C3A78B66"
-    btc_pool: "0x1e9C3aA2bfbc57d125b657Ca4284B6e04c6Df1c2"
+    usdt: "0xC215435C162866a702f96683e65d1F79d81930f7"
+    usdt_pool: "0x2Cc7Ab6e55373f51c0521d75AB541A149A8fb861"
+    btc: "0x28b204B5A77d86251921D788a68f8D1d251ee9d2"
+    btc_pool: "0x51cE770CC5671281E087b6267AAa1b80d1c863F3"
   polygon-test:
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
+  polygon-zk-test:
+    wormhole_chainid: 1422
+    wormhole: "0x0000000000000000000000000000000000000000"
+    usdt: "0x89226933DF521856C64425206187a50D7F78f140"
+    usdt_pool: "0x1DAe027e5eAea612359143ccf5BA595298288E02"
+    btc: "0x39b7FBbC38e4963A5cBCAd8d4A8ACbA21391CC55"
+    btc_pool: "0xf0723e55127406FcAA17C6B2E5d2e68459cF40a6"
   avax-test:
     wormhole_chainid: 6
     wormhole: "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C"
