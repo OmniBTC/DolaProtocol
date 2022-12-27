@@ -1,12 +1,7 @@
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from brownie import Contract
 from dola_ethereum_sdk.init import btc_pool, get_pool_token, usdt_pool
-
-ERC20 = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"]
-LendingPortal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"]
-OmniPool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"]
-BridgePool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"]
-MockToken = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"]
+from dola_ethereum_sdk.load import lending_portal_package, wormhole_bridge_package
 
 
 def portal_supply(pool, amount):
@@ -18,10 +13,11 @@ def portal_supply(pool, amount):
     :return: payload
     """
     account = get_account()
-
-    token = Contract.from_abi("ERC20", get_pool_token(pool), ERC20.abi)
+    lending_portal = lending_portal_package()
+    token = Contract.from_abi("ERC20", get_pool_token(
+        pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(pool, amount, {'from': account})
-    LendingPortal[-1].supply(
+    lending_portal.supply(
         pool,
         int(amount),
         {'from': account}
@@ -39,7 +35,8 @@ def portal_withdraw(pool, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
-    LendingPortal[-1].withdraw(
+    lending_portal = lending_portal_package()
+    lending_portal.withdraw(
         pool,
         str(receiver),
         dst_chain,
@@ -57,7 +54,8 @@ def pool_withdraw(vaa):
     :return:
     """
     account = get_account()
-    BridgePool[-1].receive_withdraw(vaa, {'from': account})
+    bridge_pool = wormhole_bridge_package()
+    bridge_pool.receive_withdraw(vaa, {'from': account})
 
 
 def portal_borrow(pool, amount, dst_chain=1, receiver=None):
@@ -71,7 +69,8 @@ def portal_borrow(pool, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
-    LendingPortal[-1].borrow(
+    lending_portal = lending_portal_package()
+    lending_portal.borrow(
         pool,
         str(receiver),
         dst_chain,
@@ -87,10 +86,12 @@ def portal_repay(pool, amount):
     :return:
     """
     account = get_account()
+    lending_portal = lending_portal_package()
 
-    token = Contract.from_abi("ERC20", get_pool_token(pool), ERC20.abi)
+    token = Contract.from_abi("ERC20", get_pool_token(
+        pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(pool, amount, {'from': account})
-    LendingPortal[-1].repay(
+    lending_portal.repay(
         pool,
         int(amount),
         {'from': account}
@@ -110,10 +111,12 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     :return:
     """
     account = get_account()
+    lending_portal = lending_portal_package()
 
-    token = Contract.from_abi("ERC20", get_pool_token(debt_pool), ERC20.abi)
+    token = Contract.from_abi("ERC20", get_pool_token(
+        debt_pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(debt_pool, amount, {'from': account})
-    LendingPortal[-1].liquidate(
+    lending_portal.liquidate(
         str(receiver),
         dst_chain,
         debt_pool,

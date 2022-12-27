@@ -20,10 +20,10 @@ networks:
   bsc-test:
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
-    usdt: "0xdB51a2C9b0b1D9910b04F23AC8c58647f95C68A6"
-    usdt_pool: "0x92e6C5E5466aD68d19fdc520FCa9f8F75996EB79"
-    btc: "0x5a0B225Cbe96a87e4173D386CAaB0AC79771E940"
-    btc_pool: "0x33688544d58ff4c1d9F608F7bCf3954aD5cc688e"
+    usdt: "0x6edEb01556116295Ec48B1c125c59d49C2EA7bfC"
+    usdt_pool: "0x9a2E6b46a6dA57bb2aD6e411aB0d497DAd8fB595"
+    btc: "0x7Ccc725Ed9F881F112Eff42012838667C3A78B66"
+    btc_pool: "0x1e9C3aA2bfbc57d125b657Ca4284B6e04c6Df1c2"
   polygon-test:
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
