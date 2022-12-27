@@ -3,7 +3,7 @@ from pprint import pprint
 from sui_brownie import CacheObject, ObjectType
 
 from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt, claim_test_coin
+from dola_sui_sdk.init import btc, usdt
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
 
 U64_MAX = 18446744073709551615

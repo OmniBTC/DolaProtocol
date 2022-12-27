@@ -39,4 +39,4 @@ def get_pool_token(pool):
 def bridge_pool_read_vaa():
     bridge_pool = Contract.from_abi(
         "BridgePool", DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["BridgePool"].abi)
-    return (bridge_pool.getLatestVAA(), bridge_pool.getNonce())
+    return (str(bridge_pool.getLatestVAA()), bridge_pool.getNonce())

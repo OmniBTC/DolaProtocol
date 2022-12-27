@@ -78,6 +78,7 @@ def wormhole_bridge_package(package_id: str = None):
 def lending_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.Lending[-1]
+
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/lending"))
 
 
