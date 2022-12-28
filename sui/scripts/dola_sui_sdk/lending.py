@@ -450,12 +450,14 @@ def export_objects():
     lending = load.lending_package()
     pool_manager = load.pool_manager_package()
     user_manager = load.user_manager_package()
+    test_coins = load.test_coins_package()
 
     data = {
         "PoolState": wormhole_bridge.bridge_pool.PoolState[-1],
         "WormholeState": wormhole.state.State[-1],
         "PriceOracle": oracle.oracle.PriceOracle[-1],
         "Storage": lending.storage.Storage[-1],
+        "Faucet": test_coins.faucet.Faucet[-1],
         "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
         "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1]
     }
