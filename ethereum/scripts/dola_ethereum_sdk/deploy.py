@@ -21,7 +21,7 @@ def deploy():
     )
 
     eth_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniETHPool"].deploy(wormhole_chainid,
-                                                                          DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1].address, {'from': account})
+                                                                          DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, {'from': account})
 
     (btc, btc_pool) = deploy_pool("BTC")
 
@@ -78,5 +78,5 @@ def deploy_pool(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("development")
     deploy()
