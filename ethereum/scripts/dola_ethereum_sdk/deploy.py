@@ -78,5 +78,5 @@ def deploy_pool(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("development")
+    set_ethereum_network("polygon-zk-test")
     deploy()

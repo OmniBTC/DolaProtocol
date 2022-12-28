@@ -41,7 +41,7 @@ def main():
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
     dola_sui_init.vote_register_new_pool(
-        3, b"ETH", dola_ethereum_init.weth_pool(), dst_chain)
+        3, b"ETH", dola_ethereum_init.eth_pool(), dst_chain)
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
     dola_sui_init.vote_register_new_pool(
@@ -49,7 +49,7 @@ def main():
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
     dola_sui_init.vote_register_new_pool(
-        5, b"MATIC", dola_ethereum_init.eth_pool(), dst_chain)
+        5, b"MATIC", dola_ethereum_init.matic_pool(), dst_chain)
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
     dola_sui_init.vote_register_new_pool(
@@ -57,5 +57,5 @@ def main():
 
 
 if __name__ == "__main__":
-    dola_ethereum_sdk.set_ethereum_network("polygon-test")
+    dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
     main()
