@@ -7,7 +7,7 @@ import "../libraries/LibDolaTypes.sol";
 
 contract OmniETHPool {
     uint256 public balance;
-    address public bridegPool;
+    address public bridgePool;
     address public token;
     uint16 public dolaPoolId;
     uint16 public dolaChainId;
@@ -25,9 +25,9 @@ contract OmniETHPool {
     ) {
         dolaPoolId = poolId;
         dolaChainId = chainId;
-        bridegPool = bridge;
+        bridgePool = bridge;
         token = address(0);
-        allowances[bridegPool] = true;
+        allowances[bridgePool] = true;
     }
 
     function decimals() public pure returns (uint8) {

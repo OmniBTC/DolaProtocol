@@ -8,7 +8,7 @@ import "../libraries//LibDolaTypes.sol";
 
 contract OmniPool {
     uint256 public balance;
-    address public bridegPool;
+    address public bridgePool;
     address public token;
     uint16 public dolaPoolId;
     uint16 public dolaChainId;
@@ -27,9 +27,9 @@ contract OmniPool {
     ) {
         dolaPoolId = poolId;
         dolaChainId = chainId;
-        bridegPool = bridge;
+        bridgePool = bridge;
         token = tokenAddress;
-        allowances[bridegPool] = true;
+        allowances[bridgePool] = true;
     }
 
     function decimals() public view returns (uint8) {
