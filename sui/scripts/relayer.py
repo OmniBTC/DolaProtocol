@@ -66,7 +66,7 @@ def bridge_pool():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("bsc-test")
+    dola_ethereum_sdk.set_ethereum_network("polygon-test")
 
     data = BridgeDict("bridge_pool.json")
     local_logger = logger.getChild(f"[bridge_pool]")
@@ -119,7 +119,7 @@ def bridge_core():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("bsc-test")
+    dola_ethereum_sdk.set_ethereum_network("polygon-test")
 
     sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
     aptos_wormhole_bridge = dola_aptos_load.wormhole_bridge_package()
