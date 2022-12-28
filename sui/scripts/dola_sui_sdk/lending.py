@@ -3,7 +3,7 @@ from pprint import pprint
 from sui_brownie import CacheObject, ObjectType
 
 from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt
+from dola_sui_sdk.init import btc, usdt, usdc, dai, apt, eth, matic
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
 
 U64_MAX = 18446744073709551615
@@ -459,7 +459,7 @@ def export_objects():
         "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
         "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1]
     }
-    coin_types = [btc(), usdt()]
+    coin_types = [btc(), usdt(), usdc(), dai(), eth(), apt(), matic()]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
@@ -525,6 +525,7 @@ def check_user_manager():
 if __name__ == "__main__":
     # claim_test_coin(usdt())
     # monitor_repay(usdt())
-    check_pool_info()
-    check_app_storage()
-    check_user_manager()
+    # check_pool_info()
+    # check_app_storage()
+    # check_user_manager()
+    export_objects()
