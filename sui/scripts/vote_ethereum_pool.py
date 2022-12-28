@@ -14,11 +14,13 @@ from dola_sui_sdk import load as dola_sui_load
 def main():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("bsc-test")
+
+    dst_chain = dola_ethereum_init.get_wormhole_chain_id()
 
     # init pool manager
     governance = dola_sui_load.governance_package()
-    governance_external_cap = governance.get_object_with_super_detail(governance.governance.GovernanceExternalCap[-1])
+    governance_external_cap = governance.get_object_with_super_detail(
+        governance.governance.GovernanceExternalCap[-1])
 
     governance_external_hash = ""
     for d in governance_external_cap["dynamic_field"]:
@@ -26,11 +28,34 @@ def main():
             governance_external_hash = d.name
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
-    dola_sui_init.vote_register_new_pool(0, b"BTC", dola_ethereum_init.btc_pool(), dst_chain=4)
+    dola_sui_init.vote_register_new_pool(
+        0, b"BTC", dola_ethereum_init.btc_pool(), dst_chain)
 
     dola_sui_init.create_vote_external_cap(governance_external_hash)
-    dola_sui_init.vote_register_new_pool(1, b"USDT", dola_ethereum_init.usdt_pool(), dst_chain=4)
+    dola_sui_init.vote_register_new_pool(
+        1, b"USDT", dola_ethereum_init.usdt_pool(), dst_chain)
+
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        2, b"USDC", dola_ethereum_init.usdc_pool(), dst_chain)
+
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        3, b"ETH", dola_ethereum_init.eth_pool(), dst_chain)
+
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        4, b"DAI", dola_ethereum_init.dai_pool(), dst_chain)
+
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        5, b"MATIC", dola_ethereum_init.matic_pool(), dst_chain)
+
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        6, b"APT", dola_ethereum_init.apt_pool(), dst_chain)
 
 
 if __name__ == "__main__":
+    dola_ethereum_sdk.set_ethereum_network("polygon-test")
     main()

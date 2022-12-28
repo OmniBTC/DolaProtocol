@@ -52,7 +52,8 @@ def register_token_price(dola_pool_id, price, decimal):
 
 def create_vote_external_cap(hash):
     governance = load.governance_package()
-    governance.governance.create_vote_external_cap(governance.governance.Governance[-1], hash)
+    governance.governance.create_vote_external_cap(
+        governance.governance.Governance[-1], hash)
 
 
 def vote_init_bridge_cap():
@@ -241,6 +242,26 @@ def usdt():
     return f"{CacheObject.TestCoins[-1]}::coins::USDT"
 
 
+def usdc():
+    return f"{CacheObject.TestCoins[-1]}::coins::USDC"
+
+
+def dai():
+    return f"{CacheObject.TestCoins[-1]}::coins::DAI"
+
+
+def matic():
+    return f"{CacheObject.TestCoins[-1]}::coins::MATIC"
+
+
+def apt():
+    return f"{CacheObject.TestCoins[-1]}::coins::APT"
+
+
+def eth():
+    return f"{CacheObject.TestCoins[-1]}::coins::ETH"
+
+
 def btc():
     return f"{CacheObject.TestCoins[-1]}::coins::BTC"
 
@@ -281,12 +302,20 @@ def main():
     # 1. init omnipool
     create_pool(usdt())
     create_pool(btc())
-    claim_test_coin(btc())
-    force_claim_test_coin(usdt(), 100000)
+    create_pool(usdt())
+    create_pool(eth())
+    create_pool(dai())
+    create_pool(matic())
+    create_pool(apt())
 
     # 2. init oracle
     register_token_price(0, 2000000, 2)
     register_token_price(1, 100, 2)
+    register_token_price(2, 100, 2)
+    register_token_price(3, 120000, 2)
+    register_token_price(4, 100, 2)
+    register_token_price(5, 78, 2)
+    register_token_price(6, 330, 2)
 
     # 3. register governance
     hash = register_governnace_cap()
@@ -301,6 +330,21 @@ def main():
 
     create_vote_external_cap(hash)
     vote_register_new_pool(1, b"USDT", usdt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(2, b"USDC", usdt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(3, b"ETH", usdt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(4, b"DAI", usdt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(5, b"MATIC", usdt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(6, b"APT", usdt())
     # 6. init lending storage
     create_vote_external_cap(hash)
     vote_init_lending_storage()
@@ -318,6 +362,26 @@ def main():
     create_vote_external_cap(hash)
 
     vote_register_new_reserve(1)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(2)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(3)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(4)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(5)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(6)
 
 
 if __name__ == '__main__':

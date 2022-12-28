@@ -30,6 +30,8 @@ module test_coins::coins {
 
     struct DAI has drop {}
 
+    struct MATIC has drop {}
+
     ////////////////////////////////////
 
     struct SignerCapability has key {
@@ -76,6 +78,7 @@ module test_coins::coins {
         inner_initialize<WBTC>(account, b"WBTC");
         inner_initialize<USDC>(account, b"USDC");
         inner_initialize<DAI>(account, b"DAI");
+        inner_initialize<MATIC>(account, b"MATIC");
     }
 
     public entry fun claim<T>(

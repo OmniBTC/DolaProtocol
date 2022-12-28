@@ -36,13 +36,13 @@ def usdt():
 
 @fixture
 def usdt_pool(usdt, bridge_pool):
-    return OmniPool.deploy(1, wormhole_chainid,
+    return OmniPool.deploy(wormhole_chainid,
                            bridge_pool.address, usdt.address, {'from': account()})
 
 
 @fixture
 def eth_pool(bridge_pool):
-    return OmniETHPool.deploy(0, wormhole_chainid,
+    return OmniETHPool.deploy(wormhole_chainid,
                               bridge_pool.address, {'from': account()})
 
 

@@ -120,7 +120,7 @@ module lending::logic {
             dola_pool_id,
             get_app_id(storage)
         );
-        assert!((token_amount as u128) < liquidity, ENOT_ENOUGH_LIQUIDITY);
+        assert!((token_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
         assert!(check_health_factor(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
     }
