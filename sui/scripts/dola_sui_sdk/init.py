@@ -302,7 +302,7 @@ def main():
     # 1. init omnipool
     create_pool(usdt())
     create_pool(btc())
-    create_pool(usdt())
+    create_pool(usdc())
     create_pool(eth())
     create_pool(dai())
     create_pool(matic())
