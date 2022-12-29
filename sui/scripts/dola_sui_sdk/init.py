@@ -332,19 +332,19 @@ def main():
     vote_register_new_pool(1, b"USDT", usdt())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool(2, b"USDC", usdt())
+    vote_register_new_pool(2, b"USDC", usdc())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool(3, b"ETH", usdt())
+    vote_register_new_pool(3, b"ETH", eth())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool(4, b"DAI", usdt())
+    vote_register_new_pool(4, b"DAI", dai())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool(5, b"MATIC", usdt())
+    vote_register_new_pool(5, b"MATIC", matic())
 
     create_vote_external_cap(hash)
-    vote_register_new_pool(6, b"APT", usdt())
+    vote_register_new_pool(6, b"APT", apt())
     # 6. init lending storage
     create_vote_external_cap(hash)
     vote_init_lending_storage()
