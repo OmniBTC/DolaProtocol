@@ -76,7 +76,7 @@ def bridge_pool_evm(network):
             dv = str(nonce) + vaa
             dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
             if dk not in data:
-                decode_vaa = list(bytes.fromhex(vaa.removeprefix("0x") if "0x" in vaa else vaa))
+                decode_vaa = list(bytes.fromhex(vaa.replace("0x", "") if "0x" in vaa else vaa))
                 local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
                 try:
                     if decode_vaa[-1] == 0:
