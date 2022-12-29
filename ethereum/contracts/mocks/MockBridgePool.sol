@@ -80,6 +80,15 @@ contract MockBridgePool {
         increaseNonce();
     }
 
+    function sendUnbinding() external payable {
+        bytes memory payload = LibBinding.encodeUnbindingPayload(
+            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender)
+        );
+        cachedVAA[getNonce()] = payload;
+
+        increaseNonce();
+    }
+
     function sendDeposit(
         address pool,
         uint256 amount,

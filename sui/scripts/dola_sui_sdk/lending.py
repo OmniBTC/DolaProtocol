@@ -435,6 +435,48 @@ def core_binding(vaa):
     )
 
 
+def pool_unbinding():
+    '''
+    public entry fun send_unbinding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+
+    wormhole_bridge.bridge_pool.send_unbinding(
+        wormhole_bridge.bridge_pool.PoolState[-1],
+        wormhole.state.State[-1],
+        0
+    )
+
+
+def core_unbinding(vaa):
+    '''
+    public fun receive_unbinding(
+        _wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        user_manager_info: &mut UserManagerInfo,
+        vaa: vector<u8>
+    )
+    :return:
+    '''
+    wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
+    user_manager = load.user_manager_package()
+
+    wormhole_bridge.bridge_core.receive_unbinding(
+        wormhole.state.State[-1],
+        wormhole_bridge.bridge_core.CoreState[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        vaa
+    )
+
+
 def export_objects():
     # Package id
     lending_portal = load.lending_portal_package()
@@ -500,6 +542,10 @@ def monitor_liquidate():
 
 def monitor_binding(bind_address):
     pool_binding(bind_address)
+
+
+def monitor_unbinding():
+    pool_unbinding()
 
 
 def check_pool_info():

@@ -7,10 +7,16 @@ import "./LibDolaTypes.sol";
 library LibBinding {
     using LibBytes for bytes;
     uint8 internal constant BINDING = 5;
+    uint8 internal constant UNBINDING = 6;
 
     struct BindingPayload {
         LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress binding;
+        uint8 callType;
+    }
+
+    struct UnbindingPayload {
+        LibDolaTypes.DolaAddress unbinding;
         uint8 callType;
     }
 
@@ -34,6 +40,52 @@ library LibBinding {
             BINDING
         );
         return payload;
+    }
+
+    function encodeUnbindingPayload(LibDolaTypes.DolaAddress memory unbinding)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        bytes memory bindingAddress = LibDolaTypes.encodeDolaAddress(
+            unbinding.dolaChainId,
+            unbinding.externalAddress
+        );
+        bytes memory payload = abi.encodePacked(
+            uint16(bindingAddress.length),
+            bindingAddress,
+            UNBINDING
+        );
+        return payload;
+    }
+
+    function decodeUnbindingPayload(bytes memory payload)
+        internal
+        pure
+        returns (UnbindingPayload memory)
+    {
+        uint256 length = payload.length;
+        uint256 index;
+        uint256 dataLen;
+        UnbindingPayload memory decodeData;
+
+        dataLen = 2;
+        uint16 unbindingLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = unbindingLength;
+        decodeData.unbinding = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, dataLen)
+        );
+        index += dataLen;
+
+        dataLen = 1;
+        decodeData.callType = payload.toUint8(index);
+        index += dataLen;
+
+        require(index == length, "Decode unbinding payload error");
+
+        return decodeData;
     }
 
     function decodeBindingPayload(bytes memory payload)

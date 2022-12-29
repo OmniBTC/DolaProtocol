@@ -110,6 +110,8 @@ def bridge_pool():
                         dola_sui_lending.core_repay(vaa)
                     elif decode_vaa[-1] == 5:
                         dola_sui_lending.core_binding(vaa)
+                    elif decode_vaa[-1] == 6:
+                        dola_sui_lending.core_unbinding(vaa)
                 except:
                     traceback.print_exc()
                 data[dk] = dv

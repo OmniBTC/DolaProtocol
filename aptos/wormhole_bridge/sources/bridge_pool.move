@@ -21,6 +21,8 @@ module wormhole_bridge::bridge_pool {
 
     const BINDING: u8 = 5;
 
+    const UNBINDING: u8 = 6;
+
     const EMUST_DEPLOYER: u64 = 0;
 
     const EMUST_ADMIN: u64 = 1;
@@ -107,6 +109,20 @@ module wormhole_bridge::bridge_pool {
         let bind_address = create_dola_address(u16::from_u64(dola_chain_id), bind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
         let msg = encode_binding(user, bind_address);
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
+        pool_state.nonce = pool_state.nonce + 1;
+        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+    }
+
+    public entry fun send_unbinding(
+        sender: &signer,
+    ) acquires PoolState {
+        let unbind_address = convert_address_to_dola(signer::address_of(sender));
+        let msg = encode_unbinding(unbind_address);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -258,5 +274,37 @@ module wormhole_bridge::bridge_pool {
 
         assert!(length == index, EINVALID_LENGTH);
         (user, bind_address, call_type)
+    }
+
+    public fun encode_unbinding(unbind_address: DolaAddress): vector<u8> {
+        let unbinding_payload = vector::empty<u8>();
+
+        let unbind_address = encode_dola_address(unbind_address);
+        serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&unbind_address)));
+        serialize_vector(&mut unbinding_payload, unbind_address);
+
+        serialize_u8(&mut unbinding_payload, UNBINDING);
+        unbinding_payload
+    }
+
+    public fun decode_unbinding(unbinding_payload: vector<u8>): (DolaAddress, u8) {
+        let length = vector::length(&unbinding_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let unbind_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = u16::to_u64(unbind_len);
+        let unbind_address = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = deserialize_u8(&vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(length == index, EINVALID_LENGTH);
+        (unbind_address, call_type)
     }
 }
