@@ -15,7 +15,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address};
+    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address, decode_unbinding, unbinding_user_address};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -88,6 +88,17 @@ module wormhole_bridge::bridge_core {
         if (!is_dola_user(user_manager_info, user)) {
             binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
         };
+    }
+
+    public fun receive_unbinding(
+        _wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        user_manager_info: &mut UserManagerInfo,
+        vaa: vector<u8>
+    ) {
+        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
+        let (unbind_address, _) = decode_unbinding(vaa);
+        unbinding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, unbind_address);
     }
 
     public fun receive_deposit(
