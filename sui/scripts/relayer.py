@@ -44,7 +44,7 @@ def write_json(file, data: dict):
 
 class BridgeDict(OrderedDict):
     def __init__(self, file, *args, **kwargs):
-        pool_path = Path.home().joinpath(".cache")
+        pool_path = Path.home().joinpath(".cache").joinpath("sui").joinpath("bridge_records")
         if not pool_path.exists():
             pool_path.mkdir()
         pool_file = pool_path.joinpath(file)
