@@ -11,7 +11,7 @@ module wormhole_bridge::bridge_pool {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::encode_binding;
+    use user_manager::user_manager::{encode_binding, encode_unbinding};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -83,6 +83,20 @@ module wormhole_bridge::bridge_pool {
         let user = tx_context::sender(ctx);
         let user = convert_address_to_dola(user);
         let msg = encode_binding(user, bind_address);
+        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&pool_state.cache_vaas) + 1;
+        table::add(&mut pool_state.cache_vaas, index, msg);
+    }
+
+    public entry fun send_unbinding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let unbind_address = tx_context::sender(ctx);
+        let unbind_address = convert_address_to_dola(unbind_address);
+        let msg = encode_unbinding(unbind_address);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
