@@ -72,6 +72,7 @@ def bridge_pool():
     local_logger = logger.getChild(f"[bridge_pool]")
 
     while True:
+        local_logger.info("running...")
         pending_datas = []
         try:
             # Read sui
@@ -129,6 +130,7 @@ def bridge_core():
     data = BridgeDict("bridge_core.json")
     local_logger = logger.getChild(f"[bridge_core]")
     while True:
+        local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
         except:

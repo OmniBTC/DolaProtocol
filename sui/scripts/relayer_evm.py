@@ -64,7 +64,7 @@ def bridge_pool_evm(network):
     local_logger = logger.getChild(f"[{network}][bridge_pool]")
 
     while True:
-        local_logger.info("pool")
+        local_logger.info("running...")
         pending_datas = []
         try:
             vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
@@ -103,7 +103,7 @@ def bridge_core_evm(network):
     data = BridgeDict("bridge_core.json")
     local_logger = logger.getChild(f"[{network}][bridge_core]")
     while True:
-        local_logger.info("core")
+        local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
         except:
