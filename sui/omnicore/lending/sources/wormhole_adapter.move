@@ -5,7 +5,7 @@ module lending::wormhole_adapter {
     use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
-    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain};
+    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, pool_liquidity};
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -18,6 +18,8 @@ module lending::wormhole_adapter {
     const EMUST_NONE: u64 = 0;
 
     const EMUST_SOME: u64 = 1;
+
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 2;
 
     struct WormholeAdapater has key {
         id: UID,
@@ -107,6 +109,10 @@ module lending::wormhole_adapter {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
+        // check pool liquidity
+        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= token_amount, ENOT_ENOUGH_LIQUIDITY);
+
         execute_withdraw(
             cap,
             storage,
@@ -157,6 +163,10 @@ module lending::wormhole_adapter {
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
+        // check pool liquidity
+        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= token_amount, ENOT_ENOUGH_LIQUIDITY);
+
         execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, token_amount);
         bridge_core::send_withdraw(
             wormhole_state,
@@ -235,6 +245,10 @@ module lending::wormhole_adapter {
             deposit_dola_pool_id,
             deposit_amount,
         );
+
+        // check pool liquidity
+        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= withdraw_amount, ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,

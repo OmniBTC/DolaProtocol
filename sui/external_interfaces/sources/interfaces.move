@@ -11,14 +11,12 @@ module external_interfaces::interfaces {
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
+    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
     use sui::event::emit;
     use sui::math::{pow, min};
     use user_manager::user_manager::{Self, UserManagerInfo};
 
     const RAY: u64 = 100000000;
-
-    struct PoolInfo has store, drop {}
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -29,6 +27,15 @@ module external_interfaces::interfaces {
         app_id: u16,
         dola_pool_id: u16,
         token_liquidity: u128,
+    }
+
+    struct PoolLiquidityInfo has copy, drop {
+        pool_address: DolaAddress,
+        pool_liquidity: u64
+    }
+
+    struct AllPoolLiquidityInfo has copy, drop {
+        pool_infos: vector<PoolLiquidityInfo>
     }
 
     struct LendingReserveInfo has copy, drop {
@@ -121,6 +128,42 @@ module external_interfaces::interfaces {
             app_id,
             dola_pool_id,
             token_liquidity
+        })
+    }
+
+    public entry fun get_pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_chain_id: u16,
+        pool_address: vector<u8>
+    ) {
+        let pool_address = create_dola_address(dola_chain_id, pool_address);
+        let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+        emit(PoolLiquidityInfo {
+            pool_address,
+            pool_liquidity
+        })
+    }
+
+    public entry fun get_all_pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16
+    ) {
+        let pool_addresses = pool_manager::get_pools_by_id(pool_manager_info, dola_pool_id);
+        let length = vector::length(&pool_addresses);
+        let i = 0;
+        let pool_infos = vector::empty<PoolLiquidityInfo>();
+        while (i < length) {
+            let pool_address = *vector::borrow(&pool_addresses, i);
+            let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+            let pool_info = PoolLiquidityInfo {
+                pool_address,
+                pool_liquidity
+            };
+            vector::push_back(&mut pool_infos, pool_info);
+            i = i + 1;
+        };
+        emit(AllPoolLiquidityInfo {
+            pool_infos
         })
     }
 
