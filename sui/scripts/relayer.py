@@ -68,7 +68,7 @@ def bridge_pool():
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network("polygon-test")
 
-    data = BridgeDict("bridge_pool.json")
+    data = BridgeDict("sui_bridge_pool.json")
     local_logger = logger.getChild(f"[bridge_pool]")
 
     while True:
@@ -129,7 +129,7 @@ def bridge_core():
     ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
-    data = BridgeDict("bridge_core.json")
+    data = BridgeDict("sui_bridge_core.json")
     local_logger = logger.getChild(f"[bridge_core]")
     while True:
         local_logger.info("running...")

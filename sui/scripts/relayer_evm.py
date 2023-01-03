@@ -60,7 +60,7 @@ class BridgeDict(OrderedDict):
 
 
 def bridge_pool_evm(network):
-    data = BridgeDict("bridge_pool.json")
+    data = BridgeDict("evm_bridge_pool.json")
     local_logger = logger.getChild(f"[{network}][bridge_pool]")
 
     while True:
@@ -100,7 +100,7 @@ def bridge_core_evm(network):
     ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
-    data = BridgeDict("bridge_core.json")
+    data = BridgeDict("evm_bridge_core.json")
     local_logger = logger.getChild(f"[{network}][bridge_core]")
     while True:
         local_logger.info("running...")
