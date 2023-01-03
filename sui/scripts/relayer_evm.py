@@ -1,6 +1,7 @@
 # @Time    : 2022/12/7 17:21
 # @Author  : WeiDai
 # @FileName: relayer.py
+import functools
 import hashlib
 import json
 import logging
@@ -9,13 +10,9 @@ import traceback
 from collections import OrderedDict
 from pathlib import Path
 
-import dola_aptos_sdk
-import dola_aptos_sdk.init as dola_aptos_init
-import dola_aptos_sdk.load as dola_aptos_load
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
-from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ThreadExecutor
 
 import dola_sui_sdk
@@ -44,7 +41,7 @@ def write_json(file, data: dict):
 
 class BridgeDict(OrderedDict):
     def __init__(self, file, *args, **kwargs):
-        pool_path = Path.home().joinpath(".cache").joinpath("sui").joinpath("bridge_records")
+        pool_path = Path.home().joinpath(".cache").joinpath("evm").joinpath("bridge_records")
         if not pool_path.exists():
             pool_path.mkdir()
         pool_file = pool_path.joinpath(file)
@@ -62,32 +59,14 @@ class BridgeDict(OrderedDict):
         write_json(self.file, self)
 
 
-def bridge_pool():
-    dola_sui_sdk.set_dola_project_path(Path("../.."))
-    dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-test")
-
-    data = BridgeDict("sui_bridge_pool.json")
-    local_logger = logger.getChild(f"[bridge_pool]")
+def bridge_pool_evm(network):
+    data = BridgeDict("evm_bridge_pool.json")
+    local_logger = logger.getChild(f"[{network}][bridge_pool]")
 
     while True:
         local_logger.info("running...")
         pending_datas = []
         try:
-            # Read sui
-            vaa, nonce = dola_sui_init.bridge_pool_read_vaa()
-            pending_datas.append((vaa, nonce, "sui"))
-        except:
-            pass
-        try:
-            # Read aptos
-            vaa, nonce = dola_aptos_init.bridge_pool_read_vaa()
-            pending_datas.append((vaa, nonce, "aptos"))
-        except:
-            pass
-        try:
-            # Read ethereum (todo! support multi ethereum)
             vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
             pending_datas.append((vaa, nonce, "ethereum"))
         except:
@@ -110,27 +89,19 @@ def bridge_pool():
                         dola_sui_lending.core_repay(vaa)
                     elif decode_vaa[-1] == 5:
                         dola_sui_lending.core_binding(vaa)
-                    elif decode_vaa[-1] == 6:
-                        dola_sui_lending.core_unbinding(vaa)
                 except:
                     traceback.print_exc()
                 data[dk] = dv
         time.sleep(10)
 
 
-def bridge_core():
-    dola_sui_sdk.set_dola_project_path(Path("../.."))
-    dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-test")
-
+def bridge_core_evm(network):
     sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
-    aptos_wormhole_bridge = dola_aptos_load.wormhole_bridge_package()
     ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
-    data = BridgeDict("sui_bridge_core.json")
-    local_logger = logger.getChild(f"[bridge_core]")
+    data = BridgeDict("evm_bridge_core.json")
+    local_logger = logger.getChild(f"[{network}][bridge_core]")
     while True:
         local_logger.info("running...")
         try:
@@ -142,35 +113,16 @@ def bridge_core():
         decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
             vaa
         )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
-        token_name = decode_payload["dola_address"]
         dola_chain_id = decode_payload["dola_chain_id"]
-        if dola_chain_id in [0, 1]:
-            token_name = bytes(token_name).decode("ascii")
-            if "0x" != token_name[:2]:
-                token_name = "0x" + token_name
+
         dv = str(nonce) + vaa
         dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
             local_logger.info(f"Withdraw nonce:{nonce}, dola_chain_id:{dola_chain_id}")
-            sui_wormhole = dola_sui_load.wormhole_package()
-            sui_account_address = sui_wormhole_bridge.account.account_address
             i = 0
             while i < 3:
                 try:
-                    if dola_chain_id == 0:
-                        sui_wormhole_bridge.bridge_pool.receive_withdraw(
-                            sui_wormhole.state.State[-1],
-                            sui_wormhole_bridge.bridge_pool.PoolState[-1],
-                            CacheObject[ObjectType.from_type(dola_sui_init.pool(token_name))][sui_account_address][-1],
-                            vaa,
-                            ty_args=[token_name]
-                        )
-                    elif dola_chain_id == 1:
-                        aptos_wormhole_bridge.bridge_pool.receive_withdraw(
-                            vaa,
-                            ty_args=[token_name]
-                        )
-                    else:
+                    if dola_chain_id == dola_ethereum_init.get_wormhole_chain_id():
                         ethereum_wormhole_bridge.receiveWithdraw(vaa, {"from": ethereum_account})
                     break
                 except:
@@ -182,8 +134,12 @@ def bridge_core():
 
 
 def main():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
     pt = ThreadExecutor(executor=2)
-    pt.run([bridge_pool, bridge_core])
+    pt.run(
+        [functools.partial(bridge_pool_evm, "polygon-zk-test"), functools.partial(bridge_core_evm, "polygon-zk-test")])
 
 
 if __name__ == "__main__":

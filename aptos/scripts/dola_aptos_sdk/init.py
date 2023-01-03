@@ -9,9 +9,29 @@ def usdt():
     return f"{test_coins.network_config['replace_address']['test_coins']}::coins::USDT"
 
 
+def usdc():
+    test_coins = load.test_coins_package()
+    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::USDC"
+
+
 def btc():
     test_coins = load.test_coins_package()
     return f"{test_coins.network_config['replace_address']['test_coins']}::coins::BTC"
+
+
+def eth():
+    test_coins = load.test_coins_package()
+    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::ETH"
+
+
+def dai():
+    test_coins = load.test_coins_package()
+    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::DAI"
+
+
+def matic():
+    test_coins = load.test_coins_package()
+    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::MATIC"
 
 
 def aptos():
@@ -34,6 +54,11 @@ def main():
     omnipool.pool.init_pool()
     omnipool.pool.create_pool(ty_args=[usdt()])
     omnipool.pool.create_pool(ty_args=[btc()])
+    omnipool.pool.create_pool(ty_args=[usdc()])
+    omnipool.pool.create_pool(ty_args=[eth()])
+    omnipool.pool.create_pool(ty_args=[matic()])
+    omnipool.pool.create_pool(ty_args=[dai()])
+    omnipool.pool.create_pool(ty_args=[aptos()])
 
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole_bridge.bridge_pool.initialize_wormhole()
