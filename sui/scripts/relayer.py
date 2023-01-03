@@ -115,7 +115,7 @@ def bridge_pool():
                 except:
                     traceback.print_exc()
                 data[dk] = dv
-        time.sleep(10)
+        time.sleep(5)
 
 
 def bridge_core():
@@ -135,21 +135,21 @@ def bridge_core():
         local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
+            decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
+                vaa
+            )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
+            token_name = decode_payload["dola_address"]
+            dola_chain_id = decode_payload["dola_chain_id"]
+            if dola_chain_id in [0, 1]:
+                token_name = bytes(token_name).decode("ascii")
+                if "0x" != token_name[:2]:
+                    token_name = "0x" + token_name
+            dv = str(nonce) + vaa
+            dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         except:
-            time.sleep(10)
+            time.sleep(5)
             continue
 
-        decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
-            vaa
-        )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
-        token_name = decode_payload["dola_address"]
-        dola_chain_id = decode_payload["dola_chain_id"]
-        if dola_chain_id in [0, 1]:
-            token_name = bytes(token_name).decode("ascii")
-            if "0x" != token_name[:2]:
-                token_name = "0x" + token_name
-        dv = str(nonce) + vaa
-        dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
         if dk not in data:
             local_logger.info(f"Withdraw nonce:{nonce}, dola_chain_id:{dola_chain_id}")
             sui_wormhole = dola_sui_load.wormhole_package()
@@ -178,7 +178,7 @@ def bridge_core():
                     i = i + 1
                     continue
             data[dk] = dv
-        time.sleep(10)
+        time.sleep(5)
 
 
 def main():
