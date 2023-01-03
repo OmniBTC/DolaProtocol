@@ -39,6 +39,24 @@ def get_dola_user_id(user_address):
     return result['events'][-1]['moveEvent']['fields']
 
 
+def get_dola_user_addresses(dola_user_id):
+    '''
+    public entry fun get_dola_user_addresses(
+        user_manager_info: &mut UserManagerInfo,
+        dola_user_id: u64
+    )
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    user_manager = load.user_manager_package()
+    result = external_interfaces.interfaces.get_dola_user_addresses.simulate(
+        user_manager.user_manager.UserManagerInfo[-1],
+        dola_user_id
+    )
+
+    return result['events'][-1]['moveEvent']['fields']
+
+
 def get_app_token_liquidity(app_id, dola_pool_id):
     """
     public entry fun get_app_token_liquidity(
@@ -56,6 +74,80 @@ def get_app_token_liquidity(app_id, dola_pool_id):
         dola_pool_id
     )
 
+    return result['events'][-1]['moveEvent']['fields']
+
+
+def get_pool_liquidity(dola_chain_id, pool_address):
+    '''
+    public entry fun get_pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_chain_id: u16,
+        pool_address: vector<u8>
+    )
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    pool_manager = load.pool_manager_package()
+    result = external_interfaces.interfaces.get_pool_liquidity.simulate(
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        dola_chain_id,
+        pool_address
+    )
+
+    return result['events'][-1]['moveEvent']['fields']
+
+
+def get_all_pool_liquidity(dola_pool_id):
+    '''
+    public entry fun get_all_pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16
+    )
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    pool_manager = load.pool_manager_package()
+    result = external_interfaces.interfaces.get_all_pool_liquidity.simulate(
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        dola_pool_id,
+    )
+
+    return result['events'][-1]['moveEvent']['fields']
+
+
+def get_user_health_factor(dola_user_id):
+    '''
+    public entry fun get_user_health_factor(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64
+    )
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+
+    result = external_interfaces.interfaces.get_user_health_factor.simulate(
+        lending.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        dola_user_id
+    )
+    return result['events'][-1]['moveEvent']['fields']
+
+
+def get_user_all_debt(dola_user_id):
+    '''
+    public entry fun get_user_all_debt(storage: &mut Storage, dola_user_id: u64)
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    lending = load.lending_package()
+
+    result = external_interfaces.interfaces.get_user_all_debt.simulate(
+        lending.storage.Storage[-1],
+        dola_user_id
+    )
     return result['events'][-1]['moveEvent']['fields']
 
 
@@ -85,6 +177,21 @@ def get_user_token_debt(user, dola_pool_id):
         user,
         0,
         dola_pool_id
+    )
+    return result['events'][-1]['moveEvent']['fields']
+
+
+def get_user_all_collateral(dola_user_id):
+    '''
+    public entry fun get_user_all_collateral(storgae: &mut Storage, dola_user_id: u64)
+    :return:
+    '''
+    external_interfaces = load.external_interfaces_package()
+    lending = load.lending_package()
+
+    result = external_interfaces.interfaces.get_user_all_debt.simulate(
+        lending.storage.Storage[-1],
+        dola_user_id
     )
     return result['events'][-1]['moveEvent']['fields']
 
@@ -197,11 +304,14 @@ def get_user_allowed_borrow(user, dola_pool_id):
 
 
 if __name__ == "__main__":
-    pprint.pp(get_dola_token_liquidity(1))
-    pprint.pp(get_dola_user_id("0xdc1f21230999232d6cfc230c4730021683f6546f"))
-    pprint.pp(get_reserve_info(1))
-    pprint.pp(get_app_token_liquidity(0, 1))
-    pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
-    pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
-    pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    pprint.pp(get_user_lending_info("0xdc1f21230999232d6cfc230c4730021683f6546f"))
+    # pprint.pp(get_dola_token_liquidity(1))
+    # pprint.pp(get_dola_user_id("0xdc1f21230999232d6cfc230c4730021683f6546f"))
+    # pprint.pp(get_user_all_collateral(1))
+    pprint.pp(get_user_health_factor(1))
+    # pprint.pp(get_reserve_info(1))
+    # pprint.pp(get_app_token_liquidity(0, 1))
+    # print(get_all_pool_liquidity(0))
+    # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
+    # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
+    # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
+    # pprint.pp(get_user_lending_info("0xdc1f21230999232d6cfc230c4730021683f6546f"))

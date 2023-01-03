@@ -174,6 +174,12 @@ module external_interfaces::interfaces {
     ) {
         let collateral_value = user_total_collateral_value(storage, oracle, dola_user_id);
         let loan_value = user_total_loan_value(storage, oracle, dola_user_id);
+        if (loan_value == 0) {
+            emit(UserHealthFactor {
+                health_factor: 0
+            });
+            return;
+        };
         let health_factor = ray_div(collateral_value, loan_value);
         let health_factor = health_factor * 100 / RAY;
         emit(UserHealthFactor {
