@@ -42,6 +42,7 @@ module lending::storage {
         loans: vector<u16>
     }
 
+    /// todo: add ltv
     struct ReserveData has store {
         // Teserve flag
         // todo! add some flags
@@ -220,10 +221,20 @@ module lending::storage {
 
     public fun get_treasury_factor(
         storage: &mut Storage,
-        dola_pool_id: u16)
-    : u64 {
+        dola_pool_id: u16
+    ): u64 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
+    }
+
+    public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u64 {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).borrow_coefficient
+    }
+
+    public fun get_collateral_coefficient(storage: &mut Storage, dola_pool_id: u16): u64 {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).collateral_coefficient
     }
 
     public fun get_last_update_timestamp(
