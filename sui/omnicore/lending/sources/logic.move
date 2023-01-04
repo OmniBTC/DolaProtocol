@@ -13,6 +13,9 @@ module lending::logic {
 
     const RAY: u64 = 100000000;
 
+    /// 50%
+    const DEFAULT_LIQUIDATABLE_DEBT: u64 = 50000000;
+
     const ECOLLATERAL_AS_LOAN: u64 = 0;
 
     const ENOT_HEALTH: u64 = 1;
@@ -29,7 +32,6 @@ module lending::logic {
 
     const EINVALID_LENGTH: u64 = 7;
 
-    /// todo: add bonus
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -39,22 +41,26 @@ module lending::logic {
         collateral: u16,
         loan_token: u16,
         repay_debt: u64,
-    ): u64 {
+    ): (u64, u64) {
         update_state(cap, storage, oracle, loan_token);
         update_state(cap, storage, oracle, collateral);
         assert!(is_collateral(storage, dola_user_id, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, dola_user_id, loan_token), ENOT_LOAN);
-        assert!(!check_health_factor(storage, oracle, dola_user_id), EIS_HEALTH);
-        let liquidated_debt = repay_debt;
-        let liquidated_debt_val = calculate_value(oracle, loan_token, liquidated_debt);
-        let (collateral_price, decimal) = get_token_price(oracle, collateral);
-        // todo: fix calculation
-        let collateral_amount = liquidated_debt_val * pow(10, decimal) / collateral_price;
-        burn_dtoken(cap, storage, dola_user_id, loan_token, liquidated_debt);
-        burn_otoken(cap, storage, dola_user_id, collateral, collateral_amount);
+        assert!(!is_health(storage, oracle, dola_user_id), EIS_HEALTH);
+        let repay_debt_value = calculate_value(oracle, loan_token, repay_debt);
+        let (liquidable_collateral, liquidable_debt, excess_repay_amount) = calculate_liquidation_debt(
+            storage,
+            oracle,
+            repay_debt_value,
+            dola_user_id,
+            loan_token,
+            collateral
+        );
+        burn_dtoken(cap, storage, dola_user_id, loan_token, liquidable_debt);
+        burn_otoken(cap, storage, dola_user_id, collateral, liquidable_collateral);
         update_interest_rate(cap, pool_manager_info, storage, collateral);
         update_interest_rate(cap, pool_manager_info, storage, loan_token);
-        collateral_amount
+        (liquidable_collateral, excess_repay_amount)
     }
 
     public fun execute_supply(
@@ -75,7 +81,6 @@ module lending::logic {
         }
     }
 
-
     public fun execute_withdraw(
         cap: &StorageCap,
         storage: &mut Storage,
@@ -93,7 +98,7 @@ module lending::logic {
 
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
 
-        assert!(check_health_factor(storage, oracle, dola_user_id), ENOT_HEALTH);
+        assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (token_amount == otoken_amount) {
             remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         }
@@ -122,7 +127,7 @@ module lending::logic {
             get_app_id(storage)
         );
         assert!((token_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
-        assert!(check_health_factor(storage, oracle, dola_user_id), ENOT_HEALTH);
+        assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
     }
 
@@ -145,10 +150,10 @@ module lending::logic {
         }
     }
 
-    public fun check_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
+    public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
         let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
         let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-        health_collateral_value > health_loan_value
+        health_collateral_value >= health_loan_value
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
@@ -276,6 +281,36 @@ module lending::logic {
     public fun calculate_value(oracle: &mut PriceOracle, dola_pool_id: u16, amount: u64): u64 {
         let (price, decimal) = get_token_price(oracle, dola_pool_id);
         (((amount as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
+    }
+
+    public fun calculate_amount(oracle: &mut PriceOracle, dola_pool_id: u16, value: u64): u64 {
+        let (price, decimal) = get_token_price(oracle, dola_pool_id);
+        (((value as u128) * (pow(10, decimal) as u128)) / (price as u128) as u64)
+    }
+
+    public fun calculate_liquidation_debt(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        repay_debt_value: u64,
+        dola_user_id: u64,
+        loan_token: u16,
+        collateral: u16
+    ): (u64, u64, u64) {
+        let avaliable_collateral_value = user_collateral_value(storage, oracle, dola_user_id, collateral);
+        let total_debt_value = user_total_loan_value(storage, oracle, dola_user_id);
+        let max_liquidable_debt_value = ray_mul(total_debt_value, DEFAULT_LIQUIDATABLE_DEBT);
+        let debt_value = if (repay_debt_value > max_liquidable_debt_value) { max_liquidable_debt_value } else { repay_debt_value };
+        let liquidable_debt_value = if (debt_value > avaliable_collateral_value) { avaliable_collateral_value } else { debt_value };
+        let liquidable_collateral = calculate_amount(oracle, collateral, liquidable_debt_value);
+        let liquidable_debt = calculate_amount(oracle, loan_token, liquidable_debt_value);
+        let excess_repay_amount = if (debt_value > liquidable_debt_value) {
+            calculate_amount(
+                oracle,
+                loan_token,
+                debt_value - liquidable_debt_value
+            )
+        } else { 0 };
+        (liquidable_collateral, liquidable_debt, excess_repay_amount)
     }
 
     public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u128 {

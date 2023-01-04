@@ -235,7 +235,7 @@ module lending::wormhole_adapter {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        let withdraw_amount = execute_liquidate(
+        let (withdraw_amount, return_repay_amount) = execute_liquidate(
             cap,
             pool_manager_info,
             storage,
@@ -260,5 +260,21 @@ module lending::wormhole_adapter {
             withdraw_amount,
             wormhole_message_fee
         );
+
+        if (return_repay_amount > 0) {
+            let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
+            let pool_liquidity = pool_liquidity(pool_manager_info, repay_pool);
+            assert!(pool_liquidity >= return_repay_amount, ENOT_ENOUGH_LIQUIDITY);
+            bridge_core::send_withdraw(
+                wormhole_state,
+                core_state,
+                get_app_cap(cap, storage),
+                pool_manager_info,
+                repay_pool,
+                receiver,
+                return_repay_amount,
+                wormhole_message_fee
+            );
+        }
     }
 }
