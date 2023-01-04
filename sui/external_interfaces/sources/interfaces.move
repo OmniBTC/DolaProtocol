@@ -178,7 +178,7 @@ module external_interfaces::interfaces {
             emit(UserHealthFactor {
                 health_factor: 0
             });
-            return;
+            return ()
         };
         let health_factor = ray_div(collateral_value, loan_value);
         let health_factor = health_factor * 100 / RAY;
