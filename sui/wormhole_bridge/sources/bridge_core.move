@@ -77,7 +77,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun receive_binding(
+    public entry fun receive_binding(
         _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         user_manager_info: &mut UserManagerInfo,
@@ -92,7 +92,7 @@ module wormhole_bridge::bridge_core {
         };
     }
 
-    public fun receive_unbinding(
+    public entry fun receive_unbinding(
         _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         user_manager_info: &mut UserManagerInfo,
