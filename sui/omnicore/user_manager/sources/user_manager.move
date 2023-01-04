@@ -88,7 +88,7 @@ module user_manager::user_manager {
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, bind_address), EALREADY_EXIST_USER);
         table::add(&mut user_catalog.user_address_to_user_id, bind_address, dola_user_id);
         let user_addresses = table::borrow_mut(&mut user_catalog.user_id_to_addresses, dola_user_id);
-        assert!(vector::contains(user_addresses, &bind_address), ENOT_EXIST_USER);
+        assert!(!vector::contains(user_addresses, &bind_address), EALREADY_EXIST_USER);
         vector::push_back(user_addresses, bind_address);
     }
 
@@ -102,15 +102,9 @@ module user_manager::user_manager {
         let user_addresses = table::borrow_mut(&mut user_catelog.user_id_to_addresses, unbind_user_id);
         let length = vector::length(user_addresses);
         assert!(length >= 2, ETOO_FEW_ADDRESSES);
-        let i = 0;
-        while (i < length) {
-            let user_address = vector::borrow(user_addresses, i);
-            if (user_address == &unbind_address) {
-                vector::remove(user_addresses, i);
-                break
-            };
-            i = i + 1;
-        };
+        let (is_exist, index) = vector::index_of(user_addresses, &unbind_address);
+        assert!(is_exist, ENOT_EXIST_USER);
+        vector::remove(user_addresses, index);
         table::remove(&mut user_catelog.user_address_to_user_id, unbind_address);
     }
 
