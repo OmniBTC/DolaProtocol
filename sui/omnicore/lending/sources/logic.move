@@ -16,6 +16,9 @@ module lending::logic {
     /// 50%
     const DEFAULT_LIQUIDATABLE_DEBT: u64 = 50000000;
 
+    /// 5%
+    const DEFAULT_BONUS: u64 = 5000000;
+
     const ECOLLATERAL_AS_LOAN: u64 = 0;
 
     const ENOT_HEALTH: u64 = 1;
@@ -48,7 +51,7 @@ module lending::logic {
         assert!(is_loan(storage, dola_user_id, loan_token), ENOT_LOAN);
         assert!(!is_health(storage, oracle, dola_user_id), EIS_HEALTH);
         let repay_debt_value = calculate_value(oracle, loan_token, repay_debt);
-        let (liquidable_collateral, liquidable_debt, excess_repay_amount) = calculate_liquidation_debt(
+        let (liquidable_collateral, liquidable_debt, excess_repay_amount) = calculate_liquidable_debt(
             storage,
             oracle,
             repay_debt_value,
@@ -127,7 +130,7 @@ module lending::logic {
             get_app_id(storage)
         );
         assert!((token_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
-        assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
+        assert!(is_health_borrow(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
     }
 
@@ -154,6 +157,12 @@ module lending::logic {
         let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
         let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
         health_collateral_value >= health_loan_value
+    }
+
+    public fun is_health_borrow(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
+        let borrow_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
+        let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
+        borrow_collateral_value >= health_loan_value
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
@@ -227,6 +236,25 @@ module lending::logic {
         value
     }
 
+    public fun user_borrow_collateral_value(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64
+    ): u64 {
+        let collaterals = get_user_collaterals(storage, dola_user_id);
+        let length = vector::length(&collaterals);
+        let value = 0;
+        let i = 0;
+        while (i < length) {
+            let collateral = vector::borrow(&collaterals, i);
+            let collateral_coefficient = RAY - get_collateral_coefficient(storage, *collateral) - DEFAULT_BONUS;
+            let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
+            value = value + ray_mul(collateral_value, collateral_coefficient);
+            i = i + 1;
+        };
+        value
+    }
+
     public fun user_health_loan_value(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -288,7 +316,7 @@ module lending::logic {
         (((value as u128) * (pow(10, decimal) as u128)) / (price as u128) as u64)
     }
 
-    public fun calculate_liquidation_debt(
+    public fun calculate_liquidable_debt(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         repay_debt_value: u64,
@@ -299,15 +327,27 @@ module lending::logic {
         let avaliable_collateral_value = user_collateral_value(storage, oracle, dola_user_id, collateral);
         let total_debt_value = user_total_loan_value(storage, oracle, dola_user_id);
         let max_liquidable_debt_value = ray_mul(total_debt_value, DEFAULT_LIQUIDATABLE_DEBT);
+        // Ensure that the liquidated debt is less than or equal to half of the user's total debt
         let debt_value = if (repay_debt_value > max_liquidable_debt_value) { max_liquidable_debt_value } else { repay_debt_value };
+        // Ensure that the user has sufficient collateral for the liquidation
         let liquidable_debt_value = if (debt_value > avaliable_collateral_value) { avaliable_collateral_value } else { debt_value };
-        let liquidable_collateral = calculate_amount(oracle, collateral, liquidable_debt_value);
+        let liquidable_collateral = 0;
+        // If the user's collateral is insufficient to pay the reward, 5% of the repayment is returned to the liquidator
+        if (avaliable_collateral_value > ray_mul(liquidable_debt_value, RAY + DEFAULT_BONUS)) {
+            liquidable_collateral = ray_mul(
+                calculate_amount(oracle, collateral, liquidable_debt_value),
+                RAY + DEFAULT_BONUS
+            );
+        } else {
+            liquidable_collateral = calculate_amount(oracle, collateral, liquidable_debt_value);
+            liquidable_debt_value = ray_mul(liquidable_debt_value, RAY - DEFAULT_BONUS);
+        };
         let liquidable_debt = calculate_amount(oracle, loan_token, liquidable_debt_value);
-        let excess_repay_amount = if (debt_value > liquidable_debt_value) {
+        let excess_repay_amount = if (repay_debt_value > liquidable_debt_value) {
             calculate_amount(
                 oracle,
                 loan_token,
-                debt_value - liquidable_debt_value
+                repay_debt_value - liquidable_debt_value
             )
         } else { 0 };
         (liquidable_collateral, liquidable_debt, excess_repay_amount)
