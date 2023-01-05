@@ -1288,6 +1288,10 @@ class SuiPackage:
                     break
             assert not isinstance(param_args[k], int), "Fail split amount"
 
+        for k in range(len(param_args)):
+            if abi["parameters"][k] in ["U64", "U128", "U256"]:
+                param_args[k] = str(param_args[k])
+
         # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
         response = self.client.post(
             f"{self.base_url}",
