@@ -99,7 +99,7 @@ wormhole_package = sui_brownie.SuiPackage(
     is_compile=False,
     package_id=None,
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_1e65074c0df5900a881d053147d61300ad67f501/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_d6ed8d861626e3fc6cbc6cac0e110559dfcc37a3/sui/wormhole")),
 )
 
 wormhole_package.publish_package()
