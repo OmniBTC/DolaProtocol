@@ -6,7 +6,7 @@ module lending::wormhole_adapter {
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, pool_liquidity};
-    use sui::coin::Coin;
+    use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -263,6 +263,8 @@ module lending::wormhole_adapter {
 
         if (return_repay_amount > 0) {
             let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
+            assert!(option::is_some(&repay_pool), EMUST_SOME);
+            let repay_pool = option::destroy_some(repay_pool);
             let pool_liquidity = pool_liquidity(pool_manager_info, repay_pool);
             assert!(pool_liquidity >= return_repay_amount, ENOT_ENOUGH_LIQUIDITY);
             bridge_core::send_withdraw(
@@ -273,7 +275,7 @@ module lending::wormhole_adapter {
                 repay_pool,
                 receiver,
                 return_repay_amount,
-                wormhole_message_fee
+                coin::zero<SUI>(ctx)
             );
         }
     }

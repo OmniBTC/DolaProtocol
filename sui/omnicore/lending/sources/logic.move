@@ -331,7 +331,7 @@ module lending::logic {
         let debt_value = if (repay_debt_value > max_liquidable_debt_value) { max_liquidable_debt_value } else { repay_debt_value };
         // Ensure that the user has sufficient collateral for the liquidation
         let liquidable_debt_value = if (debt_value > avaliable_collateral_value) { avaliable_collateral_value } else { debt_value };
-        let liquidable_collateral = 0;
+        let liquidable_collateral;
         // If the user's collateral is insufficient to pay the reward, 5% of the repayment is returned to the liquidator
         if (avaliable_collateral_value > ray_mul(liquidable_debt_value, RAY + DEFAULT_BONUS)) {
             liquidable_collateral = ray_mul(
