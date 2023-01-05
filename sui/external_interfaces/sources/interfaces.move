@@ -9,9 +9,9 @@ module external_interfaces::interfaces {
     use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral};
     use lending::math::ray_div;
     use lending::rates::calculate_utilization;
-    use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id};
+    use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
+    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, get_pools_by_id};
     use sui::event::emit;
     use sui::math::{pow, min};
     use user_manager::user_manager::{Self, UserManagerInfo};
@@ -40,11 +40,16 @@ module external_interfaces::interfaces {
 
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
+        pools: vector<DolaAddress>,
         borrow_apy: u64,
         supply_apy: u64,
         reserve: u128,
         debt: u128,
         utilization_rate: u64
+    }
+
+    struct AllReserveInfo has copy, drop {
+        reserve_infos: vector<LendingReserveInfo>
     }
 
     struct UserLendingInfo has copy, drop {
@@ -321,6 +326,7 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         dola_pool_id: u16
     ) {
+        let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / RAY;
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -331,11 +337,47 @@ module external_interfaces::interfaces {
         let utilization_rate = utilization * 10000 / RAY;
         emit(LendingReserveInfo {
             dola_pool_id,
+            pools,
             borrow_apy,
             supply_apy,
             reserve,
             debt,
             utilization_rate
+        })
+    }
+
+    public entry fun get_all_reserve_info(
+        pool_manager_info: &mut PoolManagerInfo,
+        storage: &mut Storage
+    ) {
+        let reserve_length = get_reserve_length(storage);
+        let reserve_infos = vector::empty<LendingReserveInfo>();
+        let i = 0;
+        while (i < reserve_length) {
+            let dola_pool_id = (i as u16);
+            let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
+            let borrow_rate = get_borrow_rate(storage, dola_pool_id);
+            let borrow_apy = borrow_rate * 10000 / RAY;
+            let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
+            let supply_apy = liquidity_rate * 10000 / RAY;
+            let debt = total_dtoken_supply(storage, dola_pool_id);
+            let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
+            let utilization = calculate_utilization(storage, dola_pool_id, reserve);
+            let utilization_rate = utilization * 10000 / RAY;
+            let reserve_info = LendingReserveInfo {
+                dola_pool_id,
+                pools,
+                borrow_apy,
+                supply_apy,
+                reserve,
+                debt,
+                utilization_rate
+            };
+            vector::push_back(&mut reserve_infos, reserve_info);
+            i = i + 1;
+        };
+        emit(AllReserveInfo {
+            reserve_infos
         })
     }
 
