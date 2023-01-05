@@ -4,7 +4,7 @@ module serde::serde {
     use std::type_name;
     use std::vector;
 
-    use sui::object::address_from_bytes;
+    use sui::address::from_bytes;
 
     const EINVALID_LENGTH: u64 = 0x00;
 
@@ -262,7 +262,7 @@ module serde::serde {
 
     public fun deserialize_address(buf: &vector<u8>): address {
         assert!(vector::length(buf) == 20, EINVALID_LENGTH);
-        address_from_bytes(*buf)
+        from_bytes(*buf)
     }
 
     public fun get_vector_length(buf: &vector<u8>): u64 {
@@ -329,7 +329,10 @@ module serde::serde {
         assert!(data == vector<u8>[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], 0);
 
         let data = vector::empty<u8>();
-        serialize_u256(&mut data, (1339673755198158349044581307228491536 << 128) + 22690724228668807036942595891182575392);
+        serialize_u256(
+            &mut data,
+            (1339673755198158349044581307228491536 << 128) + 22690724228668807036942595891182575392
+        );
         assert!(
             data == vector<u8>[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
             0
@@ -340,7 +343,10 @@ module serde::serde {
         assert!(data == vector<u8>[0, 0, 0, 0, 0, 0, 0, 8, 1, 2, 3, 4, 5, 6, 7, 8], 0);
 
         let data = vector::empty<u8>();
-        serialize_u256_with_hex_str(&mut data, (1339673755198158349044581307228491536 << 128) + 22690724228668807036942595891182575392);
+        serialize_u256_with_hex_str(
+            &mut data,
+            (1339673755198158349044581307228491536 << 128) + 22690724228668807036942595891182575392
+        );
         assert!(
             data == vector<u8>[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
             0
