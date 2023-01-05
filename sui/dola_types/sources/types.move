@@ -4,8 +4,8 @@ module dola_types::types {
     use std::vector;
 
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
+    use sui::address::from_bytes;
     use sui::bcs;
-    use sui::object::address_from_bytes;
 
     const EINVALID_ADDRESS: u64 = 0;
 
@@ -48,7 +48,7 @@ module dola_types::types {
 
     public fun convert_dola_to_address(addr: DolaAddress): address {
         assert!(vector::length(&addr.dola_address) == 20, EINVALID_ADDRESS);
-        address_from_bytes(addr.dola_address)
+        from_bytes(addr.dola_address)
     }
 
     public fun convert_pool_to_dola<CoinType>(): DolaAddress {
