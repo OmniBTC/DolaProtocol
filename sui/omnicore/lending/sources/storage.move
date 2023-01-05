@@ -168,6 +168,10 @@ module lending::storage {
         });
     }
 
+    public fun get_reserve_length(storage: &mut Storage): u64 {
+        table::length(&storage.reserves)
+    }
+
     public fun get_user_collaterals(storage: &mut Storage, dola_user_id: u64): vector<u16> {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
@@ -220,8 +224,8 @@ module lending::storage {
 
     public fun get_treasury_factor(
         storage: &mut Storage,
-        dola_pool_id: u16)
-    : u64 {
+        dola_pool_id: u16
+    ): u64 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
