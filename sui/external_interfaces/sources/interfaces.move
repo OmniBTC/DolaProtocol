@@ -102,6 +102,16 @@ module external_interfaces::interfaces {
         dola_pool_ids: vector<u16>
     }
 
+    struct TokenPrice has copy, drop {
+        dola_pool_id: u16,
+        price: u64,
+        decimal: u8
+    }
+
+    struct AllTokenPrice has copy, drop {
+        token_prices: vector<TokenPrice>
+    }
+
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
         let token_liquidity = token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
@@ -378,6 +388,35 @@ module external_interfaces::interfaces {
         };
         emit(AllReserveInfo {
             reserve_infos
+        })
+    }
+
+    public entry fun get_oracle_price(oracle: &mut PriceOracle, dola_pool_id: u16) {
+        let (price, decimal) = get_token_price(oracle, dola_pool_id);
+        emit(TokenPrice {
+            dola_pool_id,
+            price,
+            decimal
+        })
+    }
+
+    public entry fun get_all_oracle_price(storage: &mut Storage, oracle: &mut PriceOracle) {
+        let reserve_length = get_reserve_length(storage);
+        let token_prices = vector::empty<TokenPrice>();
+        let i = 0;
+        while (i < reserve_length) {
+            let dola_pool_id = (i as u16);
+            let (price, decimal) = get_token_price(oracle, dola_pool_id);
+            let token_price = TokenPrice {
+                dola_pool_id,
+                price,
+                decimal
+            };
+            vector::push_back(&mut token_prices, token_price);
+            i = i + 1;
+        };
+        emit(AllTokenPrice {
+            token_prices
         })
     }
 
