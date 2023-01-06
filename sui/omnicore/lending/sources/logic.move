@@ -16,7 +16,6 @@ module lending::logic {
     /// 50%
     const DEFAULT_LIQUIDATABLE_DEBT: u64 = 50000000;
 
-
     /// 20%
     const MAX_DISCOUNT: u64 = 20000000;
 

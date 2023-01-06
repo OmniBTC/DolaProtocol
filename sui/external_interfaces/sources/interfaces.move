@@ -18,8 +18,6 @@ module external_interfaces::interfaces {
 
     const RAY: u64 = 100000000;
 
-    const DEFAULT_BONUS: u64 = 5000000;
-
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
         token_liquidity: u64,
@@ -42,9 +40,8 @@ module external_interfaces::interfaces {
 
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
-        ltv: u64,
-        debt_coefficient: u64,
-        liquidation_threshold: u64,
+        collateral_coefficient: u64,
+        borrow_coefficient: u64,
         borrow_apy: u64,
         supply_apy: u64,
         reserve: u128,
@@ -333,9 +330,8 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         dola_pool_id: u16
     ) {
-        let liquidation_threshold = get_collateral_coefficient(storage, dola_pool_id);
-        let ltv = liquidation_threshold - DEFAULT_BONUS;
-        let debt_coefficient = get_borrow_coefficient(storage, dola_pool_id);
+        let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
+        let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / RAY;
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -347,9 +343,8 @@ module external_interfaces::interfaces {
         let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
         emit(LendingReserveInfo {
             dola_pool_id,
-            ltv,
-            debt_coefficient,
-            liquidation_threshold,
+            collateral_coefficient,
+            borrow_coefficient,
             borrow_apy,
             supply_apy,
             reserve,
@@ -368,9 +363,8 @@ module external_interfaces::interfaces {
         let i = 0;
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
-            let liquidation_threshold = get_collateral_coefficient(storage, dola_pool_id) * 10000 / RAY;
-            let ltv = (liquidation_threshold - DEFAULT_BONUS) * 10000 / RAY;
-            let debt_coefficient = get_borrow_coefficient(storage, dola_pool_id) * 10000 / RAY;
+            let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
+            let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
             let borrow_rate = get_borrow_rate(storage, dola_pool_id);
             let borrow_apy = borrow_rate * 10000 / RAY;
             let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -382,9 +376,8 @@ module external_interfaces::interfaces {
             let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
             let reserve_info = LendingReserveInfo {
                 dola_pool_id,
-                ltv,
-                debt_coefficient,
-                liquidation_threshold,
+                collateral_coefficient,
+                borrow_coefficient,
                 borrow_apy,
                 supply_apy,
                 reserve,
