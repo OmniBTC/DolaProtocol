@@ -29,20 +29,23 @@ module lending::storage {
     struct Storage has key {
         id: UID,
         app_cap: Option<AppCap>,
-        // token category -> reserve data
+        // Token category -> reserve data
         reserves: Table<u16, ReserveData>,
-        // dola dola_user_id id -> dola_user_id info
+        // Dola user id -> user info
         user_infos: Table<u64, UserInfo>
     }
 
     struct UserInfo has store {
-        // tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
+        // Average liquidity
+        average_liquidity: u64,
+        // Timestamp of last update
+        last_update_timestamp: u64,
+        // Tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
         collaterals: vector<u16>,
-        // tokens as loan, such as USDT, USDC, DAI etc. Represent by dola_pool_id.
+        // Tokens as loan, such as USDT, USDC, DAI etc. Represent by dola_pool_id.
         loans: vector<u16>
     }
 
-    /// todo: add ltv
     struct ReserveData has store {
         // Teserve flag
         // todo! add some flags
@@ -173,24 +176,33 @@ module lending::storage {
         table::length(&storage.reserves)
     }
 
+    public fun exist_user_info(storage: &mut Storage, dola_user_id: u64): bool {
+        table::contains(&mut storage.user_infos, dola_user_id)
+    }
+
+    public fun get_user_last_timestamp(storage: &mut Storage, dola_user_id: u64): u64 {
+        if (exist_user_info(storage, dola_user_id)) {
+            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+            user_info.last_update_timestamp
+        } else { 0 }
+    }
+
+    public fun get_user_average_liquidity(storage: &mut Storage, dola_user_id: u64): u64 {
+        if (exist_user_info(storage, dola_user_id)) {
+            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+            user_info.average_liquidity
+        }
+        else { 0 }
+    }
+
     public fun get_user_collaterals(storage: &mut Storage, dola_user_id: u64): vector<u16> {
-        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
-            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
-                collaterals: vector::empty(),
-                loans: vector::empty()
-            });
-        };
+        assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
         let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
         user_info.collaterals
     }
 
     public fun get_user_loans(storage: &mut Storage, dola_user_id: u64): vector<u16> {
-        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
-            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
-                collaterals: vector::empty(),
-                loans: vector::empty()
-            });
-        };
+        assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
         let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
         user_info.loans
     }
@@ -221,6 +233,14 @@ module lending::storage {
         } else {
             0
         }
+    }
+
+    public fun get_reserve_treasury(
+        storage: &mut Storage,
+        dola_pool_id: u16
+    ): u64 {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).treasury
     }
 
     public fun get_treasury_factor(
@@ -391,11 +411,14 @@ module lending::storage {
     public fun add_user_collateral(
         _: &StorageCap,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16
     ) {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
+                average_liquidity: 0,
+                last_update_timestamp: get_timestamp(oracle),
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
@@ -424,11 +447,14 @@ module lending::storage {
     public fun add_user_loan(
         _: &StorageCap,
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16
     ) {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
+                average_liquidity: 0,
+                last_update_timestamp: get_timestamp(oracle),
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
@@ -469,6 +495,19 @@ module lending::storage {
         borrow_rate_factors.borrow_rate_slope1 = borrow_rate_slope1;
         borrow_rate_factors.borrow_rate_slope2 = borrow_rate_slope2;
         borrow_rate_factors.optimal_utilization = optimal_utilization;
+    }
+
+    public fun update_user_average_liquidity(
+        _: &StorageCap,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64,
+        average_liquidity: u64
+    ) {
+        assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
+        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
+        user_info.last_update_timestamp = get_timestamp(oracle);
+        user_info.average_liquidity = average_liquidity;
     }
 
     public fun update_state(

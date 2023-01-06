@@ -4,12 +4,28 @@ module lending::math {
 
     const SECONDS_PER_YEAR: u64 = 31536000;
 
+    const SECONDS_PER_DAY: u64 = 86400;
+
     public fun ray_mul(a: u64, b: u64): u64 {
         ((a as u128) * (b as u128) / (RAY as u128) as u64)
     }
 
     public fun ray_div(a: u64, b: u64): u64 {
         (((a as u128) * (RAY as u128) / (b as u128)) as u64)
+    }
+
+    public fun calculate_average_liquidity(
+        current_timestamp: u64,
+        last_update_timestamp: u64,
+        average_liquidity: u64,
+        health_value: u64
+    ): u64 {
+        let delta_time = current_timestamp - last_update_timestamp;
+        if (delta_time >= SECONDS_PER_DAY) {
+            health_value
+        } else {
+            average_liquidity * delta_time / SECONDS_PER_DAY + health_value
+        }
     }
 
     public fun calculate_compounded_interest(

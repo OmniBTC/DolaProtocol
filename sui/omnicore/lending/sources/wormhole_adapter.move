@@ -209,6 +209,7 @@ module lending::wormhole_adapter {
     public entry fun liquidate(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -218,7 +219,7 @@ module lending::wormhole_adapter {
         ctx: &mut TxContext
     ) {
         let cap = get_storage_cap(wormhole_adapter);
-        let (deposit_pool, _deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
+        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -226,8 +227,9 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
+        let (_, _, receiver, violator) = decode_app_payload(app_payload);
 
+        let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let dst_chain = dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
@@ -240,7 +242,8 @@ module lending::wormhole_adapter {
             pool_manager_info,
             storage,
             oracle,
-            liquidate_user_id,
+            liquidator,
+            violator,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
             deposit_amount,
