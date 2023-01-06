@@ -253,7 +253,7 @@ module lending::logic {
         let i = 0;
         while (i < length) {
             let collateral = vector::borrow(&collaterals, i);
-            let collateral_coefficient = RAY - get_collateral_coefficient(storage, *collateral);
+            let collateral_coefficient = get_collateral_coefficient(storage, *collateral);
             let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
             value = value + ray_mul(collateral_value, collateral_coefficient);
             i = i + 1;
@@ -272,7 +272,7 @@ module lending::logic {
         let i = 0;
         while (i < length) {
             let loan = vector::borrow(&loans, i);
-            let borrow_coefficient = RAY + get_borrow_coefficient(storage, *loan);
+            let borrow_coefficient = get_borrow_coefficient(storage, *loan);
             let loan_value = user_loan_value(storage, oracle, dola_user_id, *loan);
             value = value + ray_mul(loan_value, borrow_coefficient);
             i = i + 1;
@@ -344,7 +344,7 @@ module lending::logic {
         let base_discount = calculate_liquidation_base_discount(storage, oracle, violator);
         let average_liquidity = get_user_average_liquidity(storage, liquidator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
-        let borrow_coefficient = RAY + get_borrow_coefficient(storage, loan);
+        let borrow_coefficient = get_borrow_coefficient(storage, loan);
         let discount_booster = ray_div(average_liquidity, 5 * ray_mul(health_loan_value, borrow_coefficient));
         discount_booster = min(discount_booster, RAY) + RAY;
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
@@ -368,8 +368,8 @@ module lending::logic {
             collateral,
             loan
         );
-        let collateral_coefficient = RAY - get_collateral_coefficient(storage, collateral);
-        let borrow_coefficient = RAY + get_borrow_coefficient(storage, loan);
+        let collateral_coefficient = get_collateral_coefficient(storage, collateral);
+        let borrow_coefficient = get_borrow_coefficient(storage, loan);
         let total_collateral_value = user_total_collateral_value(storage, oracle, violator);
         let total_loan_value = user_total_loan_value(storage, oracle, violator);
         let target_collateral_value = 0;
