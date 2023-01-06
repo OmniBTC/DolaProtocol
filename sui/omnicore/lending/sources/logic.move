@@ -13,14 +13,8 @@ module lending::logic {
 
     const RAY: u64 = 100000000;
 
-    /// 50%
-    const DEFAULT_LIQUIDATABLE_DEBT: u64 = 50000000;
-
     /// 20%
     const MAX_DISCOUNT: u64 = 20000000;
-
-    /// 1%
-    const TREASURY_RESERVED: u64 = 1000000;
 
     /// HF 1.25
     const TARGET_HEALTH_FACTOR: u64 = 125000000;
@@ -67,10 +61,13 @@ module lending::logic {
             loan
         );
 
+        let treasury_factor = storage::get_treasury_factor(storage, collateral);
+
         let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount) = calculate_actual_liquidation(
             max_liquidable_collateral,
             max_liquidable_debt,
-            repay_debt
+            repay_debt,
+            treasury_factor
         );
 
         let treasury = get_reserve_treasury(storage, collateral);
@@ -79,6 +76,7 @@ module lending::logic {
         mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
         update_interest_rate(cap, pool_manager_info, storage, collateral);
         update_interest_rate(cap, pool_manager_info, storage, loan);
+        update_average_liquidity(cap, storage, oracle, violator);
         (liquidator_acquired_collateral, excess_repay_amount)
     }
 
@@ -339,14 +337,18 @@ module lending::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         liquidator: u64,
-        violator: u64
+        violator: u64,
+        collateral: u16,
+        loan: u16
     ): u64 {
         let base_discount = calculate_liquidation_base_discount(storage, oracle, violator);
         let average_liquidity = get_user_average_liquidity(storage, liquidator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
-        let discount_booster = ray_div(average_liquidity, 5 * health_loan_value);
-        discount_booster = min(RAY + discount_booster, 2 * RAY);
-        let liquidation_discount = ray_mul(base_discount, discount_booster) + TREASURY_RESERVED;
+        let borrow_coefficient = RAY + get_borrow_coefficient(storage, loan);
+        let discount_booster = ray_div(average_liquidity, 5 * ray_mul(health_loan_value, borrow_coefficient));
+        discount_booster = min(discount_booster, RAY) + RAY;
+        let treasury_factor = storage::get_treasury_factor(storage, collateral);
+        let liquidation_discount = ray_mul(base_discount, discount_booster) + treasury_factor;
         min(liquidation_discount, MAX_DISCOUNT)
     }
 
@@ -358,14 +360,21 @@ module lending::logic {
         collateral: u16,
         loan: u16
     ): (u64, u64) {
-        let liquidation_discount = calculate_liquidation_discount(storage, oracle, liquidator, violator);
+        let liquidation_discount = calculate_liquidation_discount(
+            storage,
+            oracle,
+            liquidator,
+            violator,
+            collateral,
+            loan
+        );
         let collateral_coefficient = RAY - get_collateral_coefficient(storage, collateral);
         let borrow_coefficient = RAY + get_borrow_coefficient(storage, loan);
-        let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
-        let health_loan_value = user_health_loan_value(storage, oracle, violator);
+        let total_collateral_value = user_total_collateral_value(storage, oracle, violator);
+        let total_loan_value = user_total_loan_value(storage, oracle, violator);
         let target_collateral_value = 0;
         let target_loan_value = 0;
-        if (ray_mul(health_collateral_value, RAY - liquidation_discount) > health_loan_value &&
+        if (ray_mul(total_collateral_value, RAY - liquidation_discount) > total_loan_value &&
             ray_mul(
                 borrow_coefficient,
                 ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount)
@@ -374,7 +383,7 @@ module lending::logic {
                 borrow_coefficient,
                 ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount)
             ) - collateral_coefficient;
-            let target_health_value = ray_mul(health_collateral_value, RAY - liquidation_discount) - health_loan_value;
+            let target_health_value = ray_mul(total_collateral_value, RAY - liquidation_discount) - total_loan_value;
             target_collateral_value = ray_mul(
                 borrow_coefficient,
                 ray_mul(
@@ -397,12 +406,12 @@ module lending::logic {
         let max_liquidable_collateral = calculate_amount(
             oracle,
             collateral,
-            health_collateral_value - target_collateral_value
+            total_collateral_value - target_collateral_value
         );
         let max_liquidable_debt = calculate_amount(
             oracle,
             loan,
-            health_loan_value - target_loan_value
+            total_loan_value - target_loan_value
         );
         (max_liquidable_collateral, max_liquidable_debt)
     }
@@ -410,7 +419,8 @@ module lending::logic {
     public fun calculate_actual_liquidation(
         max_liquidable_collateral: u64,
         max_liquidable_debt: u64,
-        repay_debt: u64
+        repay_debt: u64,
+        treasury_factor: u64
     ): (u64, u64, u64, u64, u64) {
         let excess_repay_amount;
         let actual_liquidable_collateral;
@@ -429,8 +439,8 @@ module lending::logic {
             );
         };
 
-        let liquidator_acquired_collateral = ray_mul(actual_liquidable_collateral, RAY - TREASURY_RESERVED);
-        let treasury_reserved_collateral = ray_mul(actual_liquidable_collateral, TREASURY_RESERVED);
+        let liquidator_acquired_collateral = ray_mul(actual_liquidable_collateral, RAY - treasury_factor);
+        let treasury_reserved_collateral = ray_mul(actual_liquidable_collateral, treasury_factor);
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
     }
 
