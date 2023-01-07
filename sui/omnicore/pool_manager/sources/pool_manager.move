@@ -162,11 +162,12 @@ module pool_manager::pool_manager {
     ): u128 {
         let app_infos = &pool_manager_info.app_infos;
 
-        assert!(table::contains(app_infos, dola_pool_id), ENONEXISTENT_RESERVE);
-        let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
+        if (table::contains(app_infos, dola_pool_id)) {
+            let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
 
-        assert!(table::contains(app_liquidity, app_id), ENONEXISTENT_RESERVE);
-        *table::borrow(app_liquidity, app_id)
+            assert!(table::contains(app_liquidity, app_id), ENONEXISTENT_RESERVE);
+            *table::borrow(app_liquidity, app_id)
+        } else { 0 }
     }
 
 
