@@ -140,7 +140,7 @@ module lending::logic {
         };
         mint_dtoken(cap, storage, dola_user_id, dola_pool_id, token_amount);
 
-        let liquidity = pool_manager::get_app_liquidity_by_pool_id(
+        let liquidity = pool_manager::get_app_liquidity(
             pool_manager_info,
             dola_pool_id,
             get_app_id(storage)
@@ -587,7 +587,7 @@ module lending::logic {
         storage: &mut Storage,
         dola_pool_id: u16,
     ) {
-        let liquidity = pool_manager::get_app_liquidity_by_pool_id(
+        let liquidity = pool_manager::get_app_liquidity(
             pool_manager_info,
             dola_pool_id,
             get_app_id(storage)

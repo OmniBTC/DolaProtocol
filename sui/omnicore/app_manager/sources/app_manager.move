@@ -47,4 +47,14 @@ module app_manager::app_manager {
         let AppCap { id, app_id: _ } = app_id;
         object::delete(id);
     }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx)
+    }
+
+    #[test_only]
+    public fun register_app_for_testing(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
+        register_app(total_app_info, ctx)
+    }
 }

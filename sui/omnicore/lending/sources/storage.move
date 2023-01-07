@@ -546,4 +546,14 @@ module lending::storage {
         reserve.current_borrow_rate = new_borrow_rate;
         reserve.current_liquidity_rate = new_liquidity_rate;
     }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx)
+    }
+
+    #[test_only]
+    public fun register_storage_cap_for_testing(): StorageCap {
+        StorageCap {}
+    }
 }
