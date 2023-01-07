@@ -77,7 +77,7 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public fun receive_binding(
+    public entry fun receive_binding(
         _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         user_manager_info: &mut UserManagerInfo,
@@ -85,12 +85,14 @@ module wormhole_bridge::bridge_core {
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
         let (user, bind_address, _) = decode_binding(vaa);
-        if (!is_dola_user(user_manager_info, user)) {
+        if (user == bind_address) {
+            register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
+        } else {
             binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
         };
     }
 
-    public fun receive_unbinding(
+    public entry fun receive_unbinding(
         _wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         user_manager_info: &mut UserManagerInfo,

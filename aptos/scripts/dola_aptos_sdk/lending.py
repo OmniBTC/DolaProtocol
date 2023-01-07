@@ -165,8 +165,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    # claim_test_coin(btc())
-    # monitor_supply(btc())
-    # monitor_withdraw(usdt())
-    # monitor_borrow(btc(), 100)
-    monitor_repay(btc(), 100)
+    # claim_test_coin(usdt())
+    # monitor_supply(usdt())
+    # monitor_withdraw(btc())
+    # monitor_borrow(usdt(), 100)
+    monitor_repay(usdt(), 100)

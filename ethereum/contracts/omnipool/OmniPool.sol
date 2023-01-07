@@ -10,7 +10,6 @@ contract OmniPool {
     uint256 public balance;
     address public bridgePool;
     address public token;
-    uint16 public dolaPoolId;
     uint16 public dolaChainId;
     mapping(address => bool) private allowances;
 
@@ -20,12 +19,10 @@ contract OmniPool {
     }
 
     constructor(
-        uint16 poolId,
         uint16 chainId,
         address bridge,
         address tokenAddress
     ) {
-        dolaPoolId = poolId;
         dolaChainId = chainId;
         bridgePool = bridge;
         token = tokenAddress;

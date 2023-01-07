@@ -24,6 +24,10 @@ module test_coins::coins {
 
     struct DAI has drop {}
 
+    struct MATIC has drop {}
+
+    struct APT has drop {}
+
     ////////////////////////////////////
 
     public(friend) fun get_coins(ctx: &mut TxContext): Bag {
@@ -37,6 +41,9 @@ module test_coins::coins {
         bag::add(&mut coins, into_string(get<WBTC>()), balance::create_supply(WBTC {}));
         bag::add(&mut coins, into_string(get<USDC>()), balance::create_supply(USDC {}));
         bag::add(&mut coins, into_string(get<DAI>()), balance::create_supply(DAI {}));
+        bag::add(&mut coins, into_string(get<MATIC>()), balance::create_supply(MATIC {}));
+        bag::add(&mut coins, into_string(get<APT>()), balance::create_supply(APT {}));
+
 
         coins
     }
