@@ -6,12 +6,12 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral};
+    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral, calculate_value};
     use lending::math::ray_div;
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, get_pools_by_id};
+    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
     use sui::event::emit;
     use sui::math::{pow, min};
     use user_manager::user_manager::{Self, UserManagerInfo};
@@ -40,7 +40,7 @@ module external_interfaces::interfaces {
 
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
-        pools: vector<DolaAddress>,
+        pools: vector<PoolLiquidityInfo>,
         borrow_apy: u64,
         supply_apy: u64,
         reserve: u128,
@@ -79,6 +79,7 @@ module external_interfaces::interfaces {
     struct UserAllowedBorrow has copy, drop {
         borrow_token: vector<u8>,
         borrow_amount: u64,
+        borrow_value: u64,
         reason: Option<String>
     }
 
@@ -164,10 +165,10 @@ module external_interfaces::interfaces {
         })
     }
 
-    public entry fun get_all_pool_liquidity(
+    public fun all_pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16
-    ) {
+    ): vector<PoolLiquidityInfo> {
         let pool_addresses = pool_manager::get_pools_by_id(pool_manager_info, dola_pool_id);
         let length = vector::length(&pool_addresses);
         let i = 0;
@@ -182,6 +183,14 @@ module external_interfaces::interfaces {
             vector::push_back(&mut pool_infos, pool_info);
             i = i + 1;
         };
+        pool_infos
+    }
+
+    public entry fun get_all_pool_liquidity(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16
+    ) {
+        let pool_infos = all_pool_liquidity(pool_manager_info, dola_pool_id);
         emit(AllPoolLiquidityInfo {
             pool_infos
         })
@@ -336,7 +345,7 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         dola_pool_id: u16
     ) {
-        let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
+        let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / RAY;
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -365,7 +374,7 @@ module external_interfaces::interfaces {
         let i = 0;
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
-            let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
+            let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
             let borrow_rate = get_borrow_rate(storage, dola_pool_id);
             let borrow_apy = borrow_rate * 10000 / RAY;
             let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -432,6 +441,7 @@ module external_interfaces::interfaces {
             emit(UserAllowedBorrow {
                 borrow_token,
                 borrow_amount: 0,
+                borrow_value: 0,
                 reason: option::some(string(b"Borrowed token is collateral"))
             });
             return
@@ -446,14 +456,17 @@ module external_interfaces::interfaces {
             emit(UserAllowedBorrow {
                 borrow_token,
                 borrow_amount: 0,
+                borrow_value: 0,
                 reason: option::some(string(b"Not enough liquidity to borrow"))
             });
             return
         };
         borrow_amount = min(borrow_amount, (reserve as u64));
+        let borrow_value = calculate_value(oracle, borrow_pool_id, borrow_amount);
         emit(UserAllowedBorrow {
             borrow_token,
             borrow_amount,
+            borrow_value,
             reason: option::none()
         })
     }
