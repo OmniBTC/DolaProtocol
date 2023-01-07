@@ -352,8 +352,13 @@ module external_interfaces::interfaces {
         let supply_apy = liquidity_rate * 10000 / RAY;
         let debt = total_dtoken_supply(storage, dola_pool_id);
         let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
-        let utilization = calculate_utilization(storage, dola_pool_id, reserve);
-        let utilization_rate = utilization * 10000 / RAY;
+
+        let utilization_rate = 0;
+        if (debt > 0) {
+            let utilization = calculate_utilization(storage, dola_pool_id, reserve);
+            utilization_rate = utilization * 10000 / RAY;
+        };
+
         emit(LendingReserveInfo {
             dola_pool_id,
             pools,
@@ -381,8 +386,13 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / RAY;
             let debt = total_dtoken_supply(storage, dola_pool_id);
             let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
-            let utilization = calculate_utilization(storage, dola_pool_id, reserve);
-            let utilization_rate = utilization * 10000 / RAY;
+
+            let utilization_rate = 0;
+            if (debt > 0) {
+                let utilization = calculate_utilization(storage, dola_pool_id, reserve);
+                utilization_rate = utilization * 10000 / RAY;
+            };
+
             let reserve_info = LendingReserveInfo {
                 dola_pool_id,
                 pools,
