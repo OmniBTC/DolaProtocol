@@ -11,7 +11,7 @@ module external_interfaces::interfaces {
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_collateral_coefficient, get_borrow_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, get_pools_by_id};
+    use pool_manager::pool_manager::{Self, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, get_pools_by_id, get_token_liquidity};
     use sui::event::emit;
     use sui::math::{pow, min};
     use user_manager::user_manager::{Self, UserManagerInfo};
@@ -105,7 +105,7 @@ module external_interfaces::interfaces {
     }
 
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
-        let token_liquidity = token_liquidity(pool_manager_info, dola_pool_id);
+        let token_liquidity = get_token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
             dola_pool_id,
             token_liquidity
@@ -149,7 +149,7 @@ module external_interfaces::interfaces {
         pool_address: vector<u8>
     ) {
         let pool_address = create_dola_address(dola_chain_id, pool_address);
-        let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         emit(PoolLiquidityInfo {
             pool_address,
             pool_liquidity
@@ -166,7 +166,7 @@ module external_interfaces::interfaces {
         let pool_infos = vector::empty<PoolLiquidityInfo>();
         while (i < length) {
             let pool_address = *vector::borrow(&pool_addresses, i);
-            let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+            let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
             let pool_info = PoolLiquidityInfo {
                 pool_address,
                 pool_liquidity

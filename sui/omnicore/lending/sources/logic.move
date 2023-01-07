@@ -11,6 +11,8 @@ module lending::logic {
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
     use sui::math::{pow, min};
 
+    const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
+
     const RAY: u64 = 100000000;
 
     /// 20%
@@ -35,6 +37,8 @@ module lending::logic {
 
     const EINVALID_LENGTH: u64 = 7;
 
+    const EZERO_APP_LIQUIDITY: u64 = 8;
+
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -52,7 +56,7 @@ module lending::logic {
         assert!(is_collateral(storage, violator, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
-        let (max_liquidable_debt, max_liquidable_collateral) = calculate_max_liquidation(
+        let (max_liquidable_collateral, max_liquidable_debt) = calculate_max_liquidation(
             storage,
             oracle,
             liquidator,
@@ -101,23 +105,23 @@ module lending::logic {
 
     public fun execute_withdraw(
         cap: &StorageCap,
+        pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        pool_manager_info: &PoolManagerInfo,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        withdraw_amount: u64,
     ) {
         update_state(cap, storage, oracle, dola_pool_id);
         // check otoken amount
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
-        assert!(token_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
-        burn_otoken(cap, storage, dola_user_id, dola_pool_id, token_amount);
+        assert!(withdraw_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
+        burn_otoken(cap, storage, dola_user_id, dola_pool_id, withdraw_amount);
 
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        if (token_amount == otoken_amount) {
+        if (withdraw_amount == otoken_amount) {
             remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         };
         update_average_liquidity(cap, storage, oracle, dola_user_id);
@@ -129,25 +133,25 @@ module lending::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64,
-        dola_pool_id: u16,
-        token_amount: u64,
+        borrow_pool_id: u16,
+        borrow_amount: u64,
     ) {
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, oracle, borrow_pool_id);
 
-        assert!(!is_collateral(storage, dola_user_id, dola_pool_id), ECOLLATERAL_AS_LOAN);
-        if (!is_loan(storage, dola_user_id, dola_pool_id)) {
-            add_user_loan(cap, storage, oracle, dola_user_id, dola_pool_id);
+        assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
+        if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
+            add_user_loan(cap, storage, oracle, dola_user_id, borrow_pool_id);
         };
-        mint_dtoken(cap, storage, dola_user_id, dola_pool_id, token_amount);
+        mint_dtoken(cap, storage, dola_user_id, borrow_pool_id, borrow_amount);
 
         let liquidity = pool_manager::get_app_liquidity(
             pool_manager_info,
-            dola_pool_id,
+            borrow_pool_id,
             get_app_id(storage)
         );
-        assert!((token_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
+        assert!((borrow_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
+        update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
@@ -177,9 +181,7 @@ module lending::logic {
     }
 
     public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
-        let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
-        let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-        health_collateral_value >= health_loan_value
+        user_health_factor(storage, oracle, dola_user_id) >= RAY
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
@@ -197,6 +199,16 @@ module lending::logic {
             vector::contains(&loans, &dola_pool_id)
         } else {
             false
+        }
+    }
+
+    public fun user_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): u64 {
+        let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
+        let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
+        if (health_loan_value > 0) {
+            ray_div(health_collateral_value, health_loan_value)
+        } else {
+            U64_MAX
         }
     }
 
@@ -266,7 +278,7 @@ module lending::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64
     ): u64 {
-        let loans = get_user_collaterals(storage, dola_user_id);
+        let loans = get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let value = 0;
         let i = 0;
@@ -299,7 +311,7 @@ module lending::logic {
     }
 
     public fun user_total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): u64 {
-        let loans = get_user_collaterals(storage, dola_user_id);
+        let loans = get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let value = 0;
         let i = 0;
@@ -383,22 +395,23 @@ module lending::logic {
                 borrow_coefficient,
                 ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount)
             ) - collateral_coefficient;
+
             let target_health_value = ray_mul(total_collateral_value, RAY - liquidation_discount) - total_loan_value;
             target_collateral_value = ray_mul(
                 borrow_coefficient,
                 ray_mul(
                     TARGET_HEALTH_FACTOR,
                     ray_div(
-                        target_coefficient,
-                        target_health_value
+                        target_health_value,
+                        target_coefficient
                     )
                 )
             );
             target_loan_value = ray_mul(
                 collateral_coefficient,
                 ray_div(
-                    target_coefficient,
-                    target_health_value
+                    target_health_value,
+                    target_coefficient
                 )
             );
         };
@@ -592,6 +605,7 @@ module lending::logic {
             dola_pool_id,
             get_app_id(storage)
         );
+        assert!(liquidity > 0, EZERO_APP_LIQUIDITY);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);
