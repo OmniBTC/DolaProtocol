@@ -4,7 +4,7 @@ module lending::logic_tests {
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{Self, calculate_amount};
+    use lending::logic;
     use lending::math::{ray_mul, ray_div};
     use lending::storage::{Self, Storage};
     use oracle::oracle::{Self, PriceOracle, OracleCap};
@@ -278,6 +278,49 @@ module lending::logic_tests {
         };
     }
 
+    public fun borrow_scenario(
+        scenario: &mut Scenario,
+        creator: address,
+        borrow_pool: DolaAddress,
+        borrow_pool_id: u16,
+        borrow_user_id: u64,
+        borrow_amount: u64
+    ) {
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            // User 0 borrow 5000 usdt
+            logic::execute_borrow(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                borrow_user_id,
+                borrow_pool_id,
+                borrow_amount
+            );
+            pool_manager::remove_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                borrow_pool,
+                0,
+                borrow_amount
+            );
+
+            // Check user dtoken
+            assert!(logic::user_loan_balance(&mut storage, borrow_user_id, borrow_pool_id) == borrow_amount, 103);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+    }
+
     #[test]
     public fun test_execute_supply() {
         let creator = @0xA;
@@ -363,47 +406,16 @@ module lending::logic_tests {
         let usdt_pool = create_dola_address(0, b"USDT");
         let supply_btc_amount = RAY;
         let supply_usdt_amount = 10000 * RAY;
+        let borrow_usdt_amount = 5000 * RAY;
 
         // User 0 supply 1 btc
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
         // User 1 supply 10000 usdt
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
 
-        test_scenario::next_tx(scenario, creator);
-        {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
-            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let storage = test_scenario::take_shared<Storage>(scenario);
-            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
 
-            let borrow_usdt_amount = 5000 * RAY;
-
-            // User 0 borrow 5000 usdt
-            logic::execute_borrow(
-                &storage_cap,
-                &mut pool_manager_info,
-                &mut storage,
-                &mut oracle,
-                0,
-                USDT_POOL_ID,
-                borrow_usdt_amount
-            );
-            pool_manager::remove_liquidity(
-                &pool_manager_cap,
-                &mut pool_manager_info,
-                usdt_pool,
-                0,
-                borrow_usdt_amount
-            );
-
-            // Check user dtoken
-            assert!(logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID) == borrow_usdt_amount, 103);
-
-            test_scenario::return_shared(pool_manager_info);
-            test_scenario::return_shared(storage);
-            test_scenario::return_shared(oracle);
-        };
         test_scenario::end(scenario_val);
     }
 
@@ -418,11 +430,15 @@ module lending::logic_tests {
         let usdt_pool = create_dola_address(0, b"USDT");
         let supply_btc_amount = RAY;
         let supply_usdt_amount = 10000 * RAY;
+        let borrow_usdt_amount = 5000 * RAY;
 
         // User 0 supply 1 btc
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
         // User 1 supply 10000 usdt
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
 
         test_scenario::next_tx(scenario, creator);
         {
@@ -432,29 +448,7 @@ module lending::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            let borrow_usdt_amount = 5000 * RAY;
             let repay_usdt_amount = 1000 * RAY;
-
-            // User 0 borrow 5000 usdt
-            logic::execute_borrow(
-                &storage_cap,
-                &mut pool_manager_info,
-                &mut storage,
-                &mut oracle,
-                0,
-                USDT_POOL_ID,
-                borrow_usdt_amount
-            );
-            pool_manager::remove_liquidity(
-                &pool_manager_cap,
-                &mut pool_manager_info,
-                usdt_pool,
-                0,
-                borrow_usdt_amount
-            );
-
-            // Check user dtoken
-            assert!(logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID) == borrow_usdt_amount, 103);
 
             // User 0 repay 1000 usdt
             pool_manager::add_liquidity(
@@ -500,50 +494,26 @@ module lending::logic_tests {
         let supply_btc_amount = RAY;
         let supply_usdt_amount = 50000 * RAY;
 
+        let user_btc_value = 20000 * RAY;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
         // User 0 supply 1 btc
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
         // User 1 supply 50000 usdt
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 0 borrow max usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
 
         test_scenario::next_tx(scenario, creator);
         {
             let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            // Calculate user max borrow
-            let user_btc_value = logic::user_total_collateral_value(&mut storage, &mut oracle, 0);
-            // btc_value * BTC_CF = usdt_value * USDT_BF
-            let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
-            let borrow_usdt_amount = calculate_amount(
-                &mut oracle,
-                USDT_POOL_ID,
-                borrow_usdt_value
-            );
-
-            // User 0 borrow max usdt
-            logic::execute_borrow(
-                &storage_cap,
-                &mut pool_manager_info,
-                &mut storage,
-                &mut oracle,
-                0,
-                USDT_POOL_ID,
-                borrow_usdt_amount
-            );
-            pool_manager::remove_liquidity(
-                &pool_manager_cap,
-                &mut pool_manager_info,
-                usdt_pool,
-                0,
-                borrow_usdt_amount
-            );
-
-            // Check user dtoken
-            assert!(logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID) == borrow_usdt_amount, 103);
             // Check user HF == 1
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) == RAY, 104);
 
@@ -575,6 +545,334 @@ module lending::logic_tests {
             );
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) == TARGET_HEALTH_FACTOR, 106);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_with_multi_assets_1() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let eth_pool = create_dola_address(0, b"ETH");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let usdc_pool = create_dola_address(0, b"USDC");
+        let supply_btc_amount = RAY;
+        let supply_eth_amount = RAY;
+        let supply_usdt_amount = 50000 * RAY;
+        let supply_usdc_amount = 50000 * RAY;
+
+        let user_btc_value = 20000 * RAY;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        let user_eth_value = 1500 * RAY;
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_amount = borrow_usdc_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 0 supply 1 eth
+        supply_scenario(scenario, creator, eth_pool, ETH_POOL_ID, 0, supply_eth_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 1 supply 50000 usdc
+        supply_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 1, supply_usdc_amount);
+
+        // User 0 borrow usdt with all btc
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+        // User 0 borrow usdc with all eth
+        borrow_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 0, borrow_usdc_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 105);
+
+            // User 1 liquidate user 0 usdt debt to get btc
+            let (_, max_liquidable_debt) = logic::calculate_max_liquidation(
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDT_POOL_ID,
+                max_liquidable_debt
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_with_multi_assets_2() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let eth_pool = create_dola_address(0, b"ETH");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let usdc_pool = create_dola_address(0, b"USDC");
+        let supply_btc_amount = RAY;
+        let supply_eth_amount = RAY;
+        let supply_usdt_amount = 50000 * RAY;
+        let supply_usdc_amount = 50000 * RAY;
+
+        let user_btc_value = 20000 * RAY;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        let user_eth_value = 1500 * RAY;
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_amount = borrow_usdc_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 0 supply 1 eth
+        supply_scenario(scenario, creator, eth_pool, ETH_POOL_ID, 0, supply_eth_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 1 supply 50000 usdc
+        supply_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 1, supply_usdc_amount);
+
+        // User 0 borrow usdt with all btc
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+        // User 0 borrow usdc with all eth
+        borrow_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 0, borrow_usdc_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 105);
+
+            // User 1 liquidate user 0 usdt debt to get eth
+            let (_, max_liquidable_debt) = logic::calculate_max_liquidation(
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                ETH_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                ETH_POOL_ID,
+                USDT_POOL_ID,
+                max_liquidable_debt
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_with_multi_assets_3() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let eth_pool = create_dola_address(0, b"ETH");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let usdc_pool = create_dola_address(0, b"USDC");
+        let supply_btc_amount = RAY;
+        let supply_eth_amount = RAY;
+        let supply_usdt_amount = 50000 * RAY;
+        let supply_usdc_amount = 50000 * RAY;
+
+        let user_btc_value = 20000 * RAY;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        let user_eth_value = 1500 * RAY;
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_amount = borrow_usdc_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 0 supply 1 eth
+        supply_scenario(scenario, creator, eth_pool, ETH_POOL_ID, 0, supply_eth_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 1 supply 50000 usdc
+        supply_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 1, supply_usdc_amount);
+
+        // User 0 borrow usdt with all btc
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+        // User 0 borrow usdc with all eth
+        borrow_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 0, borrow_usdc_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 105);
+
+            // User 1 liquidate user 0 usdc debt to get btc
+            let (_, max_liquidable_debt) = logic::calculate_max_liquidation(
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDC_POOL_ID
+            );
+
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDC_POOL_ID,
+                max_liquidable_debt
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_with_multi_assets_4() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let eth_pool = create_dola_address(0, b"ETH");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let usdc_pool = create_dola_address(0, b"USDC");
+        let supply_btc_amount = RAY;
+        let supply_eth_amount = RAY;
+        let supply_usdt_amount = 50000 * RAY;
+        let supply_usdc_amount = 50000 * RAY;
+
+        let user_btc_value = 20000 * RAY;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        let user_eth_value = 1500 * RAY;
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_amount = borrow_usdc_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 0 supply 1 eth
+        supply_scenario(scenario, creator, eth_pool, ETH_POOL_ID, 0, supply_eth_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 1 supply 50000 usdc
+        supply_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 1, supply_usdc_amount);
+
+        // User 0 borrow usdt with all btc
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+        // User 0 borrow usdc with all eth
+        borrow_scenario(scenario, creator, usdc_pool, USDC_POOL_ID, 0, borrow_usdc_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 105);
+
+            // User 1 liquidate user 0 usdc debt to get eth
+            let (_, max_liquidable_debt) = logic::calculate_max_liquidation(
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                ETH_POOL_ID,
+                USDC_POOL_ID
+            );
+
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                1,
+                0,
+                ETH_POOL_ID,
+                USDC_POOL_ID,
+                max_liquidable_debt
+            );
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);

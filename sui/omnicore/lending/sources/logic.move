@@ -1,5 +1,4 @@
 module lending::logic {
-    use std::debug::print;
     use std::vector;
 
     use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
@@ -423,7 +422,7 @@ module lending::logic {
         let max_liquidable_debt_vaule = total_loan_value - target_loan_value;
         let user_max_debt_value = user_loan_value(storage, oracle, violator, loan);
 
-        // 
+
         if (user_max_collateral_value > max_liquidable_collateral_value && user_max_debt_value > max_liquidable_debt_vaule) {
             let max_liquidable_collateral = calculate_amount(oracle, collateral, max_liquidable_collateral_value);
             let max_liquidable_debt = calculate_amount(oracle, loan, max_liquidable_debt_vaule);
@@ -443,7 +442,6 @@ module lending::logic {
                 ray_div(user_max_debt_value, max_liquidable_debt_vaule)
             );
             let user_liquidable_collateral = calculate_amount(oracle, collateral, user_liquidable_collateral_value);
-            print(&1);
             (user_liquidable_collateral, user_liquidable_debt)
         } else {
             if (user_max_debt_value > user_max_collateral_value) {
@@ -599,15 +597,19 @@ module lending::logic {
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-            let health_value = health_collateral_value - health_loan_value;
-            let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
-            let new_average_liquidity = math::calculate_average_liquidity(
-                current_timestamp,
-                last_update_timestamp,
-                average_liquidity,
-                health_value
-            );
-            storage::update_user_average_liquidity(cap, storage, oracle, dola_user_id, new_average_liquidity);
+            if (health_collateral_value > health_loan_value) {
+                let health_value = health_collateral_value - health_loan_value;
+                let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
+                let new_average_liquidity = math::calculate_average_liquidity(
+                    current_timestamp,
+                    last_update_timestamp,
+                    average_liquidity,
+                    health_value
+                );
+                storage::update_user_average_liquidity(cap, storage, oracle, dola_user_id, new_average_liquidity);
+            } else {
+                storage::update_user_average_liquidity(cap, storage, oracle, dola_user_id, 0);
+            }
         }
     }
 
