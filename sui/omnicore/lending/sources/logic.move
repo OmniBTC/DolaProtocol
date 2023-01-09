@@ -9,7 +9,7 @@ module lending::logic {
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
-    use sui::math::pow;
+    use sui::math::{pow, min};
 
     const RAY: u64 = 100000000;
 
@@ -130,18 +130,23 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        dola_user_id: u64,
-        dola_pool_id: u16,
-        token_amount: u64,
+        repay_user_id: u64,
+        repay_pool_id: u16,
+        repay_amount: u64,
     ) {
-        update_state(cap, storage, oracle, dola_pool_id);
-        let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
-        let repay_debt = if (debt > token_amount) { token_amount } else { debt };
-        burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
-        if (token_amount == repay_debt) {
-            remove_user_loan(cap, storage, dola_user_id, dola_pool_id);
-        }
+        update_state(cap, storage, oracle, repay_pool_id);
+        let debt = user_loan_balance(storage, repay_user_id, repay_pool_id);
+        let repay_debt = min(repay_amount, debt);
+        burn_dtoken(cap, storage, repay_user_id, repay_pool_id, repay_debt);
+        if (repay_amount >= debt) {
+            remove_user_loan(cap, storage, repay_user_id, repay_pool_id);
+            let excess_repay_amount = repay_amount - debt;
+            if (excess_repay_amount > 0) {
+                mint_otoken(cap, storage, repay_user_id, repay_pool_id, excess_repay_amount);
+                add_user_collateral(cap, storage, repay_user_id, repay_pool_id);
+            }
+        };
+        update_interest_rate(cap, pool_manager_info, storage, repay_pool_id);
     }
 
     public fun check_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
