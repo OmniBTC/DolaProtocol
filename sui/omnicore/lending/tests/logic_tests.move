@@ -544,7 +544,10 @@ module lending::logic_tests {
                 max_liquidable_debt
             );
 
-            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) == TARGET_HEALTH_FACTOR, 106);
+            assert!(
+                logic::user_health_factor(&mut storage, &mut oracle, 0) * 100 / RAY == TARGET_HEALTH_FACTOR * 100 / RAY,
+                106
+            );
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -626,6 +629,11 @@ module lending::logic_tests {
                 BTC_POOL_ID,
                 USDT_POOL_ID,
                 max_liquidable_debt
+            );
+
+            assert!(
+                logic::user_health_factor(&mut storage, &mut oracle, 0) * 100 / RAY == TARGET_HEALTH_FACTOR * 100 / RAY,
+                106
             );
 
             test_scenario::return_shared(pool_manager_info);

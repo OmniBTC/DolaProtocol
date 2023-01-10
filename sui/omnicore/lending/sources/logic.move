@@ -380,102 +380,35 @@ module lending::logic {
             collateral,
             loan
         );
-        let collateral_coefficient = get_collateral_coefficient(storage, collateral);
+
+        let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
+        let health_loan_value = user_health_loan_value(storage, oracle, violator);
+
         let borrow_coefficient = get_borrow_coefficient(storage, loan);
-        let total_collateral_value = user_total_collateral_value(storage, oracle, violator);
-        let total_loan_value = user_total_loan_value(storage, oracle, violator);
-        let target_collateral_value = 0;
-        let target_loan_value = 0;
-        if (ray_mul(total_collateral_value, RAY - liquidation_discount) > total_loan_value &&
-            ray_mul(
-                borrow_coefficient,
-                ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount)
-            ) > collateral_coefficient) {
-            let target_coefficient = ray_mul(
-                borrow_coefficient,
-                ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount)
-            ) - collateral_coefficient;
+        let collateral_coefficient = get_collateral_coefficient(storage, collateral);
 
-            let target_health_value = ray_mul(total_collateral_value, RAY - liquidation_discount) - total_loan_value;
-            target_collateral_value = ray_mul(
-                borrow_coefficient,
-                ray_mul(
-                    TARGET_HEALTH_FACTOR,
-                    ray_div(
-                        target_health_value,
-                        target_coefficient
-                    )
-                )
-            );
-            target_loan_value = ray_mul(
-                collateral_coefficient,
-                ray_div(
-                    target_health_value,
-                    target_coefficient
-                )
-            );
-        };
+        let target_health_value = ray_mul(health_loan_value, TARGET_HEALTH_FACTOR) - health_collateral_value;
+        let target_coefficient = ray_mul(
+            ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount),
+            borrow_coefficient
+        ) - collateral_coefficient;
 
-        let max_liquidable_collateral_value = total_collateral_value - target_collateral_value;
+        let max_liquidable_collateral_value = ray_div(target_health_value, target_coefficient);
         let user_max_collateral_value = user_collateral_value(storage, oracle, violator, collateral);
+        let collateral_ratio = ray_div(user_max_collateral_value, max_liquidable_collateral_value);
 
-        let max_liquidable_debt_vaule = total_loan_value - target_loan_value;
+        let max_liquidable_debt_vaule = ray_mul(max_liquidable_collateral_value, RAY - liquidation_discount);
         let user_max_debt_value = user_loan_value(storage, oracle, violator, loan);
+        let debt_ratio = ray_div(user_max_debt_value, max_liquidable_debt_vaule);
 
-
-        if (user_max_collateral_value > max_liquidable_collateral_value && user_max_debt_value > max_liquidable_debt_vaule) {
-            let max_liquidable_collateral = calculate_amount(oracle, collateral, max_liquidable_collateral_value);
-            let max_liquidable_debt = calculate_amount(oracle, loan, max_liquidable_debt_vaule);
-            (max_liquidable_collateral, max_liquidable_debt)
-        } else if (user_max_collateral_value <= max_liquidable_collateral_value && user_max_debt_value > max_liquidable_debt_vaule) {
-            let user_liquidable_collateral = calculate_amount(oracle, collateral, user_max_collateral_value);
-            let user_liquidable_debt_value = ray_mul(
-                max_liquidable_debt_vaule,
-                ray_div(user_max_collateral_value, max_liquidable_collateral_value)
-            );
-            let user_liquidable_debt = calculate_amount(oracle, loan, user_liquidable_debt_value);
-            (user_liquidable_collateral, user_liquidable_debt)
-        } else if (user_max_collateral_value > max_liquidable_collateral_value && user_max_debt_value <= max_liquidable_debt_vaule) {
-            let user_liquidable_debt = calculate_amount(oracle, loan, user_max_debt_value);
-            let user_liquidable_collateral_value = ray_mul(
-                max_liquidable_collateral_value,
-                ray_div(user_max_debt_value, max_liquidable_debt_vaule)
-            );
-            let user_liquidable_collateral = calculate_amount(oracle, collateral, user_liquidable_collateral_value);
-            (user_liquidable_collateral, user_liquidable_debt)
-        } else {
-            if (user_max_debt_value > user_max_collateral_value) {
-                let user_liquidable_collateral = calculate_amount(oracle, collateral, user_max_collateral_value);
-                let user_liquidable_debt_value = ray_mul(
-                    max_liquidable_debt_vaule,
-                    ray_div(user_max_collateral_value, max_liquidable_collateral_value)
-                );
-                let user_liquidable_debt = calculate_amount(oracle, loan, user_liquidable_debt_value);
-                (user_liquidable_collateral, user_liquidable_debt)
-            } else {
-                let user_liquidable_debt = calculate_amount(oracle, loan, user_max_debt_value);
-                let user_liquidable_collateral_value = ray_mul(
-                    max_liquidable_collateral_value,
-                    ray_div(user_max_debt_value, max_liquidable_debt_vaule)
-                );
-                if (user_liquidable_collateral_value > user_max_collateral_value) {
-                    let user_liquidable_collateral = calculate_amount(oracle, collateral, user_max_collateral_value);
-                    let user_liquidable_debt_value = ray_mul(
-                        max_liquidable_debt_vaule,
-                        ray_div(user_max_collateral_value, max_liquidable_collateral_value)
-                    );
-                    let user_liquidable_debt = calculate_amount(oracle, loan, user_liquidable_debt_value);
-                    (user_liquidable_collateral, user_liquidable_debt)
-                } else {
-                    let user_liquidable_collateral = calculate_amount(
-                        oracle,
-                        collateral,
-                        user_liquidable_collateral_value
-                    );
-                    (user_liquidable_collateral, user_liquidable_debt)
-                }
-            }
-        }
+        let ratio = min(min(collateral_ratio, debt_ratio), RAY);
+        let max_liquidable_collateral = calculate_amount(
+            oracle,
+            collateral,
+            ray_mul(max_liquidable_collateral_value, ratio)
+        );
+        let max_liquidable_debt = calculate_amount(oracle, loan, ray_mul(max_liquidable_debt_vaule, ratio));
+        (max_liquidable_collateral, max_liquidable_debt)
     }
 
     public fun calculate_actual_liquidation(
