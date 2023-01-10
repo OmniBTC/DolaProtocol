@@ -128,6 +128,29 @@ def vote_init_lending_wormhole_adapter():
     )
 
 
+def vote_register_evm_chain_id():
+    '''
+    public entry fun vote_register_evm_chain_id(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        user_manager: &mut UserManagerInfo,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    governance_actions = load.governance_actions_package()
+    governance = load.governance_package()
+    user_manager = load.user_manager_package()
+
+    governance_actions.governance_actions.vote_register_evm_chain_id(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        user_manager.user_manager.UserManagerInfo[-1]
+    )
+
+
 def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool(
@@ -320,11 +343,15 @@ def main():
     # 3. register governance
     hash = register_governnace_cap()
 
-    # 4. init bridge
+    # 4. register evm chain
+    create_vote_external_cap(hash)
+    vote_register_evm_chain_id()
+
+    # 5. init bridge
     create_vote_external_cap(hash)
     vote_init_bridge_cap()
 
-    # 5. init pool manager
+    # 6. init pool manager
     create_vote_external_cap(hash)
     vote_register_new_pool(0, b"BTC", btc())
 
@@ -345,7 +372,7 @@ def main():
 
     create_vote_external_cap(hash)
     vote_register_new_pool(6, b"APT", apt())
-    # 6. init lending storage
+    # 7. init lending storage
     create_vote_external_cap(hash)
     vote_init_lending_storage()
 
@@ -353,7 +380,7 @@ def main():
 
     vote_init_lending_wormhole_adapter()
 
-    # register reserves
+    # 8. register reserves
 
     create_vote_external_cap(hash)
 

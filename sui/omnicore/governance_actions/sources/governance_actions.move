@@ -76,7 +76,6 @@ module governance_actions::governance_actions {
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         user_manager: &mut UserManagerInfo,
-        evm_chain_id: u16,
         ctx: &mut TxContext
     ) {
         let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, governance_external_cap, vote, ctx);
@@ -84,8 +83,9 @@ module governance_actions::governance_actions {
         if (option::is_some(&flash_cap)) {
             let governance_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
             let user_manager_cap = user_manager::register_cap_with_governance(governance_cap);
-            // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
-            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
+
+            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, 5);
+            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, 1422);
         };
 
         governance::external_cap_destroy(governance_external_cap, vote, flash_cap);
