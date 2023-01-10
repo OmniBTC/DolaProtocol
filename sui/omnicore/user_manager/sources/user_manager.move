@@ -60,13 +60,13 @@ module user_manager::user_manager {
         UserManagerCap {}
     }
 
-    public fun register_evm_chain_id(_: &mut UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
+    public fun register_evm_chain_id(_: &UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
         let evm_chain_ids = &mut user_manager.evm_chain_ids;
         assert!(!vector::contains(evm_chain_ids, &evm_chain_id), EALREADY_EVM_CHAIN);
         vector::push_back(evm_chain_ids, evm_chain_id);
     }
 
-    public fun unregister_evm_chain_id(_: &mut UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
+    public fun unregister_evm_chain_id(_: &UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
         let evm_chain_ids = &mut user_manager.evm_chain_ids;
         let (is_evm, index) = vector::index_of(evm_chain_ids, &evm_chain_id);
         assert!(is_evm, ENOT_EVM_CHAIN);
