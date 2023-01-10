@@ -1,7 +1,7 @@
 module user_manager::user_manager {
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_chain_id};
     use governance::governance::GovernanceCap;
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::object::{Self, UID};
@@ -18,6 +18,8 @@ module user_manager::user_manager {
     const EINVALID_LENGTH: u64 = 3;
 
     const ETOO_FEW_ADDRESSES: u64 = 4;
+
+    const EALREADY_BINDING_CHAIN: u64 = 5;
 
     // todo: fix message type
     const BINDING: u8 = 5;
@@ -89,6 +91,16 @@ module user_manager::user_manager {
         table::add(&mut user_catalog.user_address_to_user_id, bind_address, dola_user_id);
         let user_addresses = table::borrow_mut(&mut user_catalog.user_id_to_addresses, dola_user_id);
         assert!(!vector::contains(user_addresses, &bind_address), EALREADY_EXIST_USER);
+        // Only one address is allowed to bind per chain.
+        let bind_chain = dola_chain_id(&bind_address);
+        let i = 0;
+        let length = vector::length(user_addresses);
+        while (i < length) {
+            let user_address = vector::borrow(user_addresses, i);
+            let chain_id = dola_chain_id(user_address);
+            assert!(chain_id != bind_chain, EALREADY_BINDING_CHAIN);
+            i = i + 1;
+        };
         vector::push_back(user_addresses, bind_address);
     }
 
