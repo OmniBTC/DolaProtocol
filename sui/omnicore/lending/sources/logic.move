@@ -166,11 +166,11 @@ module lending::logic {
     ) {
         update_state(cap, storage, oracle, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
-        let repay_debt = if (debt > repay_amount) { repay_amount } else { debt };
+        let repay_debt = min(repay_amount, debt);
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
-        if (repay_amount >= repay_debt) {
+        if (repay_amount >= debt) {
             remove_user_loan(cap, storage, dola_user_id, dola_pool_id);
-            let excess_repay_amount = repay_amount - repay_debt;
+            let excess_repay_amount = repay_amount - debt;
             if (excess_repay_amount > 0) {
                 mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
                 add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
