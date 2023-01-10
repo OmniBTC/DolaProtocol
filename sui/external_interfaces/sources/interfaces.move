@@ -6,12 +6,11 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral, calculate_value};
-    use lending::math::ray_div;
+    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral, calculate_value, user_health_factor};
     use lending::rates::calculate_utilization;
-    use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length};
+    use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{Self, token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
+    use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
     use sui::event::emit;
     use sui::math::{pow, min};
     use user_manager::user_manager::{Self, UserManagerInfo};
@@ -41,6 +40,8 @@ module external_interfaces::interfaces {
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
         pools: vector<PoolLiquidityInfo>,
+        collateral_coefficient: u64,
+        borrow_coefficient: u64,
         borrow_apy: u64,
         supply_apy: u64,
         reserve: u128,
@@ -114,7 +115,7 @@ module external_interfaces::interfaces {
     }
 
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
-        let token_liquidity = token_liquidity(pool_manager_info, dola_pool_id);
+        let token_liquidity = get_token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
             dola_pool_id,
             token_liquidity
@@ -158,7 +159,7 @@ module external_interfaces::interfaces {
         pool_address: vector<u8>
     ) {
         let pool_address = create_dola_address(dola_chain_id, pool_address);
-        let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         emit(PoolLiquidityInfo {
             pool_address,
             pool_liquidity
@@ -175,7 +176,7 @@ module external_interfaces::interfaces {
         let pool_infos = vector::empty<PoolLiquidityInfo>();
         while (i < length) {
             let pool_address = *vector::borrow(&pool_addresses, i);
-            let pool_liquidity = pool_manager::pool_liquidity(pool_manager_info, pool_address);
+            let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
             let pool_info = PoolLiquidityInfo {
                 pool_address,
                 pool_liquidity
@@ -201,16 +202,7 @@ module external_interfaces::interfaces {
         oracle: &mut PriceOracle,
         dola_user_id: u64
     ) {
-        let collateral_value = user_total_collateral_value(storage, oracle, dola_user_id);
-        let loan_value = user_total_loan_value(storage, oracle, dola_user_id);
-        if (loan_value == 0) {
-            emit(UserHealthFactor {
-                health_factor: 0
-            });
-            return ()
-        };
-        let health_factor = ray_div(collateral_value, loan_value);
-        let health_factor = health_factor * 100 / RAY;
+        let health_factor = user_health_factor(storage, oracle, dola_user_id);
         emit(UserHealthFactor {
             health_factor
         })
@@ -325,11 +317,7 @@ module external_interfaces::interfaces {
             total_debt_value = total_debt_value + debt_value;
             i = i + 1;
         };
-        let health_factor = 0;
-        if (total_debt_value > 0) {
-            health_factor = ray_div(total_collateral_value, total_debt_value);
-            health_factor = health_factor * 100 / RAY;
-        };
+        let health_factor = user_health_factor(storage, oracle, dola_user_id);
 
         emit(UserLendingInfo {
             health_factor,
@@ -346,6 +334,8 @@ module external_interfaces::interfaces {
         dola_pool_id: u16
     ) {
         let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
+        let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
+        let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / RAY;
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -361,12 +351,14 @@ module external_interfaces::interfaces {
 
         emit(LendingReserveInfo {
             dola_pool_id,
-            pools,
+            collateral_coefficient,
+            borrow_coefficient,
             borrow_apy,
             supply_apy,
             reserve,
             debt,
-            utilization_rate
+            utilization_rate,
+            pools
         })
     }
 
@@ -380,6 +372,8 @@ module external_interfaces::interfaces {
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
             let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
+            let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
+            let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
             let borrow_rate = get_borrow_rate(storage, dola_pool_id);
             let borrow_apy = borrow_rate * 10000 / RAY;
             let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
@@ -395,12 +389,14 @@ module external_interfaces::interfaces {
 
             let reserve_info = LendingReserveInfo {
                 dola_pool_id,
-                pools,
+                collateral_coefficient,
+                borrow_coefficient,
                 borrow_apy,
                 supply_apy,
                 reserve,
                 debt,
-                utilization_rate
+                utilization_rate,
+                pools
             };
             vector::push_back(&mut reserve_infos, reserve_info);
             i = i + 1;

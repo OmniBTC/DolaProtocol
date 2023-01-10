@@ -5,8 +5,8 @@ module lending::wormhole_adapter {
     use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
-    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, pool_liquidity};
-    use sui::coin::Coin;
+    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
+    use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -110,14 +110,14 @@ module lending::wormhole_adapter {
         let dst_pool = option::destroy_some(dst_pool);
 
         // check pool liquidity
-        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= token_amount, ENOT_ENOUGH_LIQUIDITY);
 
         execute_withdraw(
             cap,
+            pool_manager_info,
             storage,
             oracle,
-            pool_manager_info,
             dola_user_id,
             dola_pool_id,
             token_amount,
@@ -164,7 +164,7 @@ module lending::wormhole_adapter {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
         // check pool liquidity
-        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= token_amount, ENOT_ENOUGH_LIQUIDITY);
 
         execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, token_amount);
@@ -209,6 +209,7 @@ module lending::wormhole_adapter {
     public entry fun liquidate(
         wormhole_adapter: &WormholeAdapater,
         pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
@@ -218,7 +219,7 @@ module lending::wormhole_adapter {
         ctx: &mut TxContext
     ) {
         let cap = get_storage_cap(wormhole_adapter);
-        let (deposit_pool, _deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
+        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -226,8 +227,9 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
+        let (_, _, receiver, violator) = decode_app_payload(app_payload);
 
+        let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let dst_chain = dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
@@ -235,19 +237,20 @@ module lending::wormhole_adapter {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        let withdraw_amount = execute_liquidate(
+        let (withdraw_amount, return_repay_amount) = execute_liquidate(
             cap,
             pool_manager_info,
             storage,
             oracle,
-            liquidate_user_id,
+            liquidator,
+            violator,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
             deposit_amount,
         );
 
         // check pool liquidity
-        let pool_liquidity = pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= withdraw_amount, ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
@@ -260,5 +263,23 @@ module lending::wormhole_adapter {
             withdraw_amount,
             wormhole_message_fee
         );
+
+        if (return_repay_amount > 0) {
+            let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
+            assert!(option::is_some(&repay_pool), EMUST_SOME);
+            let repay_pool = option::destroy_some(repay_pool);
+            let pool_liquidity = get_pool_liquidity(pool_manager_info, repay_pool);
+            assert!(pool_liquidity >= return_repay_amount, ENOT_ENOUGH_LIQUIDITY);
+            bridge_core::send_withdraw(
+                wormhole_state,
+                core_state,
+                get_app_cap(cap, storage),
+                pool_manager_info,
+                repay_pool,
+                receiver,
+                return_repay_amount,
+                coin::zero<SUI>(ctx)
+            );
+        }
     }
 }
