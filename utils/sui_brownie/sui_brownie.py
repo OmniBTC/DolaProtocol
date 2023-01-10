@@ -429,11 +429,11 @@ class Coin:
 
 class HttpClient(httpx.Client):
 
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def get(self, *args, **kwargs):
         return super().get(*args, **kwargs)
 
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def post(self, *args, **kwargs):
         response = super().post(*args, **kwargs)
         if response.status_code >= 400:
@@ -1223,7 +1223,7 @@ class SuiPackage:
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
 
-        return param_args
+        return param_args, ty_args
 
     def dev_inspect_move_call(
             self,
@@ -1231,7 +1231,7 @@ class SuiPackage:
             *param_args,
             ty_args: List[str] = None
     ):
-        param_args = self.check_args(abi, param_args, ty_args)
+        param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
         for k in range(len(param_args)):
             if abi["parameters"][k] in ["U64", "U128", "U256"]:
@@ -1266,7 +1266,7 @@ class SuiPackage:
             ty_args: List[str] = None,
             gas_budget=100000,
     ):
-        param_args = self.check_args(abi, param_args, ty_args)
+        param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
         normal_coin: List[ObjectType] = []
 
