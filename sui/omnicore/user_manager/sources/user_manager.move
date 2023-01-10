@@ -1,7 +1,7 @@
 module user_manager::user_manager {
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_chain_id};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_chain_id, update_dola_chain_id};
     use governance::governance::GovernanceCap;
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::object::{Self, UID};
@@ -21,14 +21,21 @@ module user_manager::user_manager {
 
     const EALREADY_BINDING_CHAIN: u64 = 5;
 
+    const EALREADY_EVM_CHAIN: u64 = 6;
+
+    const ENOT_EVM_CHAIN: u64 = 7;
+
     // todo: fix message type
     const BINDING: u8 = 5;
 
     const UNBINDING: u8 = 6;
 
+    const EVM_CHAIN_ID: u16 = 2;
+
     struct UserManagerInfo has key, store {
         id: UID,
-        user_address_catalog: UserAddressCatalog
+        user_address_catalog: UserAddressCatalog,
+        evm_chain_ids: vector<u16>
     }
 
     struct UserAddressCatalog has store {
@@ -44,7 +51,8 @@ module user_manager::user_manager {
             user_address_catalog: UserAddressCatalog {
                 user_address_to_user_id: table::new(ctx),
                 user_id_to_addresses: table::new(ctx)
-            }
+            },
+            evm_chain_ids: vector::empty<u16>()
         })
     }
 
@@ -52,12 +60,31 @@ module user_manager::user_manager {
         UserManagerCap {}
     }
 
+    public fun register_evm_chain_id(_: &mut UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
+        let evm_chain_ids = &mut user_manager.evm_chain_ids;
+        assert!(!vector::contains(evm_chain_ids, &evm_chain_id), EALREADY_EVM_CHAIN);
+        vector::push_back(evm_chain_ids, evm_chain_id);
+    }
+
+    public fun unregister_evm_chain_id(_: &mut UserManagerCap, user_manager: &mut UserManagerInfo, evm_chain_id: u16) {
+        let evm_chain_ids = &mut user_manager.evm_chain_ids;
+        let (is_evm, index) = vector::index_of(evm_chain_ids, &evm_chain_id);
+        assert!(is_evm, ENOT_EVM_CHAIN);
+        vector::remove(evm_chain_ids, index);
+    }
+
+    public fun is_evm_chain_id(user_manager: &mut UserManagerInfo, user_chain_id: u16): bool {
+        vector::contains(&user_manager.evm_chain_ids, &user_chain_id)
+    }
+
     public fun is_dola_user(user_manager: &mut UserManagerInfo, user: DolaAddress): bool {
+        let user = process_evm_address(user_manager, user);
         let user_catalog = &mut user_manager.user_address_catalog;
         table::contains(&mut user_catalog.user_address_to_user_id, user)
     }
 
     public fun get_dola_user_id(user_manager: &mut UserManagerInfo, user: DolaAddress): u64 {
+        let user = process_evm_address(user_manager, user);
         let user_catalog = &mut user_manager.user_address_catalog;
         assert!(table::contains(&mut user_catalog.user_address_to_user_id, user), ENOT_EXIST_USER);
         *table::borrow(&mut user_catalog.user_address_to_user_id, user)
@@ -69,7 +96,17 @@ module user_manager::user_manager {
         *table::borrow(&mut user_catalog.user_id_to_addresses, dola_user_id)
     }
 
+    public fun process_evm_address(user_manager: &mut UserManagerInfo, user: DolaAddress): DolaAddress {
+        let user_chain_id = dola_chain_id(&user);
+        if (is_evm_chain_id(user_manager, user_chain_id)) {
+            update_dola_chain_id(user, EVM_CHAIN_ID)
+        } else {
+            user
+        }
+    }
+
     public fun register_dola_user_id(_: &UserManagerCap, user_manager: &mut UserManagerInfo, user: DolaAddress) {
+        let user = process_evm_address(user_manager, user);
         let user_catalog = &mut user_manager.user_address_catalog;
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, user), EALREADY_EXIST_USER);
         let dola_user_id = table::length(&user_catalog.user_id_to_addresses);
@@ -86,21 +123,12 @@ module user_manager::user_manager {
         bind_address: DolaAddress
     ) {
         let dola_user_id = get_dola_user_id(user_manager, user);
+        let bind_address = process_evm_address(user_manager, bind_address);
         let user_catalog = &mut user_manager.user_address_catalog;
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, bind_address), EALREADY_EXIST_USER);
         table::add(&mut user_catalog.user_address_to_user_id, bind_address, dola_user_id);
         let user_addresses = table::borrow_mut(&mut user_catalog.user_id_to_addresses, dola_user_id);
         assert!(!vector::contains(user_addresses, &bind_address), EALREADY_EXIST_USER);
-        // Only one address is allowed to bind per chain.
-        let bind_chain = dola_chain_id(&bind_address);
-        let i = 0;
-        let length = vector::length(user_addresses);
-        while (i < length) {
-            let user_address = vector::borrow(user_addresses, i);
-            let chain_id = dola_chain_id(user_address);
-            assert!(chain_id != bind_chain, EALREADY_BINDING_CHAIN);
-            i = i + 1;
-        };
         vector::push_back(user_addresses, bind_address);
     }
 
@@ -110,6 +138,7 @@ module user_manager::user_manager {
         unbind_address: DolaAddress
     ) {
         let unbind_user_id = get_dola_user_id(user_manager, unbind_address);
+        let unbind_address = process_evm_address(user_manager, unbind_address);
         let user_catelog = &mut user_manager.user_address_catalog;
         let user_addresses = table::borrow_mut(&mut user_catelog.user_id_to_addresses, unbind_user_id);
         let length = vector::length(user_addresses);
