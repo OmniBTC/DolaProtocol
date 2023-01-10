@@ -84,4 +84,9 @@ module oracle::oracle {
     public fun get_timestamp(oracle: &mut PriceOracle): u64 {
         oracle.timestamp
     }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx)
+    }
 }

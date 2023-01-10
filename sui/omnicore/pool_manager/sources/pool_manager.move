@@ -155,7 +155,7 @@ module pool_manager::pool_manager {
         }
     }
 
-    public fun get_app_liquidity_by_pool_id(
+    public fun get_app_liquidity(
         pool_manager_info: &PoolManagerInfo,
         dola_pool_id: u16,
         app_id: u16
@@ -170,22 +170,13 @@ module pool_manager::pool_manager {
         } else { 0 }
     }
 
-
-    public fun get_app_liquidity(
-        pool_manager_info: &mut PoolManagerInfo,
-        dola_pool_id: u16,
-        app_id: u16
-    ): u128 {
-        get_app_liquidity_by_pool_id(pool_manager_info, dola_pool_id, app_id)
-    }
-
-    public fun token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): u64 {
+    public fun get_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): u64 {
         assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
         pool_info.reserve.value
     }
 
-    public fun pool_liquidity(
+    public fun get_pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
     ): u64 {
@@ -274,12 +265,12 @@ module pool_manager::pool_manager {
     }
 
     #[test_only]
-    public fun init_for_test(ctx: &mut TxContext) {
+    public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
     }
 
     #[test_only]
-    public fun manager_cap_for_test(): PoolManagerCap {
+    public fun register_manager_cap_for_testing(): PoolManagerCap {
         PoolManagerCap {}
     }
 
@@ -290,7 +281,7 @@ module pool_manager::pool_manager {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            init_for_test(test_scenario::ctx(scenario));
+            init_for_testing(test_scenario::ctx(scenario));
         };
         test_scenario::next_tx(scenario, manager);
         {
@@ -298,7 +289,7 @@ module pool_manager::pool_manager {
             let dola_pool_name = string(b"USDT");
             let pool = create_dola_address(0, b"USDT");
 
-            let cap = manager_cap_for_test();
+            let cap = register_manager_cap_for_testing();
 
             register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
 
@@ -317,13 +308,13 @@ module pool_manager::pool_manager {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            init_for_test(test_scenario::ctx(scenario));
+            init_for_testing(test_scenario::ctx(scenario));
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = manager_cap_for_test();
+            let cap = register_manager_cap_for_testing();
 
             register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
 
@@ -332,8 +323,8 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = manager_cap_for_test();
-            assert!(token_liquidity(&mut pool_manager_info, 0) == 0, 0);
+            let cap = register_manager_cap_for_testing();
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
             add_liquidity(
                 &cap,
                 &mut pool_manager_info,
@@ -343,8 +334,8 @@ module pool_manager::pool_manager {
                 test_scenario::ctx(scenario)
             );
 
-            assert!(token_liquidity(&mut pool_manager_info, 0) == amount, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -362,13 +353,13 @@ module pool_manager::pool_manager {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            init_for_test(test_scenario::ctx(scenario));
+            init_for_testing(test_scenario::ctx(scenario));
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = manager_cap_for_test();
+            let cap = register_manager_cap_for_testing();
 
             register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
 
@@ -377,7 +368,7 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = manager_cap_for_test();
+            let cap = register_manager_cap_for_testing();
             add_liquidity(
                 &cap,
                 &mut pool_manager_info,
@@ -392,10 +383,10 @@ module pool_manager::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = manager_cap_for_test();
+            let cap = register_manager_cap_for_testing();
 
-            assert!(token_liquidity(&mut pool_manager_info, 0) == amount, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             remove_liquidity(
                 &cap,
@@ -405,8 +396,8 @@ module pool_manager::pool_manager {
                 amount
             );
 
-            assert!(token_liquidity(&mut pool_manager_info, 0) == 0, 0);
-            assert!(pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
 
             test_scenario::return_shared(pool_manager_info);
         };
