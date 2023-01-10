@@ -435,7 +435,10 @@ class HttpClient(httpx.Client):
 
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def post(self, *args, **kwargs):
-        return super().post(*args, **kwargs)
+        response = super().post(*args, **kwargs)
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response
 
 
 class SuiDynamicFiled:
@@ -781,8 +784,6 @@ class SuiPackage:
         #         ]
         #     },
         # )
-        # if response.status_code >= 400:
-        #     raise ApiError(response.text, response.status_code)
         # result = response.json()
         # result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
         # # # # # Update package id
@@ -811,8 +812,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -897,8 +896,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -969,8 +966,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -995,8 +990,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1021,8 +1014,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1049,8 +1040,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1264,8 +1253,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1358,9 +1345,6 @@ class SuiPackage:
                 ]
             },
         )
-
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1447,8 +1431,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1474,8 +1456,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1502,8 +1482,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1528,8 +1506,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1553,8 +1529,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
