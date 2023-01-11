@@ -25,6 +25,8 @@ module user_manager::user_manager {
 
     const ENOT_EVM_CHAIN: u64 = 7;
 
+    const EINVALID_UNBINDING: u64 = 8;
+
     // todo: fix message type
     const BINDING: u8 = 5;
 
@@ -135,9 +137,12 @@ module user_manager::user_manager {
     public fun unbinding_user_address(
         _: &UserManagerCap,
         user_manager: &mut UserManagerInfo,
+        user: DolaAddress,
         unbind_address: DolaAddress
     ) {
+        let dola_user_id = get_dola_user_id(user_manager, user);
         let unbind_user_id = get_dola_user_id(user_manager, unbind_address);
+        assert!(dola_user_id == unbind_user_id, EINVALID_UNBINDING);
         let unbind_address = process_evm_address(user_manager, unbind_address);
         let user_catelog = &mut user_manager.user_address_catalog;
         let user_addresses = table::borrow_mut(&mut user_catelog.user_id_to_addresses, unbind_user_id);
@@ -148,7 +153,6 @@ module user_manager::user_manager {
         vector::remove(user_addresses, index);
         table::remove(&mut user_catelog.user_address_to_user_id, unbind_address);
     }
-
 
     public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
         let binding_payload = vector::empty<u8>();
@@ -194,8 +198,13 @@ module user_manager::user_manager {
         (user, bind_address, call_type)
     }
 
-    public fun encode_unbinding(unbind_address: DolaAddress): vector<u8> {
+    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
         let unbinding_payload = vector::empty<u8>();
+
+        let user = encode_dola_address(user);
+        serialize_u16(&mut unbinding_payload, (vector::length(&user) as u16));
+        serialize_vector(&mut unbinding_payload, user);
+
         let unbind_address = encode_dola_address(unbind_address);
         serialize_u16(&mut unbinding_payload, (vector::length(&unbind_address) as u16));
         serialize_vector(&mut unbinding_payload, unbind_address);
@@ -204,10 +213,18 @@ module user_manager::user_manager {
         unbinding_payload
     }
 
-    public fun decode_unbinding(unbinding_payload: vector<u8>): (DolaAddress, u8) {
+    public fun decode_unbinding(unbinding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
         let length = vector::length(&unbinding_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let user_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (user_len as u64);
+        let user = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 2;
         let unbind_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
@@ -222,6 +239,6 @@ module user_manager::user_manager {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (unbind_address, call_type)
+        (user, unbind_address, call_type)
     }
 }
