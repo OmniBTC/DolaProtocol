@@ -109,7 +109,7 @@ module user_manager::user_manager {
         let user = process_evm_address(user_manager, user);
         let user_catalog = &mut user_manager.user_address_catalog;
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, user), EALREADY_EXIST_USER);
-        let dola_user_id = table::length(&user_catalog.user_id_to_addresses);
+        let dola_user_id = table::length(&user_catalog.user_id_to_addresses) + 1;
         table::add(&mut user_catalog.user_address_to_user_id, user, dola_user_id);
         let user_addresses = vector::empty<DolaAddress>();
         vector::push_back(&mut user_addresses, user);
