@@ -3,17 +3,19 @@ pragma solidity ^0.8.0;
 
 import "../libraries//LibPool.sol";
 import "../libraries//LibBinding.sol";
-import "../../interfaces/IOmniPool.sol";
+import "../../interfaces/IPoolOwner.sol";
 import "../../interfaces/IWormhole.sol";
 
 contract MockBridgePool {
-    address wormholeBridge;
-    uint32 nonce;
-    uint16 dolaChainId;
-    uint16 wormholeChainId;
-    uint8 finality;
-    address remoteBridge;
-    mapping(bytes32 => bool) completeVAA;
+    address public wormholeBridge;
+    uint32 public nonce;
+    uint16 public dolaChainId;
+    uint16 public wormholeChainId;
+    uint8 public finality;
+    address public remoteBridge;
+    address public poolOwner;
+    bool public poolInit;
+    mapping(bytes32 => bool) public completeVAA;
     // convenient for testing
     mapping(uint32 => bytes) public cachedVAA;
 
@@ -67,6 +69,13 @@ contract MockBridgePool {
         return completeVAA[_hash];
     }
 
+    /// @dev Only the first bridge pool needs this
+    function initPool(address pool) external {
+        require(!poolInit, "Pool has been initialized!");
+        poolOwner = pool;
+        poolInit = true;
+    }
+
     function sendBinding(uint16 bindDolaChainId, bytes memory bindAddress)
         external
         payable
@@ -96,14 +105,23 @@ contract MockBridgePool {
         bytes memory appPayload
     ) external payable {
         bytes memory payload;
-        if (IOmniPool(pool).token() == address(0) && msg.value >= amount) {
-            payload = IOmniPool(pool).depositTo{value: amount}(
+        if (
+            IPoolOwner(poolOwner).token(pool) == address(0) &&
+            msg.value >= amount
+        ) {
+            payload = IPoolOwner(poolOwner).depositTo{value: amount}(
+                pool,
                 amount,
                 appId,
                 appPayload
             );
         } else {
-            payload = IOmniPool(pool).depositTo(amount, appId, appPayload);
+            payload = IPoolOwner(poolOwner).depositTo(
+                pool,
+                amount,
+                appId,
+                appPayload
+            );
         }
 
         cachedVAA[getNonce()] = payload;
@@ -115,7 +133,11 @@ contract MockBridgePool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = IOmniPool(pool).withdrawTo(appId, appPayload);
+        bytes memory payload = IPoolOwner(poolOwner).withdrawTo(
+            pool,
+            appId,
+            appPayload
+        );
         cachedVAA[getNonce()] = payload;
         increaseNonce();
     }
@@ -129,14 +151,15 @@ contract MockBridgePool {
     ) external payable {
         bytes memory payload;
         if (
-            IOmniPool(depositPool).token() == address(0) &&
+            IPoolOwner(poolOwner).token(depositPool) == address(0) &&
             msg.value >= depositAmount
         ) {
-            payload = IOmniPool(depositPool).depositAndWithdraw{
+            payload = IPoolOwner(poolOwner).depositAndWithdraw{
                 value: depositAmount
-            }(depositAmount, withdrawPool, appId, appPayload);
+            }(depositPool, depositAmount, withdrawPool, appId, appPayload);
         } else {
-            payload = IOmniPool(depositPool).depositAndWithdraw(
+            payload = IPoolOwner(poolOwner).depositAndWithdraw(
+                depositPool,
                 depositAmount,
                 withdrawPool,
                 appId,
@@ -153,6 +176,6 @@ contract MockBridgePool {
             .decodeReceiveWithdrawPayload(vaa);
         address pool = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
-        IOmniPool(pool).innerWithdraw(user, payload.amount);
+        IPoolOwner(poolOwner).innerWithdraw(pool, user, payload.amount);
     }
 }

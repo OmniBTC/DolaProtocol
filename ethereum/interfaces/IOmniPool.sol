@@ -7,10 +7,6 @@ interface IOmniPool {
 
     function decimals() external view returns (uint8);
 
-    function rely(address bridge) external;
-
-    function deny(address bridge) external;
-
     function depositTo(
         uint256 amount,
         uint16 appId,

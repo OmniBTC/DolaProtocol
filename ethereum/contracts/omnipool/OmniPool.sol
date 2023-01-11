@@ -8,46 +8,40 @@ import "../libraries//LibDolaTypes.sol";
 
 contract OmniPool {
     uint256 public balance;
-    address public bridgePool;
-    address public token;
+    address public poolOwner;
+    address public poolToken;
     uint16 public dolaChainId;
-    mapping(address => bool) private allowances;
 
-    modifier isBridgePool(address bridge) {
-        require(allowances[bridge], "Not bridge pool!");
+    modifier isPoolOwner() {
+        require(msg.sender == poolOwner, "Not pool owner!");
         _;
     }
 
     constructor(
-        uint16 chainId,
-        address bridge,
-        address tokenAddress
+        uint16 _dolaChainId,
+        address _poolOwner,
+        address _poolToken
     ) {
-        dolaChainId = chainId;
-        bridgePool = bridge;
-        token = tokenAddress;
-        allowances[bridgePool] = true;
+        dolaChainId = _dolaChainId;
+        poolOwner = _poolOwner;
+        poolToken = _poolToken;
     }
 
     function decimals() public view returns (uint8) {
-        return IERC20(token).decimals();
+        return IERC20(poolToken).decimals();
     }
 
-    function rely(address bridge) external isBridgePool(msg.sender) {
-        allowances[bridge] = true;
-    }
-
-    function deny(address bridge) external isBridgePool(msg.sender) {
-        allowances[bridge] = false;
+    function token() public view returns (address) {
+        return poolToken;
     }
 
     function depositTo(
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external isBridgePool(msg.sender) returns (bytes memory) {
+    ) external isPoolOwner returns (bytes memory) {
         balance += amount;
-        IERC20(token).transferFrom(tx.origin, address(this), amount);
+        IERC20(poolToken).transferFrom(tx.origin, address(this), amount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
@@ -62,7 +56,7 @@ contract OmniPool {
     function withdrawTo(uint16 appId, bytes memory appPayload)
         external
         view
-        isBridgePool(msg.sender)
+        isPoolOwner
         returns (bytes memory)
     {
         bytes memory poolPayload = LibPool.encodeSendWithdrawPayload(
@@ -74,16 +68,13 @@ contract OmniPool {
         return poolPayload;
     }
 
-    function innerWithdraw(address to, uint64 amount)
-        external
-        isBridgePool(msg.sender)
-    {
+    function innerWithdraw(address to, uint64 amount) external isPoolOwner {
         uint256 fixedAmount = LibDecimals.restoreAmountDecimals(
             amount,
             decimals()
         );
         balance -= fixedAmount;
-        IERC20(token).transfer(to, fixedAmount);
+        IERC20(poolToken).transfer(to, fixedAmount);
     }
 
     function depositAndWithdraw(
@@ -91,9 +82,9 @@ contract OmniPool {
         address withdrawPool,
         uint16 appId,
         bytes memory appPayload
-    ) public isBridgePool(msg.sender) returns (bytes memory) {
+    ) public isPoolOwner returns (bytes memory) {
         balance += depositAmount;
-        IERC20(token).transferFrom(tx.origin, address(this), depositAmount);
+        IERC20(poolToken).transferFrom(tx.origin, address(this), depositAmount);
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),

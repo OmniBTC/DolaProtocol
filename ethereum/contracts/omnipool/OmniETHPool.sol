@@ -7,43 +7,34 @@ import "../libraries/LibDolaTypes.sol";
 
 contract OmniETHPool {
     uint256 public balance;
-    address public bridgePool;
-    address public token;
+    address public poolOwner;
+    address public poolToken;
     uint16 public dolaChainId;
-    mapping(address => bool) private allowances;
 
-    modifier isBridgePool(address bridge) {
-        require(allowances[bridge], "Not bridge pool!");
+    modifier isPoolOwner() {
+        require(msg.sender == poolOwner, "Not pool owner!");
         _;
     }
 
-    constructor(
-        uint16 chainId,
-        address bridge
-    ) {
-        dolaChainId = chainId;
-        bridgePool = bridge;
-        token = address(0);
-        allowances[bridgePool] = true;
+    constructor(uint16 _dolaChainId, address _poolOwner) {
+        dolaChainId = _dolaChainId;
+        poolOwner = _poolOwner;
+        poolToken = address(0);
     }
 
     function decimals() public pure returns (uint8) {
         return 18;
     }
 
-    function rely(address bridge) external isBridgePool(msg.sender) {
-        allowances[bridge] = true;
-    }
-
-    function deny(address bridge) external isBridgePool(msg.sender) {
-        allowances[bridge] = false;
+    function token() public view returns (address) {
+        return poolToken;
     }
 
     function depositTo(
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external payable isBridgePool(msg.sender) returns (bytes memory) {
+    ) external payable isPoolOwner returns (bytes memory) {
         balance += amount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
@@ -59,7 +50,7 @@ contract OmniETHPool {
     function withdrawTo(uint16 appId, bytes memory appPayload)
         external
         view
-        isBridgePool(msg.sender)
+        isPoolOwner
         returns (bytes memory)
     {
         bytes memory poolPayload = LibPool.encodeSendWithdrawPayload(
@@ -71,10 +62,7 @@ contract OmniETHPool {
         return poolPayload;
     }
 
-    function innerWithdraw(address to, uint64 amount)
-        external
-        isBridgePool(msg.sender)
-    {
+    function innerWithdraw(address to, uint64 amount) external isPoolOwner {
         uint256 fixedAmount = LibDecimals.restoreAmountDecimals(
             amount,
             decimals()
@@ -89,7 +77,7 @@ contract OmniETHPool {
         address withdrawPool,
         uint16 appId,
         bytes memory appPayload
-    ) public isBridgePool(msg.sender) returns (bytes memory) {
+    ) public isPoolOwner returns (bytes memory) {
         balance += depositAmount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(

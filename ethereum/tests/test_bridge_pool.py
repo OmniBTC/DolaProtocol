@@ -1,4 +1,4 @@
-from brownie import MockBridgePool, OmniPool, OmniETHPool, MockToken, LendingPortal, EncodeDecode, accounts, config
+from brownie import MockBridgePool, OmniPool, OmniETHPool, MockToken, LendingPortal, EncodeDecode, PoolOwner, accounts, config
 from pytest import fixture
 
 
@@ -35,15 +35,22 @@ def usdt():
 
 
 @fixture
-def usdt_pool(usdt, bridge_pool):
-    return OmniPool.deploy(wormhole_chainid,
-                           bridge_pool.address, usdt.address, {'from': account()})
+def pool_owner(bridge_pool):
+    pool_owner = PoolOwner.deploy(bridge_pool, {'from': account()})
+    bridge_pool.initPool(pool_owner.address, {'from': account()})
+    return pool_owner
 
 
 @fixture
-def eth_pool(bridge_pool):
+def usdt_pool(usdt, pool_owner):
+    return OmniPool.deploy(wormhole_chainid,
+                           pool_owner.address, usdt.address, {'from': account()})
+
+
+@fixture
+def eth_pool(pool_owner):
     return OmniETHPool.deploy(wormhole_chainid,
-                              bridge_pool.address, {'from': account()})
+                              pool_owner.address, {'from': account()})
 
 
 @fixture
