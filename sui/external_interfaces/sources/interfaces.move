@@ -6,13 +6,13 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, user_total_collateral_value, user_total_loan_value, is_collateral, calculate_value, user_health_factor};
+    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount};
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
     use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
     use sui::event::emit;
-    use sui::math::{pow, min};
+    use sui::math::min;
     use user_manager::user_manager::{Self, UserManagerInfo};
 
     const RAY: u64 = 100000000;
@@ -452,11 +452,10 @@ module external_interfaces::interfaces {
             });
             return
         };
-        let user_total_collateral_value = user_total_collateral_value(storage, oracle, dola_user_id);
-        let user_total_loan_value = user_total_loan_value(storage, oracle, dola_user_id);
-        let (price, decimal) = get_token_price(oracle, borrow_pool_id);
-        let can_borrow_value = user_total_collateral_value - user_total_loan_value;
-        let borrow_amount = can_borrow_value * pow(10, decimal) / price;
+        let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
+        let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
+        let can_borrow_value = health_collateral_value - health_loan_value;
+        let borrow_amount = calculate_amount(oracle, borrow_pool_id, can_borrow_value);
         let reserve = get_app_liquidity(pool_manager_info, borrow_pool_id, get_app_id(storage));
         if (reserve == 0) {
             emit(UserAllowedBorrow {

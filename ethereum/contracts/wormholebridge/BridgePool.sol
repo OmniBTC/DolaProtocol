@@ -84,9 +84,13 @@ contract BridgePool {
         increaseNonce();
     }
 
-    function sendUnbinding() external payable {
+    function sendUnbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
+        external
+        payable
+    {
         bytes memory payload = LibBinding.encodeUnbindingPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender)
+            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
+            LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress)
         );
         cachedVAA[getNonce()] = payload;
         wormhole().publishMessage{value: getWormholeMessageFee()}(

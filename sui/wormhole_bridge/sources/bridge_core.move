@@ -99,8 +99,8 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (unbind_address, _) = decode_unbinding(vaa);
-        unbinding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, unbind_address);
+        let (user, unbind_address, _) = decode_unbinding(vaa);
+        unbinding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, unbind_address);
     }
 
     public fun receive_deposit(

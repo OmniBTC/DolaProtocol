@@ -92,11 +92,14 @@ module wormhole_bridge::bridge_pool {
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
+        dola_chain_id: u16,
+        unbind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let unbind_address = tx_context::sender(ctx);
-        let unbind_address = convert_address_to_dola(unbind_address);
-        let msg = encode_unbinding(unbind_address);
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+        let msg = encode_unbinding(user, unbind_address);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
