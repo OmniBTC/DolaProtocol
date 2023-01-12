@@ -229,22 +229,17 @@ def get_user_lending_info(user):
     public entry fun get_user_lending_info(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        user_manager_info: &mut UserManagerInfo,
-        user_address: vector<u8>,
         dola_chain_id: u16
     )
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
     lending = load.lending_package()
     oracle = load.oracle_package()
     result = external_interfaces.interfaces.get_user_lending_info.simulate(
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        user_manager.user_manager.UserManagerInfo[-1],
         user,
-        0
     )
     return result['events'][-1]['moveEvent']['fields']
 
@@ -307,11 +302,11 @@ if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
     # pprint.pp(get_dola_user_id("0xdc1f21230999232d6cfc230c4730021683f6546f"))
     # pprint.pp(get_user_all_collateral(1))
-    pprint.pp(get_user_health_factor(1))
+    # pprint.pp(get_user_health_factor(1))
     # pprint.pp(get_reserve_info(1))
     # pprint.pp(get_app_token_liquidity(0, 1))
     # print(get_all_pool_liquidity(0))
     # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    # pprint.pp(get_user_lending_info("0xdc1f21230999232d6cfc230c4730021683f6546f"))
+    pprint.pp(get_user_lending_info(1))

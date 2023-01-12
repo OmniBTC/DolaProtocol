@@ -272,6 +272,7 @@ module external_interfaces::interfaces {
         let collateral_infos = vector::empty<UserCollateralInfo>();
         let collaterals = get_user_collaterals(storage, dola_user_id);
         let total_collateral_value = 0;
+
         let debt_infos = vector::empty<UserDebtInfo>();
         let loans = get_user_loans(storage, dola_user_id);
         let total_debt_value = 0;
