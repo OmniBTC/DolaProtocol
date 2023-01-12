@@ -60,7 +60,7 @@ class BridgeDict(OrderedDict):
 
 
 def bridge_pool_evm(network):
-    data = BridgeDict("evm_bridge_pool.json")
+    data = BridgeDict(f"{network}_bridge_pool.json")
     local_logger = logger.getChild(f"[{network}][bridge_pool]")
 
     while True:
@@ -105,7 +105,7 @@ def bridge_core_evm(network):
     ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
-    data = BridgeDict("evm_bridge_core.json")
+    data = BridgeDict(f"{network}_bridge_core.json")
     local_logger = logger.getChild(f"[{network}][bridge_core]")
     while True:
         local_logger.info("running...")
@@ -138,14 +138,14 @@ def bridge_core_evm(network):
         time.sleep(1)
 
 
-def main():
+def main(network):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
+    dola_ethereum_sdk.set_ethereum_network(network)
     pt = ThreadExecutor(executor=2)
     pt.run(
-        [functools.partial(bridge_pool_evm, "polygon-zk-test"), functools.partial(bridge_core_evm, "polygon-zk-test")])
+        [functools.partial(bridge_pool_evm, network), functools.partial(bridge_core_evm, network)])
 
 
 if __name__ == "__main__":
-    main()
+    main("bsc-test")
