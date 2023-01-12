@@ -1,8 +1,10 @@
 module wormhole_bridge::bridge_pool {
+    use std::vector;
+
     use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
     use governance::governance::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
-    use sui::coin::Coin;
+    use sui::coin::{Self, Coin};
     use sui::event;
     use sui::object::{Self, UID};
     use sui::object_table;
@@ -17,6 +19,12 @@ module wormhole_bridge::bridge_pool {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
+
+    const ENOT_ENOUGH_AMOUNT: u64 = 0;
+
+    const EMUST_ZERO: u64 = 1;
+
+    const U64_MAX: u64 = 18446744073709551615;
 
     struct PoolState has key, store {
         id: UID,
@@ -74,7 +82,8 @@ module wormhole_bridge::bridge_pool {
     public entry fun send_binding(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         dola_chain_id: u16,
         bind_address: vector<u8>,
         ctx: &mut TxContext
@@ -83,6 +92,7 @@ module wormhole_bridge::bridge_pool {
         let user = tx_context::sender(ctx);
         let user = convert_address_to_dola(user);
         let msg = encode_binding(user, bind_address);
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -91,7 +101,8 @@ module wormhole_bridge::bridge_pool {
     public entry fun send_unbinding(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         dola_chain_id: u16,
         unbind_address: vector<u8>,
         ctx: &mut TxContext
@@ -100,6 +111,7 @@ module wormhole_bridge::bridge_pool {
         let user = convert_address_to_dola(user);
         let unbind_address = create_dola_address(dola_chain_id, unbind_address);
         let msg = encode_unbinding(user, unbind_address);
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -108,7 +120,8 @@ module wormhole_bridge::bridge_pool {
     public fun send_deposit<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
         app_id: u16,
@@ -122,6 +135,7 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -131,7 +145,8 @@ module wormhole_bridge::bridge_pool {
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -142,6 +157,7 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -150,7 +166,8 @@ module wormhole_bridge::bridge_pool {
     public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
         app_id: u16,
@@ -164,6 +181,7 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -211,5 +229,38 @@ module wormhole_bridge::bridge_pool {
             user,
             amount
         })
+    }
+
+    public fun merge_coin<CoinType>(
+        coins: vector<Coin<CoinType>>,
+        amount: u64,
+        ctx: &mut TxContext
+    ): Coin<CoinType> {
+        let len = vector::length(&coins);
+        if (len > 0) {
+            vector::reverse(&mut coins);
+            let base_coin = vector::pop_back(&mut coins);
+            while (!vector::is_empty(&coins)) {
+                coin::join(&mut base_coin, vector::pop_back(&mut coins));
+            };
+            vector::destroy_empty(coins);
+            let sum_amount = coin::value(&base_coin);
+            let split_amount = amount;
+            if (amount == U64_MAX) {
+                split_amount = sum_amount;
+            };
+            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            if (coin::value(&base_coin) > split_amount) {
+                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
+                transfer::transfer(base_coin, tx_context::sender(ctx));
+                split_coin
+            }else {
+                base_coin
+            }
+        }else {
+            vector::destroy_empty(coins);
+            assert!(amount == 0, EMUST_ZERO);
+            coin::zero<CoinType>(ctx)
+        }
     }
 }
