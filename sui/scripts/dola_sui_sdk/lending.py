@@ -14,7 +14,8 @@ def portal_supply(coin_type):
     public entry fun supply<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
         ctx: &mut TxContext
@@ -147,7 +148,8 @@ def core_withdraw(vaa):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -168,6 +170,7 @@ def core_withdraw(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
+        [],
         0,
         vaa,
     )
@@ -221,7 +224,8 @@ def core_borrow(vaa):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -242,6 +246,7 @@ def core_borrow(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
+        [],
         0,
         vaa,
     )
@@ -364,7 +369,8 @@ def core_liquidate(vaa):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -383,6 +389,7 @@ def core_liquidate(vaa):
         wormhole_bridge.bridge_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending.storage.Storage[-1],
+        [],
         0,
         vaa,
     )
@@ -393,7 +400,8 @@ def pool_binding(bind_address):
     public entry fun send_binding(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         dola_chain_id: u16,
         bind_address: vector<u8>,
         ctx: &mut TxContext
@@ -407,6 +415,7 @@ def pool_binding(bind_address):
     wormhole_bridge.bridge_pool.send_binding(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0,
         dola_chain_id,
         bind_address
@@ -440,7 +449,8 @@ def pool_unbinding():
     public entry fun send_unbinding(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
         ctx: &mut TxContext
     )
     :return:
@@ -451,6 +461,7 @@ def pool_unbinding():
     wormhole_bridge.bridge_pool.send_unbinding(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0
     )
 
