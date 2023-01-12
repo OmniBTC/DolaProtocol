@@ -309,4 +309,4 @@ if __name__ == "__main__":
     # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    pprint.pp(get_user_lending_info(1))
+    pprint.pp(get_user_lending_info(2))
