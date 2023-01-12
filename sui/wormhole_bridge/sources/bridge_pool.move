@@ -120,8 +120,7 @@ module wormhole_bridge::bridge_pool {
     public fun send_deposit<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+        wormhole_message_fee: Coin<SUI>,
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
         app_id: u16,
@@ -135,7 +134,6 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
-        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -145,8 +143,7 @@ module wormhole_bridge::bridge_pool {
         pool: &mut Pool<CoinType>,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+        wormhole_message_fee: Coin<SUI>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -157,7 +154,6 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
-        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -166,8 +162,7 @@ module wormhole_bridge::bridge_pool {
     public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+        wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
         app_id: u16,
@@ -181,7 +176,6 @@ module wormhole_bridge::bridge_pool {
             app_payload,
             ctx
         );
-        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
