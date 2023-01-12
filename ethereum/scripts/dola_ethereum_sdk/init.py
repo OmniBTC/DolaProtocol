@@ -42,6 +42,10 @@ def apt():
     return config["networks"][network.show_active()]["apt"]
 
 
+def bnb():
+    return config["networks"][network.show_active()]["bnb"]
+
+
 def usdt_pool():
     return config["networks"][network.show_active()]["usdt_pool"]
 
@@ -72,6 +76,10 @@ def eth_pool():
 
 def apt_pool():
     return config["networks"][network.show_active()]["apt_pool"]
+
+
+def bnb_pool():
+    return config["networks"][network.show_active()]["bnb_pool"]
 
 
 def get_pool_token(pool):

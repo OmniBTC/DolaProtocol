@@ -55,6 +55,10 @@ def main():
     dola_sui_init.vote_register_new_pool(
         6, b"APT", dola_ethereum_init.apt_pool(), dst_chain)
 
+    dola_sui_init.create_vote_external_cap(governance_external_hash)
+    dola_sui_init.vote_register_new_pool(
+        7, b"BNB", dola_ethereum_init.bnb_pool(), dst_chain)
+
 
 if __name__ == "__main__":
     dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")

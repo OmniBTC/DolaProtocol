@@ -266,6 +266,10 @@ def btc():
     return f"{CacheObject.TestCoins[-1]}::coins::BTC"
 
 
+def bnb():
+    return f"{CacheObject.TestCoins[-1]}::coins::BNB"
+
+
 def sui():
     return "0x2::sui::SUI"
 
@@ -307,6 +311,7 @@ def main():
     create_pool(dai())
     create_pool(matic())
     create_pool(apt())
+    create_pool(bnb())
 
     # 2. init oracle
     register_token_price(0, 2000000, 2)
@@ -316,6 +321,7 @@ def main():
     register_token_price(4, 100, 2)
     register_token_price(5, 78, 2)
     register_token_price(6, 330, 2)
+    register_token_price(7, 28500, 2)
 
     # 3. register governance
     hash = register_governnace_cap()
@@ -345,6 +351,9 @@ def main():
 
     create_vote_external_cap(hash)
     vote_register_new_pool(6, b"APT", apt())
+
+    create_vote_external_cap(hash)
+    vote_register_new_pool(7, b"BNB", bnb())
     # 6. init lending storage
     create_vote_external_cap(hash)
     vote_init_lending_storage()
@@ -382,6 +391,10 @@ def main():
     create_vote_external_cap(hash)
 
     vote_register_new_reserve(6)
+
+    create_vote_external_cap(hash)
+
+    vote_register_new_reserve(7)
 
 
 if __name__ == '__main__':
