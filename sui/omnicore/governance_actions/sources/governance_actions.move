@@ -84,6 +84,7 @@ module governance_actions::governance_actions {
             let governance_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
             let user_manager_cap = user_manager::register_cap_with_governance(governance_cap);
 
+            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, 4);
             user_manager::register_evm_chain_id(&user_manager_cap, user_manager, 5);
             user_manager::register_evm_chain_id(&user_manager_cap, user_manager, 1422);
         };
