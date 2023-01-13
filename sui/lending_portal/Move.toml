@@ -14,12 +14,12 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "54b65af123d90d0cbb50111a7ccbcf8c8bc463ca"
+rev = "2d709054a08d904b9229a2472af679f210af3827"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "f4800d31a8cb0676b47bcf0ceb74500ccdad3b61"
+rev = "b1ff91995921064fc530eb8f7e147e228c10d072"
 
 [dependencies.OmniPool]
 local = "../omnipool"
