@@ -115,6 +115,9 @@ class PublicKey:
             return False
         return True
 
+    def get_bytes(self) -> bytes:
+        return self.key.encode()
+
     def base64(self):
         data = str(self)
         if data[:2] == "0x":
@@ -143,6 +146,9 @@ class Signature:
         return f"0x{self.signature.hex()}"
 
     def data(self) -> bytes:
+        return self.signature
+
+    def get_bytes(self) -> bytes:
         return self.signature
 
     def base64(self):
