@@ -71,7 +71,7 @@ class PrivateKey:
         Support only ed25519
         :return: base64
         """
-        data = ("00" + str(self.public_key()) + str(self)).replace("0x", "")
+        data = ("00" + str(self)).replace("0x", "")
         return base64.b64encode(bytes.fromhex(data)).decode("ascii")
 
     def hex(self) -> str:
