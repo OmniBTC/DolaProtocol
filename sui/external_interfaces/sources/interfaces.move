@@ -469,6 +469,8 @@ module external_interfaces::interfaces {
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        dola_chain_id: u16,
+        pool_address: vector<u8>,
         dola_user_id: u64,
         borrow_pool_id: u16
     ) {
@@ -487,8 +489,9 @@ module external_interfaces::interfaces {
         let borrow_coefficient = get_borrow_coefficient(storage, borrow_pool_id);
         let can_borrow_value = ray_div(health_collateral_value - health_loan_value, borrow_coefficient);
         let borrow_amount = calculate_amount(oracle, borrow_pool_id, can_borrow_value);
-        let reserve = get_app_liquidity(pool_manager_info, borrow_pool_id, get_app_id(storage));
-        if (reserve == 0) {
+        let pool_address = create_dola_address(dola_chain_id, pool_address);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+        if (pool_liquidity == 0) {
             emit(UserAllowedBorrow {
                 borrow_token,
                 borrow_amount: 0,
@@ -497,7 +500,7 @@ module external_interfaces::interfaces {
             });
             return
         };
-        borrow_amount = min(borrow_amount, (reserve as u64));
+        borrow_amount = min(borrow_amount, pool_liquidity);
         let borrow_value = calculate_value(oracle, borrow_pool_id, borrow_amount);
         emit(UserAllowedBorrow {
             borrow_token,
