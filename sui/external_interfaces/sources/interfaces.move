@@ -6,7 +6,8 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount};
+    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount, user_total_collateral_value, user_total_loan_value};
+    use lending::math::{ray_mul, ray_div};
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
@@ -55,6 +56,8 @@ module external_interfaces::interfaces {
 
     struct UserLendingInfo has copy, drop {
         health_factor: u64,
+        profit_state: bool,
+        net_apy: u64,
         collateral_infos: vector<UserCollateralInfo>,
         total_collateral_value: u64,
         debt_infos: vector<UserDebtInfo>,
@@ -277,6 +280,9 @@ module external_interfaces::interfaces {
         let loans = get_user_loans(storage, dola_user_id);
         let total_debt_value = 0;
 
+        let total_supply_apy_value = 0;
+        let total_borrow_apy_value = 0;
+
         let length = vector::length(&collaterals);
         let i = 0;
         while (i < length) {
@@ -287,6 +293,7 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / RAY;
             let collateral_amount = user_collateral_balance(storage, dola_user_id, *collateral);
             let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
+            total_supply_apy_value = total_supply_apy_value + ray_mul(collateral_value, liquidity_rate);
             vector::push_back(&mut collateral_infos, UserCollateralInfo {
                 dola_pool_id: *collateral,
                 borrow_apy,
@@ -308,6 +315,7 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / RAY;
             let debt_amount = user_loan_balance(storage, dola_user_id, *loan);
             let debt_value = user_loan_value(storage, oracle, dola_user_id, *loan);
+            total_borrow_apy_value = total_borrow_apy_value + ray_mul(debt_value, borrow_rate);
             vector::push_back(&mut debt_infos, UserDebtInfo {
                 dola_pool_id: *loan,
                 borrow_apy,
@@ -320,8 +328,29 @@ module external_interfaces::interfaces {
         };
         let health_factor = user_health_factor(storage, oracle, dola_user_id);
 
+        let user_total_supply_value = user_total_collateral_value(storage, oracle, dola_user_id);
+        let user_total_debt_value = user_total_loan_value(storage, oracle, dola_user_id);
+
+        let net_apy = 0;
+        let profit_state = true;
+        if (user_total_supply_value > 0 && user_total_debt_value > 0) {
+            let total_supply_apy = ray_div(total_supply_apy_value, user_total_supply_value);
+            let total_borrow_apy = ray_div(total_borrow_apy_value, user_total_debt_value);
+            if (total_supply_apy >= total_borrow_apy) {
+                net_apy = total_supply_apy - total_borrow_apy;
+                profit_state = true;
+            } else {
+                net_apy = total_borrow_apy - total_supply_apy;
+                profit_state = false;
+            }
+        };
+
+        net_apy = net_apy * 10000 / RAY;
+
         emit(UserLendingInfo {
             health_factor,
+            profit_state,
+            net_apy,
             collateral_infos,
             total_collateral_value,
             debt_infos,
