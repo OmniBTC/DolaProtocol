@@ -855,6 +855,10 @@ class SuiPackage:
             if len(remain_object_ids):
                 print(f"Warning:not cache ids:{remain_object_ids}")
 
+    @staticmethod
+    def list_base64(data: list):
+        return base64.b64encode(bytes(data)).decode("ascii")
+
     def execute_transaction(self,
                             tx_bytes,
                             sig_scheme="ED25519",
@@ -881,17 +885,24 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
+        SIGNATURE_SCHEME_TO_FLAG = {
+            "ED25519": 0,
+            "Secp256k1": 1
+        }
+        serialized_sig = [SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]
+        serialized_sig.extend(list(self.account.sign(tx_bytes).get_bytes()))
+        serialized_sig.extend(list(self.account.public_key().get_bytes()))
+        serialized_sig_base64 = self.list_base64(serialized_sig)
+
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_executeTransaction",
+                "method": "sui_executeTransactionSerializedSig",
                 "params": [
                     tx_bytes,
-                    sig_scheme,
-                    self.account.sign(tx_bytes).base64(),
-                    self.account.public_key().base64(),
+                    serialized_sig_base64,
                     request_type
                 ]
             },
