@@ -11,7 +11,7 @@ module external_interfaces::interfaces {
     use lending::rates::calculate_utilization;
     use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
-    use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id};
+    use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, find_pool_by_chain};
     use sui::event::emit;
     use sui::math::min;
     use user_manager::user_manager::{Self, UserManagerInfo};
@@ -82,6 +82,8 @@ module external_interfaces::interfaces {
 
     struct UserAllowedBorrow has copy, drop {
         borrow_token: vector<u8>,
+        max_borrow_amount: u64,
+        max_borrow_value: u64,
         borrow_amount: u64,
         borrow_value: u64,
         reason: Option<String>
@@ -470,7 +472,6 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_chain_id: u16,
-        pool_address: vector<u8>,
         dola_user_id: u64,
         borrow_pool_id: u16
     ) {
@@ -478,6 +479,8 @@ module external_interfaces::interfaces {
         if (is_collateral(storage, dola_user_id, borrow_pool_id)) {
             emit(UserAllowedBorrow {
                 borrow_token,
+                max_borrow_amount: 0,
+                max_borrow_value: 0,
                 borrow_amount: 0,
                 borrow_value: 0,
                 reason: option::some(string(b"Borrowed token is collateral"))
@@ -489,21 +492,23 @@ module external_interfaces::interfaces {
         let borrow_coefficient = get_borrow_coefficient(storage, borrow_pool_id);
         let can_borrow_value = ray_div(health_collateral_value - health_loan_value, borrow_coefficient);
         let borrow_amount = calculate_amount(oracle, borrow_pool_id, can_borrow_value);
-        let pool_address = create_dola_address(dola_chain_id, pool_address);
-        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
-        if (pool_liquidity == 0) {
-            emit(UserAllowedBorrow {
-                borrow_token,
-                borrow_amount: 0,
-                borrow_value: 0,
-                reason: option::some(string(b"Not enough liquidity to borrow"))
-            });
-            return
+        let pool_address = find_pool_by_chain(pool_manager_info, dola_chain_id, borrow_pool_id);
+
+        let pool_liquidity = 0;
+        if (option::is_some(&pool_address)) {
+            let pool_address = option::extract(&mut pool_address);
+            pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         };
+        let reserve = get_app_liquidity(pool_manager_info, borrow_pool_id, 0);
+
+        let max_borrow_amount = min(borrow_amount, (reserve as u64));
         borrow_amount = min(borrow_amount, pool_liquidity);
+        let max_borrow_value = calculate_value(oracle, borrow_pool_id, max_borrow_amount);
         let borrow_value = calculate_value(oracle, borrow_pool_id, borrow_amount);
         emit(UserAllowedBorrow {
             borrow_token,
+            max_borrow_amount,
+            max_borrow_value,
             borrow_amount,
             borrow_value,
             reason: option::none()
