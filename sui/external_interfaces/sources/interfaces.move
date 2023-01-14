@@ -492,7 +492,7 @@ module external_interfaces::interfaces {
         let borrow_coefficient = get_borrow_coefficient(storage, borrow_pool_id);
         let can_borrow_value = ray_div(health_collateral_value - health_loan_value, borrow_coefficient);
         let borrow_amount = calculate_amount(oracle, borrow_pool_id, can_borrow_value);
-        let pool_address = find_pool_by_chain(pool_manager_info, dola_chain_id, borrow_pool_id);
+        let pool_address = find_pool_by_chain(pool_manager_info, borrow_pool_id, dola_chain_id);
 
         let pool_liquidity = 0;
         if (option::is_some(&pool_address)) {
