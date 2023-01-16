@@ -2,12 +2,12 @@ module lending_portal::lending {
     use std::option::{Self, Option};
     use std::vector;
 
-    use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
-    use user_manager::user_manager::{UserManagerInfo, is_dola_user, register_dola_user_id, UserManagerCap, get_dola_user_id};
+    use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
+    use user_manager::user_manager::{UserManagerInfo, UserManagerCap};
 
-    use dola_types::types::{convert_address_to_dola, DolaAddress, encode_dola_address, decode_dola_address, create_dola_address};
-    use lending::storage::{StorageCap, Storage, get_app_cap};
-    use omnipool::pool::{Pool, normal_amount, decode_send_deposit_payload};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
+    use lending::storage::{StorageCap, Storage};
+    use omnipool::pool::{Pool, normal_amount};
     use oracle::oracle::PriceOracle;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use sui::coin::{Self, Coin};
@@ -17,7 +17,7 @@ module lending_portal::lending {
     use sui::tx_context::{Self, TxContext};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
-    use wormhole_bridge::bridge_pool::{PoolState, send_deposit_and_withdraw};
+    use wormhole_bridge::bridge_pool::PoolState;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -133,30 +133,38 @@ module lending_portal::lending {
         ctx: &mut TxContext
     ) {
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&deposit_coin)), user_addr, 0);
-        let msg = omnipool::pool::deposit_to(
+        // Deposit the token into the pool
+        omnipool::pool::deposit_to(
             pool,
             deposit_coin,
             APPID,
             app_payload,
             ctx
         );
-        let (pool, user, amount, _app_id, _app_payload) =
-            decode_send_deposit_payload(msg);
+
+        // Add pool liquidity for dola protocol
         pool_manager::add_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
-            pool,
+            pool_addr,
             APPID,
-            amount,
+            deposit_amount,
             ctx
         );
-        if (!is_dola_user(user_manager_info, user)) {
-            register_dola_user_id(option::borrow(&lending_portal.user_manager_cap), user_manager_info, user);
+        // Reigster user id for user
+        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
+            user_manager::user_manager::register_dola_user_id(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user_addr
+            );
         };
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
+        // Execute supply logic in lending app
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
         lending::logic::execute_supply(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
@@ -164,7 +172,7 @@ module lending_portal::lending {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount
+            deposit_amount
         );
     }
 
@@ -183,21 +191,22 @@ module lending_portal::lending {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = create_dola_address(dst_chain, receiver);
-        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = get_dola_user_id(user_manager_info, user_addr);
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
 
-        let dst_chain = dola_types::types::dola_chain_id(&receiver);
-        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        // Locate withdrawal pool
+        let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
+        // Execute withdraw logic in lending app
         lending::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
@@ -207,21 +216,24 @@ module lending_portal::lending {
             dola_pool_id,
             amount,
         );
+        // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
-            pool_addr,
+            dst_pool,
             APPID,
             amount
         );
         if (dst_chain == SUI_DOLA_CHAIN_ID) {
+            // Local withdraw
             let msg = omnipool::pool::encode_receive_withdraw_payload(pool_addr, user_addr, amount);
             wormhole_bridge::bridge_pool::receive_withdraw<CoinType>(wormhole_state, pool_state, pool, msg, ctx);
         } else {
+            // Cross-chain withdraw
             wormhole_bridge::bridge_core::send_withdraw(
                 wormhole_state,
                 core_state,
-                get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+                lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
                 pool_manager_info,
                 dst_pool,
                 receiver,
@@ -246,20 +258,22 @@ module lending_portal::lending {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = create_dola_address(dst_chain, receiver);
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
-        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = get_dola_user_id(user_manager_info, user_addr);
+        let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
 
+        // Locate withdraw pool
         let dst_chain = dola_types::types::dola_chain_id(&receiver);
-        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
-        // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
+        // Execute borrow logic in lending app
         lending::logic::execute_borrow(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
@@ -269,21 +283,24 @@ module lending_portal::lending {
             dola_pool_id,
             amount
         );
+        // Remove pool liquidity
         pool_manager::remove_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
-            pool_addr,
+            dst_pool,
             APPID,
             amount
         );
         if (dst_chain == SUI_DOLA_CHAIN_ID) {
+            // Local borrow
             let msg = omnipool::pool::encode_receive_withdraw_payload(pool_addr, user_addr, amount);
             wormhole_bridge::bridge_pool::receive_withdraw<CoinType>(wormhole_state, pool_state, pool, msg, ctx);
         } else {
+            // Cross-chain borrow
             wormhole_bridge::bridge_core::send_withdraw(
                 wormhole_state,
                 core_state,
-                get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+                lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
                 pool_manager_info,
                 dst_pool,
                 receiver,
@@ -304,19 +321,19 @@ module lending_portal::lending {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
+        let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&repay_coin)), user_addr, 0);
-        let msg = omnipool::pool::deposit_to(
+        // Deposit the token into the pool
+        omnipool::pool::deposit_to(
             pool,
             repay_coin,
             APPID,
             app_payload,
             ctx
         );
-        let (pool, user, amount, _app_id, _app_payload) =
-            decode_send_deposit_payload(msg);
+
         pool_manager::add_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
@@ -325,11 +342,16 @@ module lending_portal::lending {
             repay_amount,
             ctx
         );
-        if (!is_dola_user(user_manager_info, user_addr)) {
-            register_dola_user_id(option::borrow(&lending_portal.user_manager_cap), user_manager_info, user);
+        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
+            user_manager::user_manager::register_dola_user_id(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user_addr
+            );
         };
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
+
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
         lending::logic::execute_repay(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
@@ -337,7 +359,7 @@ module lending_portal::lending {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount
+            repay_amount
         );
     }
 
@@ -357,12 +379,12 @@ module lending_portal::lending {
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
 
-        let receiver = create_dola_address(dst_chain, receiver);
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let app_payload = encode_app_payload(LIQUIDATE, normal_amount(debt_pool, coin::value(&debt_coin)),
             receiver, liquidate_user_id);
-        send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
+        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
             wormhole_state,
             wormhole_message_fee,
@@ -423,10 +445,10 @@ module lending_portal::lending {
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, convert_address_to_dola(user), 0);
+        let payload = encode_app_payload(WITHDRAW, 100000000, dola_types::types::convert_address_to_dola(user), 0);
         let (call_type, amount, user_addr, _) = decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_addr == convert_address_to_dola(user), 0);
+        assert!(user_addr == dola_types::types::convert_address_to_dola(user), 0);
     }
 }

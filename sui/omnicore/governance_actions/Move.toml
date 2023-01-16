@@ -10,6 +10,7 @@ wormhole = "0x0"
 wormhole_bridge = "0x0"
 governance = "0x0"
 lending = "0x0"
+lending_portal = "0x0"
 app_manager = "0x0"
 oracle = "0x0"
 dola_types = "0x0"
@@ -39,6 +40,9 @@ local = "../pool_manager"
 
 [dependencies.Lending]
 local = "../lending"
+
+[dependencies.LendingPortal]
+local = "../../lending_portal"
 
 [dependencies.Oracle]
 local = "../oracle"
