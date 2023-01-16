@@ -118,8 +118,8 @@ def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
         wormhole_bridge.bridge_core.CoreState[-1],
         lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
-        user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         receiver,
         dst_chain,
@@ -227,8 +227,8 @@ def portal_borrow(coin_type, amount, dst_chain=0, receiver=None):
         wormhole_bridge.bridge_core.CoreState[-1],
         lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
-        user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
         CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         receiver,
         dst_chain,
@@ -603,9 +603,10 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # force_claim_test_coin(usdt(), 10000)
-    # monitor_supply(usdt())
-    #
+    # claim_test_coin(btc())
+    # monitor_supply(btc())
+    # monitor_borrow(usdt())
+    # monitor_repay(usdt())
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()
