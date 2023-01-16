@@ -5,6 +5,8 @@ version = "0.0.1"
 [addresses]
 lending_portal = "0x0"
 serde = "0x0"
+lending = "0x0"
+oracle = "0x0"
 dola_types = "0x0"
 wormhole_bridge = "0x0"
 wormhole = "0x0"
@@ -23,6 +25,12 @@ rev = "b1ff91995921064fc530eb8f7e147e228c10d072"
 
 [dependencies.OmniPool]
 local = "../omnipool"
+
+[dependencies.Lending]
+local = "../omnicore/lending"
+
+[dependencies.Oracle]
+local = "../omnicore/oracle"
 
 [dependencies.Serde]
 local = "../serde"
