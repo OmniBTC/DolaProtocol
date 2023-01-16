@@ -12,32 +12,37 @@ U64_MAX = 18446744073709551615
 def portal_supply(coin_type):
     """
     public entry fun supply<CoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
+        pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
-        deposit_coin: Coin<CoinType>,
+        deposit_coins: vector<Coin<CoinType>>,
+        deposit_amount: u64,
         ctx: &mut TxContext
     )
     :param coin_type:
     :return: payload
     """
     lending_portal = load.lending_portal_package()
-    wormhole_bridge = load.wormhole_bridge_package()
-    wormhole = load.wormhole_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+    user_manager = load.user_manager_package()
+    pool_manager = load.pool_manager_package()
     account_address = lending_portal.account.account_address
 
     lending_portal.lending.supply(
-        wormhole_bridge.bridge_pool.PoolState[-1],
-        wormhole.state.State[-1],
-        [],
-        0,
+        lending.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        lending_portal.lending.LendingPortal[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
         CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
         [CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1]],
         U64_MAX,
         ty_args=[coin_type]
     )
-    return bridge_pool_read_vaa()[0]
 
 
 def core_supply(vaa):
@@ -78,19 +83,27 @@ def core_supply(vaa):
 def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
     """
     public entry fun withdraw<CoinType>(
-        pool: &mut Pool<CoinType>,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
         pool_state: &mut PoolState,
+        core_state: &mut CoreState,
+        lending_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        pool: &mut Pool<CoinType>,
         receiver: vector<u8>,
         dst_chain: u16,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     )
     :return:
     """
     lending_portal = load.lending_portal_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+    user_manager = load.user_manager_package()
+    pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
     wormhole_bridge = load.wormhole_bridge_package()
     account_address = lending_portal.account.account_address
@@ -98,18 +111,21 @@ def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
         assert dst_chain == 0
         receiver = account_address
 
-    result = lending_portal.lending.withdraw(
-        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
+    lending_portal.lending.withdraw(
+        lending.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
+        wormhole_bridge.bridge_core.CoreState[-1],
+        lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         receiver,
         dst_chain,
-        [],
-        0,
         int(amount),
         ty_args=[coin_type]
     )
-    return bridge_pool_read_vaa()[0]
 
 
 def pool_withdraw(vaa, coin_type):
@@ -176,38 +192,49 @@ def core_withdraw(vaa):
 def portal_borrow(coin_type, amount, dst_chain=0, receiver=None):
     """
     public entry fun borrow<CoinType>(
-        pool: &mut Pool<CoinType>,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
         pool_state: &mut PoolState,
+        core_state: &mut CoreState,
+        lending_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        pool: &mut Pool<CoinType>,
         receiver: vector<u8>,
         dst_chain: u16,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
         amount: u64,
         ctx: &mut TxContext
     )
     :return:
     """
     lending_portal = load.lending_portal_package()
-    wormhole_bridge = load.wormhole_bridge_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+    user_manager = load.user_manager_package()
+    pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
+    wormhole_bridge = load.wormhole_bridge_package()
     account_address = lending_portal.account.account_address
     if receiver is None:
         assert dst_chain == 0
         receiver = account_address
 
-    result = lending_portal.lending.borrow(
-        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
+    lending_portal.lending.borrow(
+        lending.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
         wormhole_bridge.bridge_pool.PoolState[-1],
+        wormhole_bridge.bridge_core.CoreState[-1],
+        lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
         receiver,
         dst_chain,
-        [],
-        0,
         int(amount),
         ty_args=[coin_type]
     )
-    return bridge_pool_read_vaa()[0]
 
 
 def core_borrow(vaa):
@@ -250,11 +277,12 @@ def core_borrow(vaa):
 def portal_repay(coin_type):
     """
     public entry fun repay<CoinType>(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
+        pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
         repay_coins: vector<Coin<CoinType>>,
         repay_amount: u64,
         ctx: &mut TxContext
@@ -262,21 +290,23 @@ def portal_repay(coin_type):
     :return:
     """
     lending_portal = load.lending_portal_package()
-    wormhole_bridge = load.wormhole_bridge_package()
-    wormhole = load.wormhole_package()
+    lending = load.lending_package()
+    oracle = load.oracle_package()
+    user_manager = load.user_manager_package()
+    pool_manager = load.pool_manager_package()
     account_address = lending_portal.account.account_address
 
-    result = lending_portal.lending.repay(
-        CacheObject[ObjectType.from_type(pool(coin_type))][account_address][-1],
-        wormhole_bridge.bridge_pool.PoolState[-1],
-        wormhole.state.State[-1],
-        [],
-        0,
+    lending_portal.lending.repay(
+        lending.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        lending_portal.lending.LendingPortal[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
+        CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
         [CacheObject[ObjectType.from_type(coin(coin_type))][account_address][-1]],
         U64_MAX,
         ty_args=[coin_type]
     )
-    return bridge_pool_read_vaa()[0]
 
 
 def core_repay(vaa):
@@ -516,24 +546,24 @@ def export_objects():
 
 
 def monitor_supply(coin):
-    vaa = portal_supply(coin)
+    portal_supply(coin)
     # core_supply(vaa)
 
 
 def monitor_withdraw(coin, amount=1, dst_chain=0, receiver=None):
-    to_core_vaa = portal_withdraw(coin, amount * 1e7, dst_chain, receiver)
+    portal_withdraw(coin, amount * 1e7, dst_chain, receiver)
     # to_pool_vaa = core_withdraw(to_core_vaa)
     # pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_borrow(coin, amount=1, dst_chain=0, receiver=None):
-    to_core_vaa = portal_borrow(coin, amount * 1e7, dst_chain, receiver)
+    portal_borrow(coin, amount * 1e7, dst_chain, receiver)
     # to_pool_vaa = core_borrow(to_core_vaa)
     # pool_withdraw(to_pool_vaa, coin)
 
 
 def monitor_repay(coin):
-    vaa = portal_repay(coin)
+    portal_repay(coin)
     # core_repay(vaa)
 
 
@@ -573,8 +603,9 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # claim_test_coin(btc())
-    # monitor_supply(btc())
+    # force_claim_test_coin(usdt(), 10000)
+    # monitor_supply(usdt())
+    #
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()

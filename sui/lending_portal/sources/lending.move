@@ -2,19 +2,18 @@ module lending_portal::lending {
     use std::option::{Self, Option};
     use std::vector;
 
-    use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
-    use user_manager::user_manager::{UserManagerInfo, UserManagerCap};
-
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
     use lending::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount};
     use oracle::oracle::PriceOracle;
+    use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
+    use user_manager::user_manager::{UserManagerInfo, UserManagerCap};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
@@ -135,7 +134,8 @@ module lending_portal::lending {
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
-        let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&deposit_coin)), user_addr, 0);
+        let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
+        let app_payload = encode_app_payload(SUPPLY, deposit_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -324,7 +324,8 @@ module lending_portal::lending {
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
-        let app_payload = encode_app_payload(SUPPLY, normal_amount(pool, coin::value(&repay_coin)), user_addr, 0);
+        let repay_amount = normal_amount(pool, coin::value(&repay_coin));
+        let app_payload = encode_app_payload(SUPPLY, repay_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,

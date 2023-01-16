@@ -128,6 +128,29 @@ def vote_init_lending_wormhole_adapter():
     )
 
 
+def vote_init_lending_portal():
+    '''
+    public entry fun vote_init_lending_portal(
+        gov: &mut Governance,
+        governance_external_cap: &mut GovernanceExternalCap,
+        vote: &mut VoteExternalCap,
+        lending_portal: &mut LendingPortal,
+        ctx: &mut TxContext
+    )
+    :return:
+    '''
+    governance_actions = load.governance_actions_package()
+    governance = load.governance_package()
+    lending_portal = load.lending_portal_package()
+
+    governance_actions.governance_actions.vote_init_lending_portal(
+        governance.governance.Governance[-1],
+        governance.governance.GovernanceExternalCap[-1],
+        governance.governance.VoteExternalCap[-1],
+        lending_portal.lending.LendingPortal[-1]
+    )
+
+
 def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool(
@@ -361,6 +384,11 @@ def main():
     create_vote_external_cap(hash)
 
     vote_init_lending_wormhole_adapter()
+
+    # 7. init lending portal
+    create_vote_external_cap(hash)
+
+    vote_init_lending_portal()
 
     # register reserves
 
