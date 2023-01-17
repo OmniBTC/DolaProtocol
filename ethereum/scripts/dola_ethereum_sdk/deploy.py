@@ -29,16 +29,6 @@ def deploy():
 
     (usdc, usdc_pool) = deploy_pool("USDC")
 
-    (dai, dai_pool) = deploy_pool("DAI")
-
-    (apt, apt_pool) = deploy_pool("APT")
-
-    (weth, weth_pool) = deploy_pool("ETH")
-
-    (matic, matic_pool) = deploy_pool("MATIC")
-
-    (bnb, bnb_pool) = deploy_pool("BNB")
-
     print("deploy lending portal...")
     lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address,
                                                                                   wormhole_chainid, {'from': account})
@@ -52,16 +42,6 @@ def deploy():
     print(f"usdt_pool:'{usdt_pool}'")
     print(f"usdc:'{usdc}'")
     print(f"usdc_pool:'{usdc_pool}'")
-    print(f"dai:'{dai}'")
-    print(f"dai_pool:'{dai_pool}'")
-    print(f"apt:'{apt}'")
-    print(f"apt_pool:'{apt_pool}'")
-    print(f"weth:'{weth}'")
-    print(f"weth_pool:'{weth_pool}'")
-    print(f"matic:'{matic}'")
-    print(f"matic_pool:'{matic_pool}'")
-    print(f"bnb:'{bnb}'")
-    print(f"bnb_pool:'{bnb_pool}'")
     print(f"lending_portal:'{lending_portal}'")
 
 
