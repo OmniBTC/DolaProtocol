@@ -47,7 +47,12 @@ contract OmniPool {
         bytes memory appPayload
     ) external isBridgePool(msg.sender) returns (bytes memory) {
         balance += amount;
-        IERC20(token).transferFrom(tx.origin, address(this), amount);
+        bool success = IERC20(token).transferFrom(
+            tx.origin,
+            address(this),
+            amount
+        );
+        require(success, "transfer from failed!");
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
@@ -93,7 +98,12 @@ contract OmniPool {
         bytes memory appPayload
     ) public isBridgePool(msg.sender) returns (bytes memory) {
         balance += depositAmount;
-        IERC20(token).transferFrom(tx.origin, address(this), depositAmount);
+        bool success = IERC20(token).transferFrom(
+            tx.origin,
+            address(this),
+            depositAmount
+        );
+        require(success, "transfer from failed!");
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),

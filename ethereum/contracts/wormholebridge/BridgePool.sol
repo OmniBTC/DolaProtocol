@@ -108,7 +108,8 @@ contract BridgePool {
         bytes memory appPayload
     ) external payable {
         bytes memory payload;
-        if (IOmniPool(pool).token() == address(0) && msg.value >= amount) {
+        if (IOmniPool(pool).token() == address(0)) {
+            require(msg.value >= amount, "Not enough msg value!");
             payload = IOmniPool(pool).depositTo{value: amount}(
                 amount,
                 appId,
@@ -150,10 +151,8 @@ contract BridgePool {
         bytes memory appPayload
     ) external payable {
         bytes memory payload;
-        if (
-            IOmniPool(depositPool).token() == address(0) &&
-            msg.value >= depositAmount
-        ) {
+        if (IOmniPool(depositPool).token() == address(0)) {
+            require(msg.value >= depositAmount, "Not enough msg value!");
             payload = IOmniPool(depositPool).depositAndWithdraw{
                 value: depositAmount
             }(depositAmount, withdrawPool, appId, appPayload);
