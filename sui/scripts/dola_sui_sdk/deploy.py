@@ -24,7 +24,8 @@ dola_types_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_types")
 )
 
-dola_types_package.publish_package(replace_address=dict(serde=serde_package.package_id))
+dola_types_package.publish_package(
+    replace_address=dict(serde=serde_package.package_id))
 
 governance_package = sui_brownie.SuiPackage(
     brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
@@ -34,7 +35,8 @@ governance_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance")
 )
 
-governance_package.publish_package(replace_address=dict(serde=serde_package.package_id))
+governance_package.publish_package(
+    replace_address=dict(serde=serde_package.package_id))
 
 user_manager_package = sui_brownie.SuiPackage(
     brownie_config=DOLA_CONFIG["DOLA_SUI_PATH"],
@@ -154,6 +156,11 @@ lending_portal_package = sui_brownie.SuiPackage(
 lending_portal_package.publish_package(replace_address=dict(
     serde=serde_package.package_id,
     dola_types=dola_types_package.package_id,
+    pool_manager=pool_manager_package.package_id,
+    user_manager=user_manager_package.package_id,
+    app_manager=app_manager_package.package_id,
+    lending=lending_package.package_id,
+    oracle=oracle_package.package_id,
     wormhole_bridge=wormhole_bridge_package.package_id,
     wormhole=wormhole_package.package_id,
     omnipool=omnipool_package.package_id
@@ -180,7 +187,8 @@ governance_actions_package = sui_brownie.SuiPackage(
     network=net,
     is_compile=False,
     package_id=None,
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance_actions")
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+        "omnicore/governance_actions")
 )
 
 governance_actions_package.publish_package(replace_address=dict(
@@ -190,9 +198,11 @@ governance_actions_package.publish_package(replace_address=dict(
     wormhole_bridge=wormhole_bridge_package.package_id,
     governance=governance_package.package_id,
     lending=lending_package.package_id,
+    lending_portal=lending_portal_package.package_id,
     app_manager=app_manager_package.package_id,
     dola_types=dola_types_package.package_id,
-    oracle=oracle_package.package_id
+    oracle=oracle_package.package_id,
+    omnipool=omnipool_package.package_id
 ))
 
 test_coins_package = sui_brownie.SuiPackage(
