@@ -19,7 +19,6 @@ def portal_supply(coin_type):
         deposit_coin: Coin<CoinType>,
         ctx: &mut TxContext
     )
-
     :param coin_type:
     :return: payload
     """
@@ -407,6 +406,7 @@ def pool_binding(bind_address):
     wormhole_bridge.bridge_pool.send_binding(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0,
         dola_chain_id,
         bind_address
@@ -451,6 +451,7 @@ def pool_unbinding():
     wormhole_bridge.bridge_pool.send_unbinding(
         wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole.state.State[-1],
+        [],
         0
     )
 

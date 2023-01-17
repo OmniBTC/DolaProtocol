@@ -10,6 +10,7 @@ module governance_actions::governance_actions {
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::tx_context::TxContext;
+    use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole_bridge::bridge_core::{Self, CoreState};
     use wormhole_bridge::bridge_pool::{Self, PoolState};
@@ -62,6 +63,25 @@ module governance_actions::governance_actions {
             let governance_cap = governance::borrow_external_cap(&mut flash_cap);
             let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
             lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+        };
+
+        governance::external_cap_destroy(vote, flash_cap);
+    }
+
+    public entry fun vote_register_evm_chain_id(
+        gov: &mut Governance,
+        vote: &mut VoteExternalCap,
+        user_manager: &mut UserManagerInfo,
+        evm_chain_id: u16,
+        ctx: &mut TxContext
+    ) {
+        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+
+        if (option::is_some(&flash_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+            let user_manager_cap = user_manager::register_cap_with_governance(governance_cap);
+            // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
+            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
         };
 
         governance::external_cap_destroy(vote, flash_cap);

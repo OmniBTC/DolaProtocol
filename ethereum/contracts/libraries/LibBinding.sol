@@ -16,6 +16,7 @@ library LibBinding {
     }
 
     struct UnbindingPayload {
+        LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress unbinding;
         uint8 callType;
     }
@@ -42,16 +43,21 @@ library LibBinding {
         return payload;
     }
 
-    function encodeUnbindingPayload(LibDolaTypes.DolaAddress memory unbinding)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function encodeUnbindingPayload(
+        LibDolaTypes.DolaAddress memory user,
+        LibDolaTypes.DolaAddress memory unbinding
+    ) internal pure returns (bytes memory) {
+        bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
+            user.dolaChainId,
+            user.externalAddress
+        );
         bytes memory bindingAddress = LibDolaTypes.encodeDolaAddress(
             unbinding.dolaChainId,
             unbinding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            uint16(userAddress.length),
+            userAddress,
             uint16(bindingAddress.length),
             bindingAddress,
             UNBINDING
@@ -68,6 +74,16 @@ library LibBinding {
         uint256 index;
         uint256 dataLen;
         UnbindingPayload memory decodeData;
+
+        dataLen = 2;
+        uint16 userLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = userLength;
+        decodeData.user = LibDolaTypes.decodeDolaAddress(
+            payload.slice(index, dataLen)
+        );
+        index += dataLen;
 
         dataLen = 2;
         uint16 unbindingLength = payload.toUint16(index);

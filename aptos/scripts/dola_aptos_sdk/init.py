@@ -34,6 +34,11 @@ def matic():
     return f"{test_coins.network_config['replace_address']['test_coins']}::coins::MATIC"
 
 
+def bnb():
+    test_coins = load.test_coins_package()
+    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::BNB"
+
+
 def aptos():
     return "0x1::aptos_coin::AptosCoin"
 
@@ -59,6 +64,7 @@ def main():
     omnipool.pool.create_pool(ty_args=[matic()])
     omnipool.pool.create_pool(ty_args=[dai()])
     omnipool.pool.create_pool(ty_args=[aptos()])
+    omnipool.pool.create_pool(ty_args=[bnb()])
 
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole_bridge.bridge_pool.initialize_wormhole()
