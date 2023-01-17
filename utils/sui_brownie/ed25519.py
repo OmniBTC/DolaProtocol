@@ -71,7 +71,7 @@ class PrivateKey:
         Support only ed25519
         :return: base64
         """
-        data = ("00" + str(self.public_key()) + str(self)).replace("0x", "")
+        data = ("00" + str(self)).replace("0x", "")
         return base64.b64encode(bytes.fromhex(data)).decode("ascii")
 
     def hex(self) -> str:
@@ -115,6 +115,9 @@ class PublicKey:
             return False
         return True
 
+    def get_bytes(self) -> bytes:
+        return self.key.encode()
+
     def base64(self):
         data = str(self)
         if data[:2] == "0x":
@@ -143,6 +146,9 @@ class Signature:
         return f"0x{self.signature.hex()}"
 
     def data(self) -> bytes:
+        return self.signature
+
+    def get_bytes(self) -> bytes:
         return self.signature
 
     def base64(self):

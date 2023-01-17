@@ -20,7 +20,7 @@ module external_interfaces::interfaces {
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
-        token_liquidity: u64,
+        token_liquidity: u128,
     }
 
     struct AppLiquidityInfo has copy, drop {
@@ -31,7 +31,7 @@ module external_interfaces::interfaces {
 
     struct PoolLiquidityInfo has copy, drop {
         pool_address: DolaAddress,
-        pool_liquidity: u64
+        pool_liquidity: u128
     }
 
     struct AllPoolLiquidityInfo has copy, drop {
@@ -519,7 +519,7 @@ module external_interfaces::interfaces {
         let reserve = get_app_liquidity(pool_manager_info, borrow_pool_id, 0);
 
         let max_borrow_amount = min(borrow_amount, (reserve as u64));
-        borrow_amount = min(borrow_amount, pool_liquidity);
+        borrow_amount = min(borrow_amount, (pool_liquidity as u64));
         let max_borrow_value = calculate_value(oracle, borrow_pool_id, max_borrow_amount);
         let borrow_value = calculate_value(oracle, borrow_pool_id, borrow_amount);
         emit(UserAllowedBorrow {

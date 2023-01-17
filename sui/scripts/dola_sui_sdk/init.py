@@ -18,14 +18,6 @@ def add_governance_member(member):
                                      member)
 
 
-def register_governnace_cap():
-    governance = load.governance_package()
-    result = governance.governance.register_governance_cap(
-        governance.governance.GovernanceExternalCap[-1]
-    )
-    return result['events'][-1]['moveEvent']['fields']['hash']
-
-
 def register_token_price(dola_pool_id, price, decimal):
     '''
     public entry fun register_token_price(
@@ -50,17 +42,16 @@ def register_token_price(dola_pool_id, price, decimal):
     )
 
 
-def create_vote_external_cap(hash):
+def create_vote_external_cap():
     governance = load.governance_package()
     governance.governance.create_vote_external_cap(
-        governance.governance.Governance[-1], hash)
+        governance.governance.Governance[-1])
 
 
 def vote_init_bridge_cap():
     '''
     public entry fun vote_init_bridge_cap(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         state: &mut State,
         ctx: &mut TxContext
@@ -73,7 +64,6 @@ def vote_init_bridge_cap():
 
     governance_actions.governance_actions.vote_init_bridge_cap(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         wormhole.state.State[-1]
     )
@@ -83,7 +73,6 @@ def vote_init_lending_storage():
     '''
     public entry fun vote_init_lending_storage(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
@@ -98,7 +87,6 @@ def vote_init_lending_storage():
 
     governance_actions.governance_actions.vote_init_lending_storage(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         lending.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
@@ -109,7 +97,6 @@ def vote_init_lending_wormhole_adapter():
     '''
     public entry fun vote_init_lending_wormhole_adapter(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         wormhole_adapater: &mut WormholeAdapater,
         ctx: &mut TxContext
@@ -122,7 +109,6 @@ def vote_init_lending_wormhole_adapter():
 
     governance_actions.governance_actions.vote_init_lending_wormhole_adapter(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         lending.wormhole_adapter.WormholeAdapater[-1]
     )
@@ -155,7 +141,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool_dola_address: vector<u8>,
@@ -183,7 +168,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     pool_manager = load.pool_manager_package()
     governance_actions.governance_actions.vote_register_new_pool(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         coin_type,
@@ -197,7 +181,6 @@ def vote_register_new_reserve(dola_pool_id):
     '''
     public entry fun vote_register_new_reserve(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
@@ -220,7 +203,6 @@ def vote_register_new_reserve(dola_pool_id):
     oracle = load.oracle_package()
     governance_actions.governance_actions.vote_register_new_reserve(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
         dola_pool_id,
@@ -346,42 +328,39 @@ def main():
     register_token_price(6, 330, 2)
     register_token_price(7, 28500, 2)
 
-    # 3. register governance
-    hash = register_governnace_cap()
-
     # 4. init bridge
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_init_bridge_cap()
 
     # 5. init pool manager
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(0, b"BTC", btc())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(1, b"USDT", usdt())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(2, b"USDC", usdc())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(3, b"ETH", eth())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(4, b"DAI", dai())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(5, b"MATIC", matic())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(6, b"APT", apt())
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_register_new_pool(7, b"BNB", bnb())
     # 6. init lending storage
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
     vote_init_lending_storage()
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_init_lending_wormhole_adapter()
 
@@ -392,35 +371,35 @@ def main():
 
     # register reserves
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(0)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(1)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(2)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(3)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(4)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(5)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(6)
 
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_register_new_reserve(7)
 
