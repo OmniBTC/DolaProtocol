@@ -12,6 +12,7 @@ module governance_actions::governance_actions {
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::tx_context::TxContext;
     use user_manager::user_manager::{Self, UserManagerInfo};
+    use omnipool::pool;
     use wormhole::state::State;
     use wormhole_bridge::bridge_core::{Self, CoreState};
     use wormhole_bridge::bridge_pool::{Self, PoolState};
@@ -83,9 +84,11 @@ module governance_actions::governance_actions {
 
         if (option::is_some(&flash_cap)) {
             let external_cap = governance::borrow_external_cap<GovernanceCap>(&mut flash_cap);
+            let pool_cap = pool::register_cap(external_cap, ctx);
             let storage_cap = lending::storage::register_cap_with_governance(external_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(external_cap);
             let user_manager_cap = user_manager::user_manager::register_cap_with_governance(external_cap);
+            lending_portal::lending::transfer_pool_cap(lending_portal, pool_cap);
             lending_portal::lending::transfer_storage_cap(lending_portal, storage_cap);
             lending_portal::lending::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
             lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);

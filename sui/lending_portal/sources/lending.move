@@ -4,7 +4,7 @@ module lending_portal::lending {
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
     use lending::storage::{StorageCap, Storage};
-    use omnipool::pool::{Pool, normal_amount};
+    use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
@@ -17,6 +17,7 @@ module lending_portal::lending {
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
+    use dola_types::types;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -31,8 +32,6 @@ module lending_portal::lending {
     const ENOT_ENOUGH_LIQUIDITY: u64 = 5;
 
     const APPID: u16 = 0;
-
-    const SUI_DOLA_CHAIN_ID: u16 = 0;
 
     /// Call types for relayer call
     const SUPPLY: u8 = 0;
@@ -49,6 +48,7 @@ module lending_portal::lending {
 
     struct LendingPortal has key {
         id: UID,
+        pool_cap: Option<PoolCap>,
         pool_manager_cap: Option<PoolManagerCap>,
         user_manager_cap: Option<UserManagerCap>,
         storage_cap: Option<StorageCap>
@@ -57,10 +57,19 @@ module lending_portal::lending {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
+            pool_cap: option::none(),
             pool_manager_cap: option::none(),
             user_manager_cap: option::none(),
             storage_cap: option::none()
         })
+    }
+
+    public fun transfer_pool_cap(
+        lending_portal: &mut LendingPortal,
+        pool_cap: PoolCap
+    ) {
+        assert!(option::is_none(&lending_portal.pool_cap), EMUST_NONE);
+        option::fill(&mut lending_portal.pool_cap, pool_cap);
     }
 
     public fun transfer_pool_manager_cap(
@@ -179,7 +188,6 @@ module lending_portal::lending {
     public entry fun withdraw<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        pool_state: &mut PoolState,
         core_state: &mut CoreState,
         lending_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -224,10 +232,9 @@ module lending_portal::lending {
             APPID,
             amount
         );
-        if (dst_chain == SUI_DOLA_CHAIN_ID) {
+        if (dst_chain == types::get_native_dola_chain_id()) {
             // Local withdraw
-            let msg = omnipool::pool::encode_receive_withdraw_payload(pool_addr, user_addr, amount);
-            wormhole_bridge::bridge_pool::receive_withdraw<CoinType>(wormhole_state, pool_state, pool, msg, ctx);
+            pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
         } else {
             // Cross-chain withdraw
             wormhole_bridge::bridge_core::send_withdraw(
@@ -246,7 +253,6 @@ module lending_portal::lending {
     public entry fun borrow<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        pool_state: &mut PoolState,
         core_state: &mut CoreState,
         lending_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -291,10 +297,9 @@ module lending_portal::lending {
             APPID,
             amount
         );
-        if (dst_chain == SUI_DOLA_CHAIN_ID) {
+        if (dst_chain == types::get_native_dola_chain_id()) {
             // Local borrow
-            let msg = omnipool::pool::encode_receive_withdraw_payload(pool_addr, user_addr, amount);
-            wormhole_bridge::bridge_pool::receive_withdraw<CoinType>(wormhole_state, pool_state, pool, msg, ctx);
+            pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
         } else {
             // Cross-chain borrow
             wormhole_bridge::bridge_core::send_withdraw(

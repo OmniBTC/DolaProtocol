@@ -114,7 +114,6 @@ def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
     lending_portal.lending.withdraw(
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
@@ -223,7 +222,6 @@ def portal_borrow(coin_type, amount, dst_chain=0, receiver=None):
     lending_portal.lending.borrow(
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
-        wormhole_bridge.bridge_pool.PoolState[-1],
         wormhole_bridge.bridge_core.CoreState[-1],
         lending_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],

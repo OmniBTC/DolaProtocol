@@ -14,6 +14,7 @@ lending_portal = "0x0"
 app_manager = "0x0"
 oracle = "0x0"
 dola_types = "0x0"
+omnipool = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
@@ -52,3 +53,6 @@ local = "../user_manager"
 
 [dependencies.DolaTypes]
 local = "../../dola_types"
+
+[dependencies.OmniPool]
+local = "../../omnipool"
