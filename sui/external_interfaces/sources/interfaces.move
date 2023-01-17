@@ -58,6 +58,8 @@ module external_interfaces::interfaces {
         health_factor: u64,
         profit_state: bool,
         net_apy: u64,
+        total_supply_apy: u64,
+        total_borrow_apy: u64,
         collateral_infos: vector<UserCollateralInfo>,
         total_collateral_value: u64,
         debt_infos: vector<UserDebtInfo>,
@@ -334,10 +336,21 @@ module external_interfaces::interfaces {
         let user_total_debt_value = user_total_loan_value(storage, oracle, dola_user_id);
 
         let net_apy = 0;
+        let total_supply_apy = 0;
+        let total_borrow_apy = 0;
         let profit_state = true;
+
+        if (user_total_supply_value > 0) {
+            total_supply_apy = ray_div(total_supply_apy_value, user_total_supply_value);
+            profit_state = true;
+        };
+
+        if (user_total_debt_value > 0) {
+            total_borrow_apy = ray_div(total_borrow_apy_value, user_total_debt_value);
+            profit_state = false;
+        };
+
         if (user_total_supply_value > 0 && user_total_debt_value > 0) {
-            let total_supply_apy = ray_div(total_supply_apy_value, user_total_supply_value);
-            let total_borrow_apy = ray_div(total_borrow_apy_value, user_total_debt_value);
             if (total_supply_apy >= total_borrow_apy) {
                 net_apy = total_supply_apy - total_borrow_apy;
                 profit_state = true;
@@ -348,11 +361,15 @@ module external_interfaces::interfaces {
         };
 
         net_apy = net_apy * 10000 / RAY;
+        total_supply_apy = total_supply_apy * 10000 / RAY;
+        total_borrow_apy = total_borrow_apy * 10000 / RAY;
 
         emit(UserLendingInfo {
             health_factor,
             profit_state,
             net_apy,
+            total_supply_apy,
+            total_borrow_apy,
             collateral_infos,
             total_collateral_value,
             debt_infos,
