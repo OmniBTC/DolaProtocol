@@ -60,11 +60,7 @@ def main():
     omnipool.pool.create_pool(ty_args=[usdt()])
     omnipool.pool.create_pool(ty_args=[btc()])
     omnipool.pool.create_pool(ty_args=[usdc()])
-    omnipool.pool.create_pool(ty_args=[eth()])
-    omnipool.pool.create_pool(ty_args=[matic()])
-    omnipool.pool.create_pool(ty_args=[dai()])
     omnipool.pool.create_pool(ty_args=[aptos()])
-    omnipool.pool.create_pool(ty_args=[bnb()])
 
     wormhole_bridge = load.wormhole_bridge_package()
     wormhole_bridge.bridge_pool.initialize_wormhole()

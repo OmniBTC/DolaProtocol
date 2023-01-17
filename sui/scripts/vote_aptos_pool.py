@@ -28,23 +28,7 @@ def main():
 
     dola_sui_init.create_vote_external_cap()
     dola_sui_init.vote_register_new_pool(
-        3, b"ETH", dola_aptos_init.eth(), dst_chain=1)
-
-    dola_sui_init.create_vote_external_cap()
-    dola_sui_init.vote_register_new_pool(
-        4, b"DAI", dola_aptos_init.dai(), dst_chain=1)
-
-    dola_sui_init.create_vote_external_cap()
-    dola_sui_init.vote_register_new_pool(
-        5, b"MATIC", dola_aptos_init.matic(), dst_chain=1)
-
-    dola_sui_init.create_vote_external_cap()
-    dola_sui_init.vote_register_new_pool(
         6, b"APT", dola_aptos_init.aptos(), dst_chain=1)
-
-    dola_sui_init.create_vote_external_cap()
-    dola_sui_init.vote_register_new_pool(
-        7, b"BNB", dola_aptos_init.bnb(), dst_chain=1)
 
 
 if __name__ == "__main__":

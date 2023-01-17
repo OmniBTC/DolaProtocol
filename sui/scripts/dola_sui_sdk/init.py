@@ -309,14 +309,9 @@ def bridge_core_read_vaa(index=0):
 
 def main():
     # 1. init omnipool
-    create_pool(usdt())
     create_pool(btc())
+    create_pool(usdt())
     create_pool(usdc())
-    create_pool(eth())
-    create_pool(dai())
-    create_pool(matic())
-    create_pool(apt())
-    create_pool(bnb())
 
     # 2. init oracle
     register_token_price(0, 2000000, 2)
@@ -342,20 +337,6 @@ def main():
     create_vote_external_cap()
     vote_register_new_pool(2, b"USDC", usdc())
 
-    create_vote_external_cap()
-    vote_register_new_pool(3, b"ETH", eth())
-
-    create_vote_external_cap()
-    vote_register_new_pool(4, b"DAI", dai())
-
-    create_vote_external_cap()
-    vote_register_new_pool(5, b"MATIC", matic())
-
-    create_vote_external_cap()
-    vote_register_new_pool(6, b"APT", apt())
-
-    create_vote_external_cap()
-    vote_register_new_pool(7, b"BNB", bnb())
     # 6. init lending storage
     create_vote_external_cap()
     vote_init_lending_storage()
@@ -365,7 +346,7 @@ def main():
     vote_init_lending_wormhole_adapter()
 
     # 7. init lending portal
-    create_vote_external_cap(hash)
+    create_vote_external_cap()
 
     vote_init_lending_portal()
 
