@@ -52,7 +52,6 @@ def vote_init_bridge_cap():
     '''
     public entry fun vote_init_bridge_cap(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         state: &mut State,
         ctx: &mut TxContext
@@ -65,7 +64,6 @@ def vote_init_bridge_cap():
 
     governance_actions.governance_actions.vote_init_bridge_cap(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         wormhole.state.State[-1]
     )
@@ -89,7 +87,6 @@ def vote_init_lending_storage():
 
     governance_actions.governance_actions.vote_init_lending_storage(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         lending.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
@@ -100,7 +97,6 @@ def vote_init_lending_wormhole_adapter():
     '''
     public entry fun vote_init_lending_wormhole_adapter(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         wormhole_adapater: &mut WormholeAdapater,
         ctx: &mut TxContext
@@ -113,7 +109,6 @@ def vote_init_lending_wormhole_adapter():
 
     governance_actions.governance_actions.vote_init_lending_wormhole_adapter(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         lending.wormhole_adapter.WormholeAdapater[-1]
     )
@@ -123,7 +118,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     '''
     public entry fun vote_register_new_pool(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool_dola_address: vector<u8>,
@@ -151,7 +145,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     pool_manager = load.pool_manager_package()
     governance_actions.governance_actions.vote_register_new_pool(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         coin_type,
@@ -165,7 +158,6 @@ def vote_register_new_reserve(dola_pool_id):
     '''
     public entry fun vote_register_new_reserve(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
@@ -188,7 +180,6 @@ def vote_register_new_reserve(dola_pool_id):
     oracle = load.oracle_package()
     governance_actions.governance_actions.vote_register_new_reserve(
         governance.governance.Governance[-1],
-        governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
         dola_pool_id,
