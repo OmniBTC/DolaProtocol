@@ -337,6 +337,9 @@ def main():
     create_vote_external_cap()
     vote_register_new_pool(2, b"USDC", usdc())
 
+    create_vote_external_cap()
+    vote_register_new_pool(8, b"SUI", sui())
+
     # 6. init lending storage
     create_vote_external_cap()
     vote_init_lending_storage()
@@ -383,6 +386,10 @@ def main():
     create_vote_external_cap()
 
     vote_register_new_reserve(7)
+
+    create_vote_external_cap()
+
+    vote_register_new_reserve(8)
 
 
 if __name__ == '__main__':
