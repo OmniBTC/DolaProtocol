@@ -96,10 +96,10 @@ module lending::logic {
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
         update_state(cap, storage, oracle, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, token_amount);
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
         if (!is_collateral(storage, dola_user_id, dola_pool_id)) {
             add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
         };
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
@@ -113,17 +113,15 @@ module lending::logic {
         withdraw_amount: u64,
     ) {
         update_state(cap, storage, oracle, dola_pool_id);
-        // check otoken amount
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
-        assert!(withdraw_amount <= otoken_amount, ENOT_ENOUGH_OTOKEN);
+        let withdraw_amount = min(withdraw_amount, otoken_amount);
         burn_otoken(cap, storage, dola_user_id, dola_pool_id, withdraw_amount);
-
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (withdraw_amount == otoken_amount) {
             remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         };
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
