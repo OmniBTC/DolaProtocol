@@ -212,7 +212,7 @@ module lending_portal::lending {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
         // Execute withdraw logic in lending app
         lending::logic::execute_withdraw(
@@ -277,7 +277,7 @@ module lending_portal::lending {
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
         // Execute borrow logic in lending app
         lending::logic::execute_borrow(

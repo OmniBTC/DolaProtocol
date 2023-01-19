@@ -12,7 +12,7 @@ module lending::scaled_balance {
         user_scaled_balance: u64,
         current_index: u64
     ): u64 {
-        (((user_scaled_balance as u128) * (current_index as u128) / (RAY as u128)) as u64)
+        ((((user_scaled_balance as u128) * (current_index as u128) + (RAY / 2 as u128)) / (RAY as u128)) as u64)
     }
 
     public fun mint_scaled(
@@ -26,6 +26,6 @@ module lending::scaled_balance {
         token_amount: u64,
         current_index: u64
     ): u64 {
-        ((token_amount as u128) * (RAY as u128) / (current_index as u128) as u64)
+        (((token_amount as u128) * (RAY as u128) + (current_index / 2 as u128)) / (current_index as u128) as u64)
     }
 }
