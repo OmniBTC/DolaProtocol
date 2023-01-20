@@ -12,7 +12,7 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "2d709054a08d904b9229a2472af679f210af3827"
+rev = "e3e28e09ffb7943aa4b46b65e12b630ef36161ef"
 
 [dependencies.Serde]
 local = "../serde"
