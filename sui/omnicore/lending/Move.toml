@@ -18,12 +18,12 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "e3e28e09ffb7943aa4b46b65e12b630ef36161ef"
+rev = "cece99272f261d046c64510812e36404e7deb661"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "9700f4b6640643dfa9ebc0d4557c248145beea64"
+rev = "fa27b818198b736a315db5532bccdf7ffc4c6076"
 
 [dependencies.DolaTypes]
 local = "../../dola_types"
