@@ -23,13 +23,15 @@ contract BridgePool {
         uint16 _dolaChainId,
         uint16 _wormholeChainId,
         uint8 _finality,
-        address _remoteBridge
+        address _remoteBridge,
+        address _omnipool
     ) {
         wormholeBridge = _wormholeBridge;
         dolaChainId = _dolaChainId;
         wormholeChainId = _wormholeChainId;
         finality = _finality;
         remoteBridge = _remoteBridge;
+        omnipool = _omnipool;
     }
 
     function wormhole() public view returns (IWormhole) {

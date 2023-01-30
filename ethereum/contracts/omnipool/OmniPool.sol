@@ -51,7 +51,7 @@ contract OmniPool {
         pools[token] += amount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             LibDecimals.fixAmountDecimals(amount, decimals(token)),
             appId,
@@ -109,7 +109,7 @@ contract OmniPool {
         pools[depositToken] = depositAmount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, depositToken),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             LibDecimals.fixAmountDecimals(
                 depositAmount,
