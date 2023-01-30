@@ -1368,6 +1368,7 @@ class SuiPackage:
             *param_args,
             ty_args: List[str] = None,
             gas_budget=100000,
+            is_merge_sui=False
     ) -> dict:
         """
         {
@@ -1395,6 +1396,7 @@ class SuiPackage:
           'type_parameters': [{'abilities': []},
                               {'abilities': []}],
           'visibility': 'Public'}
+        :param is_merge_sui:
         :param param_args:
         :param abi:
         :param ty_args:
@@ -1404,6 +1406,11 @@ class SuiPackage:
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
         # Simulate before execute
         self.dry_run_transaction(result["txBytes"])
+        # Merge sui
+        if is_merge_sui:
+            object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+            if len(object_ids) >= 2:
+                self.pay_all_sui(object_ids, self.account.account_address)
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self.execute_transaction(result["txBytes"])
@@ -1545,6 +1552,25 @@ class SuiPackage:
             assert False, result["error"]
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
+
+    def get_coins(self, addr: str, coin_type: str):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_getCoins",
+                "params": [
+                    addr,
+                    coin_type
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        object_ids = [v["coinObjectId"] for v in result["result"]["data"]]
+        return object_ids
 
     def get_dynamic_field(self, object_id: str) -> List[SuiDynamicFiled]:
         data = self.get_object_by_object(object_id)
