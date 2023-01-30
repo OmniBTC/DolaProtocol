@@ -13,6 +13,7 @@ contract BridgePool {
     uint16 wormholeChainId;
     uint8 finality;
     address remoteBridge;
+    address omnipool;
     mapping(bytes32 => bool) completeVAA;
     // convenient for testing
     mapping(uint32 => bytes) public cachedVAA;
@@ -102,20 +103,26 @@ contract BridgePool {
     }
 
     function sendDeposit(
-        address pool,
+        address token,
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
         bytes memory payload;
-        if (IOmniPool(pool).token() == address(0) && msg.value >= amount) {
-            payload = IOmniPool(pool).depositTo{value: amount}(
+        if (token == address(0) && msg.value >= amount) {
+            payload = IOmniPool(omnipool).depositTo{value: amount}(
+                token,
                 amount,
                 appId,
                 appPayload
             );
         } else {
-            payload = IOmniPool(pool).depositTo(amount, appId, appPayload);
+            payload = IOmniPool(omnipool).depositTo(
+                token,
+                amount,
+                appId,
+                appPayload
+            );
         }
 
         cachedVAA[getNonce()] = payload;
@@ -128,11 +135,15 @@ contract BridgePool {
     }
 
     function sendWithdraw(
-        address pool,
+        address token,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = IOmniPool(pool).withdrawTo(appId, appPayload);
+        bytes memory payload = IOmniPool(omnipool).withdrawTo(
+            token,
+            appId,
+            appPayload
+        );
         cachedVAA[getNonce()] = payload;
         IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
             getNonce(),
@@ -143,24 +154,22 @@ contract BridgePool {
     }
 
     function sendDepositAndWithdraw(
-        address depositPool,
+        address depositToken,
         uint256 depositAmount,
-        address withdrawPool,
+        address withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
         bytes memory payload;
-        if (
-            IOmniPool(depositPool).token() == address(0) &&
-            msg.value >= depositAmount
-        ) {
-            payload = IOmniPool(depositPool).depositAndWithdraw{
+        if (depositToken == address(0) && msg.value >= depositAmount) {
+            payload = IOmniPool(omnipool).depositAndWithdraw{
                 value: depositAmount
-            }(depositAmount, withdrawPool, appId, appPayload);
+            }(depositToken, depositAmount, withdrawToken, appId, appPayload);
         } else {
-            payload = IOmniPool(depositPool).depositAndWithdraw(
+            payload = IOmniPool(omnipool).depositAndWithdraw(
+                depositToken,
                 depositAmount,
-                withdrawPool,
+                withdrawToken,
                 appId,
                 appPayload
             );
@@ -185,8 +194,8 @@ contract BridgePool {
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
             .decodeReceiveWithdrawPayload(vaa);
-        address pool = LibDolaTypes.dolaAddressToAddress(payload.pool);
+        address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
-        IOmniPool(pool).innerWithdraw(user, payload.amount);
+        IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);
     }
 }

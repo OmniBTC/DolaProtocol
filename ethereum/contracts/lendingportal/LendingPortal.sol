@@ -23,16 +23,23 @@ contract LendingPortal {
         dolaChainId = chainId;
     }
 
-    function supply(address pool, uint256 amount) external payable {
-        uint8 decimal = IOmniPool(pool).decimals();
+    function tokenDecimals(address token) internal view returns (uint8) {
+        uint8 decimal = 18;
+        if (token != address(0)) {
+            decimal = IERC20(token).decimals();
+        }
+        return decimal;
+    }
+
+    function supply(address token, uint256 amount) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             SUPPLY,
-            LibDecimals.fixAmountDecimals(amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, tokenDecimals(token)),
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
         IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
-            pool,
+            token,
             amount,
             APPID,
             appPayload
@@ -41,7 +48,7 @@ contract LendingPortal {
 
     // withdraw use 8 decimal
     function withdraw(
-        address pool,
+        address token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount
@@ -53,14 +60,14 @@ contract LendingPortal {
             0
         );
         IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
-            pool,
+            token,
             APPID,
             appPayload
         );
     }
 
     function borrow(
-        address pool,
+        address token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount
@@ -72,22 +79,21 @@ contract LendingPortal {
             0
         );
         IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
-            pool,
+            token,
             APPID,
             appPayload
         );
     }
 
-    function repay(address pool, uint256 amount) external payable {
-        uint8 decimal = IOmniPool(pool).decimals();
+    function repay(address token, uint256 amount) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             REPAY,
-            LibDecimals.fixAmountDecimals(amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, tokenDecimals(token)),
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
         IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
-            pool,
+            token,
             amount,
             APPID,
             appPayload
@@ -97,22 +103,21 @@ contract LendingPortal {
     function liquidate(
         bytes memory receiver,
         uint16 dstChainId,
-        address debtPool,
+        address debtToken,
         uint256 amount,
-        address collateralPool,
+        address collateralToken,
         uint64 liquidateUserId
     ) external {
-        uint8 decimal = IOmniPool(debtPool).decimals();
         bytes memory appPayload = LibLending.encodeAppPayload(
             LIQUIDATE,
-            LibDecimals.fixAmountDecimals(amount, decimal),
+            LibDecimals.fixAmountDecimals(amount, tokenDecimals(debtToken)),
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             liquidateUserId
         );
         IWormholeBridge(bridgePool).sendDepositAndWithdraw(
-            debtPool,
+            debtToken,
             amount,
-            collateralPool,
+            collateralToken,
             APPID,
             appPayload
         );

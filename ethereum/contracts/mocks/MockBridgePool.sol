@@ -13,7 +13,6 @@ contract MockBridgePool {
     uint16 wormholeChainId;
     uint8 finality;
     address remoteBridge;
-    address deployer;
     address omnipool;
     bool hasInit;
     mapping(bytes32 => bool) completeVAA;
@@ -25,14 +24,15 @@ contract MockBridgePool {
         uint16 _dolaChainId,
         uint16 _wormholeChainId,
         uint8 _finality,
-        address _remoteBridge
+        address _remoteBridge,
+        address _omnipool
     ) {
         wormholeBridge = _wormholeBridge;
         dolaChainId = _dolaChainId;
         wormholeChainId = _wormholeChainId;
         finality = _finality;
         remoteBridge = _remoteBridge;
-        deployer = msg.sender;
+        omnipool = _omnipool;
     }
 
     function wormhole() public view returns (IWormhole) {
@@ -69,12 +69,6 @@ contract MockBridgePool {
 
     function isCompleteVAA(bytes32 _hash) internal view returns (bool) {
         return completeVAA[_hash];
-    }
-
-    function initOmniPool(address _omnipool) external {
-        require(msg.sender == deployer, "Must be deployer!");
-        require(!hasInit, "Only init one time!");
-        omnipool = _omnipool;
     }
 
     function sendBinding(uint16 bindDolaChainId, bytes memory bindAddress)

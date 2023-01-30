@@ -9,8 +9,8 @@ import "../libraries//LibDolaTypes.sol";
 contract OmniPool {
     address public bridgePool;
     uint16 public dolaChainId;
-    mapping(address => bool) private allowances;
-    mapping(address => uint256) private pools;
+    mapping(address => bool) public allowances;
+    mapping(address => uint256) public pools;
 
     modifier isBridgePool(address bridge) {
         require(allowances[bridge], "Not bridge pool!");
