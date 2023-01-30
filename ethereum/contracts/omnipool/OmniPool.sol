@@ -7,30 +7,26 @@ import "../libraries//LibDecimals.sol";
 import "../libraries//LibDolaTypes.sol";
 
 contract OmniPool {
-    uint256 public balance;
-    address public bridgePool;
-    address public token;
     uint16 public dolaChainId;
-    mapping(address => bool) private allowances;
+    mapping(address => bool) public allowances;
+    mapping(address => uint256) public pools;
 
     modifier isBridgePool(address bridge) {
         require(allowances[bridge], "Not bridge pool!");
         _;
     }
 
-    constructor(
-        uint16 chainId,
-        address bridge,
-        address tokenAddress
-    ) {
+    constructor(uint16 chainId, address bridge) {
         dolaChainId = chainId;
-        bridgePool = bridge;
-        token = tokenAddress;
-        allowances[bridgePool] = true;
+        allowances[bridge] = true;
     }
 
-    function decimals() public view returns (uint8) {
-        return IERC20(token).decimals();
+    function decimals(address token) public view returns (uint8) {
+        if (token == address(0)) {
+            return 18;
+        } else {
+            return IERC20(token).decimals();
+        }
     }
 
     function rely(address bridge) external isBridgePool(msg.sender) {
@@ -42,36 +38,38 @@ contract OmniPool {
     }
 
     function depositTo(
+        address token,
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external isBridgePool(msg.sender) returns (bytes memory) {
-        balance += amount;
-        bool success = IERC20(token).transferFrom(
-            tx.origin,
-            address(this),
-            amount
-        );
-        require(success, "transfer from failed!");
+    ) external payable isBridgePool(msg.sender) returns (bytes memory) {
+        if (token != address(0)) {
+            bool success = IERC20(token).transferFrom(
+                tx.origin,
+                address(this),
+                amount
+            );
+            require(success, "transfer from failed!");
+        }
+        pools[token] += amount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDecimals.fixAmountDecimals(amount, decimals()),
+            LibDecimals.fixAmountDecimals(amount, decimals(token)),
             appId,
             appPayload
         );
         return poolPayload;
     }
 
-    function withdrawTo(uint16 appId, bytes memory appPayload)
-        external
-        view
-        isBridgePool(msg.sender)
-        returns (bytes memory)
-    {
+    function withdrawTo(
+        address token,
+        uint16 appId,
+        bytes memory appPayload
+    ) external view isBridgePool(msg.sender) returns (bytes memory) {
         bytes memory poolPayload = LibPool.encodeSendWithdrawPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             appId,
             appPayload
@@ -79,41 +77,56 @@ contract OmniPool {
         return poolPayload;
     }
 
-    function innerWithdraw(address to, uint64 amount)
-        external
-        isBridgePool(msg.sender)
-    {
+    function innerWithdraw(
+        address token,
+        address to,
+        uint64 amount
+    ) external isBridgePool(msg.sender) {
         uint256 fixedAmount = LibDecimals.restoreAmountDecimals(
             amount,
-            decimals()
+            decimals(token)
         );
-        balance -= fixedAmount;
-        IERC20(token).transfer(to, fixedAmount);
+        if (token == address(0)) {
+            (bool success, ) = to.call{value: fixedAmount}("");
+            require(success, "ETH transfer failed");
+        } else {
+            bool success = IERC20(token).transfer(to, fixedAmount);
+            require(success, "transfer to failed!");
+        }
+        pools[token] -= fixedAmount;
     }
 
     function depositAndWithdraw(
+        address depositToken,
         uint256 depositAmount,
-        address withdrawPool,
+        address withdrawToken,
         uint16 appId,
         bytes memory appPayload
-    ) public isBridgePool(msg.sender) returns (bytes memory) {
-        balance += depositAmount;
-        bool success = IERC20(token).transferFrom(
-            tx.origin,
-            address(this),
-            depositAmount
-        );
-        require(success, "transfer from failed!");
+    ) public payable isBridgePool(msg.sender) returns (bytes memory) {
+        if (depositToken != address(0)) {
+            bool success = IERC20(depositToken).transferFrom(
+                tx.origin,
+                address(this),
+                depositAmount
+            );
+            require(success, "transfer from failed!");
+        }
+        pools[depositToken] = depositAmount;
 
         bytes memory poolPayload = LibPool.encodeSendDepositAndWithdrawPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, address(this)),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, depositToken),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDecimals.fixAmountDecimals(depositAmount, decimals()),
-            LibDolaTypes.addressToDolaAddress(dolaChainId, withdrawPool),
+            LibDecimals.fixAmountDecimals(
+                depositAmount,
+                decimals(depositToken)
+            ),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, withdrawToken),
             appId,
             appPayload
         );
 
         return poolPayload;
     }
+
+    receive() external payable {}
 }

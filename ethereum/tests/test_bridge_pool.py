@@ -1,4 +1,4 @@
-from brownie import MockBridgePool, OmniPool, OmniETHPool, MockToken, LendingPortal, EncodeDecode, accounts, config
+from brownie import MockBridgePool, OmniPool, MockToken, LendingPortal, EncodeDecode, accounts, config
 from pytest import fixture
 
 
@@ -20,13 +20,22 @@ def encode_decode():
 
 
 @fixture
-def bridge_pool():
-    return MockBridgePool.deploy(wormhole_address,
-                                 wormhole_chainid,
-                                 wormhole_chainid,
-                                 1,
-                                 zero_address(),
-                                 {'from': account()})
+def omnipool():
+    return OmniPool.deploy(wormhole_chainid,
+                           account(), {'from': account()})
+
+
+@fixture
+def bridge_pool(omnipool):
+    bridge = MockBridgePool.deploy(wormhole_address,
+                                   wormhole_chainid,
+                                   wormhole_chainid,
+                                   1,
+                                   zero_address(),
+                                   omnipool.address,
+                                   {'from': account()})
+    omnipool.rely(bridge.address, {'from': account()})
+    return bridge
 
 
 @fixture
@@ -35,56 +44,44 @@ def usdt():
 
 
 @fixture
-def usdt_pool(usdt, bridge_pool):
-    return OmniPool.deploy(wormhole_chainid,
-                           bridge_pool.address, usdt.address, {'from': account()})
-
-
-@fixture
-def eth_pool(bridge_pool):
-    return OmniETHPool.deploy(wormhole_chainid,
-                              bridge_pool.address, {'from': account()})
-
-
-@fixture
 def lending_portal(bridge_pool):
     return LendingPortal.deploy(bridge_pool.address,
                                 wormhole_chainid, {'from': account()})
 
 
-def test_supply(lending_portal, usdt, usdt_pool, eth_pool):
+def test_supply(lending_portal, usdt, omnipool):
     amount = 1e18
     usdt.mint(account(), amount, {'from': account()})
-    usdt.approve(usdt_pool.address, amount, {'from': account()})
-    lending_portal.supply(usdt_pool.address, amount, {'from': account()})
-    assert usdt_pool.balance() == amount
-    lending_portal.supply(eth_pool.address, amount, {
+    usdt.approve(omnipool.address, amount, {'from': account()})
+    lending_portal.supply(usdt.address, amount, {'from': account()})
+    assert omnipool.pools(usdt.address) == amount
+    lending_portal.supply(zero_address(), amount, {
                           'from': account(), 'value': amount})
-    assert eth_pool.balance() == amount
+    assert omnipool.pools(zero_address()) == amount
 
 
-def test_withdraw(lending_portal, usdt, usdt_pool, eth_pool, bridge_pool, encode_decode):
+def test_withdraw(lending_portal, usdt, omnipool, bridge_pool, encode_decode):
     amount = 1e18
 
     usdt.mint(account(), amount, {'from': account()})
-    usdt.approve(usdt_pool.address, amount, {'from': account()})
-    lending_portal.supply(usdt_pool.address, amount, {'from': account()})
-    assert usdt_pool.balance() == amount
+    usdt.approve(omnipool.address, amount, {'from': account()})
+    lending_portal.supply(usdt.address, amount, {'from': account()})
+    assert omnipool.pools(usdt.address) == amount
     receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
-        [1, usdt_pool.address], [1, account().address], 1e8, {'from': account()})
+        [1, usdt.address], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
-    assert usdt_pool.balance() == 0
+    assert omnipool.pools(usdt.address) == 0
 
-    lending_portal.supply(eth_pool.address, amount, {
+    lending_portal.supply(zero_address(), amount, {
                           'from': account(), 'value': amount})
-    lending_portal.supply(eth_pool.address, amount, {
+    lending_portal.supply(zero_address(), amount, {
                           'from': account(), 'value': amount})
-    assert eth_pool.balance() == 2 * amount
+    assert omnipool.pools(zero_address()) == 2 * amount
 
     account_balance = account().balance()
 
     receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
-        [1, eth_pool.address], [1, account().address], 1e8, {'from': account()})
+        [1, zero_address()], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
-    assert eth_pool.balance() == amount
+    assert omnipool.pools(zero_address()) == amount
     assert account().balance() == account_balance + amount

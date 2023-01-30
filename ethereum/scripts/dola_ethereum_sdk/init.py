@@ -27,23 +27,7 @@ def usdc():
 
 
 def eth():
-    return config["networks"][network.show_active()]["eth"]
-
-
-def usdt_pool():
-    return config["networks"][network.show_active()]["usdt_pool"]
-
-
-def btc_pool():
-    return config["networks"][network.show_active()]["btc_pool"]
-
-
-def usdc_pool():
-    return config["networks"][network.show_active()]["usdc_pool"]
-
-
-def eth_pool():
-    return config["networks"][network.show_active()]["eth_pool"]
+    return "0x0000000000000000000000000000000000000000"
 
 
 def get_pool_token(pool):
