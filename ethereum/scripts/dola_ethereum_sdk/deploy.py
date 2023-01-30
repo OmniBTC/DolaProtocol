@@ -13,7 +13,7 @@ def deploy():
     print("deploy  omnipool...")
 
     omnipool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(wormhole_chainid,
-                                                                       DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address, {'from': account})
+                                                                       account, {'from': account})
 
     print("deploy bridge pool...")
     bridge_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"].deploy(
@@ -27,6 +27,8 @@ def deploy():
     )
 
     omnipool.rely(bridge_pool.address, {'from': account})
+
+    omnipool.deny(account, {'from': account})
 
     btc = deploy_token("BTC")
 

@@ -7,7 +7,6 @@ import "../libraries//LibDecimals.sol";
 import "../libraries//LibDolaTypes.sol";
 
 contract OmniPool {
-    address public bridgePool;
     uint16 public dolaChainId;
     mapping(address => bool) public allowances;
     mapping(address => uint256) public pools;
@@ -19,8 +18,7 @@ contract OmniPool {
 
     constructor(uint16 chainId, address bridge) {
         dolaChainId = chainId;
-        bridgePool = bridge;
-        allowances[bridgePool] = true;
+        allowances[bridge] = true;
     }
 
     function decimals(address token) public view returns (uint8) {
