@@ -18,27 +18,27 @@ def main():
 
     dola_sui_init.create_vote_external_cap()
     dola_sui_init.vote_register_new_pool(
-        0, b"BTC", dola_ethereum_init.btc_pool(), dst_chain)
+        0, b"BTC", dola_ethereum_init.btc(), dst_chain)
 
     dola_sui_init.create_vote_external_cap()
     dola_sui_init.vote_register_new_pool(
-        1, b"USDT", dola_ethereum_init.usdt_pool(), dst_chain)
+        1, b"USDT", dola_ethereum_init.usdt(), dst_chain)
 
     dola_sui_init.create_vote_external_cap()
     dola_sui_init.vote_register_new_pool(
-        2, b"USDC", dola_ethereum_init.usdc_pool(), dst_chain)
+        2, b"USDC", dola_ethereum_init.usdc(), dst_chain)
 
     dola_sui_init.create_vote_external_cap()
     dola_sui_init.vote_register_new_pool(
-        3, b"ETH", dola_ethereum_init.eth_pool(), dst_chain)
+        3, b"ETH", dola_ethereum_init.eth(), dst_chain)
 
     # dola_sui_init.create_vote_external_cap()
     # dola_sui_init.vote_register_new_pool(
-    #     5, b"MATIC", dola_ethereum_init.matic_pool(), dst_chain)
+    #     5, b"MATIC", dola_ethereum_init.eth(), dst_chain)
     #
     # dola_sui_init.create_vote_external_cap()
     # dola_sui_init.vote_register_new_pool(
-    #     7, b"BNB", dola_ethereum_init.bnb_pool(), dst_chain)
+    #     7, b"BNB", dola_ethereum_init.eth(), dst_chain)
 
 
 if __name__ == "__main__":
