@@ -14,7 +14,7 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "2d709054a08d904b9229a2472af679f210af3827"
+rev = "cece99272f261d046c64510812e36404e7deb661"
 
 [dependencies.PoolManager]
 local = "../omnicore/pool_manager"

@@ -36,6 +36,7 @@ aptos/contracts
 aptos/interfaces
 aptos/reports
 aptos/tests
+.aptos
 
 .pytest_cache/
 

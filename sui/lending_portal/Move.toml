@@ -5,7 +5,12 @@ version = "0.0.1"
 [addresses]
 lending_portal = "0x0"
 serde = "0x0"
+lending = "0x0"
+oracle = "0x0"
 dola_types = "0x0"
+app_manager = "0x0"
+pool_manager = "0x0"
+user_manager = "0x0"
 wormhole_bridge = "0x0"
 wormhole = "0x0"
 omnipool = "0x0"
@@ -14,15 +19,30 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "2d709054a08d904b9229a2472af679f210af3827"
+rev = "cece99272f261d046c64510812e36404e7deb661"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "b1ff91995921064fc530eb8f7e147e228c10d072"
+rev = "fa27b818198b736a315db5532bccdf7ffc4c6076"
 
 [dependencies.OmniPool]
 local = "../omnipool"
+
+[dependencies.Lending]
+local = "../omnicore/lending"
+
+[dependencies.Oracle]
+local = "../omnicore/oracle"
+
+[dependencies.PoolManager]
+local = "../omnicore/pool_manager"
+
+[dependencies.UserManager]
+local = "../omnicore/user_manager"
+
+[dependencies.AppManager]
+local = "../omnicore/app_manager"
 
 [dependencies.Serde]
 local = "../serde"

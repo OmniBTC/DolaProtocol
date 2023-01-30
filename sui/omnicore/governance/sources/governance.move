@@ -1,13 +1,9 @@
 /// Manage permissions for modules in the protocol
 module governance::governance {
-    use std::hash;
     use std::option::{Self, Option};
     use std::vector;
 
-    use sui::bcs;
-    use sui::dynamic_field;
-    use sui::event::emit;
-    use sui::object::{Self, UID, id_address, uid_to_address};
+    use sui::object::{Self, UID, id_address};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
@@ -42,11 +38,6 @@ module governance::governance {
 
     const EVOTE_HAS_COMPLETE: u64 = 12;
 
-
-    struct GovernanceExternalCap has key, store {
-        id: UID
-    }
-
     /// Manage governance module
     /// todo: need a more democratic way to use it.
     struct GovernanceManagerCap has key, store {
@@ -55,9 +46,7 @@ module governance::governance {
 
     /// Govern the calls of other contracts, and other contracts
     /// using governance only need to take this cap parameter.
-    struct GovernanceCap has store, drop {
-        governance_external: address
-    }
+    struct GovernanceCap has store {}
 
     /// Current governance members
     struct Governance has key {
@@ -88,15 +77,13 @@ module governance::governance {
         id: UID,
         // members address
         votes: vector<address>,
-        // External cap hash
-        external_hash: vector<u8>,
         // prevent duplicate key issuance
         finished: bool
     }
 
-    struct FlashCap<T> {
+    struct FlashCap {
         // External cap
-        external_cap: T,
+        governance_cap: GovernanceCap,
     }
 
     /// Share a cap so that only the person who owns the key can use it,
@@ -126,28 +113,6 @@ module governance::governance {
             id: object::new(ctx),
             members
         });
-        transfer::share_object(GovernanceExternalCap {
-            id: object::new(ctx)
-        })
-    }
-
-    public entry fun add_external_cap<T: store>(
-        governance_external_cap: &mut GovernanceExternalCap,
-        hash: vector<u8>,
-        cap: T
-    ) {
-        assert!(!dynamic_field::exists_with_type<vector<u8>, T>(&governance_external_cap.id, hash), EALREADY_EXIST);
-        dynamic_field::add(&mut governance_external_cap.id, hash, cap);
-        emit(AddExternalCapEvent {
-            hash
-        })
-    }
-
-    public entry fun register_governance_cap(
-        governance_external_cap: &mut GovernanceExternalCap,
-    ) {
-        let cap = GovernanceCap { governance_external: uid_to_address(&governance_external_cap.id) };
-        add_external_cap(governance_external_cap, hash::sha3_256(bcs::to_bytes(&cap)), cap);
     }
 
     public entry fun add_member(_: &GovernanceManagerCap, goverance: &mut Governance, member: address) {
@@ -268,7 +233,6 @@ module governance::governance {
 
     public entry fun create_vote_external_cap(
         gov: &mut Governance,
-        external_hash: vector<u8>,
         ctx: &mut TxContext
     ) {
         let sponsor = tx_context::sender(ctx);
@@ -280,7 +244,6 @@ module governance::governance {
         transfer::share_object(VoteExternalCap {
             id: object::new(ctx),
             votes,
-            external_hash,
             finished: false
         });
     }
@@ -306,10 +269,9 @@ module governance::governance {
 
     public fun vote_external_cap<T: store>(
         gov: &mut Governance,
-        governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
         ctx: &mut TxContext
-    ): Option<FlashCap<T>> {
+    ): Option<FlashCap> {
         assert!(!vote.finished, EVOTE_HAS_COMPLETE);
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
@@ -323,37 +285,34 @@ module governance::governance {
         if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
             vote.finished = true;
             option::some(FlashCap {
-                external_cap: dynamic_field::remove<vector<u8>, T>(
-                    &mut governance_external_cap.id,
-                    vote.external_hash)
+                governance_cap: GovernanceCap{}
             })
         }else {
             option::none()
         }
     }
 
-    public fun borrow_external_cap<T: store+drop>(flash_cap: &mut Option<FlashCap<T>>): &mut T {
+    public fun borrow_external_cap(flash_cap: &mut Option<FlashCap>): &mut GovernanceCap {
         assert!(option::is_some(flash_cap), EMUST_SOME);
-        &mut option::borrow_mut(flash_cap).external_cap
+        &mut option::borrow_mut(flash_cap).governance_cap
     }
 
-    public fun migrate_external_cap<T: store+drop>(flash_cap: Option<FlashCap<T>>): T {
+    public fun migrate_external_cap(flash_cap: Option<FlashCap>): GovernanceCap {
         // todo! consider whether to limit function call
         assert!(option::is_some(&flash_cap), EMUST_SOME);
-        let FlashCap { external_cap } = option::destroy_some(flash_cap);
-        external_cap
+        let FlashCap { governance_cap } = option::destroy_some(flash_cap);
+        governance_cap
     }
 
-    public fun external_cap_destroy<T: store>(
-        governance_external_cap: &mut GovernanceExternalCap,
+    public fun external_cap_destroy(
         vote: &mut VoteExternalCap,
-        flash_cap: Option<FlashCap<T>>
+        flash_cap: Option<FlashCap>
     ) {
         if (option::is_some(&flash_cap)) {
             assert!(vote.finished, EVOTE_NOT_COMPLETE);
             let flash_cap = option::destroy_some(flash_cap);
-            let FlashCap { external_cap } = flash_cap;
-            dynamic_field::add(&mut governance_external_cap.id, vote.external_hash, external_cap);
+            let FlashCap { governance_cap } = flash_cap;
+            let GovernanceCap{} = governance_cap;
         }else {
             option::destroy_none(flash_cap);
         }

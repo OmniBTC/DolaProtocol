@@ -17,6 +17,10 @@ module dola_types::types {
         dola_address: vector<u8>
     }
 
+    public fun get_native_dola_chain_id(): u16 {
+        DOLACHAINID
+    }
+
     public fun dola_chain_id(dola_address: &DolaAddress): u16 {
         dola_address.dola_chain_id
     }

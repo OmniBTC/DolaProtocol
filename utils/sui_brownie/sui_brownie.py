@@ -429,13 +429,16 @@ class Coin:
 
 class HttpClient(httpx.Client):
 
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def get(self, *args, **kwargs):
         return super().get(*args, **kwargs)
 
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def post(self, *args, **kwargs):
-        return super().post(*args, **kwargs)
+        response = super().post(*args, **kwargs)
+        if response.status_code >= 400:
+            raise ApiError(response.text, response.status_code)
+        return response
 
 
 class SuiDynamicFiled:
@@ -781,8 +784,6 @@ class SuiPackage:
         #         ]
         #     },
         # )
-        # if response.status_code >= 400:
-        #     raise ApiError(response.text, response.status_code)
         # result = response.json()
         # result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
         # # # # # Update package id
@@ -811,8 +812,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -856,6 +855,10 @@ class SuiPackage:
             if len(remain_object_ids):
                 print(f"Warning:not cache ids:{remain_object_ids}")
 
+    @staticmethod
+    def list_base64(data: list):
+        return base64.b64encode(bytes(data)).decode("ascii")
+
     def execute_transaction(self,
                             tx_bytes,
                             sig_scheme="ED25519",
@@ -882,23 +885,28 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
+        SIGNATURE_SCHEME_TO_FLAG = {
+            "ED25519": 0,
+            "Secp256k1": 1
+        }
+        serialized_sig = [SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]
+        serialized_sig.extend(list(self.account.sign(tx_bytes).get_bytes()))
+        serialized_sig.extend(list(self.account.public_key().get_bytes()))
+        serialized_sig_base64 = self.list_base64(serialized_sig)
+
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_executeTransaction",
+                "method": "sui_executeTransactionSerializedSig",
                 "params": [
                     tx_bytes,
-                    sig_scheme,
-                    self.account.sign(tx_bytes).base64(),
-                    self.account.public_key().base64(),
+                    serialized_sig_base64,
                     request_type
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -969,8 +977,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -995,8 +1001,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1021,8 +1025,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1049,8 +1051,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1101,6 +1101,7 @@ class SuiPackage:
                             final_object = ob
                     func = functools.partial(self.submit_transaction, abi)
                     setattr(func, "simulate", functools.partial(self.simulate_transaction, abi))
+                    setattr(func, "inspect_call", functools.partial(self.dev_inspect_move_call, abi))
                     setattr(final_object, attr_list[-1], func)
 
     def __getitem__(self, key):
@@ -1215,12 +1216,11 @@ class SuiPackage:
         is_coin = ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>')
         self.__refresh_coin(is_coin)
 
-    def construct_transaction(
+    def check_args(
             self,
             abi: dict,
             param_args: list,
-            ty_args: List[str] = None,
-            gas_budget=100000,
+            ty_args: List[str] = None
     ):
         param_args = list(param_args)
         self.normal_float_list(param_args)
@@ -1233,6 +1233,51 @@ class SuiPackage:
             assert len(param_args) == len(abi["parameters"]) - 1, f'param_args error: {abi["parameters"]}'
         else:
             assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+
+        return param_args, ty_args
+
+    def dev_inspect_move_call(
+            self,
+            abi: dict,
+            *param_args,
+            ty_args: List[str] = None
+    ):
+        param_args, ty_args = self.check_args(abi, param_args, ty_args)
+
+        for k in range(len(param_args)):
+            if abi["parameters"][k] in ["U64", "U128", "U256"]:
+                param_args[k] = str(param_args[k])
+
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_devInspectMoveCall",
+                "params": [
+                    self.account.account_address,
+                    self.package_id,
+                    abi["module_name"],
+                    abi["func_name"],
+                    ty_args,
+                    param_args,
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]["results"]
+        return result
+
+    def construct_transaction(
+            self,
+            abi: dict,
+            param_args: list,
+            ty_args: List[str] = None,
+            gas_budget=100000,
+    ):
+        param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
         normal_coin: List[ObjectType] = []
 
@@ -1288,6 +1333,10 @@ class SuiPackage:
                     break
             assert not isinstance(param_args[k], int), "Fail split amount"
 
+        for k in range(len(param_args)):
+            if abi["parameters"][k] in ["U64", "U128", "U256"]:
+                param_args[k] = str(param_args[k])
+
         # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
         response = self.client.post(
             f"{self.base_url}",
@@ -1307,9 +1356,6 @@ class SuiPackage:
                 ]
             },
         )
-
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1396,8 +1442,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1423,8 +1467,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1451,8 +1493,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1477,8 +1517,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]
@@ -1502,8 +1540,6 @@ class SuiPackage:
                 ]
             },
         )
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
         result = response.json()
         if "error" in result:
             assert False, result["error"]

@@ -46,7 +46,12 @@ contract OmniPool {
         bytes memory appPayload
     ) external payable isBridgePool(msg.sender) returns (bytes memory) {
         if (token != address(0)) {
-            IERC20(token).transferFrom(tx.origin, address(this), amount);
+            bool success = IERC20(token).transferFrom(
+                tx.origin,
+                address(this),
+                amount
+            );
+            require(success, "transfer from failed!");
         }
         pools[token] += amount;
 
@@ -87,7 +92,8 @@ contract OmniPool {
             (bool success, ) = to.call{value: fixedAmount}("");
             require(success, "ETH transfer failed");
         } else {
-            IERC20(token).transfer(to, fixedAmount);
+            bool success = IERC20(token).transfer(to, fixedAmount);
+            require(success, "transfer to failed!");
         }
         pools[token] -= fixedAmount;
     }
@@ -100,11 +106,12 @@ contract OmniPool {
         bytes memory appPayload
     ) public payable isBridgePool(msg.sender) returns (bytes memory) {
         if (depositToken != address(0)) {
-            IERC20(depositToken).transferFrom(
+            bool success = IERC20(depositToken).transferFrom(
                 tx.origin,
                 address(this),
                 depositAmount
             );
+            require(success, "transfer from failed!");
         }
         pools[depositToken] = depositAmount;
 
