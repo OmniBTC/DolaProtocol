@@ -6,6 +6,7 @@ import functools
 import json
 import os
 import threading
+import time
 import traceback
 from collections import OrderedDict
 from pathlib import Path
@@ -513,6 +514,21 @@ class SuiDynamicFiled:
         return str(pformat({name: self.value}, compact=True))
 
 
+def validator_retry(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        while True:
+            try:
+                result = func(*args, **kwargs)
+                return result
+            except Exception as e:
+                if "validators" in str(e):
+                    time.sleep(5)
+                else:
+                    raise e
+    return wrapper
+
+
 class SuiPackage:
     def __init__(self,
                  brownie_config: Union[Path, str] = Path.cwd(),
@@ -733,7 +749,7 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=100000,
+            gas_budget=10000,
             replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1275,7 +1291,7 @@ class SuiPackage:
             abi: dict,
             param_args: list,
             ty_args: List[str] = None,
-            gas_budget=100000,
+            gas_budget=10000,
     ):
         param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
@@ -1362,13 +1378,14 @@ class SuiPackage:
         result = result["result"]
         return result
 
+    @validator_retry
     def submit_transaction(
             self,
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=100000,
-            is_merge_sui=False
+            gas_budget=10000,
+            is_merge_sui=True
     ) -> dict:
         """
         {
@@ -1403,14 +1420,15 @@ class SuiPackage:
         :param gas_budget:
         :return:
         """
-        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
-        # Simulate before execute
-        self.dry_run_transaction(result["txBytes"])
         # Merge sui
         if is_merge_sui:
             object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
             if len(object_ids) >= 2:
                 self.pay_all_sui(object_ids, self.account.account_address)
+
+        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
+        # Simulate before execute
+        self.dry_run_transaction(result["txBytes"])
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self.execute_transaction(result["txBytes"])
@@ -1420,7 +1438,7 @@ class SuiPackage:
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=100000,
+            gas_budget=10000,
     ) -> Union[list | int]:
         """
         return_types: storage|gas
@@ -1431,7 +1449,8 @@ class SuiPackage:
         print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
         return self.dry_run_transaction(result["txBytes"])
 
-    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=100000):
+    @validator_retry
+    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=10000):
         if recipient is None:
             recipient = self.account.account_address
         print(f'\nExecute sui_payAllSui...')
@@ -1455,7 +1474,8 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
+    @validator_retry
+    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_paySui...')
@@ -1480,7 +1500,8 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=100000):
+    @validator_retry
+    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_pay...')
@@ -1506,7 +1527,8 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def merge_coins(self, input_coins: list, gas_budget=100000):
+    @validator_retry
+    def merge_coins(self, input_coins: list, gas_budget=10000):
         assert len(input_coins) >= 2
         print(f'\nExecute sui_mergeCoins...')
         response = self.client.post(
@@ -1530,7 +1552,8 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=100000):
+    @validator_retry
+    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=10000):
         print(f'\nExecute sui_splitCoin...')
         response = self.client.post(
             f"{self.base_url}",
