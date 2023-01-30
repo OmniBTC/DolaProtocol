@@ -27,7 +27,7 @@ def usdc():
 
 
 def eth():
-    return config["networks"][network.show_active()]["eth"]
+    return "0x0000000000000000000000000000000000000000"
 
 
 def get_pool_token(pool):
