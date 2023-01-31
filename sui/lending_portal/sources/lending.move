@@ -17,7 +17,6 @@ module lending_portal::lending {
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
-    use dola_types::types;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -185,21 +184,18 @@ module lending_portal::lending {
         );
     }
 
-    public entry fun withdraw<CoinType>(
+    /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
+    public entry fun withdraw_local<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        core_state: &mut CoreState,
         lending_portal: &LendingPortal,
-        wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         pool: &mut Pool<CoinType>,
-        receiver: vector<u8>,
-        dst_chain: u16,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let dst_chain = dola_types::types::get_native_dola_chain_id();
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
@@ -232,25 +228,11 @@ module lending_portal::lending {
             APPID,
             amount
         );
-        if (dst_chain == types::get_native_dola_chain_id()) {
-            // Local withdraw
-            pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
-        } else {
-            // Cross-chain withdraw
-            wormhole_bridge::bridge_core::send_withdraw(
-                wormhole_state,
-                core_state,
-                lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
-                pool_manager_info,
-                dst_pool,
-                receiver,
-                amount,
-                coin::zero<SUI>(ctx)
-            );
-        }
+        // Local withdraw
+        pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
     }
 
-    public entry fun borrow<CoinType>(
+    public entry fun withdraw_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         core_state: &mut CoreState,
@@ -258,20 +240,77 @@ module lending_portal::lending {
         wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        pool: &mut Pool<CoinType>,
+        pool: vector<u8>,
         receiver: vector<u8>,
         dst_chain: u16,
         amount: u64,
         ctx: &mut TxContext
     ) {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let pool_addr = dola_types::types::create_dola_address(dst_chain, pool);
+        let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+
+        // Locate withdrawal pool
+        let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        let dst_pool = option::destroy_some(dst_pool);
+
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+
+        // Execute withdraw logic in lending app
+        lending::logic::execute_withdraw(
+            option::borrow(&lending_portal.storage_cap),
+            pool_manager_info,
+            storage,
+            oracle,
+            dola_user_id,
+            dola_pool_id,
+            amount,
+        );
+        // Remove pool liquidity for dst ppol
+        pool_manager::remove_liquidity(
+            option::borrow(&lending_portal.pool_manager_cap),
+            pool_manager_info,
+            dst_pool,
+            APPID,
+            amount
+        );
+
+        // Cross-chain withdraw
+        wormhole_bridge::bridge_core::send_withdraw(
+            wormhole_state,
+            core_state,
+            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            pool_manager_info,
+            dst_pool,
+            receiver,
+            amount,
+            coin::zero<SUI>(ctx)
+        );
+    }
+
+    /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
+    public entry fun borrow_local<CoinType>(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        lending_portal: &LendingPortal,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        pool: &mut Pool<CoinType>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let dst_chain = dola_types::types::get_native_dola_chain_id();
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
 
         // Locate withdraw pool
-        let dst_chain = dola_types::types::dola_chain_id(&receiver);
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
@@ -297,22 +336,67 @@ module lending_portal::lending {
             APPID,
             amount
         );
-        if (dst_chain == types::get_native_dola_chain_id()) {
-            // Local borrow
-            pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
-        } else {
-            // Cross-chain borrow
-            wormhole_bridge::bridge_core::send_withdraw(
-                wormhole_state,
-                core_state,
-                lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
-                pool_manager_info,
-                dst_pool,
-                receiver,
-                amount,
-                coin::zero<SUI>(ctx)
-            );
-        }
+        // Local borrow
+        pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+    }
+
+    public entry fun borrow_remote(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        core_state: &mut CoreState,
+        lending_portal: &LendingPortal,
+        wormhole_state: &mut WormholeState,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        pool: vector<u8>,
+        receiver: vector<u8>,
+        dst_chain: u16,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let pool_addr = dola_types::types::create_dola_address(dst_chain, pool);
+        let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+
+        // Locate withdraw pool
+        let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        let dst_pool = option::destroy_some(dst_pool);
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+
+        // Execute borrow logic in lending app
+        lending::logic::execute_borrow(
+            option::borrow(&lending_portal.storage_cap),
+            pool_manager_info,
+            storage,
+            oracle,
+            dola_user_id,
+            dola_pool_id,
+            amount
+        );
+        // Remove pool liquidity
+        pool_manager::remove_liquidity(
+            option::borrow(&lending_portal.pool_manager_cap),
+            pool_manager_info,
+            dst_pool,
+            APPID,
+            amount
+        );
+        // Cross-chain borrow
+        wormhole_bridge::bridge_core::send_withdraw(
+            wormhole_state,
+            core_state,
+            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            pool_manager_info,
+            dst_pool,
+            receiver,
+            amount,
+            coin::zero<SUI>(ctx)
+        );
     }
 
     public entry fun repay<CoinType>(
