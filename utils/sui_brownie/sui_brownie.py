@@ -751,7 +751,7 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=1000,
+            gas_budget=10000,
             replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1293,7 +1293,7 @@ class SuiPackage:
             abi: dict,
             param_args: list,
             ty_args: List[str] = None,
-            gas_budget=1000,
+            gas_budget=10000,
     ):
         param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
@@ -1388,7 +1388,7 @@ class SuiPackage:
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=1000,
+            gas_budget=10000,
             is_merge_sui=True
     ) -> dict:
         """
@@ -1442,7 +1442,7 @@ class SuiPackage:
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=1000,
+            gas_budget=10000,
     ) -> Union[list | int]:
         """
         return_types: storage|gas
@@ -1479,7 +1479,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=1000):
+    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_paySui...')
@@ -1505,7 +1505,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=1000):
+    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_pay...')
@@ -1532,7 +1532,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def merge_coins(self, input_coins: list, gas_budget=1000):
+    def merge_coins(self, input_coins: list, gas_budget=10000):
         assert len(input_coins) >= 2
         print(f'\nExecute sui_mergeCoins...')
         response = self.client.post(
@@ -1557,7 +1557,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=1000):
+    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=10000):
         print(f'\nExecute sui_splitCoin...')
         response = self.client.post(
             f"{self.base_url}",
