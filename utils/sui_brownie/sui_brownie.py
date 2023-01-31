@@ -523,6 +523,7 @@ def validator_retry(func):
                 return result
             except Exception as e:
                 if "validators" in str(e):
+                    print("validators error:", e)
                     time.sleep(5)
                 else:
                     raise e
