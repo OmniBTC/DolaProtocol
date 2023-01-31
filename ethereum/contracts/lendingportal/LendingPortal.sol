@@ -48,7 +48,7 @@ contract LendingPortal {
 
     // withdraw use 8 decimal
     function withdraw(
-        address token,
+        bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount
@@ -67,7 +67,7 @@ contract LendingPortal {
     }
 
     function borrow(
-        address token,
+        bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount

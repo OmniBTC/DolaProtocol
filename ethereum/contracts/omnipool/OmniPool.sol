@@ -64,12 +64,12 @@ contract OmniPool {
     }
 
     function withdrawTo(
-        address token,
+        bytes memory token,
         uint16 appId,
         bytes memory appPayload
     ) external view isBridgePool(msg.sender) returns (bytes memory) {
         bytes memory poolPayload = LibPool.encodeSendWithdrawPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
+            LibDolaTypes.DolaAddress(dolaChainId, token),
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             appId,
             appPayload
