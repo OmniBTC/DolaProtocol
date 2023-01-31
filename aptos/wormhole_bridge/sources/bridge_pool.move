@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw};
+    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::wormhole;
@@ -39,7 +39,7 @@ module wormhole_bridge::bridge_pool {
         sender: EmitterCapability,
         consumed_vaas: Set<vector<u8>>,
         registered_emitters: Table<U16, ExternalAddress>,
-        // todo! Deleta after wormhole running
+        // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>,
         nonce: u64
     }
@@ -166,6 +166,24 @@ module wormhole_bridge::bridge_pool {
             app_id,
             app_payload,
         );
+        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
+        pool_state.nonce = pool_state.nonce + 1;
+        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+    }
+
+    public fun send_withdraw_remote(
+        sender: &signer,
+        wormhole_message_fee: Coin<AptosCoin>,
+        pool: vector<u8>,
+        dst_chain: U16,
+        app_id: U16,
+        app_payload: vector<u8>,
+    ) acquires PoolState {
+        let user_addr = convert_address_to_dola(signer::address_of(sender));
+        let pool_addr = create_dola_address(dst_chain, pool);
+        let msg = encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
 
         wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
