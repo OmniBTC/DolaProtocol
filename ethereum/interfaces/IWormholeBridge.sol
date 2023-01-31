@@ -11,7 +11,7 @@ interface IWormholeBridge {
     ) external payable;
 
     function sendWithdraw(
-        address pool,
+        bytes memory pool,
         uint16 appId,
         bytes memory appPayload
     ) external payable;

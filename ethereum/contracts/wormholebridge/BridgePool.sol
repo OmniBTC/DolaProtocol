@@ -138,7 +138,7 @@ contract BridgePool {
     }
 
     function sendWithdraw(
-        address token,
+        bytes memory token,
         uint16 appId,
         bytes memory appPayload
     ) external payable {

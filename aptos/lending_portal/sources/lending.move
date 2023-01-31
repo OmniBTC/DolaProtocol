@@ -2,7 +2,7 @@ module lending_portal::lending {
     use std::vector;
 
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
-    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw};
+    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw, send_withdraw_remote};
     use std::signer;
     use wormhole::state;
     use aptos_framework::coin;
@@ -44,7 +44,7 @@ module lending_portal::lending {
         send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(APPID), app_payload);
     }
 
-    public entry fun withdraw<CoinType>(
+    public entry fun withdraw_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -61,7 +61,25 @@ module lending_portal::lending {
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
     }
 
-    public entry fun borrow<CoinType>(
+    public entry fun withdraw_remote(
+        sender: &signer,
+        receiver: vector<u8>,
+        pool: vector<u8>,
+        dst_chain: u64,
+        amount: u64,
+    ) {
+        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
+
+        let app_payload = encode_app_payload(
+            WITHDRAW,
+            amount,
+            receiver,
+            0);
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+        send_withdraw_remote(sender, wormhole_message_fee, pool, u16::from_u64(dst_chain),u16::from_u64(APPID), app_payload);
+    }
+
+    public entry fun borrow_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -77,6 +95,24 @@ module lending_portal::lending {
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(APPID), app_payload);
+    }
+
+    public entry fun borrow_remote(
+        sender: &signer,
+        receiver: vector<u8>,
+        pool: vector<u8>,
+        dst_chain: u64,
+        amount: u64,
+    ) {
+        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
+
+        let app_payload = encode_app_payload(
+            BORROW,
+            amount,
+            receiver,
+            0);
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
+        send_withdraw_remote(sender, wormhole_message_fee, pool, u16::from_u64(dst_chain),u16::from_u64(APPID), app_payload);
     }
 
     public entry fun repay<CoinType>(
