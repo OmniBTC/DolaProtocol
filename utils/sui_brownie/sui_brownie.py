@@ -1315,7 +1315,6 @@ class SuiPackage:
             if len(CacheObject[is_coin][self.account.account_address]) > 1:
                 if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
                     self.pay_all_sui(
-                        CacheObject[is_coin][self.account.account_address],
                         self.account.account_address,
                         gas_budget
                     )
@@ -1426,10 +1425,7 @@ class SuiPackage:
         """
         # Merge sui
         if is_merge_sui:
-            object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
-            object_ids = sorted(list(object_ids.keys()), key=lambda x: object_ids[x])[::-1]
-            if len(object_ids) >= 2:
-                self.pay_all_sui(object_ids, self.account.account_address)
+            self.pay_all_sui(self.account.account_address)
 
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
         # Simulate before execute
@@ -1455,9 +1451,13 @@ class SuiPackage:
         return self.dry_run_transaction(result["txBytes"])
 
     @validator_retry
-    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=1000):
+    def pay_all_sui(self, recipient: str = None, gas_budget=1000):
+        object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+        input_coins = sorted(list(object_ids.keys()), key=lambda x: object_ids[x])[::-1]
         if recipient is None:
             recipient = self.account.account_address
+        if len(input_coins) < 2 and recipient == self.account.account_address:
+            return
         print(f'\nExecute sui_payAllSui...')
         response = self.client.post(
             f"{self.base_url}",
