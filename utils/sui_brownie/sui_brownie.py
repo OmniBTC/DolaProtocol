@@ -527,6 +527,7 @@ def validator_retry(func):
                     time.sleep(5)
                 else:
                     raise e
+
     return wrapper
 
 
@@ -750,7 +751,7 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=10000,
+            gas_budget=1000,
             replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1292,7 +1293,7 @@ class SuiPackage:
             abi: dict,
             param_args: list,
             ty_args: List[str] = None,
-            gas_budget=10000,
+            gas_budget=1000,
     ):
         param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
@@ -1355,6 +1356,8 @@ class SuiPackage:
                 param_args[k] = str(param_args[k])
 
         # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
+        object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x])
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1368,7 +1371,7 @@ class SuiPackage:
                     abi["func_name"],
                     ty_args,
                     param_args,
-                    None,
+                    gas_object,
                     gas_budget
                 ]
             },
@@ -1385,7 +1388,7 @@ class SuiPackage:
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=10000,
+            gas_budget=1000,
             is_merge_sui=True
     ) -> dict:
         """
@@ -1423,7 +1426,7 @@ class SuiPackage:
         """
         # Merge sui
         if is_merge_sui:
-            object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+            object_ids = list(self.get_coins(self.account.account_address, "0x2::sui::SUI").keys())
             if len(object_ids) >= 2:
                 self.pay_all_sui(object_ids, self.account.account_address)
 
@@ -1439,7 +1442,7 @@ class SuiPackage:
             abi: dict,
             *param_args,
             ty_args: List[str] = None,
-            gas_budget=10000,
+            gas_budget=1000,
     ) -> Union[list | int]:
         """
         return_types: storage|gas
@@ -1451,7 +1454,7 @@ class SuiPackage:
         return self.dry_run_transaction(result["txBytes"])
 
     @validator_retry
-    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=10000):
+    def pay_all_sui(self, input_coins: list, recipient: str = None, gas_budget=1000):
         if recipient is None:
             recipient = self.account.account_address
         print(f'\nExecute sui_payAllSui...')
@@ -1476,7 +1479,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
+    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=1000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_paySui...')
@@ -1502,7 +1505,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
+    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=1000):
         if recipients is None:
             recipients = self.account.account_address
         print(f'\nExecute sui_pay...')
@@ -1529,7 +1532,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def merge_coins(self, input_coins: list, gas_budget=10000):
+    def merge_coins(self, input_coins: list, gas_budget=1000):
         assert len(input_coins) >= 2
         print(f'\nExecute sui_mergeCoins...')
         response = self.client.post(
@@ -1554,7 +1557,7 @@ class SuiPackage:
         return self.execute_transaction(result["txBytes"])
 
     @validator_retry
-    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=10000):
+    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=1000):
         print(f'\nExecute sui_splitCoin...')
         response = self.client.post(
             f"{self.base_url}",
@@ -1577,7 +1580,7 @@ class SuiPackage:
         result = result["result"]
         return self.execute_transaction(result["txBytes"])
 
-    def get_coins(self, addr: str, coin_type: str):
+    def get_coins(self, addr: str, coin_type: str) -> dict:
         response = self.client.post(
             f"{self.base_url}",
             json={
@@ -1593,7 +1596,7 @@ class SuiPackage:
         result = response.json()
         if "error" in result:
             assert False, result["error"]
-        object_ids = [v["coinObjectId"] for v in result["result"]["data"]]
+        object_ids = {v["coinObjectId"]: v["balance"] for v in result["result"]["data"]}
         return object_ids
 
     def get_dynamic_field(self, object_id: str) -> List[SuiDynamicFiled]:

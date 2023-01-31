@@ -5,7 +5,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='sui-brownie',
-    version='9.0.0',
+    version='9.1.0',
     description='Sui Package Tool',
     long_description="This is an sui python tool to quickly implement sui calls",
     # The project's main homepage.
