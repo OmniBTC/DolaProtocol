@@ -1426,7 +1426,8 @@ class SuiPackage:
         """
         # Merge sui
         if is_merge_sui:
-            object_ids = list(self.get_coins(self.account.account_address, "0x2::sui::SUI").keys())
+            object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+            object_ids = sorted(list(object_ids.keys()), key=lambda x: object_ids[x])[::-1]
             if len(object_ids) >= 2:
                 self.pay_all_sui(object_ids, self.account.account_address)
 
