@@ -7,11 +7,11 @@ module lending::math {
     const SECONDS_PER_DAY: u64 = 86400;
 
     public fun ray_mul(a: u64, b: u64): u64 {
-        ((a as u128) * (b as u128) / (RAY as u128) as u64)
+        ((a as u128) * (b as u128) + (RAY / 2 as u128) / (RAY as u128) as u64)
     }
 
     public fun ray_div(a: u64, b: u64): u64 {
-        (((a as u128) * (RAY as u128) / (b as u128)) as u64)
+        (((a as u128) * (RAY as u128) + (b / 2 as u128) / (b as u128)) as u64)
     }
 
     public fun calculate_average_liquidity(
