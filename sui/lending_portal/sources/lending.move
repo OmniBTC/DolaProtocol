@@ -9,6 +9,7 @@ module lending_portal::lending {
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use sui::coin::{Self, Coin};
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -17,6 +18,9 @@ module lending_portal::lending {
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
+
+    #[test_only]
+    use sui::bcs;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -51,6 +55,11 @@ module lending_portal::lending {
         pool_manager_cap: Option<PoolManagerCap>,
         user_manager_cap: Option<UserManagerCap>,
         storage_cap: Option<StorageCap>
+    }
+
+    /// Event
+    struct LendingStartedEvent has drop, copy {
+        txid: vector<u8>
     }
 
     fun init(ctx: &mut TxContext) {
@@ -137,13 +146,14 @@ module lending_portal::lending {
         pool: &mut Pool<CoinType>,
         deposit_coins: vector<Coin<CoinType>>,
         deposit_amount: u64,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
-        let app_payload = encode_app_payload(SUPPLY, deposit_amount, user_addr, 0);
+        let app_payload = encode_app_payload(txid, SUPPLY, deposit_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -182,6 +192,10 @@ module lending_portal::lending {
             dola_pool_id,
             deposit_amount
         );
+
+        event::emit(LendingStartedEvent {
+            txid
+        });
     }
 
     /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
@@ -244,6 +258,7 @@ module lending_portal::lending {
         receiver: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
@@ -289,8 +304,13 @@ module lending_portal::lending {
             dst_pool,
             receiver,
             amount,
-            coin::zero<SUI>(ctx)
+            coin::zero<SUI>(ctx),
+            txid
         );
+
+        event::emit(LendingStartedEvent {
+            txid
+        })
     }
 
     /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
@@ -352,6 +372,7 @@ module lending_portal::lending {
         receiver: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
@@ -395,8 +416,13 @@ module lending_portal::lending {
             dst_pool,
             receiver,
             amount,
-            coin::zero<SUI>(ctx)
+            coin::zero<SUI>(ctx),
+            txid
         );
+
+        event::emit(LendingStartedEvent {
+            txid
+        })
     }
 
     public entry fun repay<CoinType>(
@@ -408,13 +434,14 @@ module lending_portal::lending {
         pool: &mut Pool<CoinType>,
         repay_coins: vector<Coin<CoinType>>,
         repay_amount: u64,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
-        let app_payload = encode_app_payload(SUPPLY, repay_amount, user_addr, 0);
+        let app_payload = encode_app_payload(txid, SUPPLY, repay_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -451,6 +478,10 @@ module lending_portal::lending {
             dola_pool_id,
             repay_amount
         );
+
+        event::emit(LendingStartedEvent {
+            txid
+        });
     }
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
@@ -465,6 +496,7 @@ module lending_portal::lending {
         debt_coins: vector<Coin<DebtCoinType>>,
         debt_amount: u64,
         liquidate_user_id: u64,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
@@ -472,7 +504,7 @@ module lending_portal::lending {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(LIQUIDATE, normal_amount(debt_pool, coin::value(&debt_coin)),
+        let app_payload = encode_app_payload(txid, LIQUIDATE, normal_amount(debt_pool, coin::value(&debt_coin)),
             receiver, liquidate_user_id);
         wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
@@ -487,12 +519,17 @@ module lending_portal::lending {
     }
 
     public fun encode_app_payload(
+        txid: vector<u8>,
         call_type: u8,
         amount: u64,
         receiver: DolaAddress,
         liquidate_user_id: u64
     ): vector<u8> {
         let payload = vector::empty<u8>();
+        assert!(vector::length(&txid) > 0, EINVALID_LENGTH);
+        serialize_u16(&mut payload, (vector::length(&txid) as u16));
+        serialize_vector(&mut payload, txid);
+
         serialize_u64(&mut payload, amount);
         let receiver = encode_dola_address(receiver);
         serialize_u16(&mut payload, (vector::length(&receiver) as u16));
@@ -502,9 +539,18 @@ module lending_portal::lending {
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (vector<u8>, u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let txid_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+
+        index = index + data_len;
+
+        data_len = (txid_length as u64);
+        let txid = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
@@ -529,14 +575,20 @@ module lending_portal::lending {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, receiver, liquidate_user_id)
+        (txid, call_type, amount, receiver, liquidate_user_id)
     }
 
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, dola_types::types::convert_address_to_dola(user), 0);
-        let (call_type, amount, user_addr, _) = decode_app_payload(payload);
+        let payload = encode_app_payload(
+            bcs::to_bytes(&@0x01),
+            WITHDRAW,
+            100000000,
+            dola_types::types::convert_address_to_dola(user),
+            0
+        );
+        let (_txid, call_type, amount, user_addr, _) = decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
         assert!(user_addr == dola_types::types::convert_address_to_dola(user), 0);

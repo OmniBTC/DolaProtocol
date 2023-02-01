@@ -7,6 +7,7 @@ module lending::wormhole_adapter {
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
     use sui::coin::{Self, Coin};
+    use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -24,6 +25,11 @@ module lending::wormhole_adapter {
     struct WormholeAdapater has key {
         id: UID,
         storage_cap: Option<StorageCap>
+    }
+
+    /// Supply and repay are completed
+    struct LendingCompletedEvent has copy, drop {
+        txid: vector<u8>,
     }
 
     fun init(ctx: &mut TxContext) {
@@ -58,7 +64,7 @@ module lending::wormhole_adapter {
         ctx: &mut TxContext
     ) {
         let cap = get_storage_cap(wormhole_adapter);
-        let (pool, user, amount, _app_payload) = bridge_core::receive_deposit(
+        let (pool, user, amount, app_payload) = bridge_core::receive_deposit(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -78,6 +84,11 @@ module lending::wormhole_adapter {
             dola_pool_id,
             amount
         );
+
+        let (txid, _, _, _, _) = decode_app_payload(app_payload);
+        emit(LendingCompletedEvent {
+            txid
+        })
     }
 
     public entry fun withdraw(
@@ -102,7 +113,7 @@ module lending::wormhole_adapter {
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = get_dola_user_id(user_manager_info, user);
-        let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
+        let (txid, _, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -130,7 +141,8 @@ module lending::wormhole_adapter {
             dst_pool,
             receiver,
             token_amount,
-            wormhole_message_fee
+            wormhole_message_fee,
+            txid
         );
     }
 
@@ -157,7 +169,7 @@ module lending::wormhole_adapter {
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = get_dola_user_id(user_manager_info, user);
-        let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
+        let (txid, _, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -176,7 +188,8 @@ module lending::wormhole_adapter {
             dst_pool,
             receiver,
             token_amount,
-            wormhole_message_fee
+            wormhole_message_fee,
+            txid
         );
     }
 
@@ -192,7 +205,7 @@ module lending::wormhole_adapter {
         ctx: &mut TxContext
     ) {
         let cap = get_storage_cap(wormhole_adapter);
-        let (pool, user, amount, _app_payload) = bridge_core::receive_deposit(
+        let (pool, user, amount, app_payload) = bridge_core::receive_deposit(
             wormhole_state,
             core_state,
             get_app_cap(cap, storage),
@@ -204,6 +217,11 @@ module lending::wormhole_adapter {
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = get_dola_user_id(user_manager_info, user);
         execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
+
+        let (txid, _, _, _, _) = decode_app_payload(app_payload);
+        emit(LendingCompletedEvent {
+            txid
+        })
     }
 
     public entry fun liquidate(
@@ -227,7 +245,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, receiver, violator) = decode_app_payload(app_payload);
+        let (txid, _, _, receiver, violator) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let dst_chain = dola_chain_id(&receiver);
@@ -261,7 +279,8 @@ module lending::wormhole_adapter {
             dst_pool,
             receiver,
             withdraw_amount,
-            wormhole_message_fee
+            wormhole_message_fee,
+            txid
         );
 
         if (return_repay_amount > 0) {
@@ -278,7 +297,8 @@ module lending::wormhole_adapter {
                 repay_pool,
                 receiver,
                 return_repay_amount,
-                coin::zero<SUI>(ctx)
+                coin::zero<SUI>(ctx),
+                txid
             );
         }
     }

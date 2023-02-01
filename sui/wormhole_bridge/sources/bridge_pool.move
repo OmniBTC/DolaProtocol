@@ -47,6 +47,16 @@ module wormhole_bridge::bridge_pool {
         amount: u64
     }
 
+    /// Withdraw and borrow are completed in bridgepool
+    struct LendingCompletedEvent has copy, drop {
+        txid: vector<u8>,
+    }
+
+    /// binding and unbinding
+    struct LendingStartedEvnet has copy, drop {
+        txid: vector<u8>
+    }
+
     public fun initialize_wormhole_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
@@ -86,16 +96,20 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_amount: u64,
         dola_chain_id: u16,
         bind_address: vector<u8>,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let bind_address = create_dola_address(dola_chain_id, bind_address);
         let user = tx_context::sender(ctx);
         let user = convert_address_to_dola(user);
-        let msg = encode_binding(user, bind_address);
+        let msg = encode_binding(txid, user, bind_address);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
+        event::emit(LendingStartedEvnet {
+            txid
+        })
     }
 
     public entry fun send_unbinding(
@@ -105,16 +119,20 @@ module wormhole_bridge::bridge_pool {
         wormhole_message_amount: u64,
         dola_chain_id: u16,
         unbind_address: vector<u8>,
+        txid: vector<u8>,
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
         let user = convert_address_to_dola(user);
         let unbind_address = create_dola_address(dola_chain_id, unbind_address);
-        let msg = encode_unbinding(user, unbind_address);
+        let msg = encode_unbinding(txid, user, unbind_address);
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
+        event::emit(LendingStartedEvnet {
+            txid
+        })
     }
 
     public fun send_deposit<CoinType>(
@@ -198,9 +216,13 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (pool_address, user, amount) =
+        let (txid, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, pool_address, ctx);
+
+        event::emit(LendingCompletedEvent {
+            txid
+        })
         // myvaa::destroy(vaa);
     }
 
@@ -215,7 +237,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (pool_address, user, amount) =
+        let (_txid, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {

@@ -44,6 +44,11 @@ module wormhole_bridge::bridge_core {
         nonce: u64
     }
 
+    /// Binding and unbinding are completed in bridge core
+    struct LendingCompletedEvent has copy, drop {
+        txid: vector<u8>
+    }
+
     public fun initialize_wormhole_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
@@ -84,12 +89,15 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (user, bind_address, _) = decode_binding(vaa);
+        let (txid, user, bind_address, _) = decode_binding(vaa);
         if (user == bind_address) {
             register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
         } else {
             binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
         };
+        event::emit(LendingCompletedEvent {
+            txid
+        })
     }
 
     public entry fun receive_unbinding(
@@ -99,8 +107,11 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>
     ) {
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (user, unbind_address, _) = decode_unbinding(vaa);
+        let (txid, user, unbind_address, _) = decode_unbinding(vaa);
         unbinding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, unbind_address);
+        event::emit(LendingCompletedEvent {
+            txid
+        })
     }
 
     public fun receive_deposit(
@@ -217,6 +228,7 @@ module wormhole_bridge::bridge_core {
         user: DolaAddress,
         amount: u64,
         wormhole_message_fee: Coin<SUI>,
+        txid: vector<u8>
     ) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         pool_manager::remove_liquidity(
@@ -226,7 +238,7 @@ module wormhole_bridge::bridge_core {
             app_manager::app_id(app_cap),
             amount
         );
-        let msg = pool::encode_receive_withdraw_payload(pool_address, user, amount);
+        let msg = pool::encode_receive_withdraw_payload(txid, pool_address, user, amount);
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);

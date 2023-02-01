@@ -402,11 +402,15 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
+        txid: vector<u8>,
         pool_addr: DolaAddress,
         user_addr: DolaAddress,
         amount: u64
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
+
+        serialize_u16(&mut pool_payload, (vector::length(&txid) as u16));
+        serialize_vector(&mut pool_payload, txid);
 
         let pool_addr = encode_dola_address(pool_addr);
         serialize_u16(&mut pool_payload, (vector::length(&pool_addr) as u16));
@@ -422,10 +426,17 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (DolaAddress, DolaAddress, u64) {
+    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (vector<u8>, DolaAddress, DolaAddress, u64) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let txid_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (txid_len as u64);
+        let txid = vector_slice(&pool_payload, index, index + data_len);
 
         data_len = 2;
         let pool_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
@@ -450,7 +461,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_addr, user_addr, amount)
+        (txid, pool_addr, user_addr, amount)
     }
 
 
@@ -519,11 +530,14 @@ module omnipool::pool {
         assert!(decoded_app_payload == app_payload, 0);
         // test encode and decode receive_withdraw_payload
         let receive_withdraw_payload = encode_receive_withdraw_payload(
+            vector::empty(),
             convert_address_to_dola(pool),
             convert_address_to_dola(user),
             amount
         );
-        let (decoded_pool, decoded_user, decoded_amount) = decode_receive_withdraw_payload(receive_withdraw_payload);
+        let (_txid, decoded_pool, decoded_user, decoded_amount) = decode_receive_withdraw_payload(
+            receive_withdraw_payload
+        );
         assert!(convert_dola_to_address(decoded_pool) == pool, 0);
         assert!(convert_dola_to_address(decoded_user) == user, 0);
         assert!(decoded_amount == amount, 0);
