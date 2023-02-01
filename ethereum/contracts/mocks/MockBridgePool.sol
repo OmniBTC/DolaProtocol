@@ -19,6 +19,10 @@ contract MockBridgePool {
     // convenient for testing
     mapping(uint32 => bytes) public cachedVAA;
 
+    /// Events
+    event LendingStartedEvent(bytes txid);
+    event LendingCompletedEvent(bytes txid);
+
     constructor(
         address _wormholeBridge,
         uint16 _dolaChainId,
@@ -71,9 +75,9 @@ contract MockBridgePool {
         return completeVAA[_hash];
     }
 
-    function sendBinding(uint16 bindDolaChainId, bytes memory bindAddress)
-        external
-        payable
+    function sendBinding(bytes memory txid, uint16 bindDolaChainId, bytes memory bindAddress)
+    external
+    payable
     {
         bytes memory payload = LibBinding.encodeBindingPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
@@ -82,11 +86,12 @@ contract MockBridgePool {
         cachedVAA[getNonce()] = payload;
 
         increaseNonce();
+        emit LendingStartedEvent(txid);
     }
 
-    function sendUnbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
-        external
-        payable
+    function sendUnbinding(bytes memory txid, uint16 unbindDolaChainId, bytes memory unbindAddress)
+    external
+    payable
     {
         bytes memory payload = LibBinding.encodeUnbindingPayload(
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
@@ -95,6 +100,7 @@ contract MockBridgePool {
         cachedVAA[getNonce()] = payload;
 
         increaseNonce();
+        emit LendingStartedEvent(txid);
     }
 
     function sendDeposit(
@@ -106,7 +112,7 @@ contract MockBridgePool {
         bytes memory payload;
         if (token == address(0)) {
             require(msg.value >= amount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositTo{value: amount}(
+            payload = IOmniPool(omnipool).depositTo{value : amount}(
                 token,
                 amount,
                 appId,
@@ -150,7 +156,7 @@ contract MockBridgePool {
         if (depositToken == address(0)) {
             require(msg.value >= depositAmount, "Not enough msg value!");
             payload = IOmniPool(omnipool).depositAndWithdraw{
-                value: depositAmount
+            value : depositAmount
             }(depositToken, depositAmount, withdrawPool, appId, appPayload);
         } else {
             payload = IOmniPool(omnipool).depositAndWithdraw(
@@ -168,9 +174,10 @@ contract MockBridgePool {
 
     function receiveWithdraw(bytes memory vaa) public {
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
-            .decodeReceiveWithdrawPayload(vaa);
+        .decodeReceiveWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
         IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);
+        emit LendingCompletedEvent(payload.txid);
     }
 }
