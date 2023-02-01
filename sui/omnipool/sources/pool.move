@@ -409,6 +409,7 @@ module omnipool::pool {
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
+        assert!(vector::length(&txid) > 0, EINVALID_LENGTH);
         serialize_u16(&mut pool_payload, (vector::length(&txid) as u16));
         serialize_vector(&mut pool_payload, txid);
 

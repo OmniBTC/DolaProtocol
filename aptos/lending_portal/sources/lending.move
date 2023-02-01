@@ -270,6 +270,8 @@ module lending_portal::lending {
         liquidate_user_id: u64
     ): vector<u8> {
         let payload = vector::empty<u8>();
+
+        assert!(vector::length(&txid) > 0, EINVALID_LENGTH);
         serialize_u16(&mut payload, u16::from_u64(vector::length(&txid)));
         serialize_vector(&mut payload, txid);
 

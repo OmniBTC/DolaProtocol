@@ -130,7 +130,7 @@ module wormhole_bridge::bridge_pool {
     ) acquires PoolState, LendingEventHandle {
         let bind_address = create_dola_address(u16::from_u64(dola_chain_id), bind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
-        let msg = encode_binding(user, bind_address);
+        let msg = encode_binding(txid, user, bind_address);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -155,7 +155,7 @@ module wormhole_bridge::bridge_pool {
     ) acquires PoolState, LendingEventHandle {
         let unbind_address = create_dola_address(u16::from_u64(dola_chain_id), unbind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
-        let msg = encode_unbinding(user, unbind_address);
+        let msg = encode_unbinding(txid, user, unbind_address);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -297,8 +297,12 @@ module wormhole_bridge::bridge_pool {
         })
     }
 
-    public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
+    public fun encode_binding(txid: vector<u8>, user: DolaAddress, bind_address: DolaAddress): vector<u8> {
         let binding_payload = vector::empty<u8>();
+
+        assert!(vector::length(&txid) > 0, EINVALID_LENGTH);
+        serialize_u16(&mut binding_payload, u16::from_u64(vector::length(&txid)));
+        serialize_vector(&mut binding_payload, txid);
 
         let user = encode_dola_address(user);
         serialize_u16(&mut binding_payload, u16::from_u64(vector::length(&user)));
@@ -312,10 +316,18 @@ module wormhole_bridge::bridge_pool {
         binding_payload
     }
 
-    public fun decode_binding(binding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
+    public fun decode_binding(binding_payload: vector<u8>): (vector<u8>, DolaAddress, DolaAddress, u8) {
         let length = vector::length(&binding_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let txid_length = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = u16::to_u64(txid_length);
+        let txid = vector_slice(&binding_payload, index, index + data_len);
+        index = index + data_len;
 
         data_len = 2;
         let user_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
@@ -338,11 +350,15 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (user, bind_address, call_type)
+        (txid, user, bind_address, call_type)
     }
 
-    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
+    public fun encode_unbinding(txid: vector<u8>, user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
         let unbinding_payload = vector::empty<u8>();
+
+        assert!(vector::length(&txid) > 0, EINVALID_LENGTH);
+        serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&txid)));
+        serialize_vector(&mut unbinding_payload, txid);
 
         let user = encode_dola_address(user);
         serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&user)));
@@ -356,10 +372,18 @@ module wormhole_bridge::bridge_pool {
         unbinding_payload
     }
 
-    public fun decode_unbinding(unbinding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
+    public fun decode_unbinding(unbinding_payload: vector<u8>): (vector<u8>, DolaAddress, DolaAddress, u8) {
         let length = vector::length(&unbinding_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let txid_length = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = u16::to_u64(txid_length);
+        let txid = vector_slice(&unbinding_payload, index, index + data_len);
+        index = index + data_len;
 
         data_len = 2;
         let user_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
@@ -382,6 +406,6 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (user, unbind_address, call_type)
+        (txid, user, unbind_address, call_type)
     }
 }

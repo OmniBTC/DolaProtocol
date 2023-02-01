@@ -22,6 +22,7 @@ library LibLending {
         LibDolaTypes.DolaAddress memory receiver,
         uint64 liquidateUserId
     ) internal pure returns (bytes memory) {
+        require(txid.length > 0, "Invalid txid length");
         bytes memory dolaAddress = LibDolaTypes.encodeDolaAddress(
             receiver.dolaChainId,
             receiver.externalAddress
@@ -39,9 +40,9 @@ library LibLending {
     }
 
     function decodeAppPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppPayload memory)
+    internal
+    pure
+    returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

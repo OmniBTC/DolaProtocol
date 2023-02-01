@@ -10,21 +10,25 @@ library LibBinding {
     uint8 internal constant UNBINDING = 6;
 
     struct BindingPayload {
+        bytes txid;
         LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress binding;
         uint8 callType;
     }
 
     struct UnbindingPayload {
+        bytes txid;
         LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress unbinding;
         uint8 callType;
     }
 
     function encodeBindingPayload(
+        bytes memory txid,
         LibDolaTypes.DolaAddress memory user,
         LibDolaTypes.DolaAddress memory binding
     ) internal pure returns (bytes memory) {
+        require(txid.length > 0, "Invalid txid length");
         bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
             user.dolaChainId,
             user.externalAddress
@@ -34,6 +38,8 @@ library LibBinding {
             binding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            uint16(txid.length),
+            txid,
             uint16(userAddress.length),
             userAddress,
             uint16(bindingAddress.length),
@@ -44,9 +50,11 @@ library LibBinding {
     }
 
     function encodeUnbindingPayload(
+        bytes memory txid,
         LibDolaTypes.DolaAddress memory user,
         LibDolaTypes.DolaAddress memory unbinding
     ) internal pure returns (bytes memory) {
+        require(txid.length > 0, "Invalid txid length");
         bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
             user.dolaChainId,
             user.externalAddress
@@ -56,6 +64,8 @@ library LibBinding {
             unbinding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            uint16(txid.length),
+            txid,
             uint16(userAddress.length),
             userAddress,
             uint16(bindingAddress.length),
@@ -66,14 +76,22 @@ library LibBinding {
     }
 
     function decodeUnbindingPayload(bytes memory payload)
-        internal
-        pure
-        returns (UnbindingPayload memory)
+    internal
+    pure
+    returns (UnbindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         UnbindingPayload memory decodeData;
+
+        dataLen = 2;
+        uint16 txidLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = txidLength;
+        decodeData.txid = payload.slice(index, index + dataLen);
+        index += dataLen;
 
         dataLen = 2;
         uint16 userLength = payload.toUint16(index);
@@ -105,14 +123,22 @@ library LibBinding {
     }
 
     function decodeBindingPayload(bytes memory payload)
-        internal
-        pure
-        returns (BindingPayload memory)
+    internal
+    pure
+    returns (BindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         BindingPayload memory decodeData;
+
+        dataLen = 2;
+        uint16 txidLength = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = txidLength;
+        decodeData.txid = payload.slice(index, index + dataLen);
+        index += dataLen;
 
         dataLen = 2;
         uint16 userLength = payload.toUint16(index);
