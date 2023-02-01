@@ -1,23 +1,22 @@
 module wormhole_bridge::bridge_pool {
+    use std::signer;
+    use std::vector;
+
+    use aptos_std::table::{Self, Table};
+    use aptos_framework::account::{Self, SignerCapability, new_event_handle};
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin::{Self, Coin};
+    use aptos_framework::event::{Self, EventHandle};
+
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address};
     use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
+    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8};
+    use serde::u16::{U16, Self};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::wormhole;
-    use std::signer;
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
-    use wormhole::set::Set;
-    use aptos_std::table::Table;
-    use serde::u16::{U16, Self};
-    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8};
-    use wormhole::set;
-    use aptos_std::table;
-    use aptos_framework::coin::Coin;
-    use aptos_framework::aptos_coin::AptosCoin;
-    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address};
-    use aptos_framework::coin;
+    use wormhole::set::{Self, Set};
     use wormhole::state;
-    use std::vector;
+    use wormhole::wormhole;
 
     const BINDING: u8 = 5;
 
@@ -55,6 +54,20 @@ module wormhole_bridge::bridge_pool {
         amount: u64,
     }
 
+    struct LendingEventHandle has key {
+        lending_started_handle: EventHandle<LendingStartedEvent>,
+        lending_completed_handle: EventHandle<LendingCompletedEvent>
+    }
+
+    struct LendingStartedEvent has drop, store {
+        txid: vector<u8>
+    }
+
+    struct LendingCompletedEvent has drop, store {
+        txid: vector<u8>
+    }
+
+
     public fun ensure_admin(sender: &signer): bool {
         signer::address_of(sender) == @wormhole_bridge
     }
@@ -65,6 +78,14 @@ module wormhole_bridge::bridge_pool {
 
     public fun get_resource_address(): address {
         account::create_resource_address(&@wormhole_bridge, SEED)
+    }
+
+    public entry fun initialize_event_handle(sender: &signer) {
+        assert!(ensure_admin(sender), EMUST_ADMIN);
+        move_to(sender, LendingEventHandle {
+            lending_started_handle: new_event_handle<LendingStartedEvent>(sender),
+            lending_completed_handle: new_event_handle<LendingCompletedEvent>(sender)
+        })
     }
 
     public entry fun initialize_wormhole(sender: &signer) {
@@ -105,7 +126,8 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         dola_chain_id: u64,
         bind_address: vector<u8>,
-    ) acquires PoolState {
+        txid: vector<u8>
+    ) acquires PoolState, LendingEventHandle {
         let bind_address = create_dola_address(u16::from_u64(dola_chain_id), bind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
         let msg = encode_binding(user, bind_address);
@@ -116,13 +138,21 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
         pool_state.nonce = pool_state.nonce + 1;
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+        let event_handle = borrow_global_mut<LendingEventHandle>(@lending_portal);
+        event::emit_event(
+            &mut event_handle.lending_started_handle,
+            LendingStartedEvent {
+                txid
+            }
+        )
     }
 
     public entry fun send_unbinding(
         sender: &signer,
         dola_chain_id: u64,
-        unbind_address: vector<u8>
-    ) acquires PoolState {
+        unbind_address: vector<u8>,
+        txid: vector<u8>
+    ) acquires PoolState, LendingEventHandle {
         let unbind_address = create_dola_address(u16::from_u64(dola_chain_id), unbind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
         let msg = encode_unbinding(user, unbind_address);
@@ -133,6 +163,13 @@ module wormhole_bridge::bridge_pool {
         wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
         pool_state.nonce = pool_state.nonce + 1;
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+        let event_handle = borrow_global_mut<LendingEventHandle>(@lending_portal);
+        event::emit_event(
+            &mut event_handle.lending_started_handle,
+            LendingStartedEvent {
+                txid
+            }
+        )
     }
 
     public fun send_deposit<CoinType>(
@@ -213,7 +250,7 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun receive_withdraw<CoinType>(
         vaa: vector<u8>,
-    ) acquires PoolState {
+    ) acquires PoolState, LendingEventHandle {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -224,12 +261,19 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, token_name) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (pool_address, user, amount) =
+        let (txid, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
 
         pool::inner_withdraw<CoinType>(&pool_state.pool_cap, user, amount, pool_address);
         // myvaa::destroy(vaa);
+        let event_handle = borrow_global_mut<LendingEventHandle>(@lending_portal);
+        event::emit_event(
+            &mut event_handle.lending_completed_handle,
+            LendingCompletedEvent {
+                txid
+            }
+        )
     }
 
     public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
@@ -244,7 +288,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(sender: &signer, vaa: vector<u8>) {
-        let (pool_address, user, amount) =
+        let (_, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
@@ -297,7 +341,7 @@ module wormhole_bridge::bridge_pool {
         (user, bind_address, call_type)
     }
 
-    public fun encode_unbinding(user: DolaAddress,unbind_address: DolaAddress): vector<u8> {
+    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
         let unbinding_payload = vector::empty<u8>();
 
         let user = encode_dola_address(user);
