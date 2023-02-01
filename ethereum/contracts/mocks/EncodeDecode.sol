@@ -14,19 +14,19 @@ contract EncodeDecode {
         bytes memory appPayload
     ) external pure returns (bytes memory) {
         return
-        LibPool.encodeSendDepositPayload(
-            pool,
-            user,
-            amount,
-            appId,
-            appPayload
-        );
+            LibPool.encodeSendDepositPayload(
+                pool,
+                user,
+                amount,
+                appId,
+                appPayload
+            );
     }
 
     function decodeSendDepositPayload(bytes memory payload)
-    external
-    pure
-    returns (LibPool.SendDepositPayload memory)
+        external
+        pure
+        returns (LibPool.SendDepositPayload memory)
     {
         return LibPool.decodeSendDepositPayload(payload);
     }
@@ -41,9 +41,9 @@ contract EncodeDecode {
     }
 
     function decodeSendWithdrawPayload(bytes memory payload)
-    external
-    pure
-    returns (LibPool.SendWithdrawPayload memory)
+        external
+        pure
+        returns (LibPool.SendWithdrawPayload memory)
     {
         return LibPool.decodeSendWithdrawPayload(payload);
     }
@@ -57,20 +57,20 @@ contract EncodeDecode {
         bytes memory appPayload
     ) external pure returns (bytes memory) {
         return
-        LibPool.encodeSendDepositAndWithdrawPayload(
-            depositPool,
-            depositUser,
-            depositAmount,
-            withdrawPool,
-            appId,
-            appPayload
-        );
+            LibPool.encodeSendDepositAndWithdrawPayload(
+                depositPool,
+                depositUser,
+                depositAmount,
+                withdrawPool,
+                appId,
+                appPayload
+            );
     }
 
     function decodeSendDepositAndWithdrawPayload(bytes memory payload)
-    external
-    pure
-    returns (LibPool.SendDepositAndWithdrawPayload memory)
+        external
+        pure
+        returns (LibPool.SendDepositAndWithdrawPayload memory)
     {
         return LibPool.decodeSendDepositAndWithdrawPayload(payload);
     }
@@ -85,9 +85,9 @@ contract EncodeDecode {
     }
 
     function decodeReceiveWithdrawPayload(bytes memory payload)
-    external
-    pure
-    returns (LibPool.ReceiveWithdrawPayload memory)
+        external
+        pure
+        returns (LibPool.ReceiveWithdrawPayload memory)
     {
         return LibPool.decodeReceiveWithdrawPayload(payload);
     }
@@ -100,35 +100,35 @@ contract EncodeDecode {
         uint64 liquidateUserId
     ) external pure returns (bytes memory) {
         return
-        LibLending.encodeAppPayload(
-            txid,
-            callType,
-            amount,
-            receiver,
-            liquidateUserId
-        );
+            LibLending.encodeAppPayload(
+                txid,
+                callType,
+                amount,
+                receiver,
+                liquidateUserId
+            );
     }
 
     function decodeAppPayload(bytes memory payload)
-    external
-    pure
-    returns (LibLending.LendingAppPayload memory)
+        external
+        pure
+        returns (LibLending.LendingAppPayload memory)
     {
         return LibLending.decodeAppPayload(payload);
     }
 
     function encodeDolaAddress(uint16 dolaChainId, bytes memory externalAddress)
-    external
-    pure
-    returns (bytes memory)
+        external
+        pure
+        returns (bytes memory)
     {
         return LibDolaTypes.encodeDolaAddress(dolaChainId, externalAddress);
     }
 
     function decodeDolaAddress(bytes memory payload)
-    external
-    pure
-    returns (LibDolaTypes.DolaAddress memory)
+        external
+        pure
+        returns (LibDolaTypes.DolaAddress memory)
     {
         return LibDolaTypes.decodeDolaAddress(payload);
     }

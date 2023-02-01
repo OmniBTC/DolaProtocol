@@ -39,9 +39,9 @@ library LibLending {
     }
 
     function decodeAppPayload(bytes memory payload)
-    internal
-    pure
-    returns (LendingAppPayload memory)
+        internal
+        pure
+        returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

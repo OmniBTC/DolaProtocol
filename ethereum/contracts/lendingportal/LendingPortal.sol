@@ -33,7 +33,11 @@ contract LendingPortal {
         return decimal;
     }
 
-    function supply(bytes memory txid, address token, uint256 amount) external payable {
+    function supply(
+        bytes memory txid,
+        address token,
+        uint256 amount
+    ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             txid,
             SUPPLY,
@@ -41,7 +45,7 @@ contract LendingPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
-        IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
+        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
             token,
             amount,
             APPID,
@@ -65,7 +69,7 @@ contract LendingPortal {
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value : msg.value}(
+        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
             token,
             APPID,
             appPayload
@@ -87,7 +91,7 @@ contract LendingPortal {
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value : msg.value}(
+        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
             token,
             APPID,
             appPayload
@@ -95,7 +99,11 @@ contract LendingPortal {
         emit LendingStartedEvent(txid);
     }
 
-    function repay(bytes memory txid, address token, uint256 amount) external payable {
+    function repay(
+        bytes memory txid,
+        address token,
+        uint256 amount
+    ) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             txid,
             REPAY,
@@ -103,7 +111,7 @@ contract LendingPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
-        IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
+        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
             token,
             amount,
             APPID,
