@@ -16,7 +16,7 @@ module lending::logic {
     const RAY: u256 = 1000000000000000000000000000;
 
     /// 20%
-    const MAX_DISCOUNT: u256 = 2000000000000000000000000000;
+    const MAX_DISCOUNT: u256 = 200000000000000000000000000;
 
     /// HF 1.25
     const TARGET_HEALTH_FACTOR: u256 = 1250000000000000000000000000;
@@ -180,7 +180,7 @@ module lending::logic {
     }
 
     public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
-        user_health_factor(storage, oracle, dola_user_id) >= RAY
+        user_health_factor(storage, oracle, dola_user_id) > RAY
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
@@ -218,8 +218,7 @@ module lending::logic {
         dola_pool_id: u16
     ): u64 {
         let balance = user_collateral_balance(storage, dola_user_id, dola_pool_id);
-        let (price, decimal) = get_token_price(oracle, dola_pool_id);
-        (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
+        calculate_value(oracle, dola_pool_id, balance)
     }
 
     public fun user_collateral_balance(
@@ -239,8 +238,7 @@ module lending::logic {
         dola_pool_id: u16
     ): u64 {
         let balance = user_loan_balance(storage, dola_user_id, dola_pool_id);
-        let (price, decimal) = get_token_price(oracle, dola_pool_id);
-        (((balance as u128) * (price as u128) / (pow(10, decimal) as u128)) as u64)
+        calculate_value(oracle, dola_pool_id, balance)
     }
 
     public fun user_loan_balance(
