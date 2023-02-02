@@ -111,18 +111,19 @@ module lending::logic {
         dola_user_id: u64,
         dola_pool_id: u16,
         withdraw_amount: u64,
-    ) {
+    ): u64 {
         update_state(cap, storage, oracle, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
-        let withdraw_amount = min(withdraw_amount, otoken_amount);
-        burn_otoken(cap, storage, dola_user_id, dola_pool_id, withdraw_amount);
+        let actual_amount = min(withdraw_amount, otoken_amount);
+        burn_otoken(cap, storage, dola_user_id, dola_pool_id, actual_amount);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        if (withdraw_amount == otoken_amount) {
+        if (actual_amount == otoken_amount) {
             remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+        actual_amount
     }
 
     public fun execute_borrow(
