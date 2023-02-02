@@ -109,11 +109,8 @@ module lending::wormhole_adapter {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (token_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-
-        execute_withdraw(
+        // If the withdrawal exceeds the user's balance, use the maximum withdrawal
+        let actual_amount = execute_withdraw(
             cap,
             pool_manager_info,
             storage,
@@ -122,6 +119,11 @@ module lending::wormhole_adapter {
             dola_pool_id,
             token_amount,
         );
+
+        // Check pool liquidity
+        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
@@ -129,7 +131,7 @@ module lending::wormhole_adapter {
             pool_manager_info,
             dst_pool,
             receiver,
-            token_amount,
+            actual_amount,
             wormhole_message_fee
         );
     }
@@ -163,7 +165,7 @@ module lending::wormhole_adapter {
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
-        // check pool liquidity
+        // Check pool liquidity
         let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (token_amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
