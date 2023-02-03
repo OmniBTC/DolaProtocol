@@ -2,7 +2,7 @@ module wormhole_bridge::bridge_pool {
     use std::vector;
 
     use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
-    use governance::governance::GovernanceCap;
+    use governance::basic::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::{Self, Coin};
     use sui::event;

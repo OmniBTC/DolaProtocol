@@ -3,7 +3,7 @@ module lending::storage {
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
-    use governance::governance::GovernanceCap;
+    use governance::basic::GovernanceCap;
     use oracle::oracle::{PriceOracle, get_timestamp};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};

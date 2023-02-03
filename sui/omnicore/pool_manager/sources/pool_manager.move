@@ -5,7 +5,7 @@ module pool_manager::pool_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, dola_chain_id};
-    use governance::governance::GovernanceCap;
+    use governance::basic::GovernanceCap;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
