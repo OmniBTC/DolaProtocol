@@ -46,7 +46,7 @@ module governance::governance {
 
     /// Govern the calls of other contracts, and other contracts
     /// using governance only need to take this cap parameter.
-    struct GovernanceCap has store {}
+    struct GovernanceCap {}
 
     /// Current governance members
     struct Governance has key {
@@ -79,11 +79,6 @@ module governance::governance {
         votes: vector<address>,
         // prevent duplicate key issuance
         finished: bool
-    }
-
-    struct FlashCap {
-        // External cap
-        governance_cap: GovernanceCap,
     }
 
     /// Share a cap so that only the person who owns the key can use it,
@@ -267,11 +262,11 @@ module governance::governance {
         }
     }
 
-    public fun vote_external_cap<T: store>(
+    public fun vote_external_cap(
         gov: &mut Governance,
         vote: &mut VoteExternalCap,
         ctx: &mut TxContext
-    ): Option<FlashCap> {
+    ): Option<GovernanceCap> {
         assert!(!vote.finished, EVOTE_HAS_COMPLETE);
         let voter = tx_context::sender(ctx);
         is_member(gov, voter);
@@ -284,37 +279,27 @@ module governance::governance {
         let votes_num = vector::length(votes);
         if (ensure_two_thirds(members_num, votes_num) && !vote.finished) {
             vote.finished = true;
-            option::some(FlashCap {
-                governance_cap: GovernanceCap{}
-            })
+            option::some(GovernanceCap{})
         }else {
             option::none()
         }
     }
 
-    public fun borrow_external_cap(flash_cap: &mut Option<FlashCap>): &mut GovernanceCap {
-        assert!(option::is_some(flash_cap), EMUST_SOME);
-        &mut option::borrow_mut(flash_cap).governance_cap
-    }
-
-    public fun migrate_external_cap(flash_cap: Option<FlashCap>): GovernanceCap {
-        // todo! consider whether to limit function call
-        assert!(option::is_some(&flash_cap), EMUST_SOME);
-        let FlashCap { governance_cap } = option::destroy_some(flash_cap);
-        governance_cap
+    public fun borrow_external_cap(governance_cap: &mut Option<GovernanceCap>): &mut GovernanceCap {
+        assert!(option::is_some(governance_cap), EMUST_SOME);
+        option::borrow_mut(governance_cap)
     }
 
     public fun external_cap_destroy(
         vote: &mut VoteExternalCap,
-        flash_cap: Option<FlashCap>
+        governance_cap: Option<GovernanceCap>
     ) {
-        if (option::is_some(&flash_cap)) {
+        if (option::is_some(&governance_cap)) {
             assert!(vote.finished, EVOTE_NOT_COMPLETE);
-            let flash_cap = option::destroy_some(flash_cap);
-            let FlashCap { governance_cap } = flash_cap;
+            let governance_cap = option::destroy_some(governance_cap);
             let GovernanceCap{} = governance_cap;
         }else {
-            option::destroy_none(flash_cap);
+            option::destroy_none(governance_cap);
         }
     }
 

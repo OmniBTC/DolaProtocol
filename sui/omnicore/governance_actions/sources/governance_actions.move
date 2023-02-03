@@ -4,7 +4,7 @@ module governance_actions::governance_actions {
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::create_dola_address;
-    use governance::governance::{Self, Governance, VoteExternalCap, GovernanceCap};
+    use governance::governance::{Self, Governance, VoteExternalCap};
     use lending::storage::Storage;
     use lending::wormhole_adapter::WormholeAdapater;
     use lending_portal::lending::LendingPortal;
@@ -23,15 +23,15 @@ module governance_actions::governance_actions {
         state: &mut State,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             bridge_core::initialize_wormhole_with_governance(governance_cap, state, ctx);
             bridge_pool::initialize_wormhole_with_governance(governance_cap, state, ctx);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_init_lending_storage(
@@ -41,15 +41,15 @@ module governance_actions::governance_actions {
         total_app_info: &mut TotalAppInfo,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let app_cap = app_manager::register_cap_with_governance(governance_cap, total_app_info, ctx);
             lending::storage::transfer_app_cap(storage, app_cap);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
 
@@ -59,15 +59,15 @@ module governance_actions::governance_actions {
         wormhole_adapater: &mut WormholeAdapater,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
             lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_init_lending_portal(
@@ -76,10 +76,10 @@ module governance_actions::governance_actions {
         lending_portal: &mut LendingPortal,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let pool_cap = pool::register_cap(governance_cap, ctx);
             let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(governance_cap);
@@ -90,7 +90,7 @@ module governance_actions::governance_actions {
             lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_register_evm_chain_id(
@@ -100,16 +100,16 @@ module governance_actions::governance_actions {
         evm_chain_id: u16,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let user_manager_cap = user_manager::register_cap_with_governance(governance_cap);
             // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
             user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_register_core_remote_bridge(
@@ -120,14 +120,14 @@ module governance_actions::governance_actions {
         emitter_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             bridge_core::register_remote_bridge(governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_register_pool_remote_bridge(
@@ -138,14 +138,14 @@ module governance_actions::governance_actions {
         emitter_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             bridge_pool::register_remote_bridge(governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
 
@@ -159,10 +159,10 @@ module governance_actions::governance_actions {
         dola_pool_id: u16,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let pool_manager_cap = pool_manager::register_cap_with_governance(governance_cap);
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
@@ -176,7 +176,7 @@ module governance_actions::governance_actions {
             );
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 
     public entry fun vote_register_new_reserve(
@@ -195,10 +195,10 @@ module governance_actions::governance_actions {
         storage: &mut Storage,
         ctx: &mut TxContext
     ) {
-        let flash_cap = governance::vote_external_cap<GovernanceCap>(gov, vote, ctx);
+        let governance_cap = governance::vote_external_cap(gov, vote, ctx);
 
-        if (option::is_some(&flash_cap)) {
-            let governance_cap = governance::borrow_external_cap(&mut flash_cap);
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = governance::borrow_external_cap(&mut governance_cap);
             let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
             lending::storage::register_new_reserve(
                 &storage_cap,
@@ -217,6 +217,6 @@ module governance_actions::governance_actions {
             );
         };
 
-        governance::external_cap_destroy(vote, flash_cap);
+        governance::external_cap_destroy(vote, governance_cap);
     }
 }
