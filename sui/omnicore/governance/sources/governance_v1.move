@@ -4,11 +4,12 @@ module governance::governance_v1 {
     use std::option::{Self, Option};
     use std::vector;
 
-    use sui::object::{Self, UID, id_address, ID};
+    use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use governance::basic::GovernanceCap;
+    use governance::basic::{GovernanceCap, GovernanceManagerCap, GovernanceBasic};
+    use governance::basic;
 
     /// Proposal State
     // Proposal announcement waiting period
@@ -60,6 +61,10 @@ module governance::governance_v1 {
 
     const EVOTE_HAS_EXPIRED: u64 = 13;
 
+    const EHAS_MANAGER: u64 = 15;
+
+    const ENOT_MANAGER: u64 = 15;
+
 
     struct GovernanceInfo has key {
         id: UID,
@@ -73,7 +78,9 @@ module governance::governance_v1 {
         // Vote members
         members: vector<address>,
         // History proposal
-        his_proposal: vector<ID>
+        his_proposal: vector<ID>,
+        // Gonvernance manager cap
+        gonvernance_manager_cap: Option<GovernanceManagerCap>
     }
 
     struct Proposal has key {
@@ -105,8 +112,18 @@ module governance::governance_v1 {
             voting_delay: 0,
             max_delay: 30,
             members,
-            his_proposal: vector::empty()
+            his_proposal: vector::empty(),
+            gonvernance_manager_cap: option::none()
         });
+    }
+
+    public entry fun initial_manager_cap(
+        governance_basic: &mut GovernanceBasic,
+        goverance_info: &mut GovernanceInfo,
+        ctx: &mut TxContext
+    ) {
+        assert!(option::is_none(&goverance_info.gonvernance_manager_cap), EHAS_MANAGER);
+        option::fill(&mut goverance_info.gonvernance_manager_cap, basic::new(governance_basic, ctx));
     }
 
     public fun is_member(goverance_info: &GovernanceInfo, member: address) {
@@ -149,7 +166,7 @@ module governance::governance_v1 {
         if (goverance_info.voting_delay == 0) {
             end_vote = option::none()
         }else {
-            end_vote = start_vote + goverance_info.voting_delay;
+            end_vote = option::some(start_vote + goverance_info.voting_delay);
         };
         let expired = tx_context::epoch(ctx) + goverance_info.max_delay;
         transfer::share_object(Proposal {
@@ -163,6 +180,11 @@ module governance::governance_v1 {
             against_votes: vector::empty(),
             state: PROPOSAL_ANNOUNCEMENT_PENDING
         });
+    }
+
+    fun borrow_manger_cap(goverance_info: &mut GovernanceInfo): &GovernanceManagerCap {
+        assert!(option::is_some(&goverance_info.gonvernance_manager_cap), ENOT_MEMBER);
+        option::borrow(&goverance_info.gonvernance_manager_cap)
     }
 
     public fun vote_external_cap(
@@ -181,50 +203,55 @@ module governance::governance_v1 {
         let favor_votes = &mut proposal.favor_votes;
         let against_votes = &mut proposal.against_votes;
 
-        if (option::is_some(&proposal.end_vote)) {
-            if (current_epoch < *option::borrow(&proposal.end_vote)) {
-                let voter = tx_context::sender(ctx);
-                is_member(goverance_info, voter);
+        if (option::is_none(&proposal.end_vote) || (option::is_some(
+            &proposal.end_vote
+        ) && current_epoch < *option::borrow(&proposal.end_vote))) {
+            let voter = tx_context::sender(ctx);
+            is_member(goverance_info, voter);
 
 
-                assert!(!vector::contains(favor_votes, &voter)
-                    && !vector::contains(against_votes, &voter), EALREADY_VOTE);
+            assert!(!vector::contains(favor_votes, &voter)
+                && !vector::contains(against_votes, &voter), EALREADY_VOTE);
 
-                if (support) {
-                    vector::push_back(favor_votes, voter);
-                }else {
-                    vector::push_back(against_votes, voter);
+            if (support) {
+                vector::push_back(favor_votes, voter);
+            }else {
+                vector::push_back(against_votes, voter);
+            };
+        };
+
+        if (option::is_none(&proposal.end_vote) || (option::is_some(
+            &proposal.end_vote
+        ) && current_epoch >= *option::borrow(&proposal.end_vote))) {
+            let members_num = vector::length(&goverance_info.members);
+            let favor_votes_num = vector::length(favor_votes);
+            if (ensure_two_thirds(members_num, favor_votes_num)) {
+                proposal.state = PROPOSAL_SUCCESS;
+                option::some(basic::create(borrow_manger_cap(goverance_info)))
+            }else {
+                if (option::is_some(&proposal.end_vote)) {
+                    proposal.state = PROPOSAL_FAIL;
                 };
                 option::none()
-            }else {
-                let members_num = vector::length(&goverance_info.members);
-                let favor_votes_num = vector::length(favor_votes);
-                if (ensure_two_thirds(members_num, favor_votes_num)) {
-                    proposal.state = PROPOSAL_SUCCESS;
-                    option::some(GovernanceCap {})
-                }else {
-                    proposal.state = PROPOSAL_FAIL;
-                    option::none()
-                }
             }
+        }else {
+            option::none()
         }
     }
 
-    // public fun borrow_external_cap(governance_cap: &mut Option<GovernanceCap>): &mut GovernanceCap {
-    //     assert!(option::is_some(governance_cap), EMUST_SOME);
-    //     option::borrow_mut(governance_cap)
-    // }
+    public fun borrow_governance_cap(governance_cap: &mut Option<GovernanceCap>): &mut GovernanceCap {
+        assert!(option::is_some(governance_cap), EMUST_SOME);
+        option::borrow_mut(governance_cap)
+    }
 
-    // public fun external_cap_destroy(
-    //     vote: &mut VoteExternalCap,
-    //     governance_cap: Option<GovernanceCap>
-    // ) {
-    //     if (option::is_some(&governance_cap)) {
-    //         assert!(vote.finished, EVOTE_NOT_COMPLETE);
-    //         let governance_cap = option::destroy_some(governance_cap);
-    //         let GovernanceCap {} = governance_cap;
-    //     }else {
-    //         option::destroy_none(governance_cap);
-    //     }
-    // }
+    public fun destroy_governance_cap(
+        goverance_info: &mut GovernanceInfo,
+        governance_cap: Option<GovernanceCap>
+    ) {
+        if (option::is_some(&governance_cap)) {
+            basic::destroy(borrow_manger_cap(goverance_info), option::destroy_some(governance_cap));
+        }else {
+            option::destroy_none(governance_cap);
+        }
+    }
 }

@@ -13,7 +13,7 @@ module governance::basic {
     /// Used to create and destroy `GovernanceCap`.
     /// `GovernanceManagerCap` is hosted for specific voting modules (v1, v2...) ,
     /// to help with possible future upgrades of the voting module itself.
-    struct GovernanceManagerCap has key {
+    struct GovernanceManagerCap has key, store {
         id: UID
     }
 
