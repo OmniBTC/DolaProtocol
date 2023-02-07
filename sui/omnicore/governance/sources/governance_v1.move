@@ -1,5 +1,5 @@
 /// Voting governance version 1. Using multi-person voting governance,
-/// the number of people over a certain threshold proposal passed
+/// the number of people over a certain threshold proposal passed.
 module governance::governance_v1 {
     use std::option::{Self, Option};
     use std::vector;
@@ -53,19 +53,23 @@ module governance::governance_v1 {
 
     const EVOTE_HAS_COMPLETE: u64 = 12;
 
-    const EVOTE_NOT_START: u64 = 12;
+    const EVOTE_NOT_START: u64 = 13;
 
-    const EVOTE_NOT_END: u64 = 13;
+    const EVOTE_NOT_END: u64 = 14;
 
-    const EVOTE_HAS_EXPIRED: u64 = 13;
+    const EVOTE_HAS_EXPIRED: u64 = 15;
 
-    const EHAS_MANAGER: u64 = 15;
+    const EHAS_ACTIVATED: u64 = 16;
 
-    const ENOT_MANAGER: u64 = 15;
+    const ENOT_ACTIVE: u64 = 17;
 
 
     struct GovernanceInfo has key {
         id: UID,
+        // Gonvernance manager cap
+        gonvernance: Option<GovernanceManagerCap>,
+        // Governance active state
+        active: bool,
         // Proposal announcement period waiting time
         announce_delay: u64,
         // Vote waiting time
@@ -76,9 +80,7 @@ module governance::governance_v1 {
         // Vote members
         members: vector<address>,
         // History proposal
-        his_proposal: vector<ID>,
-        // Gonvernance manager cap
-        gonvernance_manager_cap: Option<GovernanceManagerCap>
+        his_proposal: vector<ID>
     }
 
     struct Proposal has key {
@@ -106,35 +108,45 @@ module governance::governance_v1 {
         vector::push_back(&mut members, tx_context::sender(ctx));
         transfer::share_object(GovernanceInfo {
             id: object::new(ctx),
+            gonvernance: option::none(),
+            active: false,
             announce_delay: 0,
             voting_delay: 0,
             max_delay: 30,
             members,
             his_proposal: vector::empty(),
-            gonvernance_manager_cap: option::none()
         });
     }
 
-    public entry fun initial_manager_cap(
+    /// Activate the current version of governance.
+    public entry fun activate_governance(
         governance_genesis: &mut GovernanceGenesis,
-        goverance_info: &mut GovernanceInfo,
+        governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
-        assert!(option::is_none(&goverance_info.gonvernance_manager_cap), EHAS_MANAGER);
-        option::fill(&mut goverance_info.gonvernance_manager_cap, genesis::new(governance_genesis, ctx));
+        assert!(!governance_info.active, EHAS_ACTIVATED);
+        option::fill(&mut governance_info.gonvernance, genesis::new(governance_genesis, ctx));
+        governance_info.active = true;
     }
 
-    public fun is_member(goverance_info: &GovernanceInfo, member: address) {
-        assert!(vector::contains(&goverance_info.members, &member), ENOT_MEMBER)
+    /// After the upgrade, all current governance members will be invalidated.
+    public fun upgrade_to_v2(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
+        let governance_manager_cap = option::extract(&mut governance_info.gonvernance);
+        governance_info.active = false;
+        governance_manager_cap
     }
 
-    // Adding members through governance
-    public fun add_member(_: &GovernanceCap, goverance_info: &mut GovernanceInfo, member: address) {
-        assert!(!vector::contains(&mut goverance_info.members, &member), EALREADY_MEMBER);
-        vector::push_back(&mut goverance_info.members, member)
+    public fun is_member(governance_info: &GovernanceInfo, member: address) {
+        assert!(vector::contains(&governance_info.members, &member), ENOT_MEMBER)
     }
 
-    // Removing members through governance
+    /// Add members through governance.
+    public fun add_member(_: &GovernanceCap, governance_info: &mut GovernanceInfo, member: address) {
+        assert!(!vector::contains(&mut governance_info.members, &member), EALREADY_MEMBER);
+        vector::push_back(&mut governance_info.members, member)
+    }
+
+    /// Remove members through governance.
     public fun remove_member(_: &GovernanceCap, governance: &mut GovernanceInfo, member: address) {
         is_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
@@ -151,23 +163,25 @@ module governance::governance_v1 {
         votes_num >= threshold
     }
 
+    /// Ensure that governance is active to create this version of the proposal.
     public entry fun create_proposal(
-        goverance_info: &GovernanceInfo,
+        governance_info: &GovernanceInfo,
         package_id: address,
         ctx: &mut TxContext
     ) {
+        assert!(governance_info.active, ENOT_ACTIVE);
         let creator = tx_context::sender(ctx);
 
-        is_member(goverance_info, creator);
+        is_member(governance_info, creator);
 
-        let start_vote = tx_context::epoch(ctx) + goverance_info.announce_delay;
+        let start_vote = tx_context::epoch(ctx) + governance_info.announce_delay;
         let end_vote;
-        if (goverance_info.voting_delay == 0) {
+        if (governance_info.voting_delay == 0) {
             end_vote = option::none()
         }else {
-            end_vote = option::some(start_vote + goverance_info.voting_delay);
+            end_vote = option::some(start_vote + governance_info.voting_delay);
         };
-        let expired = tx_context::epoch(ctx) + goverance_info.max_delay;
+        let expired = tx_context::epoch(ctx) + governance_info.max_delay;
         transfer::share_object(Proposal {
             id: object::new(ctx),
             creator,
@@ -181,13 +195,9 @@ module governance::governance_v1 {
         });
     }
 
-    fun borrow_manger_cap(goverance_info: &mut GovernanceInfo): &GovernanceManagerCap {
-        assert!(option::is_some(&goverance_info.gonvernance_manager_cap), ENOT_MEMBER);
-        option::borrow(&goverance_info.gonvernance_manager_cap)
-    }
-
+    /// Vote for a proposal, and obtain governance rights for governance after voting.
     public fun vote_external_cap(
-        goverance_info: &mut GovernanceInfo,
+        governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal,
         support: bool,
         ctx: &mut TxContext
@@ -204,7 +214,7 @@ module governance::governance_v1 {
 
         if (option::is_none(&proposal.end_vote) || current_epoch < *option::borrow(&proposal.end_vote)) {
             let voter = tx_context::sender(ctx);
-            is_member(goverance_info, voter);
+            is_member(governance_info, voter);
 
             assert!(!vector::contains(favor_votes, &voter)
                 && !vector::contains(against_votes, &voter), EALREADY_VOTE);
@@ -216,33 +226,17 @@ module governance::governance_v1 {
             };
             option::none()
         } else {
-            let members_num = vector::length(&goverance_info.members);
+            let members_num = vector::length(&governance_info.members);
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
                 proposal.state = PROPOSAL_SUCCESS;
-                option::some(genesis::create(borrow_manger_cap(goverance_info)))
+                option::some(genesis::create(option::borrow(&governance_info.gonvernance)))
             }else {
                 if (option::is_some(&proposal.end_vote)) {
                     proposal.state = PROPOSAL_FAIL;
                 };
                 option::none()
             }
-        }
-    }
-
-    public fun borrow_governance_cap(governance_cap: &mut Option<GovernanceCap>): &mut GovernanceCap {
-        assert!(option::is_some(governance_cap), EMUST_SOME);
-        option::borrow_mut(governance_cap)
-    }
-
-    public fun destroy_governance_cap(
-        goverance_info: &mut GovernanceInfo,
-        governance_cap: Option<GovernanceCap>
-    ) {
-        if (option::is_some(&governance_cap)) {
-            genesis::destroy(borrow_manger_cap(goverance_info), option::destroy_some(governance_cap));
-        }else {
-            option::destroy_none(governance_cap);
         }
     }
 }

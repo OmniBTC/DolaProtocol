@@ -7,7 +7,7 @@ module governance::genesis {
 
     friend governance::governance_v1;
 
-    /// Governance rights struct, responsible for governing all modules of Dola protocol
+    /// Governance rights struct, responsible for governing all modules of Dola protocol.
     struct GovernanceCap {}
 
     /// Used to create and destroy `GovernanceCap`.
@@ -17,7 +17,7 @@ module governance::genesis {
         id: UID
     }
 
-    /// Record the existing `GovernanceManagerCap` object
+    /// Record the existing `GovernanceManagerCap` object.
     struct GovernanceGenesis has key {
         id: UID,
         manager_ids: vector<ID>
@@ -43,7 +43,7 @@ module governance::genesis {
         GovernanceCap {}
     }
 
-    public fun destroy(_: &GovernanceManagerCap, governance_cap: GovernanceCap) {
+    public fun destroy(governance_cap: GovernanceCap) {
         let GovernanceCap {} = governance_cap;
     }
 
