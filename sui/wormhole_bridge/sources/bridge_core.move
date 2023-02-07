@@ -3,7 +3,7 @@ module wormhole_bridge::bridge_core {
 
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::types::DolaAddress;
-    use governance::basic::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;

@@ -5,7 +5,7 @@ module pool_manager::pool_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, dola_chain_id};
-    use governance::basic::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -390,17 +390,17 @@ module pool_manager::pool_manager {
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == (amount as u128), 0);
 
             remove_liquidity(
-            &cap,
-            &mut pool_manager_info,
-            pool,
-            0,
-        amount
-        );
+                &cap,
+                &mut pool_manager_info,
+                pool,
+                0,
+                amount
+            );
 
-        assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
-        assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
 
-        test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
     }

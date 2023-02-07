@@ -4,12 +4,10 @@ module governance::governance_v1 {
     use std::option::{Self, Option};
     use std::vector;
 
+    use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-
-    use governance::basic::{GovernanceCap, GovernanceManagerCap, GovernanceBasic};
-    use governance::basic;
 
     /// Proposal State
     // Proposal announcement waiting period
@@ -118,12 +116,12 @@ module governance::governance_v1 {
     }
 
     public entry fun initial_manager_cap(
-        governance_basic: &mut GovernanceBasic,
+        governance_genesis: &mut GovernanceGenesis,
         goverance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
         assert!(option::is_none(&goverance_info.gonvernance_manager_cap), EHAS_MANAGER);
-        option::fill(&mut goverance_info.gonvernance_manager_cap, basic::new(governance_basic, ctx));
+        option::fill(&mut goverance_info.gonvernance_manager_cap, genesis::new(governance_genesis, ctx));
     }
 
     public fun is_member(goverance_info: &GovernanceInfo, member: address) {
@@ -131,13 +129,13 @@ module governance::governance_v1 {
     }
 
     // Adding members through governance
-    public entry fun add_member(_: &GovernanceCap, goverance_info: &mut GovernanceInfo, member: address) {
+    public fun add_member(_: &GovernanceCap, goverance_info: &mut GovernanceInfo, member: address) {
         assert!(!vector::contains(&mut goverance_info.members, &member), EALREADY_MEMBER);
         vector::push_back(&mut goverance_info.members, member)
     }
 
     // Removing members through governance
-    public entry fun remove_member(_: &GovernanceCap, governance: &mut GovernanceInfo, member: address) {
+    public fun remove_member(_: &GovernanceCap, governance: &mut GovernanceInfo, member: address) {
         is_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
         vector::remove(&mut governance.members, index);
@@ -156,7 +154,8 @@ module governance::governance_v1 {
     public entry fun create_proposal(
         goverance_info: &GovernanceInfo,
         package_id: address,
-        ctx: &mut TxContext) {
+        ctx: &mut TxContext
+    ) {
         let creator = tx_context::sender(ctx);
 
         is_member(goverance_info, creator);
@@ -227,7 +226,7 @@ module governance::governance_v1 {
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
                 proposal.state = PROPOSAL_SUCCESS;
-                option::some(basic::create(borrow_manger_cap(goverance_info)))
+                option::some(genesis::create(borrow_manger_cap(goverance_info)))
             }else {
                 if (option::is_some(&proposal.end_vote)) {
                     proposal.state = PROPOSAL_FAIL;
@@ -249,7 +248,7 @@ module governance::governance_v1 {
         governance_cap: Option<GovernanceCap>
     ) {
         if (option::is_some(&governance_cap)) {
-            basic::destroy(borrow_manger_cap(goverance_info), option::destroy_some(governance_cap));
+            genesis::destroy(borrow_manger_cap(goverance_info), option::destroy_some(governance_cap));
         }else {
             option::destroy_none(governance_cap);
         }

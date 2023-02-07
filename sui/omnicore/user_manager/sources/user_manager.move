@@ -2,7 +2,7 @@ module user_manager::user_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_chain_id, update_dola_chain_id};
-    use governance::basic::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
