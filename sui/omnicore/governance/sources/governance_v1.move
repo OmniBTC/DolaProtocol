@@ -40,28 +40,23 @@ module governance::governance_v1 {
 
     const EVOTE_NOT_COMPLETE: u64 = 6;
 
-    /// Const types
-    const APPROVE_VOTE_TYPE: u8 = 7;
+    const EALREADY_EXIST: u64 = 7;
 
-    const TRANSFER_VOTE_TYPE: u8 = 8;
+    const EMUST_NONE: u64 = 8;
 
-    const EALREADY_EXIST: u64 = 9;
+    const EMUST_SOME: u64 = 9;
 
-    const EMUST_NONE: u64 = 10;
+    const EVOTE_HAS_COMPLETE: u64 = 10;
 
-    const EMUST_SOME: u64 = 11;
+    const EVOTE_NOT_START: u64 = 11;
 
-    const EVOTE_HAS_COMPLETE: u64 = 12;
+    const EVOTE_NOT_END: u64 = 12;
 
-    const EVOTE_NOT_START: u64 = 13;
+    const EVOTE_HAS_EXPIRED: u64 = 13;
 
-    const EVOTE_NOT_END: u64 = 14;
+    const EHAS_ACTIVATED: u64 = 14;
 
-    const EVOTE_HAS_EXPIRED: u64 = 15;
-
-    const EHAS_ACTIVATED: u64 = 16;
-
-    const ENOT_ACTIVE: u64 = 17;
+    const ENOT_ACTIVE: u64 = 15;
 
 
     struct GovernanceInfo has key {
@@ -83,7 +78,7 @@ module governance::governance_v1 {
         his_proposal: vector<ID>
     }
 
-    struct Proposal has key {
+    struct Proposal<T> has key {
         id: UID,
         // creator of the proposal
         creator: address,
@@ -95,6 +90,8 @@ module governance::governance_v1 {
         expired: u64,
         // Package id of the proposal
         package_id: address,
+        // Certificate of proposal
+        certificate: Option<T>,
         // Members who voted in favor
         favor_votes: vector<address>,
         // Members who voted against
@@ -163,10 +160,12 @@ module governance::governance_v1 {
         votes_num >= threshold
     }
 
-    /// Ensure that governance is active to create this version of the proposal.
-    public entry fun create_proposal(
+    /// When creating the proposal, you need to give the certificate in the contract
+    /// to ensure that the proposal can only be executed in that contract.
+    public fun create_proposal<T: store>(
         governance_info: &GovernanceInfo,
         package_id: address,
+        certificate: Option<T>,
         ctx: &mut TxContext
     ) {
         assert!(governance_info.active, ENOT_ACTIVE);
@@ -182,26 +181,28 @@ module governance::governance_v1 {
             end_vote = option::some(start_vote + governance_info.voting_delay);
         };
         let expired = tx_context::epoch(ctx) + governance_info.max_delay;
-        transfer::share_object(Proposal {
+        transfer::share_object(Proposal<T> {
             id: object::new(ctx),
             creator,
             start_vote,
             end_vote,
             expired,
             package_id,
+            certificate,
             favor_votes: vector::empty(),
             against_votes: vector::empty(),
             state: PROPOSAL_ANNOUNCEMENT_PENDING
         });
     }
 
-    /// Vote for a proposal, and obtain governance rights for governance after voting.
-    public fun vote_external_cap(
+
+    /// Vote for a proposal
+    public entry fun vote_for_proposal<T: store>(
         governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<T>,
         support: bool,
         ctx: &mut TxContext
-    ): Option<GovernanceCap> {
+    ) {
         assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING
             || proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETE);
 
@@ -224,19 +225,34 @@ module governance::governance_v1 {
             }else {
                 vector::push_back(against_votes, voter);
             };
-            option::none()
+        }
+    }
+
+    public fun execute_proposal<T>(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<T>,
+        ctx: &mut TxContext
+    ): (Option<GovernanceCap>, Option<T>) {
+        let current_epoch = tx_context::epoch(ctx);
+        let end_epoch = if (option::is_none(&proposal.end_vote)) { 0 } else { *option::borrow(&proposal.end_vote) };
+        assert!(current_epoch >= end_epoch, EVOTE_NOT_END);
+        assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING
+            || proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETE);
+
+        is_member(governance_info, tx_context::sender(ctx));
+
+        let members_num = vector::length(&governance_info.members);
+        let favor_votes_num = vector::length(&proposal.favor_votes);
+        if (ensure_two_thirds(members_num, favor_votes_num)) {
+            proposal.state = PROPOSAL_SUCCESS;
+            (option::some(genesis::create(option::borrow(&governance_info.gonvernance))), option::some(
+                option::extract(&mut proposal.certificate)
+            ))
         } else {
-            let members_num = vector::length(&governance_info.members);
-            let favor_votes_num = vector::length(favor_votes);
-            if (ensure_two_thirds(members_num, favor_votes_num)) {
-                proposal.state = PROPOSAL_SUCCESS;
-                option::some(genesis::create(option::borrow(&governance_info.gonvernance)))
-            }else {
-                if (option::is_some(&proposal.end_vote)) {
-                    proposal.state = PROPOSAL_FAIL;
-                };
-                option::none()
-            }
+            if (option::is_some(&proposal.end_vote)) {
+                proposal.state = PROPOSAL_FAIL;
+            };
+            (option::none(), option::none())
         }
     }
 }

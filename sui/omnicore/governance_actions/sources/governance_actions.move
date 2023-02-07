@@ -18,72 +18,90 @@ module governance_actions::governance_actions {
     use wormhole_bridge::bridge_core::{Self, CoreState};
     use wormhole_bridge::bridge_pool::{Self, PoolState};
 
+    /// To prove that this is a proposal, make sure that only the
+    /// functions in the proposal are executed after the vote.
+    struct Certificate has store {}
+
+    public entry fun create_proposal(gov_info: &mut GovernanceInfo, package_id: address, ctx: &mut TxContext) {
+        governance_v1::create_proposal<Certificate>(gov_info, package_id, option::some(Certificate {}), ctx)
+    }
+
     public entry fun vote_init_bridge_cap(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         state: &mut State,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             bridge_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
             bridge_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_init_lending_storage(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
             lending::storage::transfer_app_cap(storage, app_cap);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
 
     public entry fun vote_init_lending_wormhole_adapter(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         wormhole_adapater: &mut WormholeAdapater,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
             lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_init_lending_portal(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         lending_portal: &mut LendingPortal,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let pool_cap = pool::register_cap(&governance_cap, ctx);
             let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(&governance_cap);
@@ -93,73 +111,84 @@ module governance_actions::governance_actions {
             lending_portal::lending::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
             lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_register_evm_chain_id(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         user_manager: &mut UserManagerInfo,
         evm_chain_id: u16,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let user_manager_cap = user_manager::register_cap_with_governance(&governance_cap);
             // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
             user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_register_core_remote_bridge(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         core_state: &mut CoreState,
         emitter_chain_id: u16,
         emitter_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_register_pool_remote_bridge(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         pool_state: &mut PoolState,
         emitter_chain_id: u16,
         emitter_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             bridge_pool::register_remote_bridge(&governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
 
     public entry fun vote_register_new_pool(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         pool_manager_info: &mut PoolManagerInfo,
         pool_dola_address: vector<u8>,
         pool_dola_chain_id: u16,
@@ -167,10 +196,11 @@ module governance_actions::governance_actions {
         dola_pool_id: u16,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let pool_manager_cap = pool_manager::register_cap_with_governance(&governance_cap);
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
@@ -183,14 +213,16 @@ module governance_actions::governance_actions {
                 ctx
             );
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
     }
 
     public entry fun vote_register_new_reserve(
         gov_info: &mut GovernanceInfo,
-        proposal: &mut Proposal,
+        proposal: &mut Proposal<Certificate>,
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
         treasury: u64,
@@ -204,10 +236,11 @@ module governance_actions::governance_actions {
         storage: &mut Storage,
         ctx: &mut TxContext
     ) {
-        let governance_cap = governance_v1::vote_external_cap(gov_info, proposal, true, ctx);
+        let (governance_cap, certificate) = governance_v1::execute_proposal(gov_info, proposal, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
+            let certificate = option::extract(&mut certificate);
             let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
             lending::storage::register_new_reserve(
                 &storage_cap,
@@ -225,8 +258,14 @@ module governance_actions::governance_actions {
                 ctx
             );
             genesis::destroy(governance_cap);
+            confirm_certificate(certificate);
         };
 
-        option::destroy_none(governance_cap)
+        option::destroy_none(governance_cap);
+        option::destroy_none(certificate)
+    }
+
+    fun confirm_certificate(certificate: Certificate) {
+        let Certificate {} = certificate;
     }
 }
