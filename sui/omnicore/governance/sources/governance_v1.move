@@ -202,12 +202,9 @@ module governance::governance_v1 {
         let favor_votes = &mut proposal.favor_votes;
         let against_votes = &mut proposal.against_votes;
 
-        if (option::is_none(&proposal.end_vote) || (option::is_some(
-            &proposal.end_vote
-        ) && current_epoch < *option::borrow(&proposal.end_vote))) {
+        if (option::is_none(&proposal.end_vote) || current_epoch < *option::borrow(&proposal.end_vote)) {
             let voter = tx_context::sender(ctx);
             is_member(goverance_info, voter);
-
 
             assert!(!vector::contains(favor_votes, &voter)
                 && !vector::contains(against_votes, &voter), EALREADY_VOTE);
@@ -217,11 +214,8 @@ module governance::governance_v1 {
             }else {
                 vector::push_back(against_votes, voter);
             };
-        };
-
-        if (option::is_none(&proposal.end_vote) || (option::is_some(
-            &proposal.end_vote
-        ) && current_epoch >= *option::borrow(&proposal.end_vote))) {
+            option::none()
+        } else {
             let members_num = vector::length(&goverance_info.members);
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
@@ -233,8 +227,6 @@ module governance::governance_v1 {
                 };
                 option::none()
             }
-        }else {
-            option::none()
         }
     }
 
