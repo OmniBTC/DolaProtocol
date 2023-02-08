@@ -517,12 +517,14 @@ module lending::storage {
         dola_pool_id: u16,
         new_borrow_index: u256,
         new_liquidity_index: u256,
+        last_update_timestamp: u64,
         mint_to_treasury_scaled: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_index = new_borrow_index;
         reserve.current_liquidity_index = new_liquidity_index;
+        reserve.last_update_timestamp = last_update_timestamp;
 
         // Mint to treasury
         let dola_user_id = table::borrow(&storage.reserves, dola_pool_id).treasury;

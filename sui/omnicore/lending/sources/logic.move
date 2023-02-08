@@ -592,7 +592,15 @@ module lending::logic {
             ray_mul((dtoken_scaled_total_supply as u256), (new_borrow_index - current_borrow_index)),
             treasury_factor
         ) as u64);
-        storage::update_state(cap, storage, dola_pool_id, new_borrow_index, new_liquidity_index, mint_to_treasury);
+        storage::update_state(
+            cap,
+            storage,
+            dola_pool_id,
+            new_borrow_index,
+            new_liquidity_index,
+            current_timestamp,
+            mint_to_treasury
+        );
     }
 
     public fun update_interest_rate(
