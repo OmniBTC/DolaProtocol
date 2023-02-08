@@ -38,8 +38,6 @@ module lending::logic {
 
     const EINVALID_LENGTH: u64 = 7;
 
-    const EZERO_APP_LIQUIDITY: u64 = 8;
-
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -79,8 +77,8 @@ module lending::logic {
         burn_dtoken(cap, storage, violator, loan, actual_liquidable_debt);
         burn_otoken(cap, storage, violator, collateral, actual_liquidable_collateral);
         mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
-        update_interest_rate(cap, pool_manager_info, storage, collateral);
-        update_interest_rate(cap, pool_manager_info, storage, loan);
+        update_interest_rate(cap, pool_manager_info, storage, collateral, liquidator_acquired_collateral);
+        update_interest_rate(cap, pool_manager_info, storage, loan, 0);
         update_average_liquidity(cap, storage, oracle, violator);
         (liquidator_acquired_collateral, excess_repay_amount)
     }
@@ -100,7 +98,7 @@ module lending::logic {
         if (!is_collateral(storage, dola_user_id, dola_pool_id)) {
             add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
@@ -116,13 +114,14 @@ module lending::logic {
         update_state(cap, storage, oracle, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let actual_amount = sui::math::min(withdraw_amount, otoken_amount);
+        
         burn_otoken(cap, storage, dola_user_id, dola_pool_id, actual_amount);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (actual_amount == otoken_amount) {
             remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, actual_amount);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
         actual_amount
     }
@@ -142,16 +141,11 @@ module lending::logic {
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
             add_user_loan(cap, storage, oracle, dola_user_id, borrow_pool_id);
         };
+
         mint_dtoken(cap, storage, dola_user_id, borrow_pool_id, borrow_amount);
 
-        let liquidity = pool_manager::get_app_liquidity(
-            pool_manager_info,
-            borrow_pool_id,
-            get_app_id(storage)
-        );
-        assert!((borrow_amount as u128) <= liquidity, ENOT_ENOUGH_LIQUIDITY);
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id);
+        update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id, borrow_amount);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
@@ -176,7 +170,7 @@ module lending::logic {
                 add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
             }
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id);
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
@@ -608,13 +602,16 @@ module lending::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         dola_pool_id: u16,
+        reduced_liquidity: u64
     ) {
         let liquidity = pool_manager::get_app_liquidity(
             pool_manager_info,
             dola_pool_id,
             get_app_id(storage)
         );
-        assert!(liquidity > 0, EZERO_APP_LIQUIDITY);
+        // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
+        liquidity = liquidity - (reduced_liquidity as u128);
+        assert!(liquidity >= 0, ENOT_ENOUGH_LIQUIDITY);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);
