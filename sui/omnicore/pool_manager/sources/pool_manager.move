@@ -242,8 +242,7 @@ module pool_manager::pool_manager {
         pool: DolaAddress,
         app_id: u16,
         amount: u64,
-    )
-    {
+    ) {
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
         // Update app infos
@@ -390,17 +389,17 @@ module pool_manager::pool_manager {
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == (amount as u128), 0);
 
             remove_liquidity(
-            &cap,
-            &mut pool_manager_info,
-            pool,
-            0,
-        amount
-        );
+                &cap,
+                &mut pool_manager_info,
+                pool,
+                0,
+                amount
+            );
 
-        assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
-        assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);
 
-        test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::end(scenario_val);
     }
