@@ -1,7 +1,7 @@
 /// Voting governance version 1. Using multi-person voting governance,
 /// the number of people over a certain threshold proposal passed.
 /// Note: when reviewing proposal, make sure that the `certificate` in the proposal will only flow to
-// this contract. It is created to avoid the possibility of unknown contracts gaining access
+/// this contract. It is created to avoid the possibility of unknown contracts gaining access
 module governance::governance_v1 {
     use std::option::{Self, Option};
     use std::vector;
@@ -69,7 +69,7 @@ module governance::governance_v1 {
     struct GovernanceInfo has key {
         id: UID,
         // Gonvernance manager cap
-        gonvernance: Option<GovernanceManagerCap>,
+        gonvernance_manager_cap: Option<GovernanceManagerCap>,
         // Governance active state
         active: bool,
         // Proposal announcement period waiting time
@@ -112,7 +112,7 @@ module governance::governance_v1 {
         vector::push_back(&mut members, tx_context::sender(ctx));
         transfer::share_object(GovernanceInfo {
             id: object::new(ctx),
-            gonvernance: option::none(),
+            gonvernance_manager_cap: option::none(),
             active: false,
             announce_delay: 0,
             voting_delay: 0,
@@ -129,13 +129,13 @@ module governance::governance_v1 {
         ctx: &mut TxContext
     ) {
         assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
-        option::fill(&mut governance_info.gonvernance, genesis::new(governance_genesis, ctx));
+        option::fill(&mut governance_info.gonvernance_manager_cap, genesis::new(governance_genesis, ctx));
         governance_info.active = true;
     }
 
     /// After the upgrade, all current governance members will be invalidated.
     public fun upgrade_to_v2(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
-        let governance_manager_cap = option::extract(&mut governance_info.gonvernance);
+        let governance_manager_cap = option::extract(&mut governance_info.gonvernance_manager_cap);
         governance_info.active = false;
         governance_manager_cap
     }
@@ -260,7 +260,7 @@ module governance::governance_v1 {
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
                 proposal.state = PROPOSAL_SUCCESS;
-                return option::some(genesis::create(option::borrow(&governance_info.gonvernance)))
+                return option::some(genesis::create(option::borrow(&governance_info.gonvernance_manager_cap)))
             } else {
                 if (option::is_some(&proposal.end_vote)) {
                     proposal.state = PROPOSAL_FAIL;
@@ -305,5 +305,12 @@ module governance::governance_v1 {
         }else {
             ascii::string(b"VOTING_PENDING")
         }
+    }
+
+    public fun destory_governance_cap(
+        governance_info: &mut GovernanceInfo,
+        governance_cap: GovernanceCap
+    ){
+        genesis::destroy(option::borrow(&governance_info.gonvernance_manager_cap), governance_cap);
     }
 }
