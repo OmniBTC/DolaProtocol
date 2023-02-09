@@ -246,6 +246,7 @@ module governance::governance_v1 {
         let against_votes = &mut proposal.against_votes;
 
         if (option::is_none(&proposal.end_vote) || current_epoch < *option::borrow(&proposal.end_vote)) {
+            // Voting
             assert!(!vector::contains(favor_votes, &voter)
                 && !vector::contains(against_votes, &voter), EALREADY_VOTED);
             if (support) {
@@ -256,6 +257,7 @@ module governance::governance_v1 {
         };
 
         if (option::is_none(&proposal.end_vote) || current_epoch >= *option::borrow(&proposal.end_vote)) {
+            // Execute
             let members_num = vector::length(&governance_info.members);
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
@@ -282,8 +284,8 @@ module governance::governance_v1 {
             assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING, EVOTE_HAS_STARTED);
         };
 
-        let voter = tx_context::sender(ctx);
-        assert!(voter == proposal.creator, ENOT_CREATEOR);
+        let sender = tx_context::sender(ctx);
+        assert!(sender == proposal.creator, ENOT_CREATEOR);
 
         proposal.state = PROPOSAL_CANCEL;
     }
@@ -298,6 +300,8 @@ module governance::governance_v1 {
             ascii::string(b"SUCCESS")
         }else if (proposal.state == PROPOSAL_FAIL) {
             ascii::string(b"FAIL")
+        }else if (proposal.state == PROPOSAL_CANCEL) {
+            ascii::string(b"CANCEL")
         }else if (current_epoch >= proposal.expired) {
             ascii::string(b"EXPIRED")
         }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {

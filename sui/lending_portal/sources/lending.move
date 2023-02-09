@@ -20,9 +20,9 @@ module lending_portal::lending {
 
     const EINVALID_LENGTH: u64 = 0;
 
-    const ENOT_ENOUGH_AMOUNT: u64 = 1;
+    const EAMOUNT_NOT_ENOUGH: u64 = 1;
 
-    const EMUST_ZERO: u64 = 2;
+    const EAMOUNT_MUST_ZERO: u64 = 2;
 
     const EMUST_NONE: u64 = 3;
 
@@ -113,7 +113,7 @@ module lending_portal::lending {
             if (amount == U64_MAX) {
                 split_amount = sum_amount;
             };
-            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
                 transfer::transfer(base_coin, tx_context::sender(ctx));
@@ -123,7 +123,7 @@ module lending_portal::lending {
             }
         }else {
             vector::destroy_empty(coins);
-            assert!(amount == 0, EMUST_ZERO);
+            assert!(amount == 0, EAMOUNT_MUST_ZERO);
             coin::zero<CoinType>(ctx)
         }
     }

@@ -20,9 +20,9 @@ module wormhole_bridge::bridge_pool {
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
 
-    const ENOT_ENOUGH_AMOUNT: u64 = 0;
+    const EAMOUNT_NOT_ENOUGH: u64 = 0;
 
-    const EMUST_ZERO: u64 = 1;
+    const EAMOUNT_MUST_ZERO: u64 = 1;
 
     const U64_MAX: u64 = 18446744073709551615;
 
@@ -243,7 +243,7 @@ module wormhole_bridge::bridge_pool {
             if (amount == U64_MAX) {
                 split_amount = sum_amount;
             };
-            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
                 transfer::transfer(base_coin, tx_context::sender(ctx));
@@ -253,7 +253,7 @@ module wormhole_bridge::bridge_pool {
             }
         }else {
             vector::destroy_empty(coins);
-            assert!(amount == 0, EMUST_ZERO);
+            assert!(amount == 0, EAMOUNT_MUST_ZERO);
             coin::zero<CoinType>(ctx)
         }
     }

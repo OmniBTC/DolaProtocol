@@ -50,14 +50,14 @@ module governance::governance_v2 {
     // Invalid delay setting
     const EINVALID_DELAY: u64 = 2;
 
-    // The user is not members of governance
-    const EINVALID_MEMBER: u64 = 3;
+    // The user is not guardians of governance
+    const EINVALID_GUARDIANS: u64 = 3;
 
-    // The user is already a member of governance
-    const EALREADY_MEMBER: u64 = 4;
+    // The user is already a guardians of governance
+    const EALREADY_GUARDIANS: u64 = 4;
 
-    // The user has voted
-    const EALREADY_VOTED: u64 = 5;
+    // The user has not voted
+    const ENOT_VOTED: u64 = 5;
 
     // Voting has not started
     const EVOTE_NOT_STARTED: u64 = 6;
@@ -71,17 +71,20 @@ module governance::governance_v2 {
     // Voting has expired
     const EVOTE_HAS_EXPIRED: u64 = 9;
 
-    // The user is not a proposal creator
-    const ENOT_CREATEOR: u64 = 10;
-
-    // The user is not a proposal creator
+    // The number of tokens staked to create the proposal is too small
     const EINVALID_PROPOSAL_STAKING: u64 = 10;
 
-    const ENOT_ENOUGH_AMOUNT: u64 = 10;
+    // The number of coin merges is not enough
+    const EAMOUNT_NOT_ENOUGH: u64 = 11;
 
-    const EMUST_ZERO: u64 = 10;
+    // The number of coin must be zero
+    const EAMOUNT_MUST_ZERO: u64 = 12;
 
-    const EINVLID_STAKED_NUM: u64 = 10;
+    // Staked token books cannot be aligned
+    const EINVLID_STAKED_NUM: u64 = 13;
+
+    // Current state cannot claim
+    const EINVLID_CLAIM_STATE: u64 = 14;
 
 
     struct GovernanceInfo has key {
@@ -90,6 +93,8 @@ module governance::governance_v2 {
         governance_manager_cap: Option<GovernanceManagerCap>,
         // Governance token type
         governance_coin_type: Option<TypeName>,
+        // Guardians
+        guardians: vector<address>,
         // Governance active state
         active: bool,
         // Proposal announcement period waiting time
@@ -136,15 +141,16 @@ module governance::governance_v2 {
     }
 
     fun init(ctx: &mut TxContext) {
-        let members = vector::empty<address>();
-        vector::push_back(&mut members, tx_context::sender(ctx));
+        let guardians = vector::empty<address>();
+        vector::push_back(&mut guardians, tx_context::sender(ctx));
         transfer::share_object(GovernanceInfo {
             id: object::new(ctx),
             governance_manager_cap: option::none(),
             governance_coin_type: option::none(),
+            guardians: vector::empty(),
             active: false,
             announce_delay: 0,
-            voting_delay: 0,
+            voting_delay: 1,
             max_delay: 30,
             proposal_minimum_staking: 0,
             voting_minimum_staking: 0,
@@ -164,11 +170,29 @@ module governance::governance_v2 {
         governance_info.active = true;
     }
 
-    /// After the upgrade, all current governance members will be invalidated.
+    /// After the upgrade, all current governance guardians will be invalidated.
     public fun upgrade(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
         let governance_manager_cap = option::extract(&mut governance_info.governance_manager_cap);
         governance_info.active = false;
         governance_manager_cap
+    }
+
+    /// Check if the user is a guardians of governance
+    public fun check_guardians(governance_info: &GovernanceInfo, guardians: address) {
+        assert!(vector::contains(&governance_info.guardians, &guardians), EINVALID_GUARDIANS)
+    }
+
+    /// Add guardians through governance.
+    public fun add_guardians(_: &GovernanceCap, governance_info: &mut GovernanceInfo, guardians: address) {
+        assert!(!vector::contains(&mut governance_info.guardians, &guardians), EALREADY_GUARDIANS);
+        vector::push_back(&mut governance_info.guardians, guardians)
+    }
+
+    /// Remove guardians through governance.
+    public fun remove_guardians(_: &GovernanceCap, governance_info: &mut GovernanceInfo, guardians: address) {
+        check_guardians(governance_info, guardians);
+        let (_, index) = vector::index_of(&mut governance_info.guardians, &guardians);
+        vector::remove(&mut governance_info.guardians, index);
     }
 
     /// Update minimum staking through governance
@@ -225,7 +249,7 @@ module governance::governance_v2 {
             if (amount == U64_MAX) {
                 split_amount = sum_amount;
             };
-            assert!(sum_amount >= split_amount, ENOT_ENOUGH_AMOUNT);
+            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
                 transfer::transfer(base_coin, tx_context::sender(ctx));
@@ -235,7 +259,7 @@ module governance::governance_v2 {
             }
         }else {
             vector::destroy_empty(coins);
-            assert!(amount == 0, EMUST_ZERO);
+            assert!(amount == 0, EAMOUNT_MUST_ZERO);
             coin::zero<CoinType>(ctx)
         }
     }
@@ -312,6 +336,7 @@ module governance::governance_v2 {
         let staked_coin = merge_coin(staked_coins, staked_amount, ctx);
 
         if (current_epoch < proposal.end_vote) {
+            // Voting
             balance::join(&mut proposal.staked_coin, coin::into_balance(staked_coin));
             if (support) {
                 proposal.favor_num = proposal.favor_num + staked_amount;
@@ -346,6 +371,7 @@ module governance::governance_v2 {
             );
             option::none()
         }else {
+            // Execute
             coin::destroy_zero(staked_coin);
             let votes_num = proposal.favor_num + proposal.against_num;
             if (ensure_two_thirds(
@@ -364,6 +390,7 @@ module governance::governance_v2 {
     /// Proposals can only be cancelled if they are advertised or expired and the creator of the proposal
     /// can cancel the proposal
     public entry fun cancel_proposal<T: store + drop, CoinType>(
+        governance_info: &GovernanceInfo,
         proposal: &mut Proposal<T, CoinType>,
         ctx: &mut TxContext
     ) {
@@ -372,8 +399,8 @@ module governance::governance_v2 {
             assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING, EVOTE_HAS_STARTED);
         };
 
-        let voter = tx_context::sender(ctx);
-        assert!(voter == proposal.creator, ENOT_CREATEOR);
+        let sender = tx_context::sender(ctx);
+        check_guardians(governance_info, sender);
 
         proposal.state = PROPOSAL_CANCEL;
     }
@@ -388,12 +415,55 @@ module governance::governance_v2 {
             ascii::string(b"SUCCESS")
         }else if (proposal.state == PROPOSAL_FAIL) {
             ascii::string(b"FAIL")
+        }else if (proposal.state == PROPOSAL_CANCEL) {
+            ascii::string(b"CANCEL")
         }else if (current_epoch >= proposal.expired) {
             ascii::string(b"EXPIRED")
         }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
             ascii::string(b"ANNOUNCEMENT_PENDING")
         }else {
             ascii::string(b"VOTING_PENDING")
+        }
+    }
+
+    public fun destory_governance_cap(
+        governance_info: &mut GovernanceInfo,
+        governance_cap: GovernanceCap
+    ) {
+        genesis::destroy(option::borrow(&governance_info.governance_manager_cap), governance_cap);
+    }
+
+    public entry fun claim<T: store + drop, CoinType>(
+        proposal: &mut Proposal<T, CoinType>,
+        ctx: &mut TxContext
+    ) {
+        let current_epoch = tx_context::epoch(ctx);
+
+        assert!((proposal.state == PROPOSAL_SUCCESS
+            || proposal.state == PROPOSAL_FAIL
+            || proposal.state == PROPOSAL_CANCEL
+            || current_epoch >= proposal.expired), EINVLID_CLAIM_STATE);
+
+        let sender = tx_context::sender(ctx);
+        let favor_votes = &mut proposal.favor_votes;
+        let against_votes = &mut proposal.against_votes;
+
+        if (table::contains(favor_votes, sender)) {
+            let user_favor_num = table::remove(favor_votes, sender);
+            transfer::transfer(
+                coin::from_balance(balance::split(&mut proposal.staked_coin, user_favor_num), ctx),
+                sender
+            );
+            proposal.favor_num = proposal.favor_num - user_favor_num;
+        }else if (table::contains(against_votes, sender)) {
+            let user_against_num = table::remove(against_votes, sender);
+            transfer::transfer(
+                coin::from_balance(balance::split(&mut proposal.staked_coin, user_against_num), ctx),
+                sender
+            );
+            proposal.against_num = proposal.against_num - user_against_num;
+        }else {
+            abort ENOT_VOTED
         }
     }
 }
