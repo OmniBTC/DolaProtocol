@@ -63,6 +63,10 @@ module governance::governance_v1 {
 
     const ENOT_ACTIVE: u64 = 15;
 
+    const EVOTE_HAS_START: u64 = 16;
+
+    const ENOT_CREATEOR: u64 = 17;
+
 
     struct GovernanceInfo has key {
         id: UID,
@@ -138,19 +142,19 @@ module governance::governance_v1 {
         governance_manager_cap
     }
 
-    public fun is_member(governance_info: &GovernanceInfo, member: address) {
+    public fun check_member(governance_info: &GovernanceInfo, member: address) {
         assert!(vector::contains(&governance_info.members, &member), ENOT_MEMBER)
     }
 
-    /// Add members through governance.
+    /// Add members through governance. Need to be completed through governance.
     public fun add_member(_: &GovernanceCap, governance_info: &mut GovernanceInfo, member: address) {
         assert!(!vector::contains(&mut governance_info.members, &member), EALREADY_MEMBER);
         vector::push_back(&mut governance_info.members, member)
     }
 
-    /// Remove members through governance.
+    /// Remove members through governance. Need to be completed through governance.
     public fun remove_member(_: &GovernanceCap, governance: &mut GovernanceInfo, member: address) {
-        is_member(governance, member);
+        check_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
         vector::remove(&mut governance.members, index);
     }
@@ -177,7 +181,7 @@ module governance::governance_v1 {
         assert!(governance_info.active, ENOT_ACTIVE);
         let creator = tx_context::sender(ctx);
 
-        is_member(governance_info, creator);
+        check_member(governance_info, creator);
 
         let start_vote = tx_context::epoch(ctx) + governance_info.announce_delay;
         let end_vote;
@@ -223,7 +227,7 @@ module governance::governance_v1 {
         assert!(proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETE);
 
         let voter = tx_context::sender(ctx);
-        is_member(governance_info, voter);
+        check_member(governance_info, voter);
 
         let favor_votes = &mut proposal.favor_votes;
         let against_votes = &mut proposal.against_votes;
@@ -252,6 +256,23 @@ module governance::governance_v1 {
             }
         };
         option::none()
+    }
+
+    /// Proposals can only be cancelled if they are advertised or expired and the creator of the proposal
+    /// can cancel the proposal
+    public entry fun cancel_proposal<T: store + drop>(
+        proposal: &mut Proposal<T>,
+        ctx: &mut TxContext
+    ) {
+        let current_epoch = tx_context::epoch(ctx);
+        if (current_epoch < proposal.expired) {
+            assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING, EVOTE_HAS_START);
+        };
+
+        let voter = tx_context::sender(ctx);
+        assert!(voter == proposal.creator, ENOT_CREATEOR);
+
+        proposal.state = PROPOSAL_CANCEL;
     }
 
     /// Get proposal state
