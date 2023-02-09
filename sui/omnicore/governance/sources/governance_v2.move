@@ -426,6 +426,7 @@ module governance::governance_v2 {
         }
     }
 
+    /// Destory governance cap
     public fun destory_governance_cap(
         governance_info: &mut GovernanceInfo,
         governance_cap: GovernanceCap
@@ -433,6 +434,7 @@ module governance::governance_v2 {
         genesis::destroy(option::borrow(&governance_info.governance_manager_cap), governance_cap);
     }
 
+    /// After the proposal ends, get back the staked governance tokens
     public entry fun claim<T: store + drop, CoinType>(
         proposal: &mut Proposal<T, CoinType>,
         ctx: &mut TxContext
@@ -465,5 +467,10 @@ module governance::governance_v2 {
         }else {
             abort ENOT_VOTED
         }
+    }
+
+    #[test]
+    public fun test_execute_proposal() {
+        // todo! fix
     }
 }

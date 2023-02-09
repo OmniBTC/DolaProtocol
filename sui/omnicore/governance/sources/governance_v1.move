@@ -311,10 +311,16 @@ module governance::governance_v1 {
         }
     }
 
+    /// Destory governance cap
     public fun destory_governance_cap(
         governance_info: &mut GovernanceInfo,
         governance_cap: GovernanceCap
     ) {
         genesis::destroy(option::borrow(&governance_info.governance_manager_cap), governance_cap);
+    }
+
+    #[test]
+    public fun test_execute_proposal() {
+        // todo! fix
     }
 }
