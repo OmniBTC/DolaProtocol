@@ -67,6 +67,8 @@ module governance::governance_v1 {
 
     const ENOT_CREATEOR: u64 = 17;
 
+    const EINVALID_DELAY: u64 = 18;
+
 
     struct GovernanceInfo has key {
         id: UID,
@@ -157,6 +159,19 @@ module governance::governance_v1 {
         check_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
         vector::remove(&mut governance.members, index);
+    }
+
+    public fun update_delay(
+        _: &GovernanceCap,
+        governance: &mut GovernanceInfo,
+        announce_delay: u64,
+        voting_delay: u64,
+        max_delay: u64
+    ) {
+        assert!(max_delay > voting_delay + announce_delay, EINVALID_DELAY);
+        governance.announce_delay = announce_delay;
+        governance.voting_delay = voting_delay;
+        governance.max_delay = max_delay;
     }
 
     public fun ensure_two_thirds(members_num: u64, votes_num: u64): bool {
