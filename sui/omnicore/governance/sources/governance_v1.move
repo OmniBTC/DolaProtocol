@@ -15,6 +15,7 @@ module governance::governance_v1 {
     use std::ascii;
 
     /// Proposal State
+    /// PROPOSAL_ANNOUNCEMENT_PENDING -> PROPOSAL_VOTING_PENDING -> PROPOSAL_SUCCESS/PROPOSAL_FAIL
     // Proposal announcement waiting period
     const PROPOSAL_ANNOUNCEMENT_PENDING: u8 = 1;
 
@@ -31,43 +32,38 @@ module governance::governance_v1 {
     const PROPOSAL_CANCEL: u8 = 5;
 
     /// Errors
-    const ENOT_MEMBER: u64 = 0;
+    // This governance has active
+    const EHAS_ACTIVE: u64 = 0;
 
-    const EALREADY_VOTE: u64 = 1;
+    // This governance hasn't active
+    const ENOT_ACTIVE: u64 = 1;
 
-    const EALREADY_MEMBER: u64 = 2;
+    // Invalid delay setting
+    const EINVALID_DELAY: u64 = 2;
 
-    const EWRONG_VOTE_TYPE: u64 = 3;
+    // The user is not members of governance
+    const EINVALID_MEMBER: u64 = 3;
 
-    const ENOT_BENEFICIARY: u64 = 4;
+    // The user is already a member of governance
+    const EALREADY_MEMBER: u64 = 4;
 
-    const ECANNOT_CLAIM: u64 = 5;
+    // The user has voted
+    const EALREADY_VOTED: u64 = 5;
 
-    const EVOTE_NOT_COMPLETE: u64 = 6;
+    // Voting has not started
+    const EVOTE_NOT_STARTED: u64 = 6;
 
-    const EALREADY_EXIST: u64 = 7;
+    // Voting has started
+    const EVOTE_HAS_STARTED: u64 = 7;
 
-    const EMUST_NONE: u64 = 8;
+    // Voting has completed
+    const EVOTE_HAS_COMPLETED: u64 = 8;
 
-    const EMUST_SOME: u64 = 9;
+    // Voting has expired
+    const EVOTE_HAS_EXPIRED: u64 = 9;
 
-    const EVOTE_HAS_COMPLETE: u64 = 10;
-
-    const EVOTE_NOT_START: u64 = 11;
-
-    const EVOTE_NOT_END: u64 = 12;
-
-    const EVOTE_HAS_EXPIRED: u64 = 13;
-
-    const EHAS_ACTIVATED: u64 = 14;
-
-    const ENOT_ACTIVE: u64 = 15;
-
-    const EVOTE_HAS_START: u64 = 16;
-
-    const ENOT_CREATEOR: u64 = 17;
-
-    const EINVALID_DELAY: u64 = 18;
+    // The user is not a proposal creator
+    const ENOT_CREATEOR: u64 = 10;
 
 
     struct GovernanceInfo has key {
@@ -132,7 +128,7 @@ module governance::governance_v1 {
         governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
-        assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVATED);
+        assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
         option::fill(&mut governance_info.gonvernance, genesis::new(governance_genesis, ctx));
         governance_info.active = true;
     }
@@ -144,23 +140,25 @@ module governance::governance_v1 {
         governance_manager_cap
     }
 
+    /// Check if the user is a member of governance
     public fun check_member(governance_info: &GovernanceInfo, member: address) {
-        assert!(vector::contains(&governance_info.members, &member), ENOT_MEMBER)
+        assert!(vector::contains(&governance_info.members, &member), EINVALID_MEMBER)
     }
 
-    /// Add members through governance. Need to be completed through governance.
+    /// Add members through governance.
     public fun add_member(_: &GovernanceCap, governance_info: &mut GovernanceInfo, member: address) {
         assert!(!vector::contains(&mut governance_info.members, &member), EALREADY_MEMBER);
         vector::push_back(&mut governance_info.members, member)
     }
 
-    /// Remove members through governance. Need to be completed through governance.
+    /// Remove members through governance.
     public fun remove_member(_: &GovernanceCap, governance: &mut GovernanceInfo, member: address) {
         check_member(governance, member);
         let (_, index) = vector::index_of(&mut governance.members, &member);
         vector::remove(&mut governance.members, index);
     }
 
+    /// Update delay through governance
     public fun update_delay(
         _: &GovernanceCap,
         governance: &mut GovernanceInfo,
@@ -232,14 +230,14 @@ module governance::governance_v1 {
         ctx: &mut TxContext
     ): Option<GovernanceCap> {
         let current_epoch = tx_context::epoch(ctx);
-        assert!(current_epoch >= proposal.start_vote, EVOTE_NOT_START);
+        assert!(current_epoch >= proposal.start_vote, EVOTE_NOT_STARTED);
         assert!(current_epoch < proposal.expired, EVOTE_HAS_EXPIRED);
 
         if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
             proposal.state = PROPOSAL_VOTING_PENDING
         };
 
-        assert!(proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETE);
+        assert!(proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETED);
 
         let voter = tx_context::sender(ctx);
         check_member(governance_info, voter);
@@ -249,7 +247,7 @@ module governance::governance_v1 {
 
         if (option::is_none(&proposal.end_vote) || current_epoch < *option::borrow(&proposal.end_vote)) {
             assert!(!vector::contains(favor_votes, &voter)
-                && !vector::contains(against_votes, &voter), EALREADY_VOTE);
+                && !vector::contains(against_votes, &voter), EALREADY_VOTED);
             if (support) {
                 vector::push_back(favor_votes, voter);
             }else {
@@ -281,7 +279,7 @@ module governance::governance_v1 {
     ) {
         let current_epoch = tx_context::epoch(ctx);
         if (current_epoch < proposal.expired) {
-            assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING, EVOTE_HAS_START);
+            assert!(proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING, EVOTE_HAS_STARTED);
         };
 
         let voter = tx_context::sender(ctx);
