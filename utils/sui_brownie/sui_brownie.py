@@ -537,7 +537,8 @@ class SuiPackage:
                  network: str = "sui-devnet",
                  is_compile: bool = False,
                  package_id: str = None,
-                 package_path: Union[Path, str] = None
+                 package_path: Union[Path, str] = None,
+                 mnemonic: str = None
                  ):
         """
         :param brownie_config: The folder where brownie-config.yaml is located.
@@ -571,7 +572,9 @@ class SuiPackage:
             env = dotenv_values(self.brownie_config.joinpath(self.config["dotenv"]))
             self.private_key = None
             self.mnemonic = None
-            if env.get("PRIVATE_KEY_SUI", None) is not None:
+            if mnemonic is not None:
+                self.mnemonic = mnemonic
+            elif env.get("PRIVATE_KEY_SUI", None) is not None:
                 self.private_key = env.get("PRIVATE_KEY_SUI")
             elif env.get("PRIVATE_KEY", None) is not None:
                 self.private_key = env.get("PRIVATE_KEY")
