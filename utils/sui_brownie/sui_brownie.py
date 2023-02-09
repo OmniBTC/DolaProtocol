@@ -1133,7 +1133,12 @@ class SuiPackage:
     def judge_ctx(param) -> bool:
         if not isinstance(param, dict):
             return False
-        final_arg = param.get("MutableReference", dict()).get("Struct", dict())
+        if "MutableReference" in param:
+            final_arg = param["MutableReference"].get("Struct", dict())
+        elif "Reference" in param:
+            final_arg = param["Reference"].get("Struct", dict())
+        else:
+            final_arg = {}
         if final_arg.get("address", None) == "0x2" \
                 and final_arg.get("module", None) == "tx_context" \
                 and final_arg.get("name", None) == "TxContext":
