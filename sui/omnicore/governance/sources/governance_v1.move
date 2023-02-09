@@ -132,7 +132,7 @@ module governance::governance_v1 {
         governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
-        assert!(!governance_info.active, EHAS_ACTIVATED);
+        assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVATED);
         option::fill(&mut governance_info.gonvernance, genesis::new(governance_genesis, ctx));
         governance_info.active = true;
     }
