@@ -43,7 +43,7 @@ module governance::genesis {
         GovernanceCap {}
     }
 
-    public fun destroy(_: &GovernanceManagerCap, governance_cap: GovernanceCap) {
+    public fun destroy(governance_cap: GovernanceCap) {
         let GovernanceCap {} = governance_cap;
     }
 

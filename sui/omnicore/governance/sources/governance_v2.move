@@ -5,21 +5,22 @@
 module governance::governance_v2 {
     use std::option::{Self, Option};
     use std::vector;
+    use std::ascii::{Self, String};
+    use std::type_name::{Self, TypeName};
 
     use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap};
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use std::ascii::String;
-    use std::type_name;
-    use std::ascii;
-    use std::type_name::TypeName;
-    use sui::balance::Balance;
-    use sui::table::Table;
-    use sui::coin::Coin;
-    use sui::coin;
-    use sui::table;
-    use sui::balance;
+    use sui::balance::{Self, Balance};
+    use sui::table::{Self, Table};
+    use sui::coin::{Self, Coin};
+    #[test_only]
+    use sui::test_scenario::Scenario;
+    #[test_only]
+    use sui::test_scenario;
+    #[test_only]
+    use governance::governance_v1;
 
     const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
 
@@ -429,10 +430,9 @@ module governance::governance_v2 {
 
     /// Destory governance cap
     public fun destory_governance_cap(
-        governance_info: &GovernanceInfo,
         governance_cap: GovernanceCap
     ) {
-        genesis::destroy(option::borrow(&governance_info.governance_manager_cap), governance_cap);
+        genesis::destroy(governance_cap);
     }
 
     /// After the proposal ends, get back the staked governance tokens
@@ -470,8 +470,146 @@ module governance::governance_v2 {
         }
     }
 
+    #[test_only]
+    struct DOLA has drop {}
+
+    #[test_only]
+    public fun init_coin(
+        members: vector<address>,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let supply = balance::create_supply(DOLA {});
+        let i = 0;
+        while (i < vector::length(&members)) {
+            transfer::transfer(
+                coin::from_balance(balance::increase_supply(&mut supply, amount), ctx),
+                *vector::borrow(&members, i)
+            );
+            i = i + 1;
+        };
+        balance::destroy_supply_for_testing(supply);
+    }
+
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
+    }
+
+    #[test_only]
+    struct Certificate has store, drop {}
+
+
+    #[test_only]
+    public fun test_active_governance(
+        governance: address,
+        scenario: &mut Scenario
+    ) {
+        // init
+        {
+            init_for_testing(test_scenario::ctx(scenario));
+        };
+
+        // active governance v1
+        test_scenario::next_tx(scenario, governance);
+        {
+            governance_v1::test_active_governance(governance, scenario);
+        };
+
+        // upgrade v1 to v2 and active governance v2
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<governance_v1::GovernanceInfo>(scenario);
+            governance_v1::create_proposal(&governance_info, Certificate {}, test_scenario::ctx(scenario));
+            test_scenario::return_shared(governance_info);
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info_v1 = test_scenario::take_shared<governance_v1::GovernanceInfo>(scenario);
+            let proposal = test_scenario::take_shared<governance_v1::Proposal<Certificate>>(scenario);
+            let governance_cap = governance_v1::vote_proposal(
+                &mut governance_info_v1,
+                Certificate {},
+                &mut proposal,
+                true,
+                test_scenario::ctx(scenario)
+            );
+            let governance_cap = option::destroy_some(governance_cap);
+            let governance_manager_cap = governance_v1::upgrade(&governance_cap, &mut governance_info_v1);
+            let governance_info_v2 = test_scenario::take_shared<GovernanceInfo>(scenario);
+            activate_governance(
+                &governance_cap,
+                &mut governance_info_v2,
+                type_name::get<DOLA>(),
+                governance_manager_cap
+            );
+            assert!(governance_info_v2.active, 0);
+            destory_governance_cap(governance_cap);
+
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(governance_info_v1);
+            test_scenario::return_shared(governance_info_v2);
+        };
+    }
+
     #[test]
-    public fun test_execute_proposal() {
-        // todo! fix
+    public fun test_update_guardians() {
+        let governance = @governance;
+        let scenario_val = test_scenario::begin(governance);
+        let scenario = &mut scenario_val;
+
+        test_active_governance(governance, scenario);
+
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_update_delay() {
+        let governance = @governance;
+        let scenario_val = test_scenario::begin(governance);
+        let scenario = &mut scenario_val;
+
+        test_active_governance(governance, scenario);
+
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_update_minumum_staking() {
+        let governance = @governance;
+        let scenario_val = test_scenario::begin(governance);
+        let scenario = &mut scenario_val;
+
+        test_active_governance(governance, scenario);
+
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_cancel_proposal() {
+        let governance = @governance;
+        let scenario_val = test_scenario::begin(governance);
+        let scenario = &mut scenario_val;
+
+        test_active_governance(governance, scenario);
+
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_upgrade() {
+        let governance = @governance;
+        let scenario_val = test_scenario::begin(governance);
+        let scenario = &mut scenario_val;
+
+        test_active_governance(governance, scenario);
+
+
+        test_scenario::end(scenario_val);
     }
 }
