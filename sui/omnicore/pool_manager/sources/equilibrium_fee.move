@@ -12,13 +12,44 @@ module pool_manager::equilibrium_fee {
         ray_div((weight as u256), (total_weight as u256))
     }
 
+    public fun calculate_equilibrium_reward(
+        total_liquidity: u256,
+        current_liquidity: u256,
+        deposit_amount: u256,
+        expected_ratio: u256,
+        total_equilibrium_reward: u256
+    ): u256 {
+        let before_liquidity_ratio = ray_div(
+            ray_div(current_liquidity, total_liquidity),
+            expected_ratio
+        );
+        let after_liquidity_ratio = ray_div(
+            ray_div(current_liquidity + deposit_amount, total_liquidity + deposit_amount),
+            expected_ratio
+        );
+
+        if (before_liquidity_ratio >= ALPHA_1) {
+            0
+        } else {
+            if (after_liquidity_ratio >= ALPHA_1) {
+                total_equilibrium_reward
+            } else {
+                let reward_ratio = ray_div(
+                    after_liquidity_ratio - before_liquidity_ratio,
+                    ALPHA_1 - before_liquidity_ratio
+                );
+                ray_mul(total_equilibrium_reward, reward_ratio)
+            }
+        }
+    }
+
     public fun calculate_equilibrium_fee(
         total_liquidity: u256,
         current_liquidity: u256,
         withdraw_amount: u256,
         expected_ratio: u256
     ): u256 {
-        let current_ratio = ray_div(
+        let after_liquidity_ratio = ray_div(
             ray_div(current_liquidity - withdraw_amount, total_liquidity - withdraw_amount),
             expected_ratio
         );
@@ -30,10 +61,10 @@ module pool_manager::equilibrium_fee {
             )
         } else { 0 };
 
-        if (current_ratio > ALPHA_1) {
+        if (after_liquidity_ratio > ALPHA_1) {
             0
         } else {
-            let fee_rate = ray_div(ray_mul(ALPHA_1 - current_ratio, LAMBDA_1), ALPHA_1);
+            let fee_rate = ray_div(ray_mul(ALPHA_1 - after_liquidity_ratio, LAMBDA_1), ALPHA_1);
             let fee = ray_div(ray_mul(
                 (total_liquidity - current_liquidity) * ray_mul(fee_rate, ray_ln2()),
                 ray_log2(ray_div(total_liquidity - n_start, total_liquidity - withdraw_amount))
