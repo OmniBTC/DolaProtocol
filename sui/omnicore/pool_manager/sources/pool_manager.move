@@ -319,12 +319,12 @@ module pool_manager::pool_manager {
         assert!(table::contains(app_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let app_liquidity = &mut table::borrow_mut(app_infos, dola_pool_id).app_liquidity;
         let cur_app_liquidity = table::borrow_mut(app_liquidity, app_id);
-        cur_app_liquidity.value = cur_app_liquidity.value - (actual_amount as u128);
+        cur_app_liquidity.value = cur_app_liquidity.value - (amount as u128);
 
         // Update pool infos
-        assert!(pool_liquidity.balance >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-        pool_info.reserve.value = pool_info.reserve.value - (actual_amount as u128);
-        pool_liquidity.balance = pool_liquidity.balance - (actual_amount as u128);
+        assert!(pool_liquidity.balance >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        pool_info.reserve.value = pool_info.reserve.value - (amount as u128);
+        pool_liquidity.balance = pool_liquidity.balance - (amount as u128);
         pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + (euqibrium_fee as u128);
 
         (actual_amount, euqibrium_fee)
@@ -357,7 +357,7 @@ module pool_manager::pool_manager {
 
             let cap = register_manager_cap_for_testing();
 
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
+            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -382,7 +382,7 @@ module pool_manager::pool_manager {
 
             let cap = register_manager_cap_for_testing();
 
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
+            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -427,7 +427,7 @@ module pool_manager::pool_manager {
 
             let cap = register_manager_cap_for_testing();
 
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, test_scenario::ctx(scenario));
+            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
 
             test_scenario::return_shared(pool_manager_info);
         };

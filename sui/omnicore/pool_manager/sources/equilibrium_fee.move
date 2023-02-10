@@ -5,8 +5,8 @@ module pool_manager::equilibrium_fee {
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const ALPHA_1: u256 = 600000000000000000000000000;
 
-    /// Fee ratio 0.05%
-    const LAMBDA_1: u256 = 500000000000000000000000;
+    /// Fee ratio 0.5%
+    const LAMBDA_1: u256 = 5000000000000000000000000;
 
     public fun calculate_expected_ratio(total_weight: u16, weight: u8): u256 {
         ray_div((weight as u256), (total_weight as u256))
@@ -19,10 +19,12 @@ module pool_manager::equilibrium_fee {
         expected_ratio: u256,
         total_equilibrium_reward: u256
     ): u256 {
-        let before_liquidity_ratio = ray_div(
-            ray_div(current_liquidity, total_liquidity),
-            expected_ratio
-        );
+        let before_liquidity_ratio = if (total_liquidity > 0) {
+            ray_div(
+                ray_div(current_liquidity, total_liquidity),
+                expected_ratio
+            )
+        } else { 0 };
         let after_liquidity_ratio = ray_div(
             ray_div(current_liquidity + deposit_amount, total_liquidity + deposit_amount),
             expected_ratio
@@ -49,10 +51,12 @@ module pool_manager::equilibrium_fee {
         withdraw_amount: u256,
         expected_ratio: u256
     ): u256 {
-        let after_liquidity_ratio = ray_div(
-            ray_div(current_liquidity - withdraw_amount, total_liquidity - withdraw_amount),
-            expected_ratio
-        );
+        let after_liquidity_ratio = if (total_liquidity > withdraw_amount) {
+            ray_div(
+                ray_div(current_liquidity - withdraw_amount, total_liquidity - withdraw_amount),
+                expected_ratio
+            )
+        } else { 0 };
 
         let n_start = if (current_liquidity > ray_mul(ray_mul(total_liquidity, expected_ratio), ALPHA_1)) {
             ray_div(
@@ -61,7 +65,9 @@ module pool_manager::equilibrium_fee {
             )
         } else { 0 };
 
-        if (after_liquidity_ratio > ALPHA_1) {
+        if (after_liquidity_ratio == 0) {
+            withdraw_amount
+        } else if (after_liquidity_ratio > ALPHA_1) {
             0
         } else {
             let fee_rate = ray_div(ray_mul(ALPHA_1 - after_liquidity_ratio, LAMBDA_1), ALPHA_1);
