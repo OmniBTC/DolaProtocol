@@ -37,7 +37,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
             bridge_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
             bridge_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -57,7 +57,7 @@ module genesis_proposal::genesis_proposal {
 
             let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
             lending::storage::transfer_app_cap(storage, app_cap);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -77,7 +77,7 @@ module genesis_proposal::genesis_proposal {
 
             let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
             lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -102,7 +102,7 @@ module genesis_proposal::genesis_proposal {
             lending_portal::lending::transfer_storage_cap(lending_portal, storage_cap);
             lending_portal::lending::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
             lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -123,7 +123,7 @@ module genesis_proposal::genesis_proposal {
             let user_manager_cap = user_manager::register_cap_with_governance(&governance_cap);
             // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
             user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -143,7 +143,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -163,7 +163,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             bridge_pool::register_remote_bridge(&governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -196,7 +196,7 @@ module genesis_proposal::genesis_proposal {
                 dola_pool_id,
                 ctx
             );
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -238,7 +238,7 @@ module genesis_proposal::genesis_proposal {
                 optimal_utilization,
                 ctx
             );
-            governance_v1::destory_governance_cap(governance_info, governance_cap);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
