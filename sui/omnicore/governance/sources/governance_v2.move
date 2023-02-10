@@ -158,8 +158,9 @@ module governance::governance_v2 {
         });
     }
 
-    /// Activate the current version of governance.
+    /// Activate the current version of governance through governance after v1.
     public fun activate_governance(
+        _: &GovernanceCap,
         governance_info: &mut GovernanceInfo,
         governance_coin_type: TypeName,
         governance_manager_cap: GovernanceManagerCap
@@ -428,7 +429,7 @@ module governance::governance_v2 {
 
     /// Destory governance cap
     public fun destory_governance_cap(
-        governance_info: &mut GovernanceInfo,
+        governance_info: &GovernanceInfo,
         governance_cap: GovernanceCap
     ) {
         genesis::destroy(option::borrow(&governance_info.governance_manager_cap), governance_cap);
