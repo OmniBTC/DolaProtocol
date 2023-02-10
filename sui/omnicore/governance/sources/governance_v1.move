@@ -229,7 +229,7 @@ module governance::governance_v1 {
     /// `certificate`: The purpose of passing in the certificate is to ensure that the
     /// vote_proposal is only called by the proposal contract
     public fun vote_proposal<T: store + drop>(
-        governance_info: &mut GovernanceInfo,
+        governance_info: &GovernanceInfo,
         _certificate: T,
         proposal: &mut Proposal<T>,
         support: bool,
@@ -381,7 +381,7 @@ module governance::governance_v1 {
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
             let proposal = test_scenario::take_shared<Proposal<Certificate>>(scenario);
             let governance_cap = vote_proposal(
-                &mut governance_info,
+                &governance_info,
                 Certificate {},
                 &mut proposal,
                 true,
@@ -409,7 +409,7 @@ module governance::governance_v1 {
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
             let proposal = test_scenario::take_shared<Proposal<Certificate>>(scenario);
             let governance_cap = vote_proposal(
-                &mut governance_info,
+                &governance_info,
                 Certificate {},
                 &mut proposal,
                 true,
@@ -429,7 +429,7 @@ module governance::governance_v1 {
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
             let proposal = test_scenario::take_shared<Proposal<Certificate>>(scenario);
             let governance_cap = vote_proposal(
-                &mut governance_info,
+                &governance_info,
                 Certificate {},
                 &mut proposal,
                 true,
@@ -467,7 +467,7 @@ module governance::governance_v1 {
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
             let proposal = test_scenario::take_shared<Proposal<Certificate>>(scenario);
             let governance_cap = vote_proposal(
-                &mut governance_info,
+                &governance_info,
                 Certificate {},
                 &mut proposal,
                 true,
@@ -535,7 +535,7 @@ module governance::governance_v1 {
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
             let proposal = test_scenario::take_shared<Proposal<Certificate>>(scenario);
             let governance_cap = vote_proposal(
-                &mut governance_info,
+                &governance_info,
                 Certificate {},
                 &mut proposal,
                 true,

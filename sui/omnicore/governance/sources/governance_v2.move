@@ -21,6 +21,8 @@ module governance::governance_v2 {
     use sui::test_scenario;
     #[test_only]
     use governance::governance_v1;
+    #[test_only]
+    use governance::genesis::GovernanceGenesis;
 
     const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
 
@@ -313,7 +315,7 @@ module governance::governance_v2 {
     /// `certificate`: The purpose of passing in the certificate is to ensure that the
     /// vote_proposal is only called by the proposal contract
     public fun vote_proposal<T: store + drop, CoinType>(
-        governance_info: &mut GovernanceInfo,
+        governance_info: &GovernanceInfo,
         _certificate: T,
         proposal: &mut Proposal<T, CoinType>,
         staked_coins: vector<Coin<CoinType>>,
@@ -544,7 +546,9 @@ module governance::governance_v2 {
                 type_name::get<DOLA>(),
                 governance_manager_cap
             );
+            update_minumum_staking(&governance_cap, &mut governance_info_v2, 100, 1000);
             assert!(governance_info_v2.active, 0);
+            assert!(governance_info_v2.voting_minimum_staking == 1000, 0);
             destory_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
@@ -556,47 +560,100 @@ module governance::governance_v2 {
     #[test]
     public fun test_update_guardians() {
         let governance = @governance;
+        let governance_second_member = @11;
         let scenario_val = test_scenario::begin(governance);
         let scenario = &mut scenario_val;
 
         test_active_governance(governance, scenario);
 
 
-        test_scenario::end(scenario_val);
-    }
+        test_scenario::next_tx(scenario, governance);
+        {
+            let members = vector::empty<address>();
+            vector::push_back(&mut members, governance);
+            vector::push_back(&mut members, governance_second_member);
+            init_coin(members, 10000, test_scenario::ctx(scenario));
+        };
 
-    #[test]
-    public fun test_update_delay() {
-        let governance = @governance;
-        let scenario_val = test_scenario::begin(governance);
-        let scenario = &mut scenario_val;
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            let staked_coins = vector::empty<Coin<DOLA>>();
+            vector::push_back(&mut staked_coins, governance_coin);
 
-        test_active_governance(governance, scenario);
+            create_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                staked_coins,
+                100,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(governance_info);
+        };
 
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            assert!(coin::value(&governance_coin) == 9900, 0);
+            transfer::transfer(governance_coin, governance);
+        };
 
-        test_scenario::end(scenario_val);
-    }
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            let staked_coins = vector::empty<Coin<DOLA>>();
+            vector::push_back(&mut staked_coins, governance_coin);
+            let proposal = test_scenario::take_shared<Proposal<Certificate, DOLA>>(scenario);
+            let governance_cap = vote_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                &mut proposal,
+                staked_coins,
+                900,
+                true,
+                test_scenario::ctx(scenario)
+            );
+            option::destroy_none(governance_cap);
 
-    #[test]
-    public fun test_update_minumum_staking() {
-        let governance = @governance;
-        let scenario_val = test_scenario::begin(governance);
-        let scenario = &mut scenario_val;
+            test_scenario::return_shared(governance_info);
+            test_scenario::return_shared(proposal);
+        };
 
-        test_active_governance(governance, scenario);
+        test_scenario::next_tx(scenario, governance);
+        {
+            tx_context::increment_epoch_number(test_scenario::ctx(scenario));
+        };
 
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let staked_coins = vector::empty();
+            vector::push_back(&mut staked_coins, coin::zero<DOLA>(test_scenario::ctx(scenario)));
+            let proposal = test_scenario::take_shared<Proposal<Certificate, DOLA>>(scenario);
+            let governance_cap = vote_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                &mut proposal,
+                staked_coins,
+                0,
+                true,
+                test_scenario::ctx(scenario)
+            );
+            let governance_cap = option::destroy_some(governance_cap);
 
-        test_scenario::end(scenario_val);
-    }
+            add_guardians(&governance_cap, &mut governance_info, governance_second_member);
+            assert!(vector::length(&governance_info.guardians) == 1, 0);
+            remove_guardians(&governance_cap, &mut governance_info, governance_second_member);
+            assert!(vector::length(&governance_info.guardians) == 0, 0);
+            update_delay(&governance_cap, &mut governance_info, 1, 1, 3);
+            assert!(governance_info.max_delay == 3, 0);
 
-    #[test]
-    public fun test_cancel_proposal() {
-        let governance = @governance;
-        let scenario_val = test_scenario::begin(governance);
-        let scenario = &mut scenario_val;
-
-        test_active_governance(governance, scenario);
-
+            destory_governance_cap(governance_cap);
+            test_scenario::return_shared(governance_info);
+            test_scenario::return_shared(proposal);
+        };
 
         test_scenario::end(scenario_val);
     }
@@ -604,11 +661,98 @@ module governance::governance_v2 {
     #[test]
     public fun test_upgrade() {
         let governance = @governance;
+        let governance_second_member = @11;
         let scenario_val = test_scenario::begin(governance);
         let scenario = &mut scenario_val;
 
         test_active_governance(governance, scenario);
 
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let members = vector::empty<address>();
+            vector::push_back(&mut members, governance);
+            vector::push_back(&mut members, governance_second_member);
+            init_coin(members, 10000, test_scenario::ctx(scenario));
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            let staked_coins = vector::empty<Coin<DOLA>>();
+            vector::push_back(&mut staked_coins, governance_coin);
+
+            create_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                staked_coins,
+                100,
+                test_scenario::ctx(scenario)
+            );
+            test_scenario::return_shared(governance_info);
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            assert!(coin::value(&governance_coin) == 9900, 0);
+            transfer::transfer(governance_coin, governance);
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
+            let staked_coins = vector::empty<Coin<DOLA>>();
+            vector::push_back(&mut staked_coins, governance_coin);
+            let proposal = test_scenario::take_shared<Proposal<Certificate, DOLA>>(scenario);
+            let governance_cap = vote_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                &mut proposal,
+                staked_coins,
+                900,
+                true,
+                test_scenario::ctx(scenario)
+            );
+            option::destroy_none(governance_cap);
+
+            test_scenario::return_shared(governance_info);
+            test_scenario::return_shared(proposal);
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            tx_context::increment_epoch_number(test_scenario::ctx(scenario));
+        };
+
+        test_scenario::next_tx(scenario, governance);
+        {
+            let governance_genesis = test_scenario::take_shared<GovernanceGenesis>(scenario);
+            let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
+            let staked_coins = vector::empty();
+            vector::push_back(&mut staked_coins, coin::zero<DOLA>(test_scenario::ctx(scenario)));
+            let proposal = test_scenario::take_shared<Proposal<Certificate, DOLA>>(scenario);
+            let governance_cap = vote_proposal<Certificate, DOLA>(
+                &governance_info,
+                Certificate {},
+                &mut proposal,
+                staked_coins,
+                0,
+                true,
+                test_scenario::ctx(scenario)
+            );
+            let governance_cap = option::destroy_some(governance_cap);
+
+            let governance_manager_cap = upgrade(&governance_cap, &mut governance_info);
+            genesis::destroy_manager(&mut governance_genesis, governance_manager_cap);
+            destory_governance_cap(governance_cap);
+
+            test_scenario::return_shared(governance_info);
+            test_scenario::return_shared(proposal);
+            test_scenario::return_shared(governance_genesis);
+        };
 
         test_scenario::end(scenario_val);
     }
