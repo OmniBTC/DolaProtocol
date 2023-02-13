@@ -3,26 +3,25 @@
 /// Note: when reviewing proposal, make sure that the `certificate` in the proposal will only flow to
 /// this contract. It is created to avoid the possibility of unknown contracts gaining access
 module governance::governance_v2 {
-    use std::option::{Self, Option};
-    use std::vector;
     use std::ascii::{Self, String};
+    use std::option::{Self, Option};
     use std::type_name::{Self, TypeName};
+    use std::vector;
 
     use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap};
+    use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
     use sui::object::{Self, UID, ID};
+    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use sui::balance::{Self, Balance};
-    use sui::table::{Self, Table};
-    use sui::coin::{Self, Coin};
+
     #[test_only]
-    use sui::test_scenario::Scenario;
-    #[test_only]
-    use sui::test_scenario;
+    use governance::genesis::GovernanceGenesis;
     #[test_only]
     use governance::governance_v1;
     #[test_only]
-    use governance::genesis::GovernanceGenesis;
+    use sui::test_scenario::{Self, Scenario};
 
     const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
 
@@ -131,11 +130,11 @@ module governance::governance_v2 {
         certificate: T,
         // Staked coin
         staked_coin: Balance<CoinType>,
-        // The all favor numver
+        // The all favor number
         favor_num: u64,
         // The number of coin that the user favor to stake in the proposal
         favor_votes: Table<address, u64>,
-        // The all against numver
+        // The all against number
         against_num: u64,
         // The number of coin that the user against to stake in the proposal
         against_votes: Table<address, u64>,
