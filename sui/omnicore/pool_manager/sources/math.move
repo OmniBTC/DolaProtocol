@@ -5,7 +5,7 @@ module pool_manager::math {
 
     const DOUBLE_RAY: u256 = 2000000000000000000000000000;
 
-    const LN2: u256 = 693147180559945300000000000;
+    const LN2: u256 = 693147180559945309417232121;
 
     const ENEGATIVE_LOG: u64 = 0;
 
