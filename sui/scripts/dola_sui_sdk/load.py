@@ -85,7 +85,7 @@ def lending_package(package_id: str = None):
 def lending_portal_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.LendingPortal[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_portal"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal"))
 
 
 def external_interfaces_package(package_id: str = None):

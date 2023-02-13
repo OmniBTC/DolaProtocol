@@ -1,4 +1,4 @@
-module lending_portal::lending {
+module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
@@ -30,7 +30,7 @@ module lending_portal::lending {
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 5;
 
-    const APPID: u16 = 0;
+    const LENDING_APP_ID: u16 = 1;
 
     /// Call types for relayer call
     const SUPPLY: u8 = 0;
@@ -128,6 +128,46 @@ module lending_portal::lending {
         }
     }
 
+    public entry fun send_binding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
+        dola_chain_id: u16,
+        bind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
+        wormhole_bridge::bridge_pool::send_binding(
+            pool_state,
+            wormhole_state,
+            wormhole_message_fee,
+            dola_chain_id,
+            bind_address,
+            ctx
+        )
+    }
+
+    public entry fun send_unbinding(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_coins: vector<Coin<SUI>>,
+        wormhole_message_amount: u64,
+        dola_chain_id: u16,
+        unbind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
+        wormhole_bridge::bridge_pool::send_unbinding(
+            pool_state,
+            wormhole_state,
+            wormhole_message_fee,
+            dola_chain_id,
+            unbind_address,
+            ctx
+        )
+    }
+
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -148,7 +188,7 @@ module lending_portal::lending {
         omnipool::pool::deposit_to(
             pool,
             deposit_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );
@@ -158,7 +198,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
-            APPID,
+            LENDING_APP_ID,
             deposit_amount,
             ctx
         );
@@ -225,7 +265,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Local withdraw
@@ -276,7 +316,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
 
@@ -333,7 +373,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Local borrow
@@ -383,7 +423,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Cross-chain borrow
@@ -419,7 +459,7 @@ module lending_portal::lending {
         omnipool::pool::deposit_to(
             pool,
             repay_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );
@@ -428,7 +468,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
-            APPID,
+            LENDING_APP_ID,
             repay_amount,
             ctx
         );
@@ -480,7 +520,7 @@ module lending_portal::lending {
             wormhole_message_fee,
             debt_pool,
             debt_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );

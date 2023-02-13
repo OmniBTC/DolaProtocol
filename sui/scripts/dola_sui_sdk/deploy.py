@@ -150,7 +150,7 @@ lending_portal_package = sui_brownie.SuiPackage(
     network=net,
     is_compile=False,
     package_id=None,
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_portal")
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal")
 )
 
 lending_portal_package.publish_package(replace_address=dict(
@@ -225,7 +225,7 @@ print(f"pool_manager={pool_manager_package.package_id}")
 print(f"wormhole={wormhole_package.package_id}")
 print(f"wormhole_bridge={wormhole_bridge_package.package_id}")
 print(f"lending={lending_package.package_id}")
-print(f"lending_portal={lending_portal_package.package_id}")
+print(f"dola_portal={lending_portal_package.package_id}")
 print(f"external_interfaces={external_interfaces_package.package_id}")
 print(f"governance_actions={governance_actions_package.package_id}")
 print(f"test_coins={test_coins_package.package_id}")

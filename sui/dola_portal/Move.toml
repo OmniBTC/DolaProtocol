@@ -1,11 +1,12 @@
 [package]
-name = "LendingPortal"
+name = "DolaPortal"
 version = "0.0.1"
 
 [addresses]
-lending_portal = "0x0"
+dola_portal = "0x0"
 serde = "0x0"
 lending = "0x0"
+protocol_app_core = "0x0"
 oracle = "0x0"
 dola_types = "0x0"
 app_manager = "0x0"
@@ -31,6 +32,9 @@ local = "../omnipool"
 
 [dependencies.Lending]
 local = "../omnicore/lending"
+
+[dependencies.ProtocolAppCore]
+local = "../omnicore/protocol_app_core"
 
 [dependencies.Oracle]
 local = "../omnicore/oracle"

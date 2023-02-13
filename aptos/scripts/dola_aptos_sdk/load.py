@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import aptos_brownie
+
 from dola_aptos_sdk import DOLA_CONFIG
 
 net = "aptos-testnet"
@@ -31,7 +32,7 @@ def wormhole_bridge_package():
 
 
 def lending_portal_package():
-    return aptos_package(DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("lending_portal"))
+    return aptos_package(DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("dola_portal"))
 
 
 def test_coins_package():

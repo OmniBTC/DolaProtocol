@@ -17,7 +17,7 @@ module app_manager::app_manager {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(TotalAppInfo {
             id: object::new(ctx),
-            count: 0
+            count: 1
         })
     }
 

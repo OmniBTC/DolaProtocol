@@ -120,7 +120,7 @@ def vote_init_lending_portal():
         gov: &mut Governance,
         governance_external_cap: &mut GovernanceExternalCap,
         vote: &mut VoteExternalCap,
-        lending_portal: &mut LendingPortal,
+        dola_portal: &mut LendingPortal,
         ctx: &mut TxContext
     )
     :return:

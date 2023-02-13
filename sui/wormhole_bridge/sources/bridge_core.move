@@ -15,7 +15,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap, decode_binding, binding_user_address, decode_unbinding, unbinding_user_address};
+    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -77,30 +77,20 @@ module wormhole_bridge::bridge_core {
         );
     }
 
-    public entry fun receive_binding(
+    /// Only verify that the message is valid, and the message is processed by the corresponding app
+    public fun receive_protocol_message(
         _wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        user_manager_info: &mut UserManagerInfo,
-        vaa: vector<u8>
-    ) {
-        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (user, bind_address, _) = decode_binding(vaa);
-        if (user == bind_address) {
-            register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
-        } else {
-            binding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, bind_address);
-        };
-    }
-
-    public entry fun receive_unbinding(
-        _wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        user_manager_info: &mut UserManagerInfo,
-        vaa: vector<u8>
-    ) {
-        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
-        let (user, unbind_address, _) = decode_unbinding(vaa);
-        unbinding_user_address(option::borrow(&core_state.user_manager_cap), user_manager_info, user, unbind_address);
+        _core_state: &mut CoreState,
+        vaa: vector<u8>,
+    ): vector<u8> {
+        // let msg = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &core_state.registered_emitters,
+        //     &mut core_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        vaa
     }
 
     public fun receive_deposit(

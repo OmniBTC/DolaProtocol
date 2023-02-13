@@ -43,7 +43,7 @@ local = "../pool_manager"
 local = "../lending"
 
 [dependencies.LendingPortal]
-local = "../../lending_portal"
+local = "../../dola_portal"
 
 [dependencies.Oracle]
 local = "../oracle"
