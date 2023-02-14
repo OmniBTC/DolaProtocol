@@ -1,9 +1,9 @@
 [package]
-name = "ProtocolAppCore"
+name = "ProtocolCore"
 version = "0.0.1"
 
 [addresses]
-protocol_app_core = "0x0"
+protocol_core = "0x0"
 wormhole_bridge = "0x0"
 user_manager = "0x0"
 app_manager = "0x0"

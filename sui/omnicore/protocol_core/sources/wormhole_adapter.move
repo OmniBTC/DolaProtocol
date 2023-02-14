@@ -1,7 +1,7 @@
-module protocol_app_core::protocol_wormhole_adapter {
+module protocol_core::protocol_wormhole_adapter {
     use std::option::{Self, Option};
 
-    use protocol_app_core::message_types::{Self, binding_type_id, unbinding_type_id};
+    use protocol_core::message_types::{Self, binding_type_id, unbinding_type_id};
     use sui::object::UID;
     use user_manager::user_manager::{Self, UserManagerCap, UserManagerInfo};
     use wormhole::state::State as WormholeState;
@@ -54,7 +54,7 @@ module protocol_app_core::protocol_wormhole_adapter {
         let (app_id, user, unbind_address, call_type) = user_manager::decode_unbinding(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == unbinding_type_id(), EINVALID_CALLTYPE);
-        
+
         user_manager::unbinding_user_address(
             option::borrow(&user_binding.user_manager_cap),
             user_manager_info,

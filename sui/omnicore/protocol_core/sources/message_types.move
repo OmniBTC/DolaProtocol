@@ -1,4 +1,4 @@
-module protocol_app_core::message_types {
+module protocol_core::message_types {
 
     const APPID: u16 = 0;
 

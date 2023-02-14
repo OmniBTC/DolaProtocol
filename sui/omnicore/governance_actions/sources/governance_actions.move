@@ -2,12 +2,13 @@ module governance_actions::governance_actions {
     use std::ascii::string;
     use std::option;
 
+    use dola_portal::portal::LendingPortal;
+
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::create_dola_address;
     use governance::governance::{Self, Governance, VoteExternalCap, GovernanceCap};
-    use lending::storage::Storage;
-    use lending::wormhole_adapter::WormholeAdapater;
-    use lending_portal::lending::LendingPortal;
+    use lending_core::storage::Storage;
+    use lending_core::wormhole_adapter::WormholeAdapater;
     use omnipool::pool;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
@@ -46,7 +47,7 @@ module governance_actions::governance_actions {
         if (option::is_some(&flash_cap)) {
             let governance_cap = governance::borrow_external_cap(&mut flash_cap);
             let app_cap = app_manager::register_cap_with_governance(governance_cap, total_app_info, ctx);
-            lending::storage::transfer_app_cap(storage, app_cap);
+            lending_core::storage::transfer_app_cap(storage, app_cap);
         };
 
         governance::external_cap_destroy(vote, flash_cap);
@@ -63,8 +64,8 @@ module governance_actions::governance_actions {
 
         if (option::is_some(&flash_cap)) {
             let governance_cap = governance::borrow_external_cap(&mut flash_cap);
-            let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
-            lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+            let storage_cap = lending_core::storage::register_cap_with_governance(governance_cap);
+            lending_core::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
         };
 
         governance::external_cap_destroy(vote, flash_cap);
@@ -81,13 +82,13 @@ module governance_actions::governance_actions {
         if (option::is_some(&flash_cap)) {
             let governance_cap = governance::borrow_external_cap(&mut flash_cap);
             let pool_cap = pool::register_cap(governance_cap, ctx);
-            let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
+            let storage_cap = lending_core::storage::register_cap_with_governance(governance_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(governance_cap);
             let user_manager_cap = user_manager::user_manager::register_cap_with_governance(governance_cap);
-            lending_portal::lending::transfer_pool_cap(lending_portal, pool_cap);
-            lending_portal::lending::transfer_storage_cap(lending_portal, storage_cap);
-            lending_portal::lending::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
-            lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);
+            lending_portal::lending_core::transfer_pool_cap(lending_portal, pool_cap);
+            lending_portal::lending_core::transfer_storage_cap(lending_portal, storage_cap);
+            lending_portal::lending_core::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
+            lending_portal::lending_core::transfer_user_manager_cap(lending_portal, user_manager_cap);
         };
 
         governance::external_cap_destroy(vote, flash_cap);
@@ -199,8 +200,8 @@ module governance_actions::governance_actions {
 
         if (option::is_some(&flash_cap)) {
             let governance_cap = governance::borrow_external_cap(&mut flash_cap);
-            let storage_cap = lending::storage::register_cap_with_governance(governance_cap);
-            lending::storage::register_new_reserve(
+            let storage_cap = lending_core::storage::register_cap_with_governance(governance_cap);
+            lending_core::storage::register_new_reserve(
                 &storage_cap,
                 storage,
                 oracle,

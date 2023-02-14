@@ -1,12 +1,12 @@
 #[test_only]
-module lending::logic_tests {
+module lending_core::logic_tests {
     use std::ascii::string;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic;
-    use lending::math::{ray_mul, ray_div};
-    use lending::storage::{Self, Storage};
+    use lending_core::logic;
+    use lending_core::math::{ray_mul, ray_div};
+    use lending_core::storage::{Self, Storage};
     use oracle::oracle::{Self, PriceOracle, OracleCap};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::test_scenario::{Self, Scenario};

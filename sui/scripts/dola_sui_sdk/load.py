@@ -79,7 +79,7 @@ def lending_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.Lending[-1]
 
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/lending"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/lending_core"))
 
 
 def lending_portal_package(package_id: str = None):

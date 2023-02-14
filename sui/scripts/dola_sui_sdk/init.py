@@ -340,7 +340,7 @@ def main():
     create_vote_external_cap()
     vote_register_new_pool(8, b"SUI", sui())
 
-    # 6. init lending storage
+    # 6. init lending_core storage
     create_vote_external_cap()
     vote_init_lending_storage()
 
@@ -348,7 +348,7 @@ def main():
 
     vote_init_lending_wormhole_adapter()
 
-    # 7. init lending portal
+    # 7. init lending_core portal
     create_vote_external_cap()
 
     vote_init_lending_portal()

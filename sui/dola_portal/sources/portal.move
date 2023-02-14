@@ -3,7 +3,7 @@ module dola_portal::portal {
     use std::vector;
 
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
-    use lending::storage::{StorageCap, Storage};
+    use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
@@ -210,10 +210,10 @@ module dola_portal::portal {
                 user_addr
             );
         };
-        // Execute supply logic in lending app
+        // Execute supply logic in lending_core app
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
-        lending::logic::execute_supply(
+        lending_core::logic::execute_supply(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -250,8 +250,8 @@ module dola_portal::portal {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute withdraw logic in lending app
-        lending::logic::execute_withdraw(
+        // Execute withdraw logic in lending_core app
+        lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -301,8 +301,8 @@ module dola_portal::portal {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute withdraw logic in lending app
-        lending::logic::execute_withdraw(
+        // Execute withdraw logic in lending_core app
+        lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -324,7 +324,7 @@ module dola_portal::portal {
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -358,8 +358,8 @@ module dola_portal::portal {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute borrow logic in lending app
-        lending::logic::execute_borrow(
+        // Execute borrow logic in lending_core app
+        lending_core::logic::execute_borrow(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -408,8 +408,8 @@ module dola_portal::portal {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute borrow logic in lending app
-        lending::logic::execute_borrow(
+        // Execute borrow logic in lending_core app
+        lending_core::logic::execute_borrow(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -430,7 +430,7 @@ module dola_portal::portal {
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -482,7 +482,7 @@ module dola_portal::portal {
 
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
-        lending::logic::execute_repay(
+        lending_core::logic::execute_repay(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,

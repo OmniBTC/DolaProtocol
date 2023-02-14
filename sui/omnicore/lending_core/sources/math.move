@@ -1,4 +1,4 @@
-module lending::math {
+module lending_core::math {
 
     const RAY: u256 = 1000000000000000000000000000;
 

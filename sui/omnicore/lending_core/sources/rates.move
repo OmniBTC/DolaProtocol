@@ -1,6 +1,6 @@
-module lending::rates {
-    use lending::math::{ray_mul, ray_div};
-    use lending::storage::{Storage, get_dtoken_scaled_total_supply, get_borrow_rate_factors, get_treasury_factor, get_borrow_index};
+module lending_core::rates {
+    use lending_core::math::{ray_mul, ray_div};
+    use lending_core::storage::{Storage, get_dtoken_scaled_total_supply, get_borrow_rate_factors, get_treasury_factor, get_borrow_index};
 
     const RAY: u256 = 1000000000000000000000000000;
 
