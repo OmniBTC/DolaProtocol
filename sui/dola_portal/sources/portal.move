@@ -1,9 +1,9 @@
-module lending_portal::lending {
+module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
-    use lending::storage::{StorageCap, Storage};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, convert_address_to_dola, create_dola_address};
+    use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
@@ -13,7 +13,7 @@ module lending_portal::lending {
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use user_manager::user_manager::{UserManagerInfo, UserManagerCap};
+    use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
@@ -30,7 +30,7 @@ module lending_portal::lending {
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 5;
 
-    const APPID: u16 = 0;
+    const LENDING_APP_ID: u16 = 1;
 
     /// Call types for relayer call
     const SUPPLY: u8 = 0;
@@ -128,6 +128,50 @@ module lending_portal::lending {
         }
     }
 
+    public entry fun send_binding(
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
+        dola_chain_id: u16,
+        bind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let bind_address = create_dola_address(dola_chain_id, bind_address);
+        if (user == bind_address) {
+            user_manager::register_dola_user_id(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user
+            );
+        } else {
+            user_manager::binding_user_address(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user,
+                bind_address
+            );
+        };
+    }
+
+    public entry fun send_unbinding(
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
+        dola_chain_id: u16,
+        unbind_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+        user_manager::unbinding_user_address(
+            option::borrow(&lending_portal.user_manager_cap),
+            user_manager_info,
+            user,
+            unbind_address
+        );
+    }
+
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -148,7 +192,7 @@ module lending_portal::lending {
         omnipool::pool::deposit_to(
             pool,
             deposit_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );
@@ -158,7 +202,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
-            APPID,
+            LENDING_APP_ID,
             deposit_amount,
             ctx
         );
@@ -170,10 +214,10 @@ module lending_portal::lending {
                 user_addr
             );
         };
-        // Execute supply logic in lending app
+        // Execute supply logic in lending_core app
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
-        lending::logic::execute_supply(
+        lending_core::logic::execute_supply(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -210,8 +254,8 @@ module lending_portal::lending {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute withdraw logic in lending app
-        lending::logic::execute_withdraw(
+        // Execute withdraw logic in lending_core app
+        lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -225,7 +269,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Local withdraw
@@ -261,8 +305,8 @@ module lending_portal::lending {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute withdraw logic in lending app
-        lending::logic::execute_withdraw(
+        // Execute withdraw logic in lending_core app
+        lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -276,7 +320,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
 
@@ -284,7 +328,7 @@ module lending_portal::lending {
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -318,8 +362,8 @@ module lending_portal::lending {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute borrow logic in lending app
-        lending::logic::execute_borrow(
+        // Execute borrow logic in lending_core app
+        lending_core::logic::execute_borrow(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -333,7 +377,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Local borrow
@@ -368,8 +412,8 @@ module lending_portal::lending {
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        // Execute borrow logic in lending app
-        lending::logic::execute_borrow(
+        // Execute borrow logic in lending_core app
+        lending_core::logic::execute_borrow(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -383,14 +427,14 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
-            APPID,
+            LENDING_APP_ID,
             amount
         );
         // Cross-chain borrow
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -419,7 +463,7 @@ module lending_portal::lending {
         omnipool::pool::deposit_to(
             pool,
             repay_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );
@@ -428,7 +472,7 @@ module lending_portal::lending {
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
-            APPID,
+            LENDING_APP_ID,
             repay_amount,
             ctx
         );
@@ -442,7 +486,7 @@ module lending_portal::lending {
 
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
-        lending::logic::execute_repay(
+        lending_core::logic::execute_repay(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -480,7 +524,7 @@ module lending_portal::lending {
             wormhole_message_fee,
             debt_pool,
             debt_coin,
-            APPID,
+            LENDING_APP_ID,
             app_payload,
             ctx
         );

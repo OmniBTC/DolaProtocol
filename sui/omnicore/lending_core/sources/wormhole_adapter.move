@@ -1,9 +1,10 @@
-module lending::wormhole_adapter {
+module lending_core::wormhole_adapter {
     use std::option::{Self, Option};
 
+    use lending_core::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
+    use lending_core::storage::{StorageCap, Storage, get_app_cap};
+
     use dola_types::types::dola_chain_id;
-    use lending::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
-    use lending::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
     use sui::coin::{Self, Coin};

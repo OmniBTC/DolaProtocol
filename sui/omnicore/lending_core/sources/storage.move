@@ -1,4 +1,4 @@
-module lending::storage {
+module lending_core::storage {
     use std::option::{Self, Option};
     use std::vector;
 

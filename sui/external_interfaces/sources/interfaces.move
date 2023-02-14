@@ -6,10 +6,10 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount, user_total_collateral_value, user_total_loan_value, total_otoken_supply};
-    use lending::math::{ray_mul, ray_div};
-    use lending::rates::calculate_utilization;
-    use lending::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
+    use lending_core::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount, user_total_collateral_value, user_total_loan_value, total_otoken_supply};
+    use lending_core::math::{ray_mul, ray_div};
+    use lending_core::rates::calculate_utilization;
+    use lending_core::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
     use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, find_pool_by_chain};
     use sui::event::emit;

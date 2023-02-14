@@ -1,5 +1,5 @@
-module lending::scaled_balance {
-    use lending::math;
+module lending_core::scaled_balance {
+    use lending_core::math;
 
     public fun balance_of(
         user_scaled_balance: u64,

@@ -1,11 +1,12 @@
-module lending::logic {
+module lending_core::logic {
     use std::vector;
 
+    use lending_core::math::{Self, calculate_compounded_interest, calculate_linear_interest, ray_mul, ray_div, min};
+    use lending_core::rates;
+    use lending_core::scaled_balance::{Self, balance_of};
+    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury};
+
     use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
-    use lending::math::{Self, calculate_compounded_interest, calculate_linear_interest, ray_mul, ray_div, min};
-    use lending::rates;
-    use lending::scaled_balance::{Self, balance_of};
-    use lending::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
@@ -114,7 +115,7 @@ module lending::logic {
         update_state(cap, storage, oracle, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let actual_amount = sui::math::min(withdraw_amount, otoken_amount);
-        
+
         burn_otoken(cap, storage, dola_user_id, dola_pool_id, actual_amount);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);

@@ -1,15 +1,12 @@
 [package]
-name = "Lending"
+name = "ProtocolCore"
 version = "0.0.1"
 
 [addresses]
-lending = "0x0"
+protocol_core = "0x0"
 wormhole_bridge = "0x0"
 user_manager = "0x0"
-pool_manager = "0x0"
 app_manager = "0x0"
-governance = "0x0"
-oracle = "0x0"
 serde = "0x0"
 wormhole = "0x0"
 dola_types = "0x0"
@@ -36,15 +33,6 @@ local = "../../wormhole_bridge"
 
 [dependencies.AppManager]
 local = "../app_manager"
-
-[dependencies.PoolManager]
-local = "../pool_manager"
-
-[dependencies.Governance]
-local = "../governance"
-
-[dependencies.Oracle]
-local = "../oracle"
 
 [dependencies.UserManager]
 local = "../user_manager"
