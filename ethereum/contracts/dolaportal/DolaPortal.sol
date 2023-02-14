@@ -8,8 +8,8 @@ import "../libraries//LibLending.sol";
 import "../libraries//LibDecimals.sol";
 import "../libraries//LibDolaTypes.sol";
 
-contract LendingPortal {
-    uint8 public constant APPID = 0;
+contract DolaPortal {
+    uint8 public constant LENDING_APP_ID = 1;
     uint8 private constant SUPPLY = 0;
     uint8 private constant WITHDRAW = 1;
     uint8 private constant BORROW = 2;
@@ -31,6 +31,14 @@ contract LendingPortal {
         return decimal;
     }
 
+    function sendBinding(uint16 bindDolaChainId, bytes memory bindAddress) external payable {
+        IWormholeBridge(bridgePool).sendBinding(bindDolaChainId, bindAddress);
+    }
+
+    function sendUnbinding(uint16 unbindDolaChainId, bytes memory unbindAddress) external payable {
+        IWormholeBridge(bridgePool).sendBinding(unbindDolaChainId, unbindAddress);
+    }
+
     function supply(address token, uint256 amount) external payable {
         bytes memory appPayload = LibLending.encodeAppPayload(
             SUPPLY,
@@ -38,10 +46,10 @@ contract LendingPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
-        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
+        IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
             token,
             amount,
-            APPID,
+            LENDING_APP_ID,
             appPayload
         );
     }
@@ -59,9 +67,9 @@ contract LendingPortal {
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
+        IWormholeBridge(bridgePool).sendWithdraw{value : msg.value}(
             token,
-            APPID,
+            LENDING_APP_ID,
             appPayload
         );
     }
@@ -78,9 +86,9 @@ contract LendingPortal {
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             0
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
+        IWormholeBridge(bridgePool).sendWithdraw{value : msg.value}(
             token,
-            APPID,
+            LENDING_APP_ID,
             appPayload
         );
     }
@@ -92,10 +100,10 @@ contract LendingPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             0
         );
-        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
+        IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
             token,
             amount,
-            APPID,
+            LENDING_APP_ID,
             appPayload
         );
     }
@@ -118,7 +126,7 @@ contract LendingPortal {
             debtToken,
             amount,
             collateralToken,
-            APPID,
+            LENDING_APP_ID,
             appPayload
         );
     }
