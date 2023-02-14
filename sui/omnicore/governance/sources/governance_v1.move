@@ -8,6 +8,7 @@ module governance::governance_v1 {
     use std::ascii::{Self, String};
     use std::type_name;
 
+    use sui::event;
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -18,7 +19,6 @@ module governance::governance_v1 {
     use sui::test_scenario;
     #[test_only]
     use sui::test_scenario::Scenario;
-    use sui::event;
 
     /// Proposal State
     /// PROPOSAL_ANNOUNCEMENT_PENDING -> PROPOSAL_VOTING_PENDING -> PROPOSAL_SUCCESS/PROPOSAL_FAIL

@@ -9,6 +9,8 @@ module governance::governance_v2 {
     use std::vector;
 
     use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap};
+
+    use sui::event;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID, ID};
@@ -22,7 +24,6 @@ module governance::governance_v2 {
     use governance::governance_v1;
     #[test_only]
     use sui::test_scenario::{Self, Scenario};
-    use sui::event;
 
     const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
 
