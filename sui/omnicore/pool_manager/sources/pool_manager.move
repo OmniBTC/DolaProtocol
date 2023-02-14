@@ -306,13 +306,13 @@ module pool_manager::pool_manager {
         let pools_liquidity = &mut pool_info.pools;
         assert!(table::contains(pools_liquidity, pool), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        let euqibrium_fee = (calculate_equilibrium_fee(
+        let equilibrium_fee = (calculate_equilibrium_fee(
             (pool_info.reserve.value as u256),
             (pool_liquidity.balance as u256),
             (amount as u256),
             calculate_expected_ratio(pool_info.weight, pool_liquidity.weight)
         ) as u64);
-        let actual_amount = amount - euqibrium_fee;
+        let actual_amount = amount - equilibrium_fee;
 
         // Update app infos
         let app_infos = &mut pool_manager_info.app_infos;
@@ -325,9 +325,9 @@ module pool_manager::pool_manager {
         assert!(pool_liquidity.balance >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
         pool_info.reserve.value = pool_info.reserve.value - (amount as u128);
         pool_liquidity.balance = pool_liquidity.balance - (amount as u128);
-        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + (euqibrium_fee as u128);
+        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + (equilibrium_fee as u128);
 
-        (actual_amount, euqibrium_fee)
+        (actual_amount, equilibrium_fee)
     }
 
     #[test_only]
