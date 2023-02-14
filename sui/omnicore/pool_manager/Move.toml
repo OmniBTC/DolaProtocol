@@ -7,6 +7,7 @@ pool_manager = "0x0"
 governance = "0x0"
 dola_types = "0x0"
 serde = "0x0"
+ray_math = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
@@ -16,6 +17,9 @@ rev = "cece99272f261d046c64510812e36404e7deb661"
 
 [dependencies.Serde]
 local = "../../serde"
+
+[dependencies.RayMath]
+local = "../../ray_math"
 
 [dependencies.Governance]
 local = "../governance"

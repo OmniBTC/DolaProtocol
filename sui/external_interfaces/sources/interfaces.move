@@ -7,16 +7,14 @@ module external_interfaces::interfaces {
 
     use dola_types::types::{create_dola_address, DolaAddress};
     use lending_core::logic::{user_loan_balance, user_loan_value, user_collateral_balance, user_collateral_value, total_dtoken_supply, is_collateral, calculate_value, user_health_factor, user_health_collateral_value, user_health_loan_value, calculate_amount, user_total_collateral_value, user_total_loan_value, total_otoken_supply};
-    use lending_core::math::{ray_mul, ray_div};
     use lending_core::rates::calculate_utilization;
     use lending_core::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
     use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, find_pool_by_chain};
+    use ray_math::math::{ray_mul, ray_div, ray};
     use sui::event::emit;
     use sui::math::min;
     use user_manager::user_manager::{Self, UserManagerInfo};
-
-    const RAY: u256 = 1000000000000000000000000000;
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -230,9 +228,9 @@ module external_interfaces::interfaces {
         dola_pool_id: u16
     ) {
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
-        let borrow_apy = borrow_rate * 10000 / RAY;
+        let borrow_apy = borrow_rate * 10000 / ray();
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
-        let supply_apy = liquidity_rate * 10000 / RAY;
+        let supply_apy = liquidity_rate * 10000 / ray();
         let debt_amount = user_loan_balance(storage, dola_user_id, dola_pool_id);
         let debt_value = user_loan_value(storage, oracle, dola_user_id, dola_pool_id);
         emit(UserDebtInfo {
@@ -258,9 +256,9 @@ module external_interfaces::interfaces {
         dola_pool_id: u16
     ) {
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
-        let borrow_apy = borrow_rate * 10000 / RAY;
+        let borrow_apy = borrow_rate * 10000 / ray();
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
-        let supply_apy = liquidity_rate * 10000 / RAY;
+        let supply_apy = liquidity_rate * 10000 / ray();
         let collateral_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let collateral_value = user_collateral_value(storage, oracle, dola_user_id, dola_pool_id);
         emit(UserCollateralInfo {
@@ -293,9 +291,9 @@ module external_interfaces::interfaces {
         while (i < length) {
             let collateral = vector::borrow(&collaterals, i);
             let borrow_rate = get_borrow_rate(storage, *collateral);
-            let borrow_apy = borrow_rate * 10000 / RAY;
+            let borrow_apy = borrow_rate * 10000 / ray();
             let liquidity_rate = get_liquidity_rate(storage, *collateral);
-            let supply_apy = liquidity_rate * 10000 / RAY;
+            let supply_apy = liquidity_rate * 10000 / ray();
             let collateral_amount = user_collateral_balance(storage, dola_user_id, *collateral);
             let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
             total_supply_apy_value = total_supply_apy_value + ray_mul((collateral_value as u256), liquidity_rate);
@@ -315,9 +313,9 @@ module external_interfaces::interfaces {
         while (i < length) {
             let loan = vector::borrow(&loans, i);
             let borrow_rate = get_borrow_rate(storage, *loan);
-            let borrow_apy = borrow_rate * 10000 / RAY;
+            let borrow_apy = borrow_rate * 10000 / ray();
             let liquidity_rate = get_liquidity_rate(storage, *loan);
-            let supply_apy = liquidity_rate * 10000 / RAY;
+            let supply_apy = liquidity_rate * 10000 / ray();
             let debt_amount = user_loan_balance(storage, dola_user_id, *loan);
             let debt_value = user_loan_value(storage, oracle, dola_user_id, *loan);
             total_borrow_apy_value = total_borrow_apy_value + ray_mul((debt_value as u256), borrow_rate);
@@ -361,9 +359,9 @@ module external_interfaces::interfaces {
             }
         };
 
-        net_apy = net_apy * 10000 / RAY;
-        total_supply_apy = total_supply_apy * 10000 / RAY;
-        total_borrow_apy = total_borrow_apy * 10000 / RAY;
+        net_apy = net_apy * 10000 / ray();
+        total_supply_apy = total_supply_apy * 10000 / ray();
+        total_borrow_apy = total_borrow_apy * 10000 / ray();
 
         emit(UserLendingInfo {
             health_factor,
@@ -387,9 +385,9 @@ module external_interfaces::interfaces {
         let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
         let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
-        let borrow_apy = borrow_rate * 10000 / RAY;
+        let borrow_apy = borrow_rate * 10000 / ray();
         let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
-        let supply_apy = liquidity_rate * 10000 / RAY;
+        let supply_apy = liquidity_rate * 10000 / ray();
         let supply = total_otoken_supply(storage, dola_pool_id);
         let debt = total_dtoken_supply(storage, dola_pool_id);
         let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
@@ -397,7 +395,7 @@ module external_interfaces::interfaces {
         let utilization_rate = 0;
         if (debt > 0) {
             let utilization = calculate_utilization(storage, dola_pool_id, reserve);
-            utilization_rate = utilization * 10000 / RAY;
+            utilization_rate = utilization * 10000 / ray();
         };
 
         emit(LendingReserveInfo {
@@ -427,9 +425,9 @@ module external_interfaces::interfaces {
             let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
             let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
             let borrow_rate = get_borrow_rate(storage, dola_pool_id);
-            let borrow_apy = borrow_rate * 10000 / RAY;
+            let borrow_apy = borrow_rate * 10000 / ray();
             let liquidity_rate = get_liquidity_rate(storage, dola_pool_id);
-            let supply_apy = liquidity_rate * 10000 / RAY;
+            let supply_apy = liquidity_rate * 10000 / ray();
             let supply = total_otoken_supply(storage, dola_pool_id);
             let debt = total_dtoken_supply(storage, dola_pool_id);
             let reserve = get_app_liquidity(pool_manager_info, dola_pool_id, get_app_id(storage));
@@ -437,7 +435,7 @@ module external_interfaces::interfaces {
             let utilization_rate = 0;
             if (debt > 0) {
                 let utilization = calculate_utilization(storage, dola_pool_id, reserve);
-                utilization_rate = utilization * 10000 / RAY;
+                utilization_rate = utilization * 10000 / ray();
             };
 
             let reserve_info = LendingReserveInfo {
