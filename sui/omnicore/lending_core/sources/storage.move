@@ -3,7 +3,7 @@ module lending_core::storage {
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
-    use governance::governance::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use oracle::oracle::{PriceOracle, get_timestamp};
     use ray_math::math::ray;
     use sui::object::{Self, UID};
@@ -23,7 +23,7 @@ module lending_core::storage {
 
     const EMUST_SOME: u64 = 5;
 
-    const ENOT_ENOUGH_AMOUNT: u64 = 6;
+    const EAMOUNT_NOT_ENOUGH: u64 = 6;
 
     struct Storage has key {
         id: UID,
@@ -362,7 +362,7 @@ module lending_core::storage {
         } else {
             current_amount = 0
         };
-        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        assert!(current_amount >= scaled_amount, EAMOUNT_NOT_ENOUGH);
         table::add(&mut otoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
         otoken_scaled.total_supply = otoken_scaled.total_supply - (scaled_amount as u128);
     }
@@ -403,7 +403,7 @@ module lending_core::storage {
         } else {
             current_amount = 0
         };
-        assert!(current_amount >= scaled_amount, ENOT_ENOUGH_AMOUNT);
+        assert!(current_amount >= scaled_amount, EAMOUNT_NOT_ENOUGH);
         table::add(&mut dtoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
     }

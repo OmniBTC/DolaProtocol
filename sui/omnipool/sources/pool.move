@@ -4,7 +4,7 @@ module omnipool::pool {
     use std::vector;
 
     use dola_types::types::{convert_address_to_dola, convert_pool_to_dola, DolaAddress, convert_dola_to_address, dola_address, encode_dola_address, decode_dola_address};
-    use governance::governance::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};

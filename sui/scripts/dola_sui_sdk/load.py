@@ -94,10 +94,10 @@ def external_interfaces_package(package_id: str = None):
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces"))
 
 
-def governance_actions_package(package_id: str = None):
+def genesis_proposal_package(package_id: str = None):
     if package_id is None:
-        package_id: str = CacheObject.GovernanceActions[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance_actions"))
+        package_id: str = CacheObject.GenesisProposal[-1]
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/proposals/genesis_proposal"))
 
 
 def test_coins_package(package_id: str = None):

@@ -58,11 +58,11 @@ def vote_init_bridge_cap():
     )
     :return:
     '''
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     wormhole = load.wormhole_package()
 
-    governance_actions.governance_actions.vote_init_bridge_cap(
+    genesis_proposal.genesis_proposal.vote_init_bridge_cap(
         governance.governance.Governance[-1],
         governance.governance.VoteExternalCap[-1],
         wormhole.state.State[-1]
@@ -80,12 +80,12 @@ def vote_init_lending_storage():
     )
     :return:
     '''
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     app_manager = load.app_manager_package()
     governance = load.governance_package()
     lending = load.lending_package()
 
-    governance_actions.governance_actions.vote_init_lending_storage(
+    genesis_proposal.genesis_proposal.vote_init_lending_storage(
         governance.governance.Governance[-1],
         governance.governance.VoteExternalCap[-1],
         lending.storage.Storage[-1],
@@ -103,11 +103,11 @@ def vote_init_lending_wormhole_adapter():
     )
     :return:
     '''
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     lending = load.lending_package()
 
-    governance_actions.governance_actions.vote_init_lending_wormhole_adapter(
+    genesis_proposal.genesis_proposal.vote_init_lending_wormhole_adapter(
         governance.governance.Governance[-1],
         governance.governance.VoteExternalCap[-1],
         lending.wormhole_adapter.WormholeAdapater[-1]
@@ -125,11 +125,11 @@ def vote_init_lending_portal():
     )
     :return:
     '''
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     lending_portal = load.lending_portal_package()
 
-    governance_actions.governance_actions.vote_init_lending_portal(
+    genesis_proposal.genesis_proposal.vote_init_lending_portal(
         governance.governance.Governance[-1],
         governance.governance.GovernanceExternalCap[-1],
         governance.governance.VoteExternalCap[-1],
@@ -163,10 +163,10 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
         else:
             # for eth, use hex string
             coin_type = list(bytes.fromhex(coin_type))
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     pool_manager = load.pool_manager_package()
-    governance_actions.governance_actions.vote_register_new_pool(
+    genesis_proposal.genesis_proposal.vote_register_new_pool(
         governance.governance.Governance[-1],
         governance.governance.VoteExternalCap[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -197,11 +197,11 @@ def vote_register_new_reserve(dola_pool_id):
     )
     :return:
     '''
-    governance_actions = load.governance_actions_package()
+    genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     lending = load.lending_package()
     oracle = load.oracle_package()
-    governance_actions.governance_actions.vote_register_new_reserve(
+    genesis_proposal.genesis_proposal.vote_register_new_reserve(
         governance.governance.Governance[-1],
         governance.governance.VoteExternalCap[-1],
         oracle.oracle.PriceOracle[-1],
