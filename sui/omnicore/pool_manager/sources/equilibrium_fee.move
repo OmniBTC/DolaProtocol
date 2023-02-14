@@ -1,6 +1,6 @@
 module pool_manager::equilibrium_fee {
 
-    use pool_manager::math::{ray_div, ray, ray_mul, ray_ln2, ray_log2};
+    use ray_math::math::{ray_div, ray, ray_mul, ray_ln2, ray_log2};
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const ALPHA_1: u256 = 600000000000000000000000000;

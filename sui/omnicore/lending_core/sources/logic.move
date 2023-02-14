@@ -1,20 +1,17 @@
 module lending_core::logic {
     use std::vector;
 
-    use lending_core::math::{Self, calculate_compounded_interest, calculate_linear_interest, ray_mul, ray_div, min};
+    use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
     use lending_core::rates;
     use lending_core::scaled_balance::{Self, balance_of};
     use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury};
-
-    use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use ray_math::math::{Self, ray_mul, ray_div, min, ray};
     use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
     use sui::math::pow;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-
-    const RAY: u256 = 1000000000000000000000000000;
 
     /// 20%
     const MAX_DISCOUNT: u256 = 200000000000000000000000000;
@@ -176,7 +173,7 @@ module lending_core::logic {
     }
 
     public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
-        user_health_factor(storage, oracle, dola_user_id) > RAY
+        user_health_factor(storage, oracle, dola_user_id) > ray()
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
@@ -335,7 +332,7 @@ module lending_core::logic {
         let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
         // health_collateral_value < health_loan_value
-        RAY - ray_div((health_collateral_value as u256), (health_loan_value as u256))
+        ray() - ray_div((health_collateral_value as u256), (health_loan_value as u256))
     }
 
     public fun calculate_liquidation_discount(
@@ -354,7 +351,7 @@ module lending_core::logic {
             (average_liquidity as u256),
             5 * ray_mul((health_loan_value as u256), borrow_coefficient)
         );
-        discount_booster = min(discount_booster, RAY) + RAY;
+        discount_booster = min(discount_booster, ray()) + ray();
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
         let liquidation_discount = ray_mul(base_discount, discount_booster) + treasury_factor;
         min(liquidation_discount, MAX_DISCOUNT)
@@ -388,7 +385,7 @@ module lending_core::logic {
             TARGET_HEALTH_FACTOR
         ) as u64) - health_collateral_value;
         let target_coefficient = ray_mul(
-            ray_mul(TARGET_HEALTH_FACTOR, RAY - liquidation_discount),
+            ray_mul(TARGET_HEALTH_FACTOR, ray() - liquidation_discount),
             borrow_coefficient
         ) - collateral_coefficient;
 
@@ -398,12 +395,12 @@ module lending_core::logic {
 
         let max_liquidable_debt_vaule = (ray_mul(
             (max_liquidable_collateral_value as u256),
-            RAY - liquidation_discount
+            ray() - liquidation_discount
         ) as u64);
         let user_max_debt_value = user_loan_value(storage, oracle, violator, loan);
         let debt_ratio = ray_div((user_max_debt_value as u256), (max_liquidable_debt_vaule as u256));
 
-        let ratio = min(min(collateral_ratio, debt_ratio), RAY);
+        let ratio = min(min(collateral_ratio, debt_ratio), ray());
         let max_liquidable_collateral = calculate_amount(
             oracle,
             collateral,
@@ -442,7 +439,7 @@ module lending_core::logic {
 
         let liquidator_acquired_collateral = (ray_mul(
             (actual_liquidable_collateral as u256),
-            RAY - treasury_factor
+            ray() - treasury_factor
         ) as u64);
         let treasury_reserved_collateral = (ray_mul((actual_liquidable_collateral as u256), treasury_factor) as u64);
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
@@ -542,7 +539,7 @@ module lending_core::logic {
             if (health_collateral_value > health_loan_value) {
                 let health_value = health_collateral_value - health_loan_value;
                 let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
-                let new_average_liquidity = math::calculate_average_liquidity(
+                let new_average_liquidity = rates::calculate_average_liquidity(
                     (current_timestamp as u256),
                     (last_update_timestamp as u256),
                     average_liquidity,
@@ -571,13 +568,13 @@ module lending_core::logic {
 
         let treasury_factor = storage::get_treasury_factor(storage, dola_pool_id);
 
-        let new_borrow_index = math::ray_mul(calculate_compounded_interest(
+        let new_borrow_index = math::ray_mul(rates::calculate_compounded_interest(
             (current_timestamp as u256),
             (last_update_timestamp as u256),
             storage::get_borrow_rate(storage, dola_pool_id)
         ), current_borrow_index) ;
 
-        let new_liquidity_index = math::ray_mul(calculate_linear_interest(
+        let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
             (current_timestamp as u256),
             (last_update_timestamp as u256),
             storage::get_liquidity_rate(storage, dola_pool_id)

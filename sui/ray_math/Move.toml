@@ -1,0 +1,12 @@
+[package]
+name = "RayMath"
+version = "0.0.1"
+
+[addresses]
+ray_math = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "cece99272f261d046c64510812e36404e7deb661"

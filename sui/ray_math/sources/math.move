@@ -1,4 +1,4 @@
-module pool_manager::math {
+module ray_math::math {
     const RAY: u256 = 1000000000000000000000000000;
 
     const HALF_RAY: u256 = 500000000000000000000000000;
@@ -7,6 +7,7 @@ module pool_manager::math {
 
     const LN2: u256 = 693147180559945309417232121;
 
+    /// Error
     const ENEGATIVE_LOG: u64 = 0;
 
     public fun ray(): u256 {
@@ -23,6 +24,24 @@ module pool_manager::math {
 
     public fun ray_div(a: u256, b: u256): u256 {
         (a * RAY + b / 2) / b
+    }
+
+    /// Return the larger of `x` and `y`
+    public fun max(x: u256, y: u256): u256 {
+        if (x > y) {
+            x
+        } else {
+            y
+        }
+    }
+
+    /// Return the smaller of `x` and `y`
+    public fun min(x: u256, y: u256): u256 {
+        if (x < y) {
+            x
+        } else {
+            y
+        }
     }
 
     public fun ray_log2(x: u256): u256 {

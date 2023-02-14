@@ -5,12 +5,11 @@ module lending_core::storage {
     use app_manager::app_manager::{Self, AppCap};
     use governance::governance::GovernanceCap;
     use oracle::oracle::{PriceOracle, get_timestamp};
+    use ray_math::math::ray;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-
-    const RAY: u256 = 1000000000000000000000000000;
 
     const EONLY_ONE_ADMIN: u64 = 0;
 
@@ -151,8 +150,8 @@ module lending_core::storage {
             treasury_factor,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
-            current_borrow_index: RAY,
-            current_liquidity_index: RAY,
+            current_borrow_index: ray(),
+            current_liquidity_index: ray(),
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {
