@@ -18,6 +18,7 @@ module governance::governance_v1 {
     use sui::test_scenario;
     #[test_only]
     use sui::test_scenario::Scenario;
+    use sui::event;
 
     /// Proposal State
     /// PROPOSAL_ANNOUNCEMENT_PENDING -> PROPOSAL_VOTING_PENDING -> PROPOSAL_SUCCESS/PROPOSAL_FAIL
@@ -110,6 +111,19 @@ module governance::governance_v1 {
         against_votes: vector<address>,
         // proposal state
         state: u8
+    }
+
+    /// Events
+
+    /// Create proposal
+    struct CreateProposal has copy, drop {
+        proposal_id: ID
+    }
+
+    /// Change proposal state
+    struct ChangeState has copy, drop {
+        proposal_id: ID,
+        new_state: u8
     }
 
     fun init(ctx: &mut TxContext) {
@@ -210,8 +224,12 @@ module governance::governance_v1 {
             end_vote = option::some(start_vote + governance_info.voting_delay);
         };
         let expired = tx_context::epoch(ctx) + governance_info.max_delay;
+
+        let id = object::new(ctx);
+        let proposal_id = *object::uid_as_inner(&id);
+
         transfer::share_object(Proposal {
-            id: object::new(ctx),
+            id,
             creator,
             start_vote,
             end_vote,
@@ -221,6 +239,10 @@ module governance::governance_v1 {
             favor_votes: vector::empty(),
             against_votes: vector::empty(),
             state: PROPOSAL_ANNOUNCEMENT_PENDING
+        });
+
+        event::emit(CreateProposal {
+            proposal_id
         });
     }
 
@@ -240,7 +262,11 @@ module governance::governance_v1 {
         assert!(current_epoch < proposal.expired, EVOTE_HAS_EXPIRED);
 
         if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
-            proposal.state = PROPOSAL_VOTING_PENDING
+            proposal.state = PROPOSAL_VOTING_PENDING;
+            event::emit(ChangeState {
+                proposal_id: object::id(proposal),
+                new_state: PROPOSAL_VOTING_PENDING
+            });
         };
 
         assert!(proposal.state == PROPOSAL_VOTING_PENDING, EVOTE_HAS_COMPLETED);
@@ -268,10 +294,18 @@ module governance::governance_v1 {
             let favor_votes_num = vector::length(favor_votes);
             if (ensure_two_thirds(members_num, favor_votes_num)) {
                 proposal.state = PROPOSAL_SUCCESS;
+                event::emit(ChangeState {
+                    proposal_id: object::id(proposal),
+                    new_state: PROPOSAL_SUCCESS
+                });
                 return option::some(genesis::create(option::borrow(&governance_info.governance_manager_cap)))
             } else {
                 if (option::is_some(&proposal.end_vote)) {
                     proposal.state = PROPOSAL_FAIL;
+                    event::emit(ChangeState {
+                        proposal_id: object::id(proposal),
+                        new_state: PROPOSAL_FAIL
+                    });
                 };
                 return option::none()
             }
@@ -294,6 +328,10 @@ module governance::governance_v1 {
         assert!(sender == proposal.creator, ENOT_CREATEOR);
 
         proposal.state = PROPOSAL_CANCEL;
+        event::emit(ChangeState {
+            proposal_id: object::id(proposal),
+            new_state: PROPOSAL_CANCEL
+        });
     }
 
     /// Get proposal state
