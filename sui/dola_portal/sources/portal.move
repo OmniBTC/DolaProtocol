@@ -2,7 +2,7 @@ module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, convert_address_to_dola, create_dola_address};
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
@@ -13,7 +13,7 @@ module dola_portal::portal {
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
-    use user_manager::user_manager::{UserManagerInfo, UserManagerCap};
+    use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::CoreState;
     use wormhole_bridge::bridge_pool::PoolState;
@@ -129,43 +129,47 @@ module dola_portal::portal {
     }
 
     public entry fun send_binding(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         bind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        wormhole_bridge::bridge_pool::send_binding(
-            pool_state,
-            wormhole_state,
-            wormhole_message_fee,
-            dola_chain_id,
-            bind_address,
-            ctx
-        )
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let bind_address = create_dola_address(dola_chain_id, bind_address);
+        if (user == bind_address) {
+            user_manager::register_dola_user_id(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user
+            );
+        } else {
+            user_manager::binding_user_address(
+                option::borrow(&lending_portal.user_manager_cap),
+                user_manager_info,
+                user,
+                bind_address
+            );
+        };
     }
 
     public entry fun send_unbinding(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+        lending_portal: &LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         unbind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        wormhole_bridge::bridge_pool::send_unbinding(
-            pool_state,
-            wormhole_state,
-            wormhole_message_fee,
-            dola_chain_id,
-            unbind_address,
-            ctx
-        )
+        let user = tx_context::sender(ctx);
+        let user = convert_address_to_dola(user);
+        let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+        user_manager::unbinding_user_address(
+            option::borrow(&lending_portal.user_manager_cap),
+            user_manager_info,
+            user,
+            unbind_address
+        );
     }
 
     public entry fun supply<CoinType>(
