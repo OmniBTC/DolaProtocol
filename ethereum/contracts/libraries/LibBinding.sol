@@ -6,16 +6,19 @@ import "./LibDolaTypes.sol";
 
 library LibBinding {
     using LibBytes for bytes;
+    uint16 internal constant APP_ID = 0;
     uint8 internal constant BINDING = 5;
     uint8 internal constant UNBINDING = 6;
 
     struct BindingPayload {
+        uint16 appId;
         LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress binding;
         uint8 callType;
     }
 
     struct UnbindingPayload {
+        uint16 appId;
         LibDolaTypes.DolaAddress user;
         LibDolaTypes.DolaAddress unbinding;
         uint8 callType;
@@ -34,6 +37,7 @@ library LibBinding {
             binding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            APP_ID,
             uint16(userAddress.length),
             userAddress,
             uint16(bindingAddress.length),
@@ -56,6 +60,7 @@ library LibBinding {
             unbinding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            APP_ID,
             uint16(userAddress.length),
             userAddress,
             uint16(bindingAddress.length),
@@ -66,14 +71,18 @@ library LibBinding {
     }
 
     function decodeUnbindingPayload(bytes memory payload)
-        internal
-        pure
-        returns (UnbindingPayload memory)
+    internal
+    pure
+    returns (UnbindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         UnbindingPayload memory decodeData;
+
+        dataLen = 2;
+        decodeData.appId = payload.toUint16(index);
+        index += dataLen;
 
         dataLen = 2;
         uint16 userLength = payload.toUint16(index);
@@ -105,14 +114,18 @@ library LibBinding {
     }
 
     function decodeBindingPayload(bytes memory payload)
-        internal
-        pure
-        returns (BindingPayload memory)
+    internal
+    pure
+    returns (BindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         BindingPayload memory decodeData;
+
+        dataLen = 2;
+        decodeData.appId = payload.toUint16(index);
+        index += dataLen;
 
         dataLen = 2;
         uint16 userLength = payload.toUint16(index);

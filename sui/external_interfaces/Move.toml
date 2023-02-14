@@ -7,7 +7,8 @@ external_interfaces = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
 dola_types = "0x0"
-lending = "0x0"
+lending_core = "0x0"
+ray_math = "0x0"
 oracle = "0x0"
 sui = "0x2"
 
@@ -22,8 +23,11 @@ local = "../omnicore/pool_manager"
 [dependencies.UserManager]
 local = "../omnicore/user_manager"
 
-[dependencies.Lending]
-local = "../omnicore/lending"
+[dependencies.LendingCore]
+local = "../omnicore/lending_core"
+
+[dependencies.RayMath]
+local = "../ray_math"
 
 [dependencies.Oracle]
 local = "../omnicore/oracle"

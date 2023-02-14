@@ -14,7 +14,7 @@ def portal_supply(coin_type):
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -87,7 +87,7 @@ def portal_withdraw(coin_type, amount, dst_chain=0, receiver=None):
         oracle: &mut PriceOracle,
         pool_state: &mut PoolState,
         core_state: &mut CoreState,
-        lending_portal: &LendingPortal,
+        dola_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -195,7 +195,7 @@ def portal_borrow(coin_type, amount, dst_chain=0, receiver=None):
         oracle: &mut PriceOracle,
         pool_state: &mut PoolState,
         core_state: &mut CoreState,
-        lending_portal: &LendingPortal,
+        dola_portal: &LendingPortal,
         wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -277,7 +277,7 @@ def portal_repay(coin_type):
     public entry fun repay<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -512,7 +512,7 @@ def export_objects():
     external_interfaces = load.external_interfaces_package()
     wormhole_bridge = load.wormhole_bridge_package()
     test_coins = load.test_coins_package()
-    print(f"lending_portal={lending_portal.package_id}")
+    print(f"dola_portal={lending_portal.package_id}")
     print(f"external_interfaces={external_interfaces.package_id}")
     print(f"wormhole_bridge={wormhole_bridge.package_id}")
     print(f"test_coins={test_coins.package_id}")

@@ -5,9 +5,9 @@ module genesis_proposal::genesis_proposal {
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::create_dola_address;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
-    use lending::storage::Storage;
-    use lending::wormhole_adapter::WormholeAdapater;
-    use lending_portal::lending::LendingPortal;
+    use lending_core::storage::Storage;
+    use lending_core::wormhole_adapter::WormholeAdapater;
+    use dola_portal::portal::LendingPortal;
     use omnipool::pool;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
@@ -194,6 +194,7 @@ module genesis_proposal::genesis_proposal {
                 pool,
                 string(dola_pool_name),
                 dola_pool_id,
+                0,
                 ctx
             );
             governance_v1::destory_governance_cap(governance_cap);

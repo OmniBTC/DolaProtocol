@@ -1,16 +1,15 @@
-module lending::storage {
+module lending_core::storage {
     use std::option::{Self, Option};
     use std::vector;
 
     use app_manager::app_manager::{Self, AppCap};
     use governance::genesis::GovernanceCap;
     use oracle::oracle::{PriceOracle, get_timestamp};
+    use ray_math::math::ray;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-
-    const RAY: u64 = 100000000;
 
     const EONLY_ONE_ADMIN: u64 = 0;
 
@@ -55,20 +54,20 @@ module lending::storage {
         last_update_timestamp: u64,
         // Treasury (dola_user_id)
         treasury: u64,
-        // Treasury interest factor
-        treasury_factor: u64,
-        // Current borrow rate.
-        current_borrow_rate: u64,
-        // Current supply rate.
-        current_liquidity_rate: u64,
-        // Current borrow index.
-        current_borrow_index: u64,
-        // Current liquidity index.
-        current_liquidity_index: u64,
-        // Collateral coefficient
-        collateral_coefficient: u64,
-        // Borrow coefficient
-        borrow_coefficient: u64,
+        // Treasury interest factor [ray]
+        treasury_factor: u256,
+        // Current borrow rate [ray]
+        current_borrow_rate: u256,
+        // Current supply rate [ray]
+        current_liquidity_rate: u256,
+        // Current borrow index [ray]
+        current_borrow_index: u256,
+        // Current liquidity index [ray]
+        current_liquidity_index: u256,
+        // Collateral coefficient [ray]
+        collateral_coefficient: u256,
+        // Borrow coefficient [ray]
+        borrow_coefficient: u256,
         // Borrow rate factors, for borrow rate calculation
         borrow_rate_factors: BorrowRateFactors,
         // ScaledBalance for oToken
@@ -85,10 +84,10 @@ module lending::storage {
     }
 
     struct BorrowRateFactors has store {
-        base_borrow_rate: u64,
-        borrow_rate_slope1: u64,
-        borrow_rate_slope2: u64,
-        optimal_utilization: u64
+        base_borrow_rate: u256,
+        borrow_rate_slope1: u256,
+        borrow_rate_slope2: u256,
+        optimal_utilization: u256
     }
 
     struct StorageCap has store, drop {}
@@ -134,13 +133,13 @@ module lending::storage {
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
         treasury: u64,
-        treasury_factor: u64,
-        collateral_coefficient: u64,
-        borrow_coefficient: u64,
-        base_borrow_rate: u64,
-        borrow_rate_slope1: u64,
-        borrow_rate_slope2: u64,
-        optimal_utilization: u64,
+        treasury_factor: u256,
+        collateral_coefficient: u256,
+        borrow_coefficient: u256,
+        base_borrow_rate: u256,
+        borrow_rate_slope1: u256,
+        borrow_rate_slope2: u256,
+        optimal_utilization: u256,
         ctx: &mut TxContext
     ) {
         assert!(!table::contains(&storage.reserves, dola_pool_id), EALREADY_EXIST_RESERVE);
@@ -151,8 +150,8 @@ module lending::storage {
             treasury_factor,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
-            current_borrow_index: RAY,
-            current_liquidity_index: RAY,
+            current_borrow_index: ray(),
+            current_liquidity_index: ray(),
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {
@@ -246,17 +245,17 @@ module lending::storage {
     public fun get_treasury_factor(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
 
-    public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u64 {
+    public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).borrow_coefficient
     }
 
-    public fun get_collateral_coefficient(storage: &mut Storage, dola_pool_id: u16): u64 {
+    public fun get_collateral_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).collateral_coefficient
     }
@@ -289,14 +288,15 @@ module lending::storage {
     public fun get_liquidity_rate(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).current_liquidity_rate
     }
 
     public fun get_liquidity_index(
         storage: &mut Storage,
-        dola_pool_id: u16): u64 {
+        dola_pool_id: u16
+    ): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).current_liquidity_index
     }
@@ -304,7 +304,7 @@ module lending::storage {
     public fun get_borrow_rate(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).current_borrow_rate
     }
@@ -312,7 +312,7 @@ module lending::storage {
     public fun get_borrow_index(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         table::borrow(&storage.reserves, dola_pool_id).current_borrow_index
     }
@@ -320,7 +320,7 @@ module lending::storage {
     public fun get_borrow_rate_factors(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): (u64, u64, u64, u64) {
+    ): (u256, u256, u256, u256) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let borrow_rate_factors = &table::borrow(&storage.reserves, dola_pool_id).borrow_rate_factors;
         (borrow_rate_factors.base_borrow_rate, borrow_rate_factors.borrow_rate_slope1, borrow_rate_factors.borrow_rate_slope2, borrow_rate_factors.optimal_utilization)
@@ -484,10 +484,10 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        base_borrow_rate: u64,
-        borrow_rate_slope1: u64,
-        borrow_rate_slope2: u64,
-        optimal_utilization: u64
+        base_borrow_rate: u256,
+        borrow_rate_slope1: u256,
+        borrow_rate_slope2: u256,
+        optimal_utilization: u256
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let borrow_rate_factors = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).borrow_rate_factors;
@@ -514,14 +514,16 @@ module lending::storage {
         cap: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        new_borrow_index: u64,
-        new_liquidity_index: u64,
+        new_borrow_index: u256,
+        new_liquidity_index: u256,
+        last_update_timestamp: u64,
         mint_to_treasury_scaled: u64
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_index = new_borrow_index;
         reserve.current_liquidity_index = new_liquidity_index;
+        reserve.last_update_timestamp = last_update_timestamp;
 
         // Mint to treasury
         let dola_user_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
@@ -538,8 +540,8 @@ module lending::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        new_borrow_rate: u64,
-        new_liquidity_rate: u64,
+        new_borrow_rate: u256,
+        new_liquidity_rate: u256,
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);

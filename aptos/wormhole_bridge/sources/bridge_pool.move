@@ -1,23 +1,23 @@
 module wormhole_bridge::bridge_pool {
+    use std::signer;
+    use std::vector;
+
+    use aptos_std::table::{Self, Table};
+    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin::{Self, Coin};
+
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address};
     use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
+    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8};
+    use serde::u16::{U16, Self};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::wormhole;
-    use std::signer;
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
-    use wormhole::set::Set;
-    use aptos_std::table::Table;
-    use serde::u16::{U16, Self};
-    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8};
-    use wormhole::set;
-    use aptos_std::table;
-    use aptos_framework::coin::Coin;
-    use aptos_framework::aptos_coin::AptosCoin;
-    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address};
-    use aptos_framework::coin;
+    use wormhole::set::{Self, Set};
     use wormhole::state;
-    use std::vector;
+    use wormhole::wormhole;
+
+    const PROTOCOL_APP_ID: u64 = 0;
 
     const BINDING: u8 = 5;
 
@@ -256,6 +256,8 @@ module wormhole_bridge::bridge_pool {
     public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
         let binding_payload = vector::empty<u8>();
 
+        serialize_u16(&mut binding_payload, u16::from_u64(PROTOCOL_APP_ID));
+
         let user = encode_dola_address(user);
         serialize_u16(&mut binding_payload, u16::from_u64(vector::length(&user)));
         serialize_vector(&mut binding_payload, user);
@@ -268,10 +270,14 @@ module wormhole_bridge::bridge_pool {
         binding_payload
     }
 
-    public fun decode_binding(binding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
+    public fun decode_binding(binding_payload: vector<u8>): (U16, DolaAddress, DolaAddress, u8) {
         let length = vector::length(&binding_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 2;
         let user_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
@@ -294,11 +300,13 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (user, bind_address, call_type)
+        (app_id, user, bind_address, call_type)
     }
 
-    public fun encode_unbinding(user: DolaAddress,unbind_address: DolaAddress): vector<u8> {
+    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
         let unbinding_payload = vector::empty<u8>();
+
+        serialize_u16(&mut unbinding_payload, u16::from_u64(PROTOCOL_APP_ID));
 
         let user = encode_dola_address(user);
         serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&user)));
@@ -312,10 +320,14 @@ module wormhole_bridge::bridge_pool {
         unbinding_payload
     }
 
-    public fun decode_unbinding(unbinding_payload: vector<u8>): (DolaAddress, DolaAddress, u8) {
+    public fun decode_unbinding(unbinding_payload: vector<u8>): (U16, DolaAddress, DolaAddress, u8) {
         let length = vector::length(&unbinding_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let app_id = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 2;
         let user_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
@@ -338,6 +350,6 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (user, unbind_address, call_type)
+        (app_id, user, unbind_address, call_type)
     }
 }

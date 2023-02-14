@@ -3,6 +3,7 @@
 # @FileName: deploy.py
 
 import aptos_brownie
+
 from dola_aptos_sdk import DOLA_CONFIG
 
 net = "aptos-testnet"
@@ -47,7 +48,7 @@ lending_portal_package = aptos_brownie.AptosPackage(
     project_path=DOLA_CONFIG["DOLA_APTOS_PATH"],
     network=net,
     is_compile=True,
-    package_path=DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("lending_portal")
+    package_path=DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("dola_portal")
 )
 
 lending_portal_package.publish_package()

@@ -36,9 +36,10 @@ def deploy():
 
     usdc = deploy_token("USDC")
 
-    print("deploy lending portal...")
-    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address,
-                                                                                  wormhole_chainid, {'from': account})
+    print("deploy lending_core portal...")
+    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(
+        DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockBridgePool"][-1].address,
+        wormhole_chainid, {'from': account})
 
     print("----- deploy result -----")
     print(f"bridge_pool:'{bridge_pool}'")

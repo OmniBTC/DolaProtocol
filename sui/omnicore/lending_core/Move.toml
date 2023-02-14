@@ -1,9 +1,9 @@
 [package]
-name = "Lending"
+name = "LendingCore"
 version = "0.0.1"
 
 [addresses]
-lending = "0x0"
+lending_core = "0x0"
 wormhole_bridge = "0x0"
 user_manager = "0x0"
 pool_manager = "0x0"
@@ -12,6 +12,7 @@ governance = "0x0"
 oracle = "0x0"
 serde = "0x0"
 wormhole = "0x0"
+ray_math = "0x0"
 dola_types = "0x0"
 sui = "0x2"
 
@@ -30,6 +31,9 @@ local = "../../dola_types"
 
 [dependencies.Serde]
 local = "../../serde"
+
+[dependencies.RayMath]
+local = "../../ray_math"
 
 [dependencies.WormholeBridge]
 local = "../../wormhole_bridge"
