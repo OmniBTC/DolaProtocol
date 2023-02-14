@@ -70,12 +70,11 @@ module pool_manager::equilibrium_fee {
         } else if (after_liquidity_ratio > ALPHA_1) {
             0
         } else {
-            let fee_rate = ray_div(ray_mul(ALPHA_1 - after_liquidity_ratio, LAMBDA_1), ALPHA_1);
             let fee = ray_div(ray_mul(
-                (total_liquidity - current_liquidity) * ray_mul(fee_rate, ray_ln2()),
+                (total_liquidity - current_liquidity) * ray_mul(LAMBDA_1, ray_ln2()),
                 ray_log2(ray_div(total_liquidity - n_start, total_liquidity - withdraw_amount))
             ), ray_mul(ALPHA_1, expected_ratio)) - ray_div(
-                (withdraw_amount - n_start) * ray_mul(fee_rate, ray() - ray_mul(ALPHA_1, expected_ratio)),
+                (withdraw_amount - n_start) * ray_mul(LAMBDA_1, ray() - ray_mul(ALPHA_1, expected_ratio)),
                 ray_mul(ALPHA_1, expected_ratio)
             );
             fee
@@ -132,6 +131,16 @@ module pool_manager::equilibrium_fee {
         let withdraw_amount = withdraw_amount;
         let fee3 = calculate_equilibrium_fee(total_liquidity, current_liquidity, withdraw_amount, expect_ratio);
         assert!(fee3 > 0, 3);
+
+        // before liquidity ratio == 50%
+        // after liquidity ratio == 40%
+        let total_liquidity = 10000;
+        let current_liquidity = 2500;
+        let expect_ratio = calculate_expected_ratio(2, 1);
+        let withdraw_amount = 2 * withdraw_amount;
+        let fee4 = calculate_equilibrium_fee(total_liquidity, current_liquidity, withdraw_amount, expect_ratio);
+        assert!(fee4 > 0, 4);
+        assert!(fee4 / 100000 == (fee3 + fee2) / 100000, 5);
 
         // before liquidity ratio == 50%
         // after liquidity ratio == 0%
