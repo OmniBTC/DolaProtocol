@@ -74,7 +74,7 @@ module dola_portal::portal {
         })
     }
 
-    fun nonce(): u64 acquires PortalEventHandle {
+    fun get_nonce(): u64 acquires PortalEventHandle {
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         let nonce = event_handle.nonce;
         event_handle.nonce = event_handle.nonce + 1;
@@ -86,7 +86,7 @@ module dola_portal::portal {
         dola_chain_id: u64,
         bind_address: vector<u8>,
     ) acquires PortalEventHandle {
-        let nonce = nonce();
+        let nonce = get_nonce();
         send_binding(sender, nonce, dola_chain_id, bind_address);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
@@ -107,7 +107,7 @@ module dola_portal::portal {
         dola_chain_id: u64,
         unbind_address: vector<u8>
     ) acquires PortalEventHandle {
-        let nonce = nonce();
+        let nonce = get_nonce();
         send_unbinding(sender, nonce, dola_chain_id, unbind_address);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
@@ -129,7 +129,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let user = convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        let nonce = nonce();
+        let nonce = get_nonce();
         let amount = normal_amount<CoinType>(deposit_coin);
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
@@ -167,7 +167,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let amount = normal_amount<CoinType>(amount);
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
@@ -205,7 +205,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
             nonce,
@@ -248,7 +248,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let amount = normal_amount<CoinType>(amount);
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
@@ -287,7 +287,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
             nonce,
@@ -328,7 +328,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let user_addr = convert_address_to_dola(signer::address_of(sender));
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let amount = normal_amount<CoinType>(repay_coin);
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
@@ -370,7 +370,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
 
-        let nonce = nonce();
+        let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
             nonce,

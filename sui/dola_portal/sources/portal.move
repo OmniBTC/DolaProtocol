@@ -110,7 +110,7 @@ module dola_portal::portal {
         })
     }
 
-    fun increment_nonce(dola_portal: &mut DolaPortal): u64 {
+    fun get_nonce(dola_portal: &mut DolaPortal): u64 {
         let nonce = dola_portal.nonce;
         dola_portal.nonce = dola_portal.nonce + 1;
         nonce
@@ -207,7 +207,7 @@ module dola_portal::portal {
             );
         };
         emit(LocalProtocolEvent {
-            nonce: increment_nonce(dola_portal),
+            nonce: get_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
             user_address: bind_address,
@@ -233,7 +233,7 @@ module dola_portal::portal {
         );
 
         emit(LocalProtocolEvent {
-            nonce: increment_nonce(dola_portal),
+            nonce: get_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
             user_address: unbind_address,
@@ -256,7 +256,7 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
-        let nonce = increment_nonce(dola_portal);
+        let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
             get_native_dola_chain_id(),
             nonce,
@@ -363,7 +363,7 @@ module dola_portal::portal {
         pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
-            nonce: increment_nonce(dola_portal),
+            nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
             amount: actual_amount,
@@ -420,7 +420,7 @@ module dola_portal::portal {
             actual_amount
         );
 
-        let nonce = increment_nonce(dola_portal);
+        let nonce = get_nonce(dola_portal);
         // Cross-chain withdraw
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
@@ -496,7 +496,7 @@ module dola_portal::portal {
         pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
-            nonce: increment_nonce(dola_portal),
+            nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
             amount,
@@ -551,7 +551,7 @@ module dola_portal::portal {
             amount
         );
 
-        let nonce = increment_nonce(dola_portal);
+        let nonce = get_nonce(dola_portal);
         // Cross-chain borrow
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
@@ -593,7 +593,7 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
-        let nonce = increment_nonce(dola_portal);
+        let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
             get_native_dola_chain_id(),
             nonce,
@@ -668,7 +668,7 @@ module dola_portal::portal {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let nonce = increment_nonce(dola_portal);
+        let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
             get_native_dola_chain_id(),
             nonce,
