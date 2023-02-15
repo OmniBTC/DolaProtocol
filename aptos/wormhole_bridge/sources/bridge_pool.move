@@ -3,13 +3,14 @@ module wormhole_bridge::bridge_pool {
     use std::vector;
 
     use aptos_std::table::{Self, Table};
-    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::account::{Self, SignerCapability, new_event_handle};
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin::{Self, Coin};
+    use aptos_framework::event::{EventHandle, emit_event};
 
-    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address};
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address, get_native_dola_chain_id, dola_chain_id, dola_address};
     use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
-    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8};
+    use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8, serialize_u64, deserialize_u64};
     use serde::u16::{U16, Self};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
@@ -55,6 +56,19 @@ module wormhole_bridge::bridge_pool {
         amount: u64,
     }
 
+    struct PoolEventHandle has key {
+        pool_withdraw_handle: EventHandle<PoolWithdrawEvent>
+    }
+
+    struct PoolWithdrawEvent has drop, store {
+        nonce: u64,
+        source_chain_id: U16,
+        dst_chain_id: U16,
+        pool_address: vector<u8>,
+        receiver: vector<u8>,
+        amount: u64
+    }
+
     public fun ensure_admin(sender: &signer): bool {
         signer::address_of(sender) == @wormhole_bridge
     }
@@ -82,6 +96,10 @@ module wormhole_bridge::bridge_pool {
             cache_vaas: table::new(),
             nonce: 0
         });
+
+        move_to(sender, PoolEventHandle {
+            pool_withdraw_handle: new_event_handle<PoolWithdrawEvent>(sender)
+        })
     }
 
     public fun register_remote_bridge(
@@ -103,12 +121,19 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun send_binding(
         sender: &signer,
+        nonce: u64,
         dola_chain_id: u64,
         bind_address: vector<u8>,
     ) acquires PoolState {
         let bind_address = create_dola_address(u16::from_u64(dola_chain_id), bind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
-        let msg = encode_binding(user, bind_address);
+        let msg = encode_protocol_app_payload(
+            u16::from_u64(get_native_dola_chain_id()),
+            nonce,
+            BINDING,
+            user,
+            bind_address
+        );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -120,12 +145,19 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun send_unbinding(
         sender: &signer,
+        nonce: u64,
         dola_chain_id: u64,
         unbind_address: vector<u8>
     ) acquires PoolState {
         let unbind_address = create_dola_address(u16::from_u64(dola_chain_id), unbind_address);
         let user = convert_address_to_dola(signer::address_of(sender));
-        let msg = encode_unbinding(user, unbind_address);
+        let msg = encode_protocol_app_payload(
+            u16::from_u64(get_native_dola_chain_id()),
+            nonce,
+            UNBINDING,
+            user,
+            unbind_address
+        );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -213,7 +245,7 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun receive_withdraw<CoinType>(
         vaa: vector<u8>,
-    ) acquires PoolState {
+    ) acquires PoolState, PoolEventHandle {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -224,12 +256,24 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, token_name) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (pool_address, user, amount) =
+        let (source_chain_id, nonce, pool_address, receiver, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
 
-        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, user, amount, pool_address);
+        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
         // myvaa::destroy(vaa);
+        let event_handle = borrow_global_mut<PoolEventHandle>(@wormhole_bridge);
+        emit_event(
+            &mut event_handle.pool_withdraw_handle,
+            PoolWithdrawEvent {
+                nonce,
+                source_chain_id,
+                dst_chain_id: dola_chain_id(&pool_address),
+                pool_address: dola_address(&pool_address),
+                receiver: dola_address(&receiver),
+                amount
+            }
+        )
     }
 
     public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
@@ -244,7 +288,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(sender: &signer, vaa: vector<u8>) {
-        let (pool_address, user, amount) =
+        let (_, _, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
@@ -253,103 +297,70 @@ module wormhole_bridge::bridge_pool {
         })
     }
 
-    public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
-        let binding_payload = vector::empty<u8>();
+    public fun encode_protocol_app_payload(
+        source_chain_id: U16,
+        nonce: u64,
+        call_type: u8,
+        user: DolaAddress,
+        bind_address: DolaAddress
+    ): vector<u8> {
+        let payload = vector::empty<u8>();
 
-        serialize_u16(&mut binding_payload, u16::from_u64(PROTOCOL_APP_ID));
+        serialize_u16(&mut payload, u16::from_u64(PROTOCOL_APP_ID));
+
+        serialize_u16(&mut payload, source_chain_id);
+        serialize_u64(&mut payload, nonce);
 
         let user = encode_dola_address(user);
-        serialize_u16(&mut binding_payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut binding_payload, user);
+        serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
+        serialize_vector(&mut payload, user);
 
         let bind_address = encode_dola_address(bind_address);
-        serialize_u16(&mut binding_payload, u16::from_u64(vector::length(&bind_address)));
-        serialize_vector(&mut binding_payload, bind_address);
+        serialize_u16(&mut payload, u16::from_u64(vector::length(&bind_address)));
+        serialize_vector(&mut payload, bind_address);
 
-        serialize_u8(&mut binding_payload, BINDING);
-        binding_payload
+        serialize_u8(&mut payload, call_type);
+        payload
     }
 
-    public fun decode_binding(binding_payload: vector<u8>): (U16, DolaAddress, DolaAddress, u8) {
-        let length = vector::length(&binding_payload);
+    public fun decode_protocol_app_payload(payload: vector<u8>): (U16, U16, u64, DolaAddress, DolaAddress, u8) {
+        let length = vector::length(&payload);
         let index = 0;
         let data_len;
 
         data_len = 2;
-        let app_id = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        let app_id = deserialize_u16(&vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let user_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        let source_chain_id = deserialize_u16(&vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let nonce = deserialize_u64(&vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let user_len = deserialize_u16(&vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = u16::to_u64(user_len);
-        let user = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
+        let user = decode_dola_address(vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let bind_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
+        let bind_len = deserialize_u16(&vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = u16::to_u64(bind_len);
-        let bind_address = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
+        let bind_address = decode_dola_address(vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&binding_payload, index, index + data_len));
+        let call_type = deserialize_u8(&vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (app_id, user, bind_address, call_type)
-    }
-
-    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
-        let unbinding_payload = vector::empty<u8>();
-
-        serialize_u16(&mut unbinding_payload, u16::from_u64(PROTOCOL_APP_ID));
-
-        let user = encode_dola_address(user);
-        serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&user)));
-        serialize_vector(&mut unbinding_payload, user);
-
-        let unbind_address = encode_dola_address(unbind_address);
-        serialize_u16(&mut unbinding_payload, u16::from_u64(vector::length(&unbind_address)));
-        serialize_vector(&mut unbinding_payload, unbind_address);
-
-        serialize_u8(&mut unbinding_payload, UNBINDING);
-        unbinding_payload
-    }
-
-    public fun decode_unbinding(unbinding_payload: vector<u8>): (U16, DolaAddress, DolaAddress, u8) {
-        let length = vector::length(&unbinding_payload);
-        let index = 0;
-        let data_len;
-
-        data_len = 2;
-        let app_id = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let user_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = u16::to_u64(user_len);
-        let user = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let unbind_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = u16::to_u64(unbind_len);
-        let unbind_address = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        assert!(length == index, EINVALID_LENGTH);
-        (app_id, user, unbind_address, call_type)
+        (app_id, source_chain_id, nonce, user, bind_address, call_type)
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "Portal"
+name = "DolaPortal"
 version = "0.0.1"
 
 [addresses]
@@ -8,7 +8,7 @@ aptos-stdlib = "0x1"
 aptos_framework = "0x1"
 aptos_std = "0x1"
 # App
-lending_portal = "_"
+dola_portal = "_"
 serde = "_"
 dola_types = "_"
 wormhole_bridge = "_"

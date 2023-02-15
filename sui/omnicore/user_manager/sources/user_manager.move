@@ -1,14 +1,16 @@
 module user_manager::user_manager {
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_chain_id, update_dola_chain_id};
+    use dola_types::types::{DolaAddress, dola_chain_id, update_dola_chain_id};
     use governance::genesis::GovernanceCap;
-    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice, serialize_u8, deserialize_u8};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
+    const EVM_CHAIN_ID: u16 = 2;
+
+    /// Errors
     const ENOT_EXIST_USER: u64 = 0;
 
     const EALREADY_EXIST_USER: u64 = 1;
@@ -26,15 +28,6 @@ module user_manager::user_manager {
     const ENOT_EVM_CHAIN: u64 = 7;
 
     const EINVALID_UNBINDING: u64 = 8;
-
-    const PROTOCOL_APP_ID: u16 = 0;
-
-    // todo: fix message type
-    const BINDING: u8 = 5;
-
-    const UNBINDING: u8 = 6;
-
-    const EVM_CHAIN_ID: u16 = 2;
 
     struct UserManagerInfo has key, store {
         id: UID,
@@ -154,105 +147,5 @@ module user_manager::user_manager {
         assert!(is_exist, ENOT_EXIST_USER);
         vector::remove(user_addresses, index);
         table::remove(&mut user_catelog.user_address_to_user_id, unbind_address);
-    }
-
-    public fun encode_binding(user: DolaAddress, bind_address: DolaAddress): vector<u8> {
-        let binding_payload = vector::empty<u8>();
-
-        serialize_u16(&mut binding_payload, PROTOCOL_APP_ID);
-
-        let user = encode_dola_address(user);
-        serialize_u16(&mut binding_payload, (vector::length(&user) as u16));
-        serialize_vector(&mut binding_payload, user);
-
-        let bind_address = encode_dola_address(bind_address);
-        serialize_u16(&mut binding_payload, (vector::length(&bind_address) as u16));
-        serialize_vector(&mut binding_payload, bind_address);
-
-        serialize_u8(&mut binding_payload, BINDING);
-        binding_payload
-    }
-
-    public fun decode_binding(binding_payload: vector<u8>): (u16, DolaAddress, DolaAddress, u8) {
-        let length = vector::length(&binding_payload);
-        let index = 0;
-        let data_len;
-
-        data_len = 2;
-        let app_id = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let user_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (user_len as u64);
-        let user = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let bind_len = deserialize_u16(&vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (bind_len as u64);
-        let bind_address = decode_dola_address(vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&binding_payload, index, index + data_len));
-        index = index + data_len;
-
-        assert!(length == index, EINVALID_LENGTH);
-        (app_id, user, bind_address, call_type)
-    }
-
-    public fun encode_unbinding(user: DolaAddress, unbind_address: DolaAddress): vector<u8> {
-        let unbinding_payload = vector::empty<u8>();
-
-        serialize_u16(&mut unbinding_payload, PROTOCOL_APP_ID);
-
-        let user = encode_dola_address(user);
-        serialize_u16(&mut unbinding_payload, (vector::length(&user) as u16));
-        serialize_vector(&mut unbinding_payload, user);
-
-        let unbind_address = encode_dola_address(unbind_address);
-        serialize_u16(&mut unbinding_payload, (vector::length(&unbind_address) as u16));
-        serialize_vector(&mut unbinding_payload, unbind_address);
-
-        serialize_u8(&mut unbinding_payload, UNBINDING);
-        unbinding_payload
-    }
-
-    public fun decode_unbinding(unbinding_payload: vector<u8>): (u16, DolaAddress, DolaAddress, u8) {
-        let length = vector::length(&unbinding_payload);
-        let index = 0;
-        let data_len;
-
-        data_len = 2;
-        let app_id = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let user_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (user_len as u64);
-        let user = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let unbind_len = deserialize_u16(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (unbind_len as u64);
-        let unbind_address = decode_dola_address(vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&unbinding_payload, index, index + data_len));
-        index = index + data_len;
-
-        assert!(length == index, EINVALID_LENGTH);
-        (app_id, user, unbind_address, call_type)
     }
 }

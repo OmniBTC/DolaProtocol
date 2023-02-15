@@ -1,17 +1,16 @@
 module wormhole_bridge::bridge_pool {
-    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola};
+    use dola_types::types::{DolaAddress, dola_chain_id, dola_address};
     use governance::genesis::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
-    use sui::event;
+    use sui::event::{Self, emit};
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
+    use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{encode_unbinding, encode_binding};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -42,6 +41,15 @@ module wormhole_bridge::bridge_pool {
     struct VaaReciveWithdrawEvent has copy, drop {
         pool_address: DolaAddress,
         user: DolaAddress,
+        amount: u64
+    }
+
+    struct PoolWithdrawEvent has drop, copy {
+        nonce: u64,
+        source_chain_id: u16,
+        dst_chain_id: u16,
+        pool_address: vector<u8>,
+        receiver: vector<u8>,
         amount: u64
     }
 
@@ -77,39 +85,57 @@ module wormhole_bridge::bridge_pool {
         );
     }
 
-    public fun send_binding(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        dola_chain_id: u16,
-        bind_address: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let user = tx_context::sender(ctx);
-        let user = convert_address_to_dola(user);
-        let bind_address = create_dola_address(dola_chain_id, bind_address);
-        let payload = encode_binding(user, bind_address);
-        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, payload);
-    }
+    // public fun send_binding(
+    //     pool_state: &mut PoolState,
+    //     wormhole_state: &mut WormholeState,
+    //     wormhole_message_fee: Coin<SUI>,
+    //     nonce: u64,
+    //     source_chain_id: u16,
+    //     dola_chain_id: u16,
+    //     bind_address: vector<u8>,
+    //     call_type: u8,
+    //     ctx: &mut TxContext
+    // ) {
+    //     let user = tx_context::sender(ctx);
+    //     let user = convert_address_to_dola(user);
+    //     let bind_address = create_dola_address(dola_chain_id, bind_address);
+    //     let payload = protocol_wormhole_adapter::encode_app_payload(
+    //         source_chain_id,
+    //         nonce,
+    //         call_type,
+    //         user,
+    //         bind_address
+    //     );
+    //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
+    //     let index = table::length(&pool_state.cache_vaas) + 1;
+    //     table::add(&mut pool_state.cache_vaas, index, payload);
+    // }
 
-    public fun send_unbinding(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        dola_chain_id: u16,
-        unbind_address: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let user = tx_context::sender(ctx);
-        let user = convert_address_to_dola(user);
-        let unbind_address = create_dola_address(dola_chain_id, unbind_address);
-        let payload = encode_unbinding(user, unbind_address);
-        wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, payload);
-    }
+    // public fun send_unbinding(
+    //     pool_state: &mut PoolState,
+    //     wormhole_state: &mut WormholeState,
+    //     wormhole_message_fee: Coin<SUI>,
+    //     nonce: u64,
+    //     source_chain_id: u16,
+    //     dola_chain_id: u16,
+    //     unbind_address: vector<u8>,
+    //     call_type: u8,
+    //     ctx: &mut TxContext
+    // ) {
+    //     let user = tx_context::sender(ctx);
+    //     let user = convert_address_to_dola(user);
+    //     let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+    //     let payload = protocol_wormhole_adapter::encode_app_payload(
+    //         source_chain_id,
+    //         nonce,
+    //         call_type,
+    //         user,
+    //         unbind_address
+    //     );
+    //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
+    //     let index = table::length(&pool_state.cache_vaas) + 1;
+    //     table::add(&mut pool_state.cache_vaas, index, payload);
+    // }
 
     public fun send_deposit<CoinType>(
         pool_state: &mut PoolState,
@@ -192,10 +218,19 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (pool_address, user, amount) =
+        let (source_chain_id, nonce, pool_address, receiver, amount) =
             pool::decode_receive_withdraw_payload(vaa);
-        pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, pool_address, ctx);
+        pool::inner_withdraw(&pool_state.pool_cap, pool, receiver, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
+
+        emit(PoolWithdrawEvent {
+            nonce,
+            source_chain_id,
+            dst_chain_id: dola_chain_id(&pool_address),
+            pool_address: dola_address(&pool_address),
+            receiver: dola_address(&receiver),
+            amount
+        })
     }
 
     public entry fun read_vaa(pool_state: &PoolState, index: u64) {
@@ -209,7 +244,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (pool_address, user, amount) =
+        let (_, _, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {

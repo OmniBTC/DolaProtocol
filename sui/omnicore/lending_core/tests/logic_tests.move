@@ -105,22 +105,22 @@ module lending_core::logic_tests {
         // register btc pool
         let pool = create_dola_address(0, b"BTC");
         let pool_name = string(b"BTC");
-        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, BTC_POOL_ID, ctx);
+        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, BTC_POOL_ID, 1, ctx);
 
         // register usdt pool
         let pool = create_dola_address(0, b"USDT");
         let pool_name = string(b"USDT");
-        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, USDT_POOL_ID, ctx);
+        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, USDT_POOL_ID, 1, ctx);
 
         // register usdc pool
         let pool = create_dola_address(0, b"USDC");
         let pool_name = string(b"USDC");
-        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, USDC_POOL_ID, ctx);
+        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, USDC_POOL_ID, 1, ctx);
 
         // register eth pool
         let pool = create_dola_address(0, b"ETH");
         let pool_name = string(b"ETH");
-        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, ETH_POOL_ID, ctx);
+        pool_manager::register_pool(&cap, pool_manager_info, pool, pool_name, ETH_POOL_ID, 1, ctx);
     }
 
     public fun init_reserves(storage: &mut Storage, oracle: &mut PriceOracle, ctx: &mut TxContext) {
