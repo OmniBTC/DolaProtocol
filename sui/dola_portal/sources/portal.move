@@ -62,7 +62,7 @@ module dola_portal::portal {
     struct ProtocolPortalEvent has drop, copy {
         nonce: u64,
         sender: address,
-        send_chain_id: u16,
+        source_chain_id: u16,
         user_chain_id: u16,
         user_address: vector<u8>,
         call_type: u8
@@ -78,12 +78,12 @@ module dola_portal::portal {
         call_type: u8
     }
 
-    struct DolaPortalEvent has drop, copy {
+    struct LendingPortalEvent has drop, copy {
         nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
-        send_chain_id: u16,
-        receive_chain_id: u16,
+        source_chain_id: u16,
+        dst_chain_id: u16,
         receiver: vector<u8>,
         amount: u64,
         call_type: u8
@@ -257,7 +257,14 @@ module dola_portal::portal {
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
         let nonce = increment_nonce(dola_portal);
-        let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, deposit_amount, user_addr, 0);
+        let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
+            get_native_dola_chain_id(),
+            nonce,
+            SUPPLY,
+            deposit_amount,
+            user_addr,
+            0
+        );
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -422,17 +429,18 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
+            get_native_dola_chain_id(),
             nonce,
             actual_amount,
             coin::zero<SUI>(ctx)
         );
 
-        emit(DolaPortalEvent {
+        emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
-            send_chain_id: get_native_dola_chain_id(),
-            receive_chain_id: dst_chain,
+            source_chain_id: get_native_dola_chain_id(),
+            dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount: actual_amount,
             call_type: WITHDRAW
@@ -552,17 +560,18 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
+            get_native_dola_chain_id(),
             nonce,
             amount,
             coin::zero<SUI>(ctx)
         );
 
-        emit(DolaPortalEvent {
+        emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
-            send_chain_id: get_native_dola_chain_id(),
-            receive_chain_id: dst_chain,
+            source_chain_id: get_native_dola_chain_id(),
+            dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount,
             call_type: BORROW
@@ -585,7 +594,14 @@ module dola_portal::portal {
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
         let nonce = increment_nonce(dola_portal);
-        let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, repay_amount, user_addr, 0);
+        let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
+            get_native_dola_chain_id(),
+            nonce,
+            SUPPLY,
+            repay_amount,
+            user_addr,
+            0
+        );
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -653,7 +669,8 @@ module dola_portal::portal {
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let nonce = increment_nonce(dola_portal);
-        let app_payload = lending_core::logic::encode_app_payload(
+        let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
+            get_native_dola_chain_id(),
             nonce,
             LIQUIDATE,
             normal_amount(debt_pool, coin::value(&debt_coin)),
@@ -675,14 +692,15 @@ module dola_portal::portal {
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = lending_core::logic::encode_app_payload(
+        let payload = lending_core::lending_wormhole_adapter::encode_app_payload(
+            0,
             0,
             WITHDRAW,
             100000000,
             dola_types::types::convert_address_to_dola(user),
             0
         );
-        let (_, call_type, amount, user_addr, _) = lending_core::logic::decode_app_payload(payload);
+        let (_, _, call_type, amount, user_addr, _) = lending_core::logic::decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
         assert!(user_addr == dola_types::types::convert_address_to_dola(user), 0);

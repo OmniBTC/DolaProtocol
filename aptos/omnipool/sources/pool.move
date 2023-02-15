@@ -1,19 +1,17 @@
 module omnipool::pool {
+    use std::signer;
+    use std::string;
     use std::vector;
 
-    use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
-    use aptos_framework::coin::{Coin, is_account_registered};
-    use std::signer;
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
-    use aptos_framework::coin;
     use aptos_std::type_info;
-    use std::string;
-    use serde::u16;
-    use serde::u16::U16;
+    use aptos_framework::account::{Self, SignerCapability};
     use aptos_framework::aptos_account;
     use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin::{Self, Coin, is_account_registered};
+
     use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_address, convert_address_to_dola, convert_pool_to_dola, convert_dola_to_address};
+    use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
+    use serde::u16::{Self, U16};
 
     const SEED: vector<u8> = b"Dola omnipool";
 
@@ -437,11 +435,16 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
+        source_chain_id: U16,
+        nonce: u64,
         pool_addr: DolaAddress,
         user_addr: DolaAddress,
         amount: u64
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
+
+        serialize_u16(&mut pool_payload, source_chain_id);
+        serialize_u64(&mut pool_payload, nonce);
 
         let pool_addr = encode_dola_address(pool_addr);
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
@@ -456,10 +459,18 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (DolaAddress, DolaAddress, u64) {
+    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (U16, u64, DolaAddress, DolaAddress, u64) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let source_chain_id = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let nonce = deserialize_u64(&vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 2;
         let pool_len = deserialize_u16(&vector_slice(&pool_payload, index, index + data_len));
@@ -483,6 +494,6 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_addr, user_addr, amount)
+        (source_chain_id, nonce, pool_addr, user_addr, amount)
     }
 }

@@ -1,14 +1,12 @@
 module lending_core::logic {
     use std::vector;
 
-    use dola_types::types::{DolaAddress, decode_dola_address, encode_dola_address};
     use lending_core::rates;
     use lending_core::scaled_balance::{Self, balance_of};
     use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math::{Self, ray_mul, ray_div, min, ray};
-    use serde::serde::{deserialize_u64, deserialize_u8, vector_slice, deserialize_u16, serialize_u64, serialize_u16, serialize_vector, serialize_u8};
     use sui::math::pow;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
@@ -33,8 +31,6 @@ module lending_core::logic {
     const ENOT_ENOUGH_OTOKEN: u64 = 5;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
-
-    const EINVALID_LENGTH: u64 = 7;
 
     public fun execute_liquidate(
         cap: &StorageCap,
@@ -613,58 +609,5 @@ module lending_core::logic {
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);
-    }
-
-    public fun encode_app_payload(
-        nonce: u64,
-        call_type: u8,
-        amount: u64,
-        receiver: DolaAddress,
-        liquidate_user_id: u64
-    ): vector<u8> {
-        let payload = vector::empty<u8>();
-
-        serialize_u64(&mut payload, nonce);
-        serialize_u64(&mut payload, amount);
-        let receiver = encode_dola_address(receiver);
-        serialize_u16(&mut payload, (vector::length(&receiver) as u16));
-        serialize_vector(&mut payload, receiver);
-        serialize_u64(&mut payload, liquidate_user_id);
-        serialize_u8(&mut payload, call_type);
-        payload
-    }
-
-    public fun decode_app_payload(app_payload: vector<u8>): (u64, u8, u64, DolaAddress, u64) {
-        let index = 0;
-        let data_len;
-
-        data_len = 8;
-        let nonce = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-
-        index = index + data_len;
-
-        data_len = (receive_length as u64);
-        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
-
-        (nonce, call_type, amount, receiver, liquidate_user_id)
     }
 }

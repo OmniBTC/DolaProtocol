@@ -32,6 +32,8 @@ library LibPool {
     }
 
     struct ReceiveWithdrawPayload {
+        uint16 sourceChainId;
+        uint64 nonce;
         LibDolaTypes.DolaAddress pool;
         LibDolaTypes.DolaAddress user;
         uint64 amount;
@@ -70,9 +72,9 @@ library LibPool {
     }
 
     function decodeSendDepositPayload(bytes memory payload)
-        internal
-        pure
-        returns (SendDepositPayload memory)
+    internal
+    pure
+    returns (SendDepositPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -152,9 +154,9 @@ library LibPool {
     }
 
     function decodeSendWithdrawPayload(bytes memory payload)
-        internal
-        pure
-        returns (SendWithdrawPayload memory)
+    internal
+    pure
+    returns (SendWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -239,9 +241,9 @@ library LibPool {
     }
 
     function decodeSendDepositAndWithdrawPayload(bytes memory payload)
-        internal
-        pure
-        returns (SendDepositAndWithdrawPayload memory)
+    internal
+    pure
+    returns (SendDepositAndWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -304,6 +306,8 @@ library LibPool {
     }
 
     function encodeReceiveWithdrawPayload(
+        uint16 sourceChainId,
+        uint64 nonce,
         LibDolaTypes.DolaAddress memory pool,
         LibDolaTypes.DolaAddress memory user,
         uint64 amount
@@ -317,6 +321,8 @@ library LibPool {
             user.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            sourceChainId,
+            nonce,
             uint16(poolAddress.length),
             poolAddress,
             uint16(userAddress.length),
@@ -327,14 +333,22 @@ library LibPool {
     }
 
     function decodeReceiveWithdrawPayload(bytes memory payload)
-        internal
-        pure
-        returns (ReceiveWithdrawPayload memory)
+    internal
+    pure
+    returns (ReceiveWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         ReceiveWithdrawPayload memory decodeData;
+
+        dataLen = 2;
+        decodeData.sourceChainId = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = 8;
+        decodeData.nonce = payload.toUint64(index);
+        index += dataLen;
 
         dataLen = 2;
         uint16 poolLength = payload.toUint16(index);

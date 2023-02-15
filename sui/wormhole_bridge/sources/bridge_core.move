@@ -205,7 +205,8 @@ module wormhole_bridge::bridge_core {
         pool_address: DolaAddress,
         // todo: fix address
         user: DolaAddress,
-        nonce: vector<u8>,
+        source_chain_id: u16,
+        nonce: u64,
         amount: u64,
         wormhole_message_fee: Coin<SUI>,
     ) {
@@ -217,7 +218,7 @@ module wormhole_bridge::bridge_core {
             app_manager::app_id(app_cap),
             amount
         );
-        let msg = pool::encode_receive_withdraw_payload(nonce, pool_address, user, actual_amount);
+        let msg = pool::encode_receive_withdraw_payload(source_chain_id, nonce, pool_address, user, actual_amount);
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);

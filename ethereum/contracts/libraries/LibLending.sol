@@ -8,6 +8,7 @@ library LibLending {
     using LibBytes for bytes;
 
     struct LendingAppPayload {
+        uint16 sourceChainId;
         uint64 nonce;
         uint8 callType;
         uint64 amount;
@@ -15,7 +16,8 @@ library LibLending {
         uint64 liquidateUserId;
     }
 
-    function encodeAppPayload(
+    function encodeLendingAppPayload(
+        uint16 sourceChainId,
         uint64 nonce,
         uint8 callType,
         uint64 amount,
@@ -27,6 +29,7 @@ library LibLending {
             receiver.externalAddress
         );
         bytes memory encodeData = abi.encodePacked(
+            sourceChainId,
             nonce,
             amount,
             uint16(dolaAddress.length),
@@ -37,15 +40,19 @@ library LibLending {
         return encodeData;
     }
 
-    function decodeAppPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppPayload memory)
+    function decodeLendingAppPayload(bytes memory payload)
+    internal
+    pure
+    returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
         LendingAppPayload memory decodeData;
+
+        dataLen = 2;
+        decodeData.sourceChainId = payload.toUint16(index);
+        index += dataLen;
 
         dataLen = 8;
         decodeData.nonce = payload.toUint64(index);
