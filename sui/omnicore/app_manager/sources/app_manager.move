@@ -1,5 +1,5 @@
 module app_manager::app_manager {
-    use governance::governance::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::TxContext;

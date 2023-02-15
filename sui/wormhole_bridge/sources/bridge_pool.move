@@ -1,6 +1,6 @@
 module wormhole_bridge::bridge_pool {
     use dola_types::types::{DolaAddress, dola_chain_id, dola_address};
-    use governance::governance::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
@@ -17,9 +17,9 @@ module wormhole_bridge::bridge_pool {
     use wormhole::wormhole;
     use wormhole_bridge::verify::Unit;
 
-    const ENOT_ENOUGH_AMOUNT: u64 = 0;
+    const EAMOUNT_NOT_ENOUGH: u64 = 0;
 
-    const EMUST_ZERO: u64 = 1;
+    const EAMOUNT_MUST_ZERO: u64 = 1;
 
     const U64_MAX: u64 = 18446744073709551615;
 

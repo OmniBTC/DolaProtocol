@@ -5,7 +5,7 @@ module pool_manager::pool_manager {
     use std::vector;
 
     use dola_types::types::{DolaAddress, dola_chain_id};
-    use governance::governance::GovernanceCap;
+    use governance::genesis::GovernanceCap;
     use pool_manager::equilibrium_fee::{calculate_equilibrium_fee, calculate_expected_ratio, calculate_equilibrium_reward};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};

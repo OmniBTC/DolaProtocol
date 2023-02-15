@@ -1,9 +1,9 @@
 [package]
-name = "GovernanceActions"
+name = "GenesisProposal"
 version = "0.0.1"
 
 [addresses]
-governance_actions = "0x0"
+genesis_proposal = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
 wormhole = "0x0"
@@ -28,31 +28,31 @@ subdir = "sui/wormhole"
 rev = "fa27b818198b736a315db5532bccdf7ffc4c6076"
 
 [dependencies.AppManager]
-local = "../app_manager"
+local = "../../app_manager"
 
 [dependencies.Governance]
-local = "../governance"
+local = "../../governance"
 
 [dependencies.WormholeBridge]
-local = "../../wormhole_bridge"
+local = "../../../wormhole_bridge"
 
 [dependencies.PoolManager]
-local = "../pool_manager"
+local = "../../pool_manager"
 
 [dependencies.LendingCore]
-local = "../lending_core"
+local = "../../lending_core"
 
 [dependencies.DolaPortal]
-local = "../../dola_portal"
+local = "../../../dola_portal"
 
 [dependencies.Oracle]
-local = "../oracle"
+local = "../../oracle"
 
 [dependencies.UserManager]
-local = "../user_manager"
+local = "../../user_manager"
 
 [dependencies.DolaTypes]
-local = "../../dola_types"
+local = "../../../dola_types"
 
 [dependencies.OmniPool]
-local = "../../omnipool"
+local = "../../../omnipool"
