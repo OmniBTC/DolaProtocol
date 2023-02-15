@@ -972,7 +972,10 @@ class SuiPackage:
 
         def worker(d: List[str]):
             for v in d:
-                detail = self.get_object(v)
+                try:
+                    detail = self.get_object(v)
+                except:
+                    traceback.print_exc()
                 if "data" in detail and "disassembled" in detail["data"]:
                     del detail["data"]["disassembled"]
                 result[v] = detail
@@ -986,6 +989,7 @@ class SuiPackage:
         engine.run(workers)
         return result
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def get_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
@@ -1005,7 +1009,9 @@ class SuiPackage:
         try:
             data = result["details"]
             if "status" in result:
+                assert result["status"] == "Exists"
                 data["status"] = result["status"]
+
             return data
         except:
             return result
