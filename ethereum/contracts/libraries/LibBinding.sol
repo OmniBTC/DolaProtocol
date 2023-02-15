@@ -71,9 +71,9 @@ library LibBinding {
     }
 
     function decodeUnbindingPayload(bytes memory payload)
-    internal
-    pure
-    returns (UnbindingPayload memory)
+        internal
+        pure
+        returns (UnbindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -114,9 +114,9 @@ library LibBinding {
     }
 
     function decodeBindingPayload(bytes memory payload)
-    internal
-    pure
-    returns (BindingPayload memory)
+        internal
+        pure
+        returns (BindingPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

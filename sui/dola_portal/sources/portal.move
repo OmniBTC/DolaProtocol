@@ -1,14 +1,16 @@
 module dola_portal::portal {
+    use std::hash::sha3_256;
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, convert_address_to_dola, create_dola_address};
+    use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address};
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
-    use oracle::oracle::PriceOracle;
+    use oracle::oracle::{PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
-    use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
+    use serde::serde::{serialize_u64, serialize_address};
     use sui::coin::{Self, Coin};
+    use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -43,6 +45,10 @@ module dola_portal::portal {
 
     const LIQUIDATE: u8 = 4;
 
+    const BINDING: u8 = 5;
+
+    const UNBINDING: u8 = 6;
+
     const U64_MAX: u64 = 18446744073709551615;
 
     struct LendingPortal has key {
@@ -51,6 +57,47 @@ module dola_portal::portal {
         pool_manager_cap: Option<PoolManagerCap>,
         user_manager_cap: Option<UserManagerCap>,
         storage_cap: Option<StorageCap>
+    }
+
+    /// Events
+    struct ProtocolPortalEvent has drop, copy {
+        nonce: vector<u8>,
+        sender: address,
+        send_chain_id: u16,
+        user_chain_id: u16,
+        user_address: vector<u8>,
+        call_type: u8
+    }
+
+    // Since the protocol can be directly connected on sui,
+    // this is a special event for the sui chain.
+    struct LocalProtocolEvent has drop, copy {
+        nonce: vector<u8>,
+        sender: address,
+        user_chain_id: u16,
+        user_address: vector<u8>,
+        call_type: u8
+    }
+
+    struct LendingPortalEvent has drop, copy {
+        nonce: vector<u8>,
+        sender: address,
+        dola_pool_address: vector<u8>,
+        send_chain_id: u16,
+        receive_chain_id: u16,
+        receiver: vector<u8>,
+        amount: u64,
+        call_type: u8
+    }
+
+    // Since the protocol can be directly connected on sui,
+    // this is a special event for the sui chain.
+    struct LocalLendingEvent has drop, copy {
+        nonce: vector<u8>,
+        sender: address,
+        dola_pool_address: vector<u8>,
+        amount: u64,
+        call_type: u8
     }
 
     fun init(ctx: &mut TxContext) {
@@ -129,16 +176,17 @@ module dola_portal::portal {
     }
 
     public entry fun send_binding(
+        oracle: &mut PriceOracle,
         lending_portal: &LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         bind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let user = tx_context::sender(ctx);
-        let user = convert_address_to_dola(user);
-        let bind_address = create_dola_address(dola_chain_id, bind_address);
-        if (user == bind_address) {
+        let sender = tx_context::sender(ctx);
+        let user = convert_address_to_dola(sender);
+        let bind_dola_address = create_dola_address(dola_chain_id, bind_address);
+        if (user == bind_dola_address) {
             user_manager::register_dola_user_id(
                 option::borrow(&lending_portal.user_manager_cap),
                 user_manager_info,
@@ -149,27 +197,43 @@ module dola_portal::portal {
                 option::borrow(&lending_portal.user_manager_cap),
                 user_manager_info,
                 user,
-                bind_address
+                bind_dola_address
             );
         };
+        emit(LocalProtocolEvent {
+            nonce: generate_nonce(oracle, ctx),
+            sender,
+            user_chain_id: dola_chain_id,
+            user_address: bind_address,
+            call_type: BINDING
+        })
     }
 
     public entry fun send_unbinding(
+        oracle: &mut PriceOracle,
         lending_portal: &LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         unbind_address: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let user = tx_context::sender(ctx);
-        let user = convert_address_to_dola(user);
-        let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+        let sender = tx_context::sender(ctx);
+        let user = convert_address_to_dola(sender);
+        let unbind_dola_address = create_dola_address(dola_chain_id, unbind_address);
         user_manager::unbinding_user_address(
             option::borrow(&lending_portal.user_manager_cap),
             user_manager_info,
             user,
-            unbind_address
+            unbind_dola_address
         );
+
+        emit(LocalProtocolEvent {
+            nonce: generate_nonce(oracle, ctx),
+            sender,
+            user_chain_id: dola_chain_id,
+            user_address: unbind_address,
+            call_type: UNBINDING
+        })
     }
 
     public entry fun supply<CoinType>(
@@ -187,7 +251,8 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
-        let app_payload = encode_app_payload(SUPPLY, deposit_amount, user_addr, 0);
+        let nonce = generate_nonce(oracle, ctx);
+        let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, deposit_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -226,6 +291,14 @@ module dola_portal::portal {
             dola_pool_id,
             deposit_amount
         );
+
+        emit(LocalLendingEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            amount: deposit_amount,
+            call_type: SUPPLY
+        })
     }
 
     /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
@@ -250,12 +323,8 @@ module dola_portal::portal {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        // Check pool liquidity
-        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
-
         // Execute withdraw logic in lending_core app
-        lending_core::logic::execute_withdraw(
+        let actual_amount = lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -264,16 +333,30 @@ module dola_portal::portal {
             dola_pool_id,
             amount,
         );
+
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
-            amount
+            actual_amount
         );
+
         // Local withdraw
         pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+
+        emit(LocalLendingEvent {
+            nonce: generate_nonce(oracle, ctx),
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            amount: actual_amount,
+            call_type: WITHDRAW
+        })
     }
 
     public entry fun withdraw_remote(
@@ -285,12 +368,12 @@ module dola_portal::portal {
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         pool: vector<u8>,
-        receiver: vector<u8>,
+        receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver_addr);
         let pool_addr = dola_types::types::create_dola_address(dst_chain, pool);
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
@@ -301,12 +384,8 @@ module dola_portal::portal {
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        // Check pool liquidity
-        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
-
         // Execute withdraw logic in lending_core app
-        lending_core::logic::execute_withdraw(
+        let actual_amount = lending_core::logic::execute_withdraw(
             option::borrow(&lending_portal.storage_cap),
             pool_manager_info,
             storage,
@@ -315,15 +394,21 @@ module dola_portal::portal {
             dola_pool_id,
             amount,
         );
+
+        // Check pool liquidity
+        let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
+        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
-            amount
+            actual_amount
         );
 
+        let nonce = generate_nonce(oracle, ctx);
         // Cross-chain withdraw
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
@@ -332,9 +417,21 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
-            amount,
+            nonce,
+            actual_amount,
             coin::zero<SUI>(ctx)
         );
+
+        emit(LendingPortalEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            send_chain_id: get_native_dola_chain_id(),
+            receive_chain_id: dst_chain,
+            receiver: receiver_addr,
+            amount: actual_amount,
+            call_type: WITHDRAW
+        })
     }
 
     /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
@@ -358,6 +455,7 @@ module dola_portal::portal {
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
+
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
@@ -372,6 +470,7 @@ module dola_portal::portal {
             dola_pool_id,
             amount
         );
+
         // Remove pool liquidity
         pool_manager::remove_liquidity(
             option::borrow(&lending_portal.pool_manager_cap),
@@ -382,6 +481,14 @@ module dola_portal::portal {
         );
         // Local borrow
         pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+
+        emit(LocalLendingEvent {
+            nonce: generate_nonce(oracle, ctx),
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            amount,
+            call_type: BORROW
+        })
     }
 
     public entry fun borrow_remote(
@@ -393,12 +500,12 @@ module dola_portal::portal {
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         pool: vector<u8>,
-        receiver: vector<u8>,
+        receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let receiver = dola_types::types::create_dola_address(dst_chain, receiver_addr);
         let pool_addr = dola_types::types::create_dola_address(dst_chain, pool);
         let user_addr = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
@@ -430,6 +537,8 @@ module dola_portal::portal {
             LENDING_APP_ID,
             amount
         );
+
+        let nonce = generate_nonce(oracle, ctx);
         // Cross-chain borrow
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
@@ -438,9 +547,21 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
+            nonce,
             amount,
             coin::zero<SUI>(ctx)
         );
+
+        emit(LendingPortalEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            send_chain_id: get_native_dola_chain_id(),
+            receive_chain_id: dst_chain,
+            receiver: receiver_addr,
+            amount,
+            call_type: BORROW
+        })
     }
 
     public entry fun repay<CoinType>(
@@ -458,7 +579,8 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
-        let app_payload = encode_app_payload(SUPPLY, repay_amount, user_addr, 0);
+        let nonce = generate_nonce(oracle, ctx);
+        let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, repay_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
             pool,
@@ -495,13 +617,22 @@ module dola_portal::portal {
             dola_pool_id,
             repay_amount
         );
+
+        emit(LocalLendingEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&pool_addr),
+            amount: repay_amount,
+            call_type: REPAY
+        })
     }
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
+        oracle: &mut PriceOracle,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        receiver: vector<u8>,
         dst_chain: u16,
+        receiver: vector<u8>,
         wormhole_message_coins: vector<Coin<SUI>>,
         wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
@@ -516,8 +647,14 @@ module dola_portal::portal {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let app_payload = encode_app_payload(LIQUIDATE, normal_amount(debt_pool, coin::value(&debt_coin)),
-            receiver, liquidate_user_id);
+        let nonce = generate_nonce(oracle, ctx);
+        let app_payload = lending_core::logic::encode_app_payload(
+            nonce,
+            LIQUIDATE,
+            normal_amount(debt_pool, coin::value(&debt_coin)),
+            receiver,
+            liquidate_user_id
+        );
         wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
             pool_state,
             wormhole_state,
@@ -530,57 +667,28 @@ module dola_portal::portal {
         );
     }
 
-    public fun encode_app_payload(
-        call_type: u8,
-        amount: u64,
-        receiver: DolaAddress,
-        liquidate_user_id: u64
-    ): vector<u8> {
-        let payload = vector::empty<u8>();
-        serialize_u64(&mut payload, amount);
-        let receiver = encode_dola_address(receiver);
-        serialize_u16(&mut payload, (vector::length(&receiver) as u16));
-        serialize_vector(&mut payload, receiver);
-        serialize_u64(&mut payload, liquidate_user_id);
-        serialize_u8(&mut payload, call_type);
-        payload
-    }
-
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, u64) {
-        let index = 0;
-        let data_len;
-
-        data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-
-        index = index + data_len;
-
-        data_len = (receive_length as u64);
-        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
-        index = index + data_len;
-
-        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
-
-        (call_type, amount, receiver, liquidate_user_id)
+    fun generate_nonce(oracle: &mut PriceOracle, ctx: &mut TxContext): vector<u8> {
+        let timestamp = get_timestamp(oracle);
+        let epoch = tx_context::epoch(ctx);
+        let sender = tx_context::sender(ctx);
+        let content = vector::empty<u8>();
+        serialize_u64(&mut content, timestamp);
+        serialize_u64(&mut content, epoch);
+        serialize_address(&mut content, sender);
+        sha3_256(content)
     }
 
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = encode_app_payload(WITHDRAW, 100000000, dola_types::types::convert_address_to_dola(user), 0);
-        let (call_type, amount, user_addr, _) = decode_app_payload(payload);
+        let payload = lending_core::logic::encode_app_payload(
+            b"test",
+            WITHDRAW,
+            100000000,
+            dola_types::types::convert_address_to_dola(user),
+            0
+        );
+        let (_, call_type, amount, user_addr, _) = lending_core::logic::decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
         assert!(user_addr == dola_types::types::convert_address_to_dola(user), 0);

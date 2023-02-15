@@ -1,10 +1,9 @@
 module lending_core::wormhole_adapter {
     use std::option::{Self, Option};
 
+    use dola_types::types::dola_chain_id;
     use lending_core::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate, decode_app_payload};
     use lending_core::storage::{StorageCap, Storage, get_app_cap};
-
-    use dola_types::types::dola_chain_id;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
     use sui::coin::{Self, Coin};
@@ -103,7 +102,7 @@ module lending_core::wormhole_adapter {
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = get_dola_user_id(user_manager_info, user);
-        let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
+        let (nonce, _, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -132,6 +131,7 @@ module lending_core::wormhole_adapter {
             pool_manager_info,
             dst_pool,
             receiver,
+            nonce,
             actual_amount,
             wormhole_message_fee
         );
@@ -160,7 +160,7 @@ module lending_core::wormhole_adapter {
         );
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = get_dola_user_id(user_manager_info, user);
-        let (_, token_amount, receiver, _) = decode_app_payload(app_payload);
+        let (nonce, _, token_amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -178,6 +178,7 @@ module lending_core::wormhole_adapter {
             pool_manager_info,
             dst_pool,
             receiver,
+            nonce,
             token_amount,
             wormhole_message_fee
         );
@@ -230,7 +231,7 @@ module lending_core::wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, receiver, violator) = decode_app_payload(app_payload);
+        let (nonce, _, _, receiver, violator) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let dst_chain = dola_chain_id(&receiver);
@@ -263,6 +264,7 @@ module lending_core::wormhole_adapter {
             pool_manager_info,
             dst_pool,
             receiver,
+            nonce,
             withdraw_amount,
             wormhole_message_fee
         );
@@ -280,6 +282,7 @@ module lending_core::wormhole_adapter {
                 pool_manager_info,
                 repay_pool,
                 receiver,
+                nonce,
                 return_repay_amount,
                 coin::zero<SUI>(ctx)
             );

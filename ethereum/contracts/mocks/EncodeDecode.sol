@@ -92,6 +92,7 @@ contract EncodeDecode {
     }
 
     function encodeAppPayload(
+        bytes32 nonce,
         uint8 callType,
         uint64 amount,
         LibDolaTypes.DolaAddress memory receiver,
@@ -99,6 +100,7 @@ contract EncodeDecode {
     ) external pure returns (bytes memory) {
         return
             LibLending.encodeAppPayload(
+                nonce,
                 callType,
                 amount,
                 receiver,

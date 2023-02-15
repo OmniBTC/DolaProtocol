@@ -1,13 +1,13 @@
 module dola_types::types {
+    use std::bcs;
+    use std::string;
     use std::vector;
 
-    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
-    use std::bcs;
-    use aptos_framework::util::address_from_bytes;
     use aptos_std::type_info;
-    use std::string;
-    use serde::u16::U16;
-    use serde::u16;
+    use aptos_framework::util::address_from_bytes;
+
+    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
+    use serde::u16::{Self, U16};
 
     const DOLACHAINID: u64 = 1;
 
@@ -15,6 +15,10 @@ module dola_types::types {
     struct DolaAddress has copy, drop, store {
         dola_chain_id: U16,
         dola_address: vector<u8>
+    }
+
+    public fun get_native_dola_chain_id(): u64 {
+        DOLACHAINID
     }
 
     public fun dola_chain_id(dola_address: &DolaAddress): U16 {

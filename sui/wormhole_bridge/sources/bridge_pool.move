@@ -192,7 +192,7 @@ module wormhole_bridge::bridge_pool {
         // );
         // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
-        let (pool_address, user, amount) =
+        let (_, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
         pool::inner_withdraw(&pool_state.pool_cap, pool, user, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
@@ -209,7 +209,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (pool_address, user, amount) =
+        let (_, pool_address, user, amount) =
             pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {

@@ -616,12 +616,18 @@ module lending_core::logic {
     }
 
     public fun encode_app_payload(
+        nonce: vector<u8>,
         call_type: u8,
         amount: u64,
         receiver: DolaAddress,
         liquidate_user_id: u64
     ): vector<u8> {
         let payload = vector::empty<u8>();
+
+        // encode nonce
+        serialize_u16(&mut payload, (vector::length(&nonce) as u16));
+        serialize_vector(&mut payload, nonce);
+
         serialize_u64(&mut payload, amount);
         let receiver = encode_dola_address(receiver);
         serialize_u16(&mut payload, (vector::length(&receiver) as u16));
@@ -631,9 +637,18 @@ module lending_core::logic {
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u8, u64, DolaAddress, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (vector<u8>, u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let nonce_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+
+        index = index + data_len;
+
+        data_len = (nonce_length as u64);
+        let nonce = vector_slice(&app_payload, index, index + data_len);
+        index = index + data_len;
 
         data_len = 8;
         let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
@@ -641,6 +656,7 @@ module lending_core::logic {
 
         data_len = 2;
         let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+
         index = index + data_len;
 
         data_len = (receive_length as u64);
@@ -657,6 +673,6 @@ module lending_core::logic {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (call_type, amount, receiver, liquidate_user_id)
+        (nonce, call_type, amount, receiver, liquidate_user_id)
     }
 }
