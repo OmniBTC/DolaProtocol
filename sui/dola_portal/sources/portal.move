@@ -1,14 +1,12 @@
 module dola_portal::portal {
-    use std::hash::sha3_256;
     use std::option::{Self, Option};
     use std::vector;
 
     use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address};
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
-    use oracle::oracle::{PriceOracle, get_timestamp};
+    use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
-    use serde::serde::{serialize_u64, serialize_address};
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::object::{Self, UID};
@@ -51,17 +49,18 @@ module dola_portal::portal {
 
     const U64_MAX: u64 = 18446744073709551615;
 
-    struct LendingPortal has key {
+    struct DolaPortal has key {
         id: UID,
         pool_cap: Option<PoolCap>,
         pool_manager_cap: Option<PoolManagerCap>,
         user_manager_cap: Option<UserManagerCap>,
-        storage_cap: Option<StorageCap>
+        storage_cap: Option<StorageCap>,
+        nonce: u64
     }
 
     /// Events
     struct ProtocolPortalEvent has drop, copy {
-        nonce: vector<u8>,
+        nonce: u64,
         sender: address,
         send_chain_id: u16,
         user_chain_id: u16,
@@ -72,15 +71,15 @@ module dola_portal::portal {
     // Since the protocol can be directly connected on sui,
     // this is a special event for the sui chain.
     struct LocalProtocolEvent has drop, copy {
-        nonce: vector<u8>,
+        nonce: u64,
         sender: address,
         user_chain_id: u16,
         user_address: vector<u8>,
         call_type: u8
     }
 
-    struct LendingPortalEvent has drop, copy {
-        nonce: vector<u8>,
+    struct DolaPortalEvent has drop, copy {
+        nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
         send_chain_id: u16,
@@ -93,7 +92,7 @@ module dola_portal::portal {
     // Since the protocol can be directly connected on sui,
     // this is a special event for the sui chain.
     struct LocalLendingEvent has drop, copy {
-        nonce: vector<u8>,
+        nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
         amount: u64,
@@ -101,46 +100,54 @@ module dola_portal::portal {
     }
 
     fun init(ctx: &mut TxContext) {
-        transfer::share_object(LendingPortal {
+        transfer::share_object(DolaPortal {
             id: object::new(ctx),
             pool_cap: option::none(),
             pool_manager_cap: option::none(),
             user_manager_cap: option::none(),
-            storage_cap: option::none()
+            storage_cap: option::none(),
+            nonce: 0
         })
     }
 
+    fun increment_nonce(dola_portal: &mut DolaPortal): u64 {
+        let nonce = dola_portal.nonce;
+        dola_portal.nonce = dola_portal.nonce + 1;
+        nonce
+    }
+
     public fun transfer_pool_cap(
-        lending_portal: &mut LendingPortal,
+        dola_portal: &mut DolaPortal,
         pool_cap: PoolCap
     ) {
-        assert!(option::is_none(&lending_portal.pool_cap), EMUST_NONE);
-        option::fill(&mut lending_portal.pool_cap, pool_cap);
+        assert!(option::is_none(&dola_portal.pool_cap), EMUST_NONE);
+        option::fill(&mut dola_portal.pool_cap, pool_cap);
     }
 
     public fun transfer_pool_manager_cap(
-        lending_portal: &mut LendingPortal,
+        dola_portal: &mut DolaPortal,
         pool_manager_cap: PoolManagerCap
     ) {
-        assert!(option::is_none(&lending_portal.pool_manager_cap), EMUST_NONE);
-        option::fill(&mut lending_portal.pool_manager_cap, pool_manager_cap);
+        assert!(option::is_none(&dola_portal.pool_manager_cap), EMUST_NONE);
+        option::fill(&mut dola_portal.pool_manager_cap, pool_manager_cap);
     }
 
     public fun transfer_user_manager_cap(
-        lending_portal: &mut LendingPortal,
+        dola_portal: &mut DolaPortal,
         user_manager_cap: UserManagerCap
     ) {
-        assert!(option::is_none(&lending_portal.user_manager_cap), EMUST_NONE);
-        option::fill(&mut lending_portal.user_manager_cap, user_manager_cap);
+        assert!(option::is_none(&dola_portal.user_manager_cap), EMUST_NONE);
+        option::fill(&mut dola_portal.user_manager_cap, user_manager_cap);
     }
 
     public fun transfer_storage_cap(
-        lending_portal: &mut LendingPortal,
+        dola_portal: &mut DolaPortal,
         storage_cap: StorageCap
     ) {
-        assert!(option::is_none(&lending_portal.storage_cap), EMUST_NONE);
-        option::fill(&mut lending_portal.storage_cap, storage_cap);
+        assert!(option::is_none(&dola_portal.storage_cap), EMUST_NONE);
+        option::fill(&mut dola_portal.storage_cap, storage_cap);
     }
+
 
     public fun merge_coin<CoinType>(
         coins: vector<Coin<CoinType>>,
@@ -176,8 +183,7 @@ module dola_portal::portal {
     }
 
     public entry fun send_binding(
-        oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         bind_address: vector<u8>,
@@ -188,20 +194,20 @@ module dola_portal::portal {
         let bind_dola_address = create_dola_address(dola_chain_id, bind_address);
         if (user == bind_dola_address) {
             user_manager::register_dola_user_id(
-                option::borrow(&lending_portal.user_manager_cap),
+                option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
                 user
             );
         } else {
             user_manager::binding_user_address(
-                option::borrow(&lending_portal.user_manager_cap),
+                option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
                 user,
                 bind_dola_address
             );
         };
         emit(LocalProtocolEvent {
-            nonce: generate_nonce(oracle, ctx),
+            nonce: increment_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
             user_address: bind_address,
@@ -210,8 +216,7 @@ module dola_portal::portal {
     }
 
     public entry fun send_unbinding(
-        oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         unbind_address: vector<u8>,
@@ -221,14 +226,14 @@ module dola_portal::portal {
         let user = convert_address_to_dola(sender);
         let unbind_dola_address = create_dola_address(dola_chain_id, unbind_address);
         user_manager::unbinding_user_address(
-            option::borrow(&lending_portal.user_manager_cap),
+            option::borrow(&dola_portal.user_manager_cap),
             user_manager_info,
             user,
             unbind_dola_address
         );
 
         emit(LocalProtocolEvent {
-            nonce: generate_nonce(oracle, ctx),
+            nonce: increment_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
             user_address: unbind_address,
@@ -239,7 +244,7 @@ module dola_portal::portal {
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -251,7 +256,7 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
-        let nonce = generate_nonce(oracle, ctx);
+        let nonce = increment_nonce(dola_portal);
         let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, deposit_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
@@ -264,7 +269,7 @@ module dola_portal::portal {
 
         // Add pool liquidity for dola protocol
         pool_manager::add_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
             LENDING_APP_ID,
@@ -274,7 +279,7 @@ module dola_portal::portal {
         // Reigster user id for user
         if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
             user_manager::user_manager::register_dola_user_id(
-                option::borrow(&lending_portal.user_manager_cap),
+                option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
                 user_addr
             );
@@ -283,7 +288,7 @@ module dola_portal::portal {
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
         lending_core::logic::execute_supply(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -305,7 +310,7 @@ module dola_portal::portal {
     public entry fun withdraw_local<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -325,7 +330,7 @@ module dola_portal::portal {
 
         // Execute withdraw logic in lending_core app
         let actual_amount = lending_core::logic::execute_withdraw(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -340,7 +345,7 @@ module dola_portal::portal {
 
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
@@ -348,10 +353,10 @@ module dola_portal::portal {
         );
 
         // Local withdraw
-        pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
-            nonce: generate_nonce(oracle, ctx),
+            nonce: increment_nonce(dola_portal),
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
             amount: actual_amount,
@@ -363,7 +368,7 @@ module dola_portal::portal {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         core_state: &mut CoreState,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -386,7 +391,7 @@ module dola_portal::portal {
 
         // Execute withdraw logic in lending_core app
         let actual_amount = lending_core::logic::execute_withdraw(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -401,19 +406,19 @@ module dola_portal::portal {
 
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
             actual_amount
         );
 
-        let nonce = generate_nonce(oracle, ctx);
+        let nonce = increment_nonce(dola_portal);
         // Cross-chain withdraw
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&dola_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -422,7 +427,7 @@ module dola_portal::portal {
             coin::zero<SUI>(ctx)
         );
 
-        emit(LendingPortalEvent {
+        emit(DolaPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
@@ -438,7 +443,7 @@ module dola_portal::portal {
     public entry fun borrow_local<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -462,7 +467,7 @@ module dola_portal::portal {
 
         // Execute borrow logic in lending_core app
         lending_core::logic::execute_borrow(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -473,17 +478,17 @@ module dola_portal::portal {
 
         // Remove pool liquidity
         pool_manager::remove_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
             amount
         );
         // Local borrow
-        pool::inner_withdraw(option::borrow(&lending_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
-            nonce: generate_nonce(oracle, ctx),
+            nonce: increment_nonce(dola_portal),
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
             amount,
@@ -495,7 +500,7 @@ module dola_portal::portal {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         core_state: &mut CoreState,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         wormhole_state: &mut WormholeState,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -521,7 +526,7 @@ module dola_portal::portal {
 
         // Execute borrow logic in lending_core app
         lending_core::logic::execute_borrow(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -531,19 +536,19 @@ module dola_portal::portal {
         );
         // Remove pool liquidity
         pool_manager::remove_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
             amount
         );
 
-        let nonce = generate_nonce(oracle, ctx);
+        let nonce = increment_nonce(dola_portal);
         // Cross-chain borrow
         wormhole_bridge::bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending_core::storage::get_app_cap(option::borrow(&lending_portal.storage_cap), storage),
+            lending_core::storage::get_app_cap(option::borrow(&dola_portal.storage_cap), storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -552,7 +557,7 @@ module dola_portal::portal {
             coin::zero<SUI>(ctx)
         );
 
-        emit(LendingPortalEvent {
+        emit(DolaPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address(&pool_addr),
@@ -567,7 +572,7 @@ module dola_portal::portal {
     public entry fun repay<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        lending_portal: &LendingPortal,
+        dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -579,7 +584,7 @@ module dola_portal::portal {
         let pool_addr = dola_types::types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
-        let nonce = generate_nonce(oracle, ctx);
+        let nonce = increment_nonce(dola_portal);
         let app_payload = lending_core::logic::encode_app_payload(nonce, SUPPLY, repay_amount, user_addr, 0);
         // Deposit the token into the pool
         omnipool::pool::deposit_to(
@@ -591,7 +596,7 @@ module dola_portal::portal {
         );
 
         pool_manager::add_liquidity(
-            option::borrow(&lending_portal.pool_manager_cap),
+            option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
             pool_addr,
             LENDING_APP_ID,
@@ -600,7 +605,7 @@ module dola_portal::portal {
         );
         if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
             user_manager::user_manager::register_dola_user_id(
-                option::borrow(&lending_portal.user_manager_cap),
+                option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
                 user_addr
             );
@@ -609,7 +614,7 @@ module dola_portal::portal {
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
         lending_core::logic::execute_repay(
-            option::borrow(&lending_portal.storage_cap),
+            option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
             storage,
             oracle,
@@ -628,7 +633,7 @@ module dola_portal::portal {
     }
 
     public entry fun liquidate<DebtCoinType, CollateralCoinType>(
-        oracle: &mut PriceOracle,
+        dola_portal: &mut DolaPortal,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         dst_chain: u16,
@@ -647,7 +652,7 @@ module dola_portal::portal {
         let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
-        let nonce = generate_nonce(oracle, ctx);
+        let nonce = increment_nonce(dola_portal);
         let app_payload = lending_core::logic::encode_app_payload(
             nonce,
             LIQUIDATE,
@@ -667,22 +672,11 @@ module dola_portal::portal {
         );
     }
 
-    fun generate_nonce(oracle: &mut PriceOracle, ctx: &mut TxContext): vector<u8> {
-        let timestamp = get_timestamp(oracle);
-        let epoch = tx_context::epoch(ctx);
-        let sender = tx_context::sender(ctx);
-        let content = vector::empty<u8>();
-        serialize_u64(&mut content, timestamp);
-        serialize_u64(&mut content, epoch);
-        serialize_address(&mut content, sender);
-        sha3_256(content)
-    }
-
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
         let payload = lending_core::logic::encode_app_payload(
-            b"test",
+            0,
             WITHDRAW,
             100000000,
             dola_types::types::convert_address_to_dola(user),

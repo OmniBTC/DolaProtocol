@@ -8,7 +8,7 @@ library LibLending {
     using LibBytes for bytes;
 
     struct LendingAppPayload {
-        bytes32 nonce;
+        uint64 nonce;
         uint8 callType;
         uint64 amount;
         LibDolaTypes.DolaAddress receiver;
@@ -16,7 +16,7 @@ library LibLending {
     }
 
     function encodeAppPayload(
-        bytes32 nonce,
+        uint64 nonce,
         uint8 callType,
         uint64 amount,
         LibDolaTypes.DolaAddress memory receiver,
@@ -27,7 +27,6 @@ library LibLending {
             receiver.externalAddress
         );
         bytes memory encodeData = abi.encodePacked(
-            uint16(nonce.length),
             nonce,
             amount,
             uint16(dolaAddress.length),
@@ -48,12 +47,8 @@ library LibLending {
         uint256 dataLen;
         LendingAppPayload memory decodeData;
 
-        dataLen = 2;
-        uint16 nonceLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = nonceLength;
-        decodeData.nonce = bytes32(payload.slice(index, index + dataLen));
+        dataLen = 8;
+        decodeData.nonce = payload.toUint64(index);
         index += dataLen;
 
         dataLen = 8;

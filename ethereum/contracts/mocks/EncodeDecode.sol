@@ -92,7 +92,7 @@ contract EncodeDecode {
     }
 
     function encodeAppPayload(
-        bytes32 nonce,
+        uint64 nonce,
         uint8 callType,
         uint64 amount,
         LibDolaTypes.DolaAddress memory receiver,

@@ -42,12 +42,13 @@ module dola_portal::portal {
 
     /// Events
     struct PortalEventHandle has key {
+        nonce: u64,
         protocol_event_handle: EventHandle<ProtocolPortalEvent>,
         lending_event_handle: EventHandle<LendingPortalEvent>
     }
 
     struct ProtocolPortalEvent has drop, store {
-        nonce: vector<u8>,
+        nonce: u64,
         sender: address,
         send_chain_id: U16,
         user_chain_id: U16,
@@ -56,7 +57,7 @@ module dola_portal::portal {
     }
 
     struct LendingPortalEvent has drop, store {
-        nonce: vector<u8>,
+        nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
         send_chain_id: U16,
@@ -69,9 +70,17 @@ module dola_portal::portal {
     public entry fun initialize(account: &signer) {
         assert!(signer::address_of(account) == @dola_portal, ENOT_DEPLOYER);
         move_to(account, PortalEventHandle {
+            nonce: 0,
             protocol_event_handle: new_event_handle<ProtocolPortalEvent>(account),
             lending_event_handle: new_event_handle<LendingPortalEvent>(account)
         })
+    }
+
+    fun nonce(): u64 acquires PortalEventHandle {
+        let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
+        let nonce = event_handle.nonce;
+        event_handle.nonce = event_handle.nonce + 1;
+        nonce
     }
 
     public entry fun binding(
@@ -80,7 +89,7 @@ module dola_portal::portal {
         bind_address: vector<u8>,
     ) acquires PortalEventHandle {
         send_binding(sender, dola_chain_id, bind_address);
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
             &mut event_handle.protocol_event_handle,
@@ -101,7 +110,7 @@ module dola_portal::portal {
         unbind_address: vector<u8>
     ) acquires PortalEventHandle {
         send_unbinding(sender, dola_chain_id, unbind_address);
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
             &mut event_handle.protocol_event_handle,
@@ -122,7 +131,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let user = convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let amount = normal_amount<CoinType>(deposit_coin);
         let app_payload = encode_app_payload(
             nonce,
@@ -159,7 +168,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let amount = normal_amount<CoinType>(amount);
         let app_payload = encode_app_payload(
             nonce,
@@ -196,7 +205,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let app_payload = encode_app_payload(
             nonce,
             WITHDRAW,
@@ -238,7 +247,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let amount = normal_amount<CoinType>(amount);
         let app_payload = encode_app_payload(
             nonce,
@@ -276,7 +285,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let app_payload = encode_app_payload(
             nonce,
             BORROW,
@@ -316,7 +325,7 @@ module dola_portal::portal {
     ) acquires PortalEventHandle {
         let user_addr = convert_address_to_dola(signer::address_of(sender));
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let amount = normal_amount<CoinType>(repay_coin);
         let app_payload = encode_app_payload(
             nonce,
@@ -354,10 +363,10 @@ module dola_portal::portal {
         debt_coin: u64,
         // punished person
         liquidate_user_id: u64,
-    ) {
+    ) acquires PortalEventHandle {
         let receiver = create_dola_address(u16::from_u64(dst_chain), receiver);
 
-        let nonce = generate_nonce(sender);
+        let nonce = nonce();
         let app_payload = encode_app_payload(
             nonce,
             LIQUIDATE,
@@ -377,7 +386,7 @@ module dola_portal::portal {
     }
 
     public fun encode_app_payload(
-        nonce: vector<u8>,
+        nonce: u64,
         call_type: u8,
         amount: u64,
         receiver: DolaAddress,
@@ -385,9 +394,7 @@ module dola_portal::portal {
     ): vector<u8> {
         let payload = vector::empty<u8>();
 
-        serialize_u16(&mut payload, u16::from_u64(vector::length(&nonce)));
-        serialize_vector(&mut payload, nonce);
-
+        serialize_u64(&mut payload, nonce);
         serialize_u64(&mut payload, amount);
         let receiver = encode_dola_address(receiver);
         serialize_u16(&mut payload, u16::from_u64(vector::length(&receiver)));
@@ -397,17 +404,12 @@ module dola_portal::portal {
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (vector<u8>, u8, u64, DolaAddress, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u64, u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
 
-        data_len = 2;
-        let nonce_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
-
-        index = index + data_len;
-
-        data_len = u16::to_u64(nonce_length);
-        let nonce = vector_slice(&app_payload, index, index + data_len);
+        data_len = 8;
+        let nonce = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
