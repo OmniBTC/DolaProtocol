@@ -1023,7 +1023,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_getObjectsOwnedByObject",
+                "method": "sui_getDynamicFields",
                 "params": [
                     object_id
                 ]
