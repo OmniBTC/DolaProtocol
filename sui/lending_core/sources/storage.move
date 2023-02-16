@@ -117,7 +117,7 @@ module lending_core::storage {
     public fun get_app_id(
         storage: &mut Storage
     ): u16 {
-        app_manager::app_id(option::borrow(&storage.app_cap))
+        app_manager::get_app_id(option::borrow(&storage.app_cap))
     }
 
     public fun get_app_cap(

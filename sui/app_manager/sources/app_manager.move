@@ -1,14 +1,17 @@
 module app_manager::app_manager {
     use governance::genesis::GovernanceCap;
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::TxContext;
+    use std::vector;
 
+    /// Record all App information
     struct TotalAppInfo has key, store {
         id: UID,
-        count: u16
+        app_caps: vector<ID>
     }
 
+    /// Giving applications access to the DolaProtocol single pool through AppCap
     struct AppCap has key, store {
         id: UID,
         app_id: u16
@@ -17,10 +20,23 @@ module app_manager::app_manager {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(TotalAppInfo {
             id: object::new(ctx),
-            count: 1
+            app_caps: vector::empty()
         })
     }
 
+    fun register_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
+        let id = object::new(ctx);
+        vector::push_back(&mut total_app_info.app_caps, object::uid_to_inner(&id));
+
+        let app_id = AppCap {
+            id,
+            app_id: (vector::length(&total_app_info.app_caps) as u16)
+        };
+
+        app_id
+    }
+
+    /// Register cap through governance
     public fun register_cap_with_governance(
         _: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,
@@ -29,21 +45,13 @@ module app_manager::app_manager {
         register_app(total_app_info, ctx)
     }
 
-    public fun app_id(app_id: &AppCap): u16 {
+    /// Get app id by app cap
+    public fun get_app_id(app_id: &AppCap): u16 {
         app_id.app_id
     }
 
-    fun register_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
-        let count = total_app_info.count;
-        let app_id = AppCap {
-            id: object::new(ctx),
-            app_id: count
-        };
-        total_app_info.count = count + 1;
-        app_id
-    }
-
-    public fun destroy_app_id(app_id: AppCap) {
+    /// Destroy app cap
+    public fun destroy_app_cap(app_id: AppCap) {
         let AppCap { id, app_id: _ } = app_id;
         object::delete(id);
     }

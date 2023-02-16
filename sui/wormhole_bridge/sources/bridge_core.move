@@ -117,12 +117,12 @@ module wormhole_bridge::bridge_core {
 
         let (pool, user, amount, app_id, app_payload) =
             decode_send_deposit_payload(vaa);
-        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             pool,
-            app_manager::app_id(app_cap),
+            app_manager::get_app_id(app_cap),
             // todo: use wormhole chainid
             amount,
             ctx
@@ -157,12 +157,12 @@ module wormhole_bridge::bridge_core {
         let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = decode_send_deposit_and_withdraw_payload(
             vaa
         );
-        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             deposit_pool,
-            app_manager::app_id(app_cap),
+            app_manager::get_app_id(app_cap),
             // todo: use wormhole chainid
             // wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             deposit_amount,
@@ -191,7 +191,7 @@ module wormhole_bridge::bridge_core {
         //     decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         let (pool, user, app_id, app_payload) =
             decode_send_withdraw_payload(vaa);
-        assert!(app_manager::app_id(app_cap) == app_id, EINVALID_APP);
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
 
         // myvaa::destroy(vaa);
         (pool, user, app_payload)
@@ -215,7 +215,7 @@ module wormhole_bridge::bridge_core {
             option::borrow(&core_state.pool_manager_cap),
             pool_manager_info,
             pool_address,
-            app_manager::app_id(app_cap),
+            app_manager::get_app_id(app_cap),
             amount
         );
         let msg = pool::encode_receive_withdraw_payload(source_chain_id, nonce, pool_address, user, actual_amount);
