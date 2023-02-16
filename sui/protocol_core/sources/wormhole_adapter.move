@@ -6,7 +6,9 @@ module protocol_core::protocol_wormhole_adapter {
     use protocol_core::message_types::{Self, binding_type_id, unbinding_type_id};
     use serde::serde::{deserialize_u16, vector_slice, deserialize_u8, serialize_u16, serialize_vector, serialize_u8, serialize_u64, deserialize_u64};
     use sui::event::emit;
-    use sui::object::UID;
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use sui::tx_context::TxContext;
     use user_manager::user_manager::{Self, UserManagerCap, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
@@ -24,6 +26,10 @@ module protocol_core::protocol_wormhole_adapter {
 
     const EINVALID_LENGTH: u64 = 2;
 
+    const EMUST_NONE: u64 = 3;
+
+    const EMUST_SOME: u64 = 4;
+
     struct WormholeAdapter has key {
         id: UID,
         user_manager_cap: Option<UserManagerCap>,
@@ -38,10 +44,25 @@ module protocol_core::protocol_wormhole_adapter {
         call_type: u8
     }
 
+    fun init(ctx: &mut TxContext) {
+        transfer::share_object(WormholeAdapter {
+            id: object::new(ctx),
+            user_manager_cap: option::none()
+        })
+    }
+
+    public fun transfer_user_manager_cap(
+        wormhole_adapter: &mut WormholeAdapter,
+        user_manager_cap: UserManagerCap
+    ) {
+        assert!(option::is_none(&wormhole_adapter.user_manager_cap), EMUST_NONE);
+        option::fill(&mut wormhole_adapter.user_manager_cap, user_manager_cap);
+    }
+
     public entry fun binding_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
-        user_binding: &mut WormholeAdapter,
+        wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
@@ -52,13 +73,13 @@ module protocol_core::protocol_wormhole_adapter {
 
         if (sender == bind_address) {
             user_manager::register_dola_user_id(
-                option::borrow(&user_binding.user_manager_cap),
+                option::borrow(&wormhole_adapter.user_manager_cap),
                 user_manager_info,
                 sender
             );
         } else {
             user_manager::binding_user_address(
-                option::borrow(&user_binding.user_manager_cap),
+                option::borrow(&wormhole_adapter.user_manager_cap),
                 user_manager_info,
                 sender,
                 bind_address
@@ -77,7 +98,7 @@ module protocol_core::protocol_wormhole_adapter {
     public entry fun unbinding_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
-        user_binding: &mut WormholeAdapter,
+        wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
@@ -87,7 +108,7 @@ module protocol_core::protocol_wormhole_adapter {
         assert!(call_type == unbinding_type_id(), EINVALID_CALLTYPE);
 
         user_manager::unbinding_user_address(
-            option::borrow(&user_binding.user_manager_cap),
+            option::borrow(&wormhole_adapter.user_manager_cap),
             user_manager_info,
             sender,
             unbind_address

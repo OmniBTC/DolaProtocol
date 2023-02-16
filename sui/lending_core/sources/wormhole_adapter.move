@@ -37,7 +37,7 @@ module lending_core::lending_wormhole_adapter {
 
     const EINVALID_LENGTH: u64 = 3;
 
-    struct WormholeAdapater has key {
+    struct WormholeAdapter has key {
         id: UID,
         storage_cap: Option<StorageCap>
     }
@@ -53,27 +53,27 @@ module lending_core::lending_wormhole_adapter {
     }
 
     fun init(ctx: &mut TxContext) {
-        transfer::share_object(WormholeAdapater {
+        transfer::share_object(WormholeAdapter {
             id: object::new(ctx),
             storage_cap: option::none()
         })
     }
 
     public fun transfer_storage_cap(
-        wormhole_adapter: &mut WormholeAdapater,
+        wormhole_adapter: &mut WormholeAdapter,
         storage_cap: StorageCap
     ) {
         assert!(option::is_none(&wormhole_adapter.storage_cap), EMUST_NONE);
         option::fill(&mut wormhole_adapter.storage_cap, storage_cap);
     }
 
-    fun get_storage_cap(wormhole_adapter: &WormholeAdapater): &StorageCap {
+    fun get_storage_cap(wormhole_adapter: &WormholeAdapter): &StorageCap {
         assert!(option::is_some(&wormhole_adapter.storage_cap), EMUST_SOME);
         option::borrow(&wormhole_adapter.storage_cap)
     }
 
     public entry fun supply(
-        wormhole_adapter: &WormholeAdapater,
+        wormhole_adapter: &WormholeAdapter,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -117,7 +117,7 @@ module lending_core::lending_wormhole_adapter {
     }
 
     public entry fun withdraw(
-        wormhole_adapter: &WormholeAdapater,
+        wormhole_adapter: &WormholeAdapter,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -185,7 +185,7 @@ module lending_core::lending_wormhole_adapter {
 
 
     public entry fun borrow(
-        wormhole_adapter: &WormholeAdapater,
+        wormhole_adapter: &WormholeAdapter,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -241,7 +241,7 @@ module lending_core::lending_wormhole_adapter {
     }
 
     public entry fun repay(
-        wormhole_adapter: &WormholeAdapater,
+        wormhole_adapter: &WormholeAdapter,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -277,7 +277,7 @@ module lending_core::lending_wormhole_adapter {
     }
 
     public entry fun liquidate(
-        wormhole_adapter: &WormholeAdapater,
+        wormhole_adapter: &WormholeAdapter,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
