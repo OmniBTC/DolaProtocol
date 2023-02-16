@@ -763,7 +763,8 @@ class SuiPackage:
         try:
             with self.cli_config as cof:
                 compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                              f"--gas-budget {gas_budget} --abi --json {self.package_path.absolute()}"
+                              f"--skip-dependency-verification --gas-budget {gas_budget} " \
+                              f"--abi --json {self.package_path.absolute()}"
                 with os.popen(compile_cmd) as f:
                     result = f.read()
                 try:
