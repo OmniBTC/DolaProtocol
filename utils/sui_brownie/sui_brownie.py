@@ -935,17 +935,17 @@ class SuiPackage:
         result = result["result"]
         result = self.format_result(result)
         try:
-            transactions = result["EffectsCert"]["certificate"]["data"]["transactions"][0]["Call"]
+            transactions = result["certificate"]["data"]["transactions"][0]["Call"]
             module = transactions["module"]
             function = transactions["function"]
         except:
             module = None
             function = None
         try:
-            if result["EffectsCert"]["effects"]["effects"]["status"]["status"] != "success":
+            if result["effects"]["effects"]["status"]["status"] != "success":
                 pprint(result)
-            assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success"
-            result = result["EffectsCert"]["effects"]["effects"]
+            assert result["effects"]["effects"]["status"]["status"] == "success"
+            result = result["effects"]["effects"]
             if index_object:
                 self.add_details(result)
             if module is None:
