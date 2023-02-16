@@ -18,19 +18,19 @@ subdir = "crates/sui-framework"
 rev = "b63532e36df5b1fcccff3893509259494c719a78"
 
 [dependencies.PoolManager]
-local = "../omnicore/pool_manager"
+local = "../pool_manager"
 
 [dependencies.UserManager]
-local = "../omnicore/user_manager"
+local = "../user_manager"
 
 [dependencies.LendingCore]
-local = "../omnicore/lending_core"
+local = "../lending_core"
 
 [dependencies.RayMath]
 local = "../ray_math"
 
 [dependencies.Oracle]
-local = "../omnicore/oracle"
+local = "../oracle"
 
 [dependencies.DolaTypes]
 local = "../dola_types"

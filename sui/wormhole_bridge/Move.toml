@@ -34,13 +34,13 @@ local = "../dola_types"
 local = "../serde"
 
 [dependencies.PoolManager]
-local = "../omnicore/pool_manager"
+local = "../pool_manager"
 
 [dependencies.UserManager]
-local = "../omnicore/user_manager"
+local = "../user_manager"
 
 [dependencies.AppManager]
-local = "../omnicore/app_manager"
+local = "../app_manager"
 
 [dependencies.Governance]
-local = "../omnicore/governance"
+local = "../governance"

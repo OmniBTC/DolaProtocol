@@ -34,7 +34,7 @@ local = "../../app_manager"
 local = "../../governance"
 
 [dependencies.WormholeBridge]
-local = "../../../wormhole_bridge"
+local = "../../wormhole_bridge"
 
 [dependencies.PoolManager]
 local = "../../pool_manager"
@@ -43,7 +43,7 @@ local = "../../pool_manager"
 local = "../../lending_core"
 
 [dependencies.DolaPortal]
-local = "../../../dola_portal"
+local = "../../dola_portal"
 
 [dependencies.Oracle]
 local = "../../oracle"
@@ -52,7 +52,7 @@ local = "../../oracle"
 local = "../../user_manager"
 
 [dependencies.DolaTypes]
-local = "../../../dola_types"
+local = "../../dola_types"
 
 [dependencies.OmniPool]
-local = "../../../omnipool"
+local = "../../omnipool"

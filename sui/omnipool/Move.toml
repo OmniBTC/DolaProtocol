@@ -21,4 +21,4 @@ local = "../serde"
 local = "../dola_types"
 
 [dependencies.Governance]
-local = "../omnicore/governance"
+local = "../governance"

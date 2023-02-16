@@ -31,22 +31,22 @@ rev = "83c198bfcc6774cc95a0f19f8eed232b8c9fd506"
 local = "../omnipool"
 
 [dependencies.LendingCore]
-local = "../omnicore/lending_core"
+local = "../lending_core"
 
 [dependencies.ProtocolCore]
-local = "../omnicore/protocol_core"
+local = "../protocol_core"
 
 [dependencies.Oracle]
-local = "../omnicore/oracle"
+local = "../oracle"
 
 [dependencies.PoolManager]
-local = "../omnicore/pool_manager"
+local = "../pool_manager"
 
 [dependencies.UserManager]
-local = "../omnicore/user_manager"
+local = "../user_manager"
 
 [dependencies.AppManager]
-local = "../omnicore/app_manager"
+local = "../app_manager"
 
 [dependencies.Serde]
 local = "../serde"

@@ -15,10 +15,10 @@ subdir = "crates/sui-framework"
 rev = "b63532e36df5b1fcccff3893509259494c719a78"
 
 [dependencies.DolaTypes]
-local = "../../dola_types"
+local = "../dola_types"
 
 [dependencies.Serde]
-local = "../../serde"
+local = "../serde"
 
 [dependencies.Governance]
 local = "../governance"
