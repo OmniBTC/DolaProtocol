@@ -15,22 +15,22 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "cece99272f261d046c64510812e36404e7deb661"
+rev = "b63532e36df5b1fcccff3893509259494c719a78"
 
 [dependencies.PoolManager]
-local = "../omnicore/pool_manager"
+local = "../pool_manager"
 
 [dependencies.UserManager]
-local = "../omnicore/user_manager"
+local = "../user_manager"
 
 [dependencies.LendingCore]
-local = "../omnicore/lending_core"
+local = "../lending_core"
 
 [dependencies.RayMath]
 local = "../ray_math"
 
 [dependencies.Oracle]
-local = "../omnicore/oracle"
+local = "../oracle"
 
 [dependencies.DolaTypes]
 local = "../dola_types"

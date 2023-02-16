@@ -20,12 +20,12 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "cece99272f261d046c64510812e36404e7deb661"
+rev = "b63532e36df5b1fcccff3893509259494c719a78"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "fa27b818198b736a315db5532bccdf7ffc4c6076"
+rev = "83c198bfcc6774cc95a0f19f8eed232b8c9fd506"
 
 [dependencies.AppManager]
 local = "../../app_manager"
@@ -34,7 +34,7 @@ local = "../../app_manager"
 local = "../../governance"
 
 [dependencies.WormholeBridge]
-local = "../../../wormhole_bridge"
+local = "../../wormhole_bridge"
 
 [dependencies.PoolManager]
 local = "../../pool_manager"
@@ -43,7 +43,7 @@ local = "../../pool_manager"
 local = "../../lending_core"
 
 [dependencies.DolaPortal]
-local = "../../../dola_portal"
+local = "../../dola_portal"
 
 [dependencies.Oracle]
 local = "../../oracle"
@@ -52,7 +52,7 @@ local = "../../oracle"
 local = "../../user_manager"
 
 [dependencies.DolaTypes]
-local = "../../../dola_types"
+local = "../../dola_types"
 
 [dependencies.OmniPool]
-local = "../../../omnipool"
+local = "../../omnipool"

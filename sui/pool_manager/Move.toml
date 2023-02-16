@@ -1,20 +1,28 @@
 [package]
-name = "AppManager"
+name = "PoolManager"
 version = "0.0.1"
 
 [addresses]
-app_manager = "0x0"
+pool_manager = "0x0"
 governance = "0x0"
+dola_types = "0x0"
 serde = "0x0"
+ray_math = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "cece99272f261d046c64510812e36404e7deb661"
+rev = "b63532e36df5b1fcccff3893509259494c719a78"
 
 [dependencies.Serde]
-local = "../../serde"
+local = "../serde"
+
+[dependencies.RayMath]
+local = "../ray_math"
 
 [dependencies.Governance]
 local = "../governance"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

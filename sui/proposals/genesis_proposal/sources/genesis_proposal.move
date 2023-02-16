@@ -3,11 +3,11 @@ module genesis_proposal::genesis_proposal {
     use std::option;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
+    use dola_portal::portal::DolaPortal;
     use dola_types::types::create_dola_address;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
+    use lending_core::lending_wormhole_adapter::WormholeAdapater;
     use lending_core::storage::Storage;
-    use lending_core::wormhole_adapter::WormholeAdapater;
-    use dola_portal::portal::LendingPortal;
     use omnipool::pool;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
@@ -56,7 +56,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
-            lending::storage::transfer_app_cap(storage, app_cap);
+            lending_core::storage::transfer_app_cap(storage, app_cap);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
@@ -75,8 +75,8 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
-            lending::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
+            lending_core::lending_wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
@@ -86,7 +86,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_lending_portal(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        lending_portal: &mut LendingPortal,
+        lending_portal: &mut DolaPortal,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -95,13 +95,13 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             let pool_cap = pool::register_cap(&governance_cap, ctx);
-            let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
+            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(&governance_cap);
             let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
-            lending_portal::lending::transfer_pool_cap(lending_portal, pool_cap);
-            lending_portal::lending::transfer_storage_cap(lending_portal, storage_cap);
-            lending_portal::lending::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
-            lending_portal::lending::transfer_user_manager_cap(lending_portal, user_manager_cap);
+            dola_portal::portal::transfer_pool_cap(lending_portal, pool_cap);
+            dola_portal::portal::transfer_storage_cap(lending_portal, storage_cap);
+            dola_portal::portal::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
+            dola_portal::portal::transfer_user_manager_cap(lending_portal, user_manager_cap);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
@@ -209,13 +209,13 @@ module genesis_proposal::genesis_proposal {
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
         treasury: u64,
-        treasury_factor: u64,
-        collateral_coefficient: u64,
-        borrow_coefficient: u64,
-        base_borrow_rate: u64,
-        borrow_rate_slope1: u64,
-        borrow_rate_slope2: u64,
-        optimal_utilization: u64,
+        treasury_factor: u256,
+        collateral_coefficient: u256,
+        borrow_coefficient: u256,
+        base_borrow_rate: u256,
+        borrow_rate_slope1: u256,
+        borrow_rate_slope2: u256,
+        optimal_utilization: u256,
         storage: &mut Storage,
         ctx: &mut TxContext
     ) {
@@ -223,8 +223,8 @@ module genesis_proposal::genesis_proposal {
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
-            let storage_cap = lending::storage::register_cap_with_governance(&governance_cap);
-            lending::storage::register_new_reserve(
+            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
+            lending_core::storage::register_new_reserve(
                 &storage_cap,
                 storage,
                 oracle,
