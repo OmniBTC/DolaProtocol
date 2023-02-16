@@ -2,11 +2,13 @@ module genesis_proposal::genesis_proposal {
     use std::ascii::string;
     use std::option;
 
+    use protocol_core::protocol_wormhole_adapter;
+
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_portal::portal::DolaPortal;
     use dola_types::types::create_dola_address;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
-    use lending_core::lending_wormhole_adapter::WormholeAdapater;
+    use lending_core::lending_wormhole_adapter;
     use lending_core::storage::Storage;
     use omnipool::pool;
     use oracle::oracle::PriceOracle;
@@ -67,7 +69,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_lending_wormhole_adapter(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        wormhole_adapater: &mut WormholeAdapater,
+        wormhole_adapater: &mut lending_wormhole_adapter::WormholeAdapter,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -77,6 +79,25 @@ module genesis_proposal::genesis_proposal {
 
             let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
             lending_core::lending_wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+            governance_v1::destory_governance_cap(governance_cap);
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_init_protocol_wormhole_adapter(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_adapater: &mut protocol_wormhole_adapter::WormholeAdapter,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
+            protocol_core::protocol_wormhole_adapter::transfer_user_manager_cap(wormhole_adapater, user_manager_cap);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
