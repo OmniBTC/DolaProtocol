@@ -31,7 +31,7 @@ def test_encode_decode(encode_decode):
 
     result = encode_decode.decodeSendDepositPayload(send_deposit_payload)
     assert result == ((dola_chain_id, pool), (dola_chain_id,
-                      user), amount, app_id, f"0x{app_payload.hex()}")
+                                              user), amount, app_id, f"0x{app_payload.hex()}")
 
     send_withdraw_payload = encode_decode.encodeSendWithdrawPayload(
         [dola_chain_id, pool],
@@ -58,10 +58,12 @@ def test_encode_decode(encode_decode):
                       amount, (dola_chain_id, withdraw_pool), app_id, f"0x{app_payload.hex()}")
 
     receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+        0,
+        0,
         [dola_chain_id, pool],
         [dola_chain_id, user],
         amount,
     )
     result = encode_decode.decodeReceiveWithdrawPayload(
         receive_withdraw_payload)
-    assert result == ((dola_chain_id, pool), (dola_chain_id, user), amount)
+    assert result == (0, 0, (dola_chain_id, pool), (dola_chain_id, user), amount)
