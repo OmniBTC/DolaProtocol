@@ -61,7 +61,10 @@ module lending_core::logic {
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
 
         let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount) = calculate_actual_liquidation(
+            oracle,
+            collateral,
             max_liquidable_collateral,
+            loan,
             max_liquidable_debt,
             repay_debt,
             treasury_factor
@@ -411,7 +414,10 @@ module lending_core::logic {
     }
 
     public fun calculate_actual_liquidation(
+        oracle: &mut PriceOracle,
+        collateral: u16,
         max_liquidable_collateral: u64,
+        loan: u16,
         max_liquidable_debt: u64,
         repay_debt: u64,
         treasury_factor: u256
@@ -420,10 +426,11 @@ module lending_core::logic {
         let actual_liquidable_collateral;
         let actual_liquidable_debt;
 
+        // todo: calculate treasury reserved by reward
         if (repay_debt >= max_liquidable_debt) {
             excess_repay_amount = repay_debt - max_liquidable_debt;
-            actual_liquidable_collateral = max_liquidable_collateral;
             actual_liquidable_debt = max_liquidable_debt;
+            actual_liquidable_collateral = max_liquidable_collateral;
         } else {
             excess_repay_amount = 0;
             actual_liquidable_debt = repay_debt;
@@ -433,11 +440,11 @@ module lending_core::logic {
             ) as u64);
         };
 
-        let liquidator_acquired_collateral = (ray_mul(
-            (actual_liquidable_collateral as u256),
-            ray() - treasury_factor
-        ) as u64);
-        let treasury_reserved_collateral = (ray_mul((actual_liquidable_collateral as u256), treasury_factor) as u64);
+        let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
+        let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
+        let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
+        let treasury_reserved_collateral = (ray_mul((reward as u256), treasury_factor) as u64);
+        let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
     }
 
