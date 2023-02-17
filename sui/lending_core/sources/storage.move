@@ -4,8 +4,8 @@ module lending_core::storage {
 
     use app_manager::app_manager::{Self, AppCap};
     use governance::genesis::GovernanceCap;
-    use oracle::oracle::{PriceOracle, get_timestamp};
-    use ray_math::math::ray;
+    use oracle::oracle::{Self, PriceOracle};
+    use ray_math::math;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -54,19 +54,19 @@ module lending_core::storage {
         last_update_timestamp: u64,
         // Treasury (dola_user_id)
         treasury: u64,
-        // Treasury interest factor [ray]
+        // Treasury interest factor [math::ray]
         treasury_factor: u256,
-        // Current borrow rate [ray]
+        // Current borrow rate [math::ray]
         current_borrow_rate: u256,
-        // Current supply rate [ray]
+        // Current supply rate [math::ray]
         current_liquidity_rate: u256,
-        // Current borrow index [ray]
+        // Current borrow index [math::ray]
         current_borrow_index: u256,
-        // Current liquidity index [ray]
+        // Current liquidity index [math::ray]
         current_liquidity_index: u256,
-        // Collateral coefficient [ray]
+        // Collateral coefficient [math::ray]
         collateral_coefficient: u256,
-        // Borrow coefficient [ray]
+        // Borrow coefficient [math::ray]
         borrow_coefficient: u256,
         // Borrow rate factors, for borrow rate calculation
         borrow_rate_factors: BorrowRateFactors,
@@ -145,13 +145,13 @@ module lending_core::storage {
         assert!(!table::contains(&storage.reserves, dola_pool_id), EALREADY_EXIST_RESERVE);
         table::add(&mut storage.reserves, dola_pool_id, ReserveData {
             flag: true,
-            last_update_timestamp: get_timestamp(oracle),
+            last_update_timestamp: oracle::get_timestamp(oracle),
             treasury,
             treasury_factor,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
-            current_borrow_index: ray(),
-            current_liquidity_index: ray(),
+            current_borrow_index: math::ray(),
+            current_liquidity_index: math::ray(),
             collateral_coefficient,
             borrow_coefficient,
             borrow_rate_factors: BorrowRateFactors {
@@ -418,7 +418,7 @@ module lending_core::storage {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_update_timestamp: get_timestamp(oracle),
+                last_update_timestamp: oracle::get_timestamp(oracle),
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
@@ -454,7 +454,7 @@ module lending_core::storage {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_update_timestamp: get_timestamp(oracle),
+                last_update_timestamp: oracle::get_timestamp(oracle),
                 collaterals: vector::empty(),
                 loans: vector::empty()
             });
@@ -506,7 +506,7 @@ module lending_core::storage {
     ) {
         assert!(table::contains(&mut storage.user_infos, dola_user_id), ENONEXISTENT_USERINFO);
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.last_update_timestamp = get_timestamp(oracle);
+        user_info.last_update_timestamp = oracle::get_timestamp(oracle);
         user_info.average_liquidity = average_liquidity;
     }
 

@@ -2,19 +2,19 @@ module lending_core::lending_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress, encode_dola_address, decode_dola_address, get_dola_address};
-    use lending_core::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate};
-    use lending_core::storage::{StorageCap, Storage, get_app_cap};
+    use dola_types::types::{Self, DolaAddress};
+    use lending_core::logic;
+    use lending_core::storage::{Self, StorageCap, Storage};
     use oracle::oracle::PriceOracle;
-    use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
-    use serde::serde::{serialize_u16, serialize_u64, serialize_vector, serialize_u8, deserialize_u16, deserialize_u64, vector_slice, deserialize_u8};
+    use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use serde::serde;
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use user_manager::user_manager::{UserManagerInfo, get_dola_user_id};
+    use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
 
@@ -87,15 +87,15 @@ module lending_core::lending_wormhole_adapter {
         let (pool, user, amount, app_payload) = bridge_core::receive_deposit(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             vaa,
             pool_manager_info,
             user_manager_info,
             ctx
         );
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
-        execute_supply(
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
+        logic::execute_supply(
             cap,
             pool_manager_info,
             storage,
@@ -109,8 +109,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: get_dola_address(&pool),
-            receiver: get_dola_address(&receiver),
+            pool_address: types::get_dola_address(&pool),
+            receiver: types::get_dola_address(&receiver),
             amount,
             call_type
         })
@@ -132,21 +132,21 @@ module lending_core::lending_wormhole_adapter {
         let (pool, user, app_payload) = bridge_core::receive_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             vaa,
             ctx
         );
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = types::get_dola_chain_id(&receiver);
-        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
         // If the withdrawal exceeds the user's balance, use the maximum withdrawal
-        let actual_amount = execute_withdraw(
+        let actual_amount = logic::execute_withdraw(
             cap,
             pool_manager_info,
             storage,
@@ -157,13 +157,13 @@ module lending_core::lending_wormhole_adapter {
         );
 
         // Check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -176,8 +176,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: get_dola_address(&dst_pool),
-            receiver: get_dola_address(&receiver),
+            pool_address: types::get_dola_address(&dst_pool),
+            receiver: types::get_dola_address(&receiver),
             amount: actual_amount,
             call_type
         })
@@ -200,27 +200,27 @@ module lending_core::lending_wormhole_adapter {
         let (pool, user, app_payload) = bridge_core::receive_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             vaa,
             ctx
         );
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
 
         let dst_chain = types::get_dola_chain_id(&receiver);
-        let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
+        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
-        execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
+        logic::execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -233,8 +233,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: get_dola_address(&dst_pool),
-            receiver: get_dola_address(&receiver),
+            pool_address: types::get_dola_address(&dst_pool),
+            receiver: types::get_dola_address(&receiver),
             amount,
             call_type
         })
@@ -255,22 +255,22 @@ module lending_core::lending_wormhole_adapter {
         let (pool, user, amount, app_payload) = bridge_core::receive_deposit(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             vaa,
             pool_manager_info,
             user_manager_info,
             ctx
         );
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        let dola_user_id = get_dola_user_id(user_manager_info, user);
-        execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
+        logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         emit(LendingCoreEvent {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: get_dola_address(&pool),
-            receiver: get_dola_address(&receiver),
+            pool_address: types::get_dola_address(&pool),
+            receiver: types::get_dola_address(&receiver),
             amount,
             call_type
         })
@@ -292,22 +292,22 @@ module lending_core::lending_wormhole_adapter {
         let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, _app_id, app_payload) = bridge_core::receive_deposit_and_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             vaa,
             pool_manager_info,
             ctx
         );
         let (source_chain_id, nonce, _, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
 
-        let liquidator = get_dola_user_id(user_manager_info, deposit_user);
+        let liquidator = user_manager::get_dola_user_id(user_manager_info, deposit_user);
         let dst_chain = types::get_dola_chain_id(&receiver);
-        let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
-        let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
-        let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
+        let deposit_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, deposit_pool);
+        let withdraw_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, withdraw_pool);
+        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
 
-        let (withdraw_amount, return_repay_amount) = execute_liquidate(
+        let (withdraw_amount, return_repay_amount) = logic::execute_liquidate(
             cap,
             pool_manager_info,
             storage,
@@ -320,13 +320,13 @@ module lending_core::lending_wormhole_adapter {
         );
 
         // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= (withdraw_amount as u128), ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
             core_state,
-            get_app_cap(cap, storage),
+            storage::get_app_cap(cap, storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -337,15 +337,15 @@ module lending_core::lending_wormhole_adapter {
         );
 
         if (return_repay_amount > 0) {
-            let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
+            let repay_pool = pool_manager::find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
             assert!(option::is_some(&repay_pool), EMUST_SOME);
             let repay_pool = option::destroy_some(repay_pool);
-            let pool_liquidity = get_pool_liquidity(pool_manager_info, repay_pool);
+            let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, repay_pool);
             assert!(pool_liquidity >= (return_repay_amount as u128), ENOT_ENOUGH_LIQUIDITY);
             bridge_core::send_withdraw(
                 wormhole_state,
                 core_state,
-                get_app_cap(cap, storage),
+                storage::get_app_cap(cap, storage),
                 pool_manager_info,
                 repay_pool,
                 receiver,
@@ -367,15 +367,15 @@ module lending_core::lending_wormhole_adapter {
     ): vector<u8> {
         let payload = vector::empty<u8>();
 
-        serialize_u16(&mut payload, source_chain_id);
-        serialize_u64(&mut payload, nonce);
+        serde::serialize_u16(&mut payload, source_chain_id);
+        serde::serialize_u64(&mut payload, nonce);
 
-        serialize_u64(&mut payload, amount);
-        let receiver = encode_dola_address(receiver);
-        serialize_u16(&mut payload, (vector::length(&receiver) as u16));
-        serialize_vector(&mut payload, receiver);
-        serialize_u64(&mut payload, liquidate_user_id);
-        serialize_u8(&mut payload, call_type);
+        serde::serialize_u64(&mut payload, amount);
+        let receiver = types::encode_dola_address(receiver);
+        serde::serialize_u16(&mut payload, (vector::length(&receiver) as u16));
+        serde::serialize_vector(&mut payload, receiver);
+        serde::serialize_u64(&mut payload, liquidate_user_id);
+        serde::serialize_u8(&mut payload, call_type);
         payload
     }
 
@@ -384,31 +384,31 @@ module lending_core::lending_wormhole_adapter {
         let data_len;
 
         data_len = 2;
-        let source_chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let source_chain_id = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let nonce = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let amount = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let receive_length = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = (receive_length as u64);
-        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
+        let receiver = types::decode_dola_address(serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let liquidate_user_id = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
