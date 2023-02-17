@@ -112,7 +112,7 @@ contract DolaPortal {
         );
         IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
             token,
-            fixAmount,
+            amount,
             LENDING_APP_ID,
             appPayload
         );
@@ -209,7 +209,7 @@ contract DolaPortal {
         );
         IWormholeBridge(bridgePool).sendDeposit{value : msg.value}(
             token,
-            fixAmount,
+            amount,
             LENDING_APP_ID,
             appPayload
         );

@@ -1,6 +1,5 @@
-from brownie import MockBridgePool, OmniPool, MockToken, LendingPortal, EncodeDecode, accounts, config
+from brownie import MockBridgePool, OmniPool, MockToken, DolaPortal, EncodeDecode, accounts, config
 from pytest import fixture
-
 
 wormhole_address = config["networks"]["development"]["wormhole"]
 wormhole_chainid = config["networks"]["development"]["wormhole_chainid"]
@@ -45,8 +44,8 @@ def usdt():
 
 @fixture
 def lending_portal(bridge_pool):
-    return LendingPortal.deploy(bridge_pool.address,
-                                wormhole_chainid, {'from': account()})
+    return DolaPortal.deploy(bridge_pool.address,
+                             wormhole_chainid, {'from': account()})
 
 
 def test_supply(lending_portal, usdt, omnipool):
@@ -56,7 +55,7 @@ def test_supply(lending_portal, usdt, omnipool):
     lending_portal.supply(usdt.address, amount, {'from': account()})
     assert omnipool.pools(usdt.address) == amount
     lending_portal.supply(zero_address(), amount, {
-                          'from': account(), 'value': amount})
+        'from': account(), 'value': amount})
     assert omnipool.pools(zero_address()) == amount
 
 
@@ -68,20 +67,20 @@ def test_withdraw(lending_portal, usdt, omnipool, bridge_pool, encode_decode):
     lending_portal.supply(usdt.address, amount, {'from': account()})
     assert omnipool.pools(usdt.address) == amount
     receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
-        [1, usdt.address], [1, account().address], 1e8, {'from': account()})
+        0, 0, [1, usdt.address], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
     assert omnipool.pools(usdt.address) == 0
 
     lending_portal.supply(zero_address(), amount, {
-                          'from': account(), 'value': amount})
+        'from': account(), 'value': amount})
     lending_portal.supply(zero_address(), amount, {
-                          'from': account(), 'value': amount})
+        'from': account(), 'value': amount})
     assert omnipool.pools(zero_address()) == 2 * amount
 
     account_balance = account().balance()
 
     receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
-        [1, zero_address()], [1, account().address], 1e8, {'from': account()})
+        0, 0, [1, zero_address()], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
     assert omnipool.pools(zero_address()) == amount
     assert account().balance() == account_balance + amount
