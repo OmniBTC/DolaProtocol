@@ -2,7 +2,7 @@ module protocol_core::protocol_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, decode_dola_address, DolaAddress, encode_dola_address, dola_address};
+    use dola_types::types::{Self, decode_dola_address, DolaAddress, encode_dola_address, get_dola_address};
     use protocol_core::message_types::{Self, binding_type_id, unbinding_type_id};
     use serde::serde::{deserialize_u16, vector_slice, deserialize_u8, serialize_u16, serialize_vector, serialize_u8, serialize_u64, deserialize_u64};
     use sui::event::emit;
@@ -87,10 +87,10 @@ module protocol_core::protocol_wormhole_adapter {
         };
         emit(ProtocolCoreEvent {
             nonce,
-            sender: dola_address(&sender),
+            sender: get_dola_address(&sender),
             source_chain_id,
             user_chain_id: types::get_dola_chain_id(&binded_address),
-            user_address: dola_address(&binded_address),
+            user_address: get_dola_address(&binded_address),
             call_type
         })
     }
@@ -115,10 +115,10 @@ module protocol_core::protocol_wormhole_adapter {
         );
         emit(ProtocolCoreEvent {
             nonce,
-            sender: dola_address(&sender),
+            sender: get_dola_address(&sender),
             source_chain_id,
             user_chain_id: types::get_dola_chain_id(&unbind_address),
-            user_address: dola_address(&unbind_address),
+            user_address: get_dola_address(&unbind_address),
             call_type
         })
     }

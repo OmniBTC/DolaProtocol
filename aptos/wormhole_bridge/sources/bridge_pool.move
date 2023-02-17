@@ -8,7 +8,7 @@ module wormhole_bridge::bridge_pool {
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::event::{EventHandle, emit_event};
 
-    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address, get_native_dola_chain_id, dola_chain_id, dola_address};
+    use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address, get_native_dola_chain_id, dola_chain_id, get_dola_address};
     use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
     use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8, serialize_u64, deserialize_u64};
     use serde::u16::{U16, Self};
@@ -269,8 +269,8 @@ module wormhole_bridge::bridge_pool {
                 nonce,
                 source_chain_id,
                 dst_chain_id: get_dola_chain_id(&pool_address),
-                pool_address: dola_address(&pool_address),
-                receiver: dola_address(&receiver),
+                pool_address: get_dola_address(&pool_address),
+                receiver: get_dola_address(&receiver),
                 amount
             }
         )

@@ -2,7 +2,7 @@ module lending_core::lending_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress, encode_dola_address, decode_dola_address, dola_address};
+    use dola_types::types::{Self, DolaAddress, encode_dola_address, decode_dola_address, get_dola_address};
     use lending_core::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate};
     use lending_core::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
@@ -109,8 +109,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
-            receiver: dola_address(&receiver),
+            pool_address: get_dola_address(&pool),
+            receiver: get_dola_address(&receiver),
             amount,
             call_type
         })
@@ -176,8 +176,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
-            receiver: dola_address(&receiver),
+            pool_address: get_dola_address(&dst_pool),
+            receiver: get_dola_address(&receiver),
             amount: actual_amount,
             call_type
         })
@@ -233,8 +233,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
-            receiver: dola_address(&receiver),
+            pool_address: get_dola_address(&dst_pool),
+            receiver: get_dola_address(&receiver),
             amount,
             call_type
         })
@@ -269,8 +269,8 @@ module lending_core::lending_wormhole_adapter {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
-            receiver: dola_address(&receiver),
+            pool_address: get_dola_address(&pool),
+            receiver: get_dola_address(&receiver),
             amount,
             call_type
         })

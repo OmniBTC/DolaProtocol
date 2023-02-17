@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use dola_types::types::{Self, DolaAddress, dola_address};
+    use dola_types::types::{Self, DolaAddress, get_dola_address};
     use governance::genesis::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
@@ -227,8 +227,8 @@ module wormhole_bridge::bridge_pool {
             nonce,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&pool_address),
-            pool_address: dola_address(&pool_address),
-            receiver: dola_address(&receiver),
+            pool_address: get_dola_address(&pool_address),
+            receiver: get_dola_address(&receiver),
             amount
         })
     }

@@ -19,6 +19,8 @@ module genesis_proposal::genesis_proposal {
     use wormhole_bridge::bridge_core::{Self, CoreState};
     use wormhole_bridge::bridge_pool::{Self, PoolState};
 
+    const EVM_GROUP_ID: u16 = 2;
+
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
     struct Certificate has store, drop {}
@@ -141,7 +143,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            user_manager::register_dola_chain_id(&governance_cap, user_manager, evm_chain_id, 2);
+            user_manager::register_dola_chain_id(&governance_cap, user_manager, evm_chain_id, EVM_GROUP_ID);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

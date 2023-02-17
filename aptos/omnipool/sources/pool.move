@@ -9,7 +9,7 @@ module omnipool::pool {
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin::{Self, Coin, is_account_registered};
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_address, convert_address_to_dola, convert_pool_to_dola, convert_dola_to_address};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, get_dola_address, convert_address_to_dola, convert_pool_to_dola, convert_dola_to_address};
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use serde::u16::{Self, U16};
 
@@ -168,7 +168,7 @@ module omnipool::pool {
         amount = unnormal_amount<CoinType>(amount);
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         let balance = coin::extract(&mut pool.balance, amount);
-        assert!(dola_address(&pool_addr) == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
+        assert!(get_dola_address(&pool_addr) == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
         transfer(balance, user_addr);
     }
 
@@ -450,8 +450,8 @@ module omnipool::pool {
         serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
         serialize_vector(&mut pool_payload, pool_addr);
 
-        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&dola_address(&user_addr))));
-        serialize_vector(&mut pool_payload, dola_address(&user_addr));
+        serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&get_dola_address(&user_addr))));
+        serialize_vector(&mut pool_payload, get_dola_address(&user_addr));
 
         serialize_u64(&mut pool_payload, amount);
 

@@ -29,6 +29,7 @@ module user_manager::user_manager {
     /// Manage user addresses of different chains, bound with user id.
     /// Also group the dola chain ids, such as evm chains into the same group,
     /// to avoid duplicate bindings between evm chains.
+    /// Note that the association of group ids requires caution.
     struct UserManagerInfo has key, store {
         id: UID,
         // user catalogs

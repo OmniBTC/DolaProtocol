@@ -8,7 +8,7 @@ module dola_portal::portal {
     use aptos_framework::coin;
     use aptos_framework::event::{EventHandle, emit_event};
 
-    use dola_types::types::{create_dola_address, decode_dola_address, DolaAddress, convert_address_to_dola, encode_dola_address, get_native_dola_chain_id, convert_pool_to_dola, dola_address};
+    use dola_types::types::{create_dola_address, decode_dola_address, DolaAddress, convert_address_to_dola, encode_dola_address, get_native_dola_chain_id, convert_pool_to_dola, get_dola_address};
     use omnipool::pool::normal_amount;
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use serde::u16::{Self, U16};
@@ -149,7 +149,7 @@ module dola_portal::portal {
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
+                dola_pool_address: get_dola_address(&convert_pool_to_dola<CoinType>()),
                 source_chain_id: u16::from_u64(get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(0),
                 receiver: to_bytes(&signer::address_of(sender)),
@@ -186,7 +186,7 @@ module dola_portal::portal {
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
+                dola_pool_address: get_dola_address(&convert_pool_to_dola<CoinType>()),
                 source_chain_id: u16::from_u64(get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
@@ -268,7 +268,7 @@ module dola_portal::portal {
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
+                dola_pool_address: get_dola_address(&convert_pool_to_dola<CoinType>()),
                 source_chain_id: u16::from_u64(get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
@@ -350,7 +350,7 @@ module dola_portal::portal {
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
+                dola_pool_address: get_dola_address(&convert_pool_to_dola<CoinType>()),
                 source_chain_id: u16::from_u64(get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(0),
                 receiver: to_bytes(&signer::address_of(sender)),

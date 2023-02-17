@@ -1,6 +1,6 @@
 module pool_manager::equilibrium_fee {
 
-    use ray_math::math::{ray_div, ray, ray_mul, ray_ln2, ray_log2};
+    use ray_math::math;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const ALPHA_1: u256 = 600000000000000000000000000;
@@ -9,7 +9,7 @@ module pool_manager::equilibrium_fee {
     const LAMBDA_1: u256 = 5000000000000000000000000;
 
     public fun calculate_expected_ratio(total_weight: u16, weight: u8): u256 {
-        ray_div((weight as u256), (total_weight as u256))
+        math::ray_div((weight as u256), (total_weight as u256))
     }
 
     public fun calculate_equilibrium_reward(
@@ -20,13 +20,13 @@ module pool_manager::equilibrium_fee {
         total_equilibrium_reward: u256
     ): u256 {
         let before_liquidity_ratio = if (total_liquidity > 0) {
-            ray_div(
-                ray_div(current_liquidity, total_liquidity),
+            math::ray_div(
+                math::ray_div(current_liquidity, total_liquidity),
                 expected_ratio
             )
         } else { 0 };
-        let after_liquidity_ratio = ray_div(
-            ray_div(current_liquidity + deposit_amount, total_liquidity + deposit_amount),
+        let after_liquidity_ratio = math::ray_div(
+            math::ray_div(current_liquidity + deposit_amount, total_liquidity + deposit_amount),
             expected_ratio
         );
 
@@ -36,11 +36,11 @@ module pool_manager::equilibrium_fee {
             if (after_liquidity_ratio >= ALPHA_1) {
                 total_equilibrium_reward
             } else {
-                let reward_ratio = ray_div(
+                let reward_ratio = math::ray_div(
                     after_liquidity_ratio - before_liquidity_ratio,
                     ALPHA_1 - before_liquidity_ratio
                 );
-                ray_mul(total_equilibrium_reward, reward_ratio)
+                math::ray_mul(total_equilibrium_reward, reward_ratio)
             }
         }
     }
@@ -52,16 +52,16 @@ module pool_manager::equilibrium_fee {
         expected_ratio: u256
     ): u256 {
         let after_liquidity_ratio = if (total_liquidity > withdraw_amount) {
-            ray_div(
-                ray_div(current_liquidity - withdraw_amount, total_liquidity - withdraw_amount),
+            math::ray_div(
+                math::ray_div(current_liquidity - withdraw_amount, total_liquidity - withdraw_amount),
                 expected_ratio
             )
         } else { 0 };
 
-        let n_start = if (current_liquidity > ray_mul(ray_mul(total_liquidity, expected_ratio), ALPHA_1)) {
-            ray_div(
-                current_liquidity - ray_mul(ray_mul(total_liquidity, ALPHA_1), expected_ratio),
-                ray() - ray_mul(ALPHA_1, expected_ratio)
+        let n_start = if (current_liquidity > math::ray_mul(math::ray_mul(total_liquidity, expected_ratio), ALPHA_1)) {
+            math::ray_div(
+                current_liquidity - math::ray_mul(math::ray_mul(total_liquidity, ALPHA_1), expected_ratio),
+                math::ray() - math::ray_mul(ALPHA_1, expected_ratio)
             )
         } else { 0 };
 
@@ -70,12 +70,12 @@ module pool_manager::equilibrium_fee {
         } else if (after_liquidity_ratio > ALPHA_1) {
             0
         } else {
-            let fee = ray_div(ray_mul(
-                (total_liquidity - current_liquidity) * ray_mul(LAMBDA_1, ray_ln2()),
-                ray_log2(ray_div(total_liquidity - n_start, total_liquidity - withdraw_amount))
-            ), ray_mul(ALPHA_1, expected_ratio)) - ray_div(
-                (withdraw_amount - n_start) * ray_mul(LAMBDA_1, ray() - ray_mul(ALPHA_1, expected_ratio)),
-                ray_mul(ALPHA_1, expected_ratio)
+            let fee = math::ray_div(math::ray_mul(
+                (total_liquidity - current_liquidity) * math::ray_mul(LAMBDA_1, math::ray_ln2()),
+                math::ray_log2(math::ray_div(total_liquidity - n_start, total_liquidity - withdraw_amount))
+            ), math::ray_mul(ALPHA_1, expected_ratio)) - math::ray_div(
+                (withdraw_amount - n_start) * math::ray_mul(LAMBDA_1, math::ray() - math::ray_mul(ALPHA_1, expected_ratio)),
+                math::ray_mul(ALPHA_1, expected_ratio)
             );
             fee
         }
@@ -100,9 +100,9 @@ module pool_manager::equilibrium_fee {
         let expect_ratio = calculate_expected_ratio(2, 1);
         let after_liquidity_ratio = 550000000000000000000000000;
         // wa = (c-e*r*t)/(1-e*r)
-        let withdraw_amount = ray_div(
-            current_liquidity - ray_mul(ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio),
-            ray() - ray_mul(expect_ratio, after_liquidity_ratio)
+        let withdraw_amount = math::ray_div(
+            current_liquidity - math::ray_mul(math::ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio),
+            math::ray() - math::ray_mul(expect_ratio, after_liquidity_ratio)
         );
         let fee1 = calculate_equilibrium_fee(total_liquidity, current_liquidity, withdraw_amount, expect_ratio);
         assert!(fee1 > 0, 1);
@@ -115,9 +115,9 @@ module pool_manager::equilibrium_fee {
         let expect_ratio = calculate_expected_ratio(2, 1);
         let after_liquidity_ratio = 400000000000000000000000000;
         // wa = (c-e*r*t)/(1-e*r)
-        let withdraw_amount = ray_div(
-            current_liquidity - ray_mul(ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio),
-            ray() - ray_mul(expect_ratio, after_liquidity_ratio)
+        let withdraw_amount = math::ray_div(
+            current_liquidity - math::ray_mul(math::ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio),
+            math::ray() - math::ray_mul(expect_ratio, after_liquidity_ratio)
         );
         let fee2 = calculate_equilibrium_fee(total_liquidity, current_liquidity, withdraw_amount, expect_ratio);
         assert!(fee2 > 0, 3);
@@ -177,9 +177,9 @@ module pool_manager::equilibrium_fee {
         let expect_ratio = calculate_expected_ratio(2, 1);
         let after_liquidity_ratio = 550000000000000000000000000;
         // da = (t*e*r - c)/(1-e*r)
-        let deposit_amount = ray_div(
-            ray_mul(ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio) - current_liquidity,
-            ray() - ray_mul(expect_ratio, after_liquidity_ratio)
+        let deposit_amount = math::ray_div(
+            math::ray_mul(math::ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio) - current_liquidity,
+            math::ray() - math::ray_mul(expect_ratio, after_liquidity_ratio)
         );
         let total_equilibrium_reward = 100;
         let reward2 = calculate_equilibrium_reward(
@@ -198,9 +198,9 @@ module pool_manager::equilibrium_fee {
         let expect_ratio = calculate_expected_ratio(2, 1);
         let after_liquidity_ratio = 600000000000000000000000000;
         // da = (t*e*r - c)/(1-e*r)
-        let deposit_amount = ray_div(
-            ray_mul(ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio) - current_liquidity,
-            ray() - ray_mul(expect_ratio, after_liquidity_ratio)
+        let deposit_amount = math::ray_div(
+            math::ray_mul(math::ray_mul(total_liquidity, expect_ratio), after_liquidity_ratio) - current_liquidity,
+            math::ray() - math::ray_mul(expect_ratio, after_liquidity_ratio)
         );
         let total_equilibrium_reward = 100;
         let reward3 = calculate_equilibrium_reward(

@@ -25,7 +25,7 @@ module dola_types::types {
         dola_address.dola_chain_id
     }
 
-    public fun dola_address(dola_address: &DolaAddress): vector<u8> {
+    public fun get_dola_address(dola_address: &DolaAddress): vector<u8> {
         dola_address.dola_address
     }
 
