@@ -332,7 +332,15 @@ module pool_manager::pool_manager {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        transfer::share_object(PoolManagerInfo {
+            id: object::new(ctx),
+            app_infos: table::new(ctx),
+            pool_infos: table::new(ctx),
+            pool_catalog: PoolCatalog {
+                pool_to_id: table::new(ctx),
+                id_to_pools: table::new(ctx)
+            }
+        })
     }
 
     #[test_only]

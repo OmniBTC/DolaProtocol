@@ -551,7 +551,12 @@ module lending_core::storage {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        transfer::share_object(Storage {
+            id: object::new(ctx),
+            app_cap: option::none(),
+            reserves: table::new(ctx),
+            user_infos: table::new(ctx)
+        });
     }
 
     #[test_only]

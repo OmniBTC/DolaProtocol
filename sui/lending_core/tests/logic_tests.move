@@ -16,6 +16,8 @@ module lending_core::logic_tests {
 
     const RAY: u256 = 1000000000000000000000000000;
 
+    const LENDING_APP_ID: u16 = 1;
+
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     /// HF 1.25
@@ -73,7 +75,7 @@ module lending_core::logic_tests {
     const ETH_BF: u256 = 1100000000000000000000000000;
 
 
-    public fun init(ctx: &mut TxContext) {
+    public fun init_for_testing(ctx: &mut TxContext) {
         oracle::init_for_testing(ctx);
         app_manager::init_for_testing(ctx);
         pool_manager::init_for_testing(ctx);
@@ -198,7 +200,7 @@ module lending_core::logic_tests {
         let scenario_val = test_scenario::begin(creator);
         let scenario = &mut scenario_val;
         {
-            init(test_scenario::ctx(scenario));
+            init_for_testing(test_scenario::ctx(scenario));
         };
         test_scenario::next_tx(scenario, creator);
         {
@@ -257,7 +259,7 @@ module lending_core::logic_tests {
                 &pool_manager_cap,
                 &mut pool_manager_info,
                 supply_pool,
-                0,
+                LENDING_APP_ID,
                 supply_amount,
                 test_scenario::ctx(scenario)
             );
@@ -310,7 +312,7 @@ module lending_core::logic_tests {
                 &pool_manager_cap,
                 &mut pool_manager_info,
                 borrow_pool,
-                0,
+                LENDING_APP_ID,
                 borrow_amount
             );
 
@@ -380,7 +382,7 @@ module lending_core::logic_tests {
                 &pool_manager_cap,
                 &mut pool_manager_info,
                 btc_pool,
-                0,
+                LENDING_APP_ID,
                 withdraw_amount
             );
 
@@ -457,7 +459,7 @@ module lending_core::logic_tests {
                 &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
-                0,
+                LENDING_APP_ID,
                 repay_usdt_amount,
                 test_scenario::ctx(scenario)
             );
