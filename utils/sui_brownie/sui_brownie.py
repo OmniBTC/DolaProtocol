@@ -1034,9 +1034,7 @@ class SuiPackage:
             assert False, result["error"]
         result = result["result"]
         try:
-            data = result["details"]
-            if "status" in result:
-                data["status"] = result["status"]
+            data = result["data"]
             return data
         except:
             return result
