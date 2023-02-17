@@ -84,10 +84,10 @@ module dola_portal::portal {
     public entry fun binding(
         sender: &signer,
         dola_chain_id: u64,
-        bind_address: vector<u8>,
+        binded_address: vector<u8>,
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        send_binding(sender, nonce, dola_chain_id, bind_address);
+        send_binding(sender, nonce, dola_chain_id, binded_address);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
             &mut event_handle.protocol_event_handle,
@@ -96,7 +96,7 @@ module dola_portal::portal {
                 sender: signer::address_of(sender),
                 source_chain_id: u16::from_u64(get_native_dola_chain_id()),
                 user_chain_id: u16::from_u64(dola_chain_id),
-                user_address: bind_address,
+                user_address: binded_address,
                 call_type: BINDING
             }
         )

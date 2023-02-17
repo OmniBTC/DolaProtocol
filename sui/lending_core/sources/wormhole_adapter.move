@@ -2,7 +2,7 @@ module lending_core::lending_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{dola_chain_id, DolaAddress, encode_dola_address, decode_dola_address, dola_address};
+    use dola_types::types::{Self, DolaAddress, encode_dola_address, decode_dola_address, dola_address};
     use lending_core::logic::{execute_supply, execute_withdraw, execute_borrow, execute_repay, execute_liquidate};
     use lending_core::storage::{StorageCap, Storage, get_app_cap};
     use oracle::oracle::PriceOracle;
@@ -108,7 +108,7 @@ module lending_core::lending_wormhole_adapter {
         emit(LendingCoreEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&receiver),
+            dst_chain_id: types::get_dola_chain_id(&receiver),
             pool_address: dola_address(&pool),
             receiver: dola_address(&receiver),
             amount,
@@ -140,7 +140,7 @@ module lending_core::lending_wormhole_adapter {
         let dola_user_id = get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
 
-        let dst_chain = dola_chain_id(&receiver);
+        let dst_chain = types::get_dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
@@ -175,7 +175,7 @@ module lending_core::lending_wormhole_adapter {
         emit(LendingCoreEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&receiver),
+            dst_chain_id: types::get_dola_chain_id(&receiver),
             pool_address: dola_address(&dst_pool),
             receiver: dola_address(&receiver),
             amount: actual_amount,
@@ -208,7 +208,7 @@ module lending_core::lending_wormhole_adapter {
         let dola_user_id = get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
 
-        let dst_chain = dola_chain_id(&receiver);
+        let dst_chain = types::get_dola_chain_id(&receiver);
         let dst_pool = find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
         let dst_pool = option::destroy_some(dst_pool);
@@ -232,7 +232,7 @@ module lending_core::lending_wormhole_adapter {
         emit(LendingCoreEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&receiver),
+            dst_chain_id: types::get_dola_chain_id(&receiver),
             pool_address: dola_address(&dst_pool),
             receiver: dola_address(&receiver),
             amount,
@@ -268,7 +268,7 @@ module lending_core::lending_wormhole_adapter {
         emit(LendingCoreEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&receiver),
+            dst_chain_id: types::get_dola_chain_id(&receiver),
             pool_address: dola_address(&pool),
             receiver: dola_address(&receiver),
             amount,
@@ -300,7 +300,7 @@ module lending_core::lending_wormhole_adapter {
         let (source_chain_id, nonce, _, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
-        let dst_chain = dola_chain_id(&receiver);
+        let dst_chain = types::get_dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
         let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);

@@ -123,16 +123,16 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         nonce: u64,
         dola_chain_id: u64,
-        bind_address: vector<u8>,
+        binded_address: vector<u8>,
     ) acquires PoolState {
-        let bind_address = create_dola_address(u16::from_u64(dola_chain_id), bind_address);
+        let binded_address = create_dola_address(u16::from_u64(dola_chain_id), binded_address);
         let user = convert_address_to_dola(signer::address_of(sender));
         let msg = encode_protocol_app_payload(
             u16::from_u64(get_native_dola_chain_id()),
             nonce,
             BINDING,
             user,
-            bind_address
+            binded_address
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
@@ -268,7 +268,7 @@ module wormhole_bridge::bridge_pool {
             PoolWithdrawEvent {
                 nonce,
                 source_chain_id,
-                dst_chain_id: dola_chain_id(&pool_address),
+                dst_chain_id: get_dola_chain_id(&pool_address),
                 pool_address: dola_address(&pool_address),
                 receiver: dola_address(&receiver),
                 amount
@@ -302,7 +302,7 @@ module wormhole_bridge::bridge_pool {
         nonce: u64,
         call_type: u8,
         user: DolaAddress,
-        bind_address: DolaAddress
+        binded_address: DolaAddress
     ): vector<u8> {
         let payload = vector::empty<u8>();
 
@@ -315,9 +315,9 @@ module wormhole_bridge::bridge_pool {
         serialize_u16(&mut payload, u16::from_u64(vector::length(&user)));
         serialize_vector(&mut payload, user);
 
-        let bind_address = encode_dola_address(bind_address);
-        serialize_u16(&mut payload, u16::from_u64(vector::length(&bind_address)));
-        serialize_vector(&mut payload, bind_address);
+        let binded_address = encode_dola_address(binded_address);
+        serialize_u16(&mut payload, u16::from_u64(vector::length(&binded_address)));
+        serialize_vector(&mut payload, binded_address);
 
         serialize_u8(&mut payload, call_type);
         payload
@@ -353,7 +353,7 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         data_len = u16::to_u64(bind_len);
-        let bind_address = decode_dola_address(vector_slice(&payload, index, index + data_len));
+        let binded_address = decode_dola_address(vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -361,6 +361,6 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (app_id, source_chain_id, nonce, user, bind_address, call_type)
+        (app_id, source_chain_id, nonce, user, binded_address, call_type)
     }
 }

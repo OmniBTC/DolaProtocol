@@ -4,16 +4,14 @@ module pool_manager::pool_manager {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{DolaAddress, dola_chain_id};
+    use dola_types::types::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
-    use pool_manager::equilibrium_fee::{calculate_equilibrium_fee, calculate_expected_ratio, calculate_equilibrium_reward};
+    use pool_manager::equilibrium_fee;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    #[test_only]
-    use dola_types::types::create_dola_address;
     #[test_only]
     use std::ascii::string;
     #[test_only]
@@ -31,7 +29,7 @@ module pool_manager::pool_manager {
 
     const ENONEXISTENT_CATALOG: u64 = 5;
 
-    /// Capability allowing pool creation, liquidity status modification.
+    /// Capability allowing liquidity status modification.
     /// Owned by bridge adapters (wormhole, layerzero, etc).
     struct PoolManagerCap has store, drop {}
 
@@ -42,7 +40,7 @@ module pool_manager::pool_manager {
         app_infos: Table<u16, AppInfo>,
         // dola_pool_id => PoolInfo
         pool_infos: Table<u16, PoolInfo>,
-        // token and pool catalogs
+        // pool catalogs
         pool_catalog: PoolCatalog,
     }
 
@@ -199,7 +197,7 @@ module pool_manager::pool_manager {
         let i = 0;
         while (i < len) {
             let d = *vector::borrow(&pools, i);
-            if (dola_chain_id(&d) == dst_chain) {
+            if (types::get_dola_chain_id(&d) == dst_chain) {
                 return option::some(d)
             };
             i = i + 1;
@@ -256,11 +254,11 @@ module pool_manager::pool_manager {
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
         let pools_liquidity = &mut pool_info.pools;
         let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        let equilibrium_reward = (calculate_equilibrium_reward(
+        let equilibrium_reward = (equilibrium_fee::calculate_equilibrium_reward(
             (pool_info.reserve.value as u256),
             (pool_liquidity.balance as u256),
             (amount as u256),
-            calculate_expected_ratio(pool_info.weight, pool_liquidity.weight),
+            equilibrium_fee::calculate_expected_ratio(pool_info.weight, pool_liquidity.weight),
             (pool_liquidity.equilibrium_fee as u256)
         ) as u64);
         let actual_amount = amount + equilibrium_reward;
@@ -306,11 +304,11 @@ module pool_manager::pool_manager {
         let pools_liquidity = &mut pool_info.pools;
         assert!(table::contains(pools_liquidity, pool), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        let equilibrium_fee = (calculate_equilibrium_fee(
+        let equilibrium_fee = (equilibrium_fee::calculate_equilibrium_fee(
             (pool_info.reserve.value as u256),
             (pool_liquidity.balance as u256),
             (amount as u256),
-            calculate_expected_ratio(pool_info.weight, pool_liquidity.weight)
+            equilibrium_fee::calculate_expected_ratio(pool_info.weight, pool_liquidity.weight)
         ) as u64);
         let actual_amount = amount - equilibrium_fee;
 
@@ -353,7 +351,7 @@ module pool_manager::pool_manager {
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = create_dola_address(0, b"USDT");
+            let pool = types::create_dola_address(0, b"USDT");
 
             let cap = register_manager_cap_for_testing();
 
@@ -368,7 +366,7 @@ module pool_manager::pool_manager {
     public fun test_add_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = create_dola_address(0, b"USDT");
+        let pool = types::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -413,7 +411,7 @@ module pool_manager::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = create_dola_address(0, b"USDT");
+        let pool = types::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);

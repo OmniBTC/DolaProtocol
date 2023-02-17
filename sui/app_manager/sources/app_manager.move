@@ -11,7 +11,7 @@ module app_manager::app_manager {
         app_caps: vector<ID>
     }
 
-    /// Giving applications access to the DolaProtocol single pool through AppCap
+    /// Giving applications access to the bridge adapter through AppCap
     struct AppCap has key, store {
         id: UID,
         app_id: u16

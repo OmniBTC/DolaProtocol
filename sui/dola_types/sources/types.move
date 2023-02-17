@@ -21,7 +21,7 @@ module dola_types::types {
         DOLACHAINID
     }
 
-    public fun dola_chain_id(dola_address: &DolaAddress): u16 {
+    public fun get_dola_chain_id(dola_address: &DolaAddress): u16 {
         dola_address.dola_chain_id
     }
 

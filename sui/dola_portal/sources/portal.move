@@ -186,12 +186,12 @@ module dola_portal::portal {
         dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
-        bind_address: vector<u8>,
+        binded_address: vector<u8>,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         let user = convert_address_to_dola(sender);
-        let bind_dola_address = create_dola_address(dola_chain_id, bind_address);
+        let bind_dola_address = create_dola_address(dola_chain_id, binded_address);
         if (user == bind_dola_address) {
             user_manager::register_dola_user_id(
                 option::borrow(&dola_portal.user_manager_cap),
@@ -199,7 +199,7 @@ module dola_portal::portal {
                 user
             );
         } else {
-            user_manager::binding_user_address(
+            user_manager::bind_user_address(
                 option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
                 user,
@@ -210,7 +210,7 @@ module dola_portal::portal {
             nonce: get_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
-            user_address: bind_address,
+            user_address: binded_address,
             call_type: BINDING
         })
     }
@@ -225,7 +225,7 @@ module dola_portal::portal {
         let sender = tx_context::sender(ctx);
         let user = convert_address_to_dola(sender);
         let unbind_dola_address = create_dola_address(dola_chain_id, unbind_address);
-        user_manager::unbinding_user_address(
+        user_manager::unbind_user_address(
             option::borrow(&dola_portal.user_manager_cap),
             user_manager_info,
             user,

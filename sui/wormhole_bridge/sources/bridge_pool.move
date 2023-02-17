@@ -1,5 +1,5 @@
 module wormhole_bridge::bridge_pool {
-    use dola_types::types::{DolaAddress, dola_chain_id, dola_address};
+    use dola_types::types::{Self, DolaAddress, dola_address};
     use governance::genesis::GovernanceCap;
     use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
     use sui::coin::Coin;
@@ -92,19 +92,19 @@ module wormhole_bridge::bridge_pool {
     //     nonce: u64,
     //     source_chain_id: u16,
     //     dola_chain_id: u16,
-    //     bind_address: vector<u8>,
+    //     binded_address: vector<u8>,
     //     call_type: u8,
     //     ctx: &mut TxContext
     // ) {
     //     let user = tx_context::sender(ctx);
     //     let user = convert_address_to_dola(user);
-    //     let bind_address = create_dola_address(dola_chain_id, bind_address);
+    //     let binded_address = create_dola_address(dola_chain_id, binded_address);
     //     let payload = protocol_wormhole_adapter::encode_app_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,
     //         user,
-    //         bind_address
+    //         binded_address
     //     );
     //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
     //     let index = table::length(&pool_state.cache_vaas) + 1;
@@ -226,7 +226,7 @@ module wormhole_bridge::bridge_pool {
         emit(PoolWithdrawEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&pool_address),
+            dst_chain_id: types::get_dola_chain_id(&pool_address),
             pool_address: dola_address(&pool_address),
             receiver: dola_address(&receiver),
             amount

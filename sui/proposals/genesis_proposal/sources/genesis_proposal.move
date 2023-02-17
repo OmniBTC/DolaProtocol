@@ -141,9 +141,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let user_manager_cap = user_manager::register_cap_with_governance(&governance_cap);
-            // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
-            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
+            user_manager::register_dola_chain_id(&governance_cap, user_manager, evm_chain_id, 2);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

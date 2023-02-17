@@ -415,14 +415,14 @@ def core_liquidate(vaa):
     )
 
 
-def pool_binding(bind_address):
+def pool_binding(binded_address):
     '''
     public entry fun send_binding(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
         dola_chain_id: u16,
-        bind_address: vector<u8>,
+        binded_address: vector<u8>,
         ctx: &mut TxContext
     )
     :return:
@@ -437,7 +437,7 @@ def pool_binding(bind_address):
         [],
         0,
         dola_chain_id,
-        bind_address
+        binded_address
     )
 
 
@@ -570,8 +570,8 @@ def monitor_liquidate():
     # core_repay(vaa)
 
 
-def monitor_binding(bind_address):
-    pool_binding(bind_address)
+def monitor_binding(binded_address):
+    pool_binding(binded_address)
 
 
 def monitor_unbinding():

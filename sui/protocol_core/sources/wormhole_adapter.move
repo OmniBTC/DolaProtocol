@@ -2,7 +2,7 @@ module protocol_core::protocol_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{decode_dola_address, DolaAddress, encode_dola_address, dola_chain_id, dola_address};
+    use dola_types::types::{Self, decode_dola_address, DolaAddress, encode_dola_address, dola_address};
     use protocol_core::message_types::{Self, binding_type_id, unbinding_type_id};
     use serde::serde::{deserialize_u16, vector_slice, deserialize_u8, serialize_u16, serialize_vector, serialize_u8, serialize_u64, deserialize_u64};
     use sui::event::emit;
@@ -59,7 +59,7 @@ module protocol_core::protocol_wormhole_adapter {
         option::fill(&mut wormhole_adapter.user_manager_cap, user_manager_cap);
     }
 
-    public entry fun binding_user_address(
+    public entry fun bind_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         wormhole_adapter: &mut WormholeAdapter,
@@ -67,35 +67,35 @@ module protocol_core::protocol_wormhole_adapter {
         vaa: vector<u8>
     ) {
         let app_payload = bridge_core::receive_protocol_message(wormhole_state, core_state, vaa);
-        let (app_id, source_chain_id, nonce, sender, bind_address, call_type) = decode_app_payload(app_payload);
+        let (app_id, source_chain_id, nonce, sender, binded_address, call_type) = decode_app_payload(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == binding_type_id(), EINVALID_CALLTYPE);
 
-        if (sender == bind_address) {
+        if (sender == binded_address) {
             user_manager::register_dola_user_id(
                 option::borrow(&wormhole_adapter.user_manager_cap),
                 user_manager_info,
                 sender
             );
         } else {
-            user_manager::binding_user_address(
+            user_manager::bind_user_address(
                 option::borrow(&wormhole_adapter.user_manager_cap),
                 user_manager_info,
                 sender,
-                bind_address
+                binded_address
             );
         };
         emit(ProtocolCoreEvent {
             nonce,
             sender: dola_address(&sender),
             source_chain_id,
-            user_chain_id: dola_chain_id(&bind_address),
-            user_address: dola_address(&bind_address),
+            user_chain_id: types::get_dola_chain_id(&binded_address),
+            user_address: dola_address(&binded_address),
             call_type
         })
     }
 
-    public entry fun unbinding_user_address(
+    public entry fun unbind_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         wormhole_adapter: &mut WormholeAdapter,
@@ -107,7 +107,7 @@ module protocol_core::protocol_wormhole_adapter {
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == unbinding_type_id(), EINVALID_CALLTYPE);
 
-        user_manager::unbinding_user_address(
+        user_manager::unbind_user_address(
             option::borrow(&wormhole_adapter.user_manager_cap),
             user_manager_info,
             sender,
@@ -117,7 +117,7 @@ module protocol_core::protocol_wormhole_adapter {
             nonce,
             sender: dola_address(&sender),
             source_chain_id,
-            user_chain_id: dola_chain_id(&unbind_address),
+            user_chain_id: types::get_dola_chain_id(&unbind_address),
             user_address: dola_address(&unbind_address),
             call_type
         })
@@ -179,7 +179,7 @@ module protocol_core::protocol_wormhole_adapter {
         index = index + data_len;
 
         data_len = (bind_len as u64);
-        let bind_address = decode_dola_address(vector_slice(&payload, index, index + data_len));
+        let binded_address = decode_dola_address(vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -187,6 +187,6 @@ module protocol_core::protocol_wormhole_adapter {
         index = index + data_len;
 
         assert!(length == index, EINVALID_LENGTH);
-        (app_id, source_chain_id, nonce, user, bind_address, call_type)
+        (app_id, source_chain_id, nonce, user, binded_address, call_type)
     }
 }
