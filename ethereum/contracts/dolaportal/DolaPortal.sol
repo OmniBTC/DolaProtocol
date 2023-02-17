@@ -80,7 +80,7 @@ contract DolaPortal {
     payable
     {
         uint64 nonce = getNonce();
-        IWormholeBridge(bridgePool).sendBinding(
+        IWormholeBridge(bridgePool).sendUnbinding(
             nonce,
             UNBINDING,
             unbindDolaChainId,
