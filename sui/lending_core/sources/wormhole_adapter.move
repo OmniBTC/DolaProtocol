@@ -8,7 +8,7 @@ module lending_core::lending_wormhole_adapter {
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
     use serde::serde::{serialize_u16, serialize_u64, serialize_vector, serialize_u8, deserialize_u16, deserialize_u64, vector_slice, deserialize_u8};
-    use sui::coin::{Self, Coin};
+    use sui::coin::Coin;
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -284,7 +284,6 @@ module lending_core::lending_wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -297,17 +296,13 @@ module lending_core::lending_wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (source_chain_id, nonce, _, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
+        let (_, _, _, _, _, liquidate_user_id) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
-        let dst_chain = dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
-        let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
-        let dst_pool = option::destroy_some(dst_pool);
 
-        let (withdraw_amount, return_repay_amount) = execute_liquidate(
+        execute_liquidate(
             cap,
             pool_manager_info,
             storage,
@@ -318,43 +313,6 @@ module lending_core::lending_wormhole_adapter {
             deposit_dola_pool_id,
             deposit_amount,
         );
-
-        // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (withdraw_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-
-        bridge_core::send_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            pool_manager_info,
-            dst_pool,
-            receiver,
-            source_chain_id,
-            nonce,
-            withdraw_amount,
-            wormhole_message_fee
-        );
-
-        if (return_repay_amount > 0) {
-            let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
-            assert!(option::is_some(&repay_pool), EMUST_SOME);
-            let repay_pool = option::destroy_some(repay_pool);
-            let pool_liquidity = get_pool_liquidity(pool_manager_info, repay_pool);
-            assert!(pool_liquidity >= (return_repay_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-            bridge_core::send_withdraw(
-                wormhole_state,
-                core_state,
-                get_app_cap(cap, storage),
-                pool_manager_info,
-                repay_pool,
-                receiver,
-                source_chain_id,
-                nonce,
-                return_repay_amount,
-                coin::zero<SUI>(ctx)
-            );
-        }
     }
 
     public fun encode_app_payload(
