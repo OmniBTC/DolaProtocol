@@ -426,7 +426,6 @@ module lending_core::logic {
         let actual_liquidable_collateral;
         let actual_liquidable_debt;
 
-        // todo: calculate treasury reserved by reward
         if (repay_debt >= max_liquidable_debt) {
             excess_repay_amount = repay_debt - max_liquidable_debt;
             actual_liquidable_debt = max_liquidable_debt;
@@ -539,7 +538,7 @@ module lending_core::logic {
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-            if (health_collateral_value > health_loan_value) {
+            if (health_collateral_value > health_loan_value && last_update_timestamp > 0) {
                 let health_value = health_collateral_value - health_loan_value;
                 let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
                 let new_average_liquidity = rates::calculate_average_liquidity(
@@ -610,9 +609,9 @@ module lending_core::logic {
             dola_pool_id,
             get_app_id(storage)
         );
+        assert!(liquidity > (reduced_liquidity as u128), ENOT_ENOUGH_LIQUIDITY);
         // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
         liquidity = liquidity - (reduced_liquidity as u128);
-        assert!(liquidity >= 0, ENOT_ENOUGH_LIQUIDITY);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);

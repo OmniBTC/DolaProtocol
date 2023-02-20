@@ -16,6 +16,8 @@ module lending_core::logic_tests {
 
     const RAY: u256 = 1000000000000000000000000000;
 
+    const SECONDS_PER_DAY: u64 = 86400;
+
     const LENDING_APP_ID: u16 = 1;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
@@ -891,6 +893,95 @@ module lending_core::logic_tests {
             test_scenario::return_shared(oracle);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_update_average_liquidity() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let supply_btc_amount = ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            // The initial average liquidity is 0
+            assert!(average_liquidity == 0, 201);
+
+            let current_timestamp = oracle::get_timestamp(&mut oracle);
+            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+
+            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, 0);
+            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            // The average liquidity of the first update must also be 0.
+            // This update mainly updates the user's most recent timestamp.
+            assert!(average_liquidity == 0, 202);
+
+            let current_timestamp = oracle::get_timestamp(&mut oracle);
+            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+
+            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, 0);
+            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            // [average_liquidity = health_value = collateral_value - loan_value]
+            assert!(average_liquidity == health_value, 203);
+
+            let current_timestamp = oracle::get_timestamp(&mut oracle);
+            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY / 2);
+
+            logic::execute_supply(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                0,
+                ONE
+            );
+
+            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            // Average liquidity accumulates if a user performs an operation in a day.
+            assert!(average_liquidity > health_value, 204);
+
+            let current_timestamp = oracle::get_timestamp(&mut oracle);
+            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+
+            logic::execute_supply(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                0,
+                ONE
+            );
+
+            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            // If the user operates in the protocol for more than one day, the accumulated average liquidity will return to zero.
+            assert!(average_liquidity == health_value, 205);
+
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+
         test_scenario::end(scenario_val);
     }
 }
