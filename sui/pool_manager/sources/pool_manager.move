@@ -240,6 +240,39 @@ module pool_manager::pool_manager {
         pool_liquidity.balance
     }
 
+    public fun get_pool_equilibrium_fee(
+        pool_manager_info: &mut PoolManagerInfo,
+        pool: DolaAddress,
+    ): u128 {
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
+        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
+        let pool_liquidity = table::borrow(&pool_info.pools, pool);
+        pool_liquidity.equilibrium_fee
+    }
+
+    public fun get_pool_total_weight(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16,
+    ): u16 {
+        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
+        pool_info.weight
+    }
+
+    public fun get_pool_weight(
+        pool_manager_info: &mut PoolManagerInfo,
+        pool: DolaAddress,
+    ): u8 {
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
+        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
+        let pool_liquidity = table::borrow(&pool_info.pools, pool);
+        pool_liquidity.weight
+    }
+
     public fun add_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
