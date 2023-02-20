@@ -10,6 +10,7 @@ module external_interfaces::interfaces {
     use lending_core::rates::calculate_utilization;
     use lending_core::storage::{Storage, get_user_collaterals, get_user_loans, get_borrow_rate, get_liquidity_rate, get_app_id, get_reserve_length, get_borrow_coefficient, get_collateral_coefficient};
     use oracle::oracle::{PriceOracle, get_token_price};
+    use pool_manager::equilibrium_fee;
     use pool_manager::pool_manager::{Self, get_token_liquidity, PoolManagerInfo, get_app_liquidity, get_pool_name_by_id, find_pool_by_chain};
     use ray_math::math::{ray_mul, ray_div, ray};
     use sui::event::emit;
@@ -29,16 +30,27 @@ module external_interfaces::interfaces {
 
     struct PoolLiquidityInfo has copy, drop {
         pool_address: DolaAddress,
-        pool_liquidity: u128
+        pool_liquidity: u128,
+        pool_equilibrium_fee: u128,
+        pool_weight: u8
+    }
+
+    struct LiquidityEquilibriumReward has copy, drop {
+        reward: u64
+    }
+
+    struct LiquidityEquilibriumFee has copy, drop {
+        fee: u64
     }
 
     struct AllPoolLiquidityInfo has copy, drop {
-        pool_infos: vector<PoolLiquidityInfo>
+        pool_infos: vector<PoolLiquidityInfo>,
     }
 
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
         pools: vector<PoolLiquidityInfo>,
+        total_pool_weight: u16,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         borrow_apy: u256,
@@ -166,9 +178,13 @@ module external_interfaces::interfaces {
     ) {
         let pool_address = create_dola_address(dola_chain_id, pool_address);
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+        let pool_equilibrium_fee = pool_manager::get_pool_equilibrium_fee(pool_manager_info, pool_address);
+        let pool_weight = pool_manager::get_pool_weight(pool_manager_info, pool_address);
         emit(PoolLiquidityInfo {
             pool_address,
-            pool_liquidity
+            pool_liquidity,
+            pool_equilibrium_fee,
+            pool_weight
         })
     }
 
@@ -183,9 +199,13 @@ module external_interfaces::interfaces {
         while (i < length) {
             let pool_address = *vector::borrow(&pool_addresses, i);
             let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+            let pool_equilibrium_fee = pool_manager::get_pool_equilibrium_fee(pool_manager_info, pool_address);
+            let pool_weight = pool_manager::get_pool_weight(pool_manager_info, pool_address);
             let pool_info = PoolLiquidityInfo {
                 pool_address,
-                pool_liquidity
+                pool_liquidity,
+                pool_equilibrium_fee,
+                pool_weight
             };
             vector::push_back(&mut pool_infos, pool_info);
             i = i + 1;
@@ -382,6 +402,7 @@ module external_interfaces::interfaces {
         dola_pool_id: u16
     ) {
         let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
+        let total_pool_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
         let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
         let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
         let borrow_rate = get_borrow_rate(storage, dola_pool_id);
@@ -408,7 +429,8 @@ module external_interfaces::interfaces {
             supply,
             debt,
             utilization_rate,
-            pools
+            pools,
+            total_pool_weight
         })
     }
 
@@ -422,6 +444,7 @@ module external_interfaces::interfaces {
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
             let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
+            let total_pool_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
             let borrow_coefficient = get_borrow_coefficient(storage, dola_pool_id);
             let collateral_coefficient = get_collateral_coefficient(storage, dola_pool_id);
             let borrow_rate = get_borrow_rate(storage, dola_pool_id);
@@ -448,7 +471,8 @@ module external_interfaces::interfaces {
                 supply,
                 debt,
                 utilization_rate,
-                pools
+                pools,
+                total_pool_weight
             };
             vector::push_back(&mut reserve_infos, reserve_info);
             i = i + 1;
@@ -487,13 +511,61 @@ module external_interfaces::interfaces {
         })
     }
 
+    public entry fun get_equilibrium_reward(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_chain_id: u16,
+        pool_address: vector<u8>,
+        deposit_amount: u64
+    ) {
+        let dola_pool_address = create_dola_address(dola_chain_id, pool_address);
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
+        let total_liquidity = pool_manager::get_token_liquidity(pool_manager_info, dola_pool_id);
+        let current_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dola_pool_address);
+        let pool_weight = pool_manager::get_pool_weight(pool_manager_info, dola_pool_address);
+        let total_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
+        let total_equilibrium_reward = pool_manager::get_pool_equilibrium_fee(pool_manager_info, dola_pool_address);
+        let equilibrium_reward = (equilibrium_fee::calculate_equilibrium_reward(
+            (total_liquidity as u256),
+            (current_liquidity as u256),
+            (deposit_amount as u256),
+            equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
+            (total_equilibrium_reward as u256)
+        ) as u64);
+        emit(LiquidityEquilibriumReward {
+            reward: equilibrium_reward
+        })
+    }
+
+    public entry fun get_equilibrium_fee(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_chain_id: u16,
+        pool_address: vector<u8>,
+        withdraw_amount: u64
+    ) {
+        let dola_pool_address = create_dola_address(dola_chain_id, pool_address);
+        let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
+        let total_liquidity = pool_manager::get_token_liquidity(pool_manager_info, dola_pool_id);
+        let current_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dola_pool_address);
+        let pool_weight = pool_manager::get_pool_weight(pool_manager_info, dola_pool_address);
+        let total_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
+        let equilibrium_fee = (equilibrium_fee::calculate_equilibrium_fee(
+            (total_liquidity as u256),
+            (current_liquidity as u256),
+            (withdraw_amount as u256),
+            equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
+        ) as u64);
+        emit(LiquidityEquilibriumFee {
+            fee: equilibrium_fee
+        })
+    }
+
     public entry fun get_user_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_chain_id: u16,
         dola_user_id: u64,
-        borrow_pool_id: u16
+        borrow_pool_id: u16,
     ) {
         let borrow_token = into_bytes(get_pool_name_by_id(pool_manager_info, borrow_pool_id));
         if (is_collateral(storage, dola_user_id, borrow_pool_id)) {
