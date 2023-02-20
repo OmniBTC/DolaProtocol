@@ -31,7 +31,7 @@ module pool_manager::pool_manager {
 
     /// Capability allowing liquidity status modification.
     /// Owned by bridge adapters (wormhole, layerzero, etc).
-    struct PoolManagerCap has store, drop {}
+    struct PoolManagerCap has store {}
 
     /// Responsible for maintaining the global state of different chain pools
     struct PoolManagerInfo has key, store {
@@ -359,6 +359,11 @@ module pool_manager::pool_manager {
         pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + (equilibrium_fee as u128);
 
         (actual_amount, equilibrium_fee)
+    }
+
+    /// Destroy manager
+    public fun destroy_manager(pool_manager: PoolManagerCap) {
+        let PoolManagerCap {} = pool_manager;
     }
 
     #[test_only]
