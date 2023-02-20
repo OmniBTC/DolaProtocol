@@ -80,7 +80,7 @@ contract MockBridgePool {
             dolaChainId,
             nonce,
             callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
         );
         cachedVAA[getNonce()] = payload;
@@ -95,7 +95,7 @@ contract MockBridgePool {
             dolaChainId,
             nonce,
             callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress)
         );
         cachedVAA[getNonce()] = payload;
