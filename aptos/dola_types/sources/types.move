@@ -6,7 +6,7 @@ module dola_types::types {
     use aptos_std::type_info;
     use aptos_framework::util::address_from_bytes;
 
-    use serde::serde::{serialize_u16, serialize_vector, deserialize_u16, vector_slice};
+    use serde::serde;
     use serde::u16::{Self, U16};
 
     const DOLACHAINID: u64 = 1;
@@ -68,8 +68,8 @@ module dola_types::types {
 
     public fun encode_dola_address(addr: DolaAddress): vector<u8> {
         let data = vector::empty();
-        serialize_u16(&mut data, addr.dola_chain_id);
-        serialize_vector(&mut data, addr.dola_address);
+        serde::serialize_u16(&mut data, addr.dola_chain_id);
+        serde::serialize_vector(&mut data, addr.dola_address);
         data
     }
 
@@ -79,10 +79,10 @@ module dola_types::types {
         let data_len;
 
         data_len = 2;
-        let dola_chain_id = deserialize_u16(&vector_slice(&addr, index, index + data_len));
+        let dola_chain_id = serde::deserialize_u16(&serde::vector_slice(&addr, index, index + data_len));
         index = index + data_len;
 
-        let dola_address = vector_slice(&addr, index, len);
+        let dola_address = serde::vector_slice(&addr, index, len);
         DolaAddress {
             dola_chain_id,
             dola_address
