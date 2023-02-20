@@ -239,7 +239,7 @@ module lending_core::logic {
         dola_pool_id: u16
     ): u64 {
         let scaled_balance = get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
-        let current_index = get_liquidity_index(storage, dola_pool_id);
+        let current_index = get_borrow_index(storage, dola_pool_id);
         balance_of(scaled_balance, current_index)
     }
 
@@ -574,7 +574,7 @@ module lending_core::logic {
             (current_timestamp as u256),
             (last_update_timestamp as u256),
             storage::get_borrow_rate(storage, dola_pool_id)
-        ), current_borrow_index) ;
+        ), current_borrow_index);
 
         let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
             (current_timestamp as u256),

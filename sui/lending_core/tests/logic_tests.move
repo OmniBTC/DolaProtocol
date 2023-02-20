@@ -18,6 +18,8 @@ module lending_core::logic_tests {
 
     const SECONDS_PER_DAY: u64 = 86400;
 
+    const SECONDS_PER_YEAR: u64 = 31536000;
+
     const LENDING_APP_ID: u16 = 1;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
@@ -325,6 +327,10 @@ module lending_core::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
         };
+    }
+
+    fun get_percentage(rate: u256): u256 {
+        rate * 10000 / RAY
     }
 
     #[test]
@@ -975,6 +981,126 @@ module lending_core::logic_tests {
             // If the user operates in the protocol for more than one day, the accumulated average liquidity will return to zero.
             assert!(average_liquidity == health_value, 205);
 
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_update_state_with_low_utilization() {
+        // 30% utilization
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 3000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 3000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            let before_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
+            let before_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
+            assert!(before_borrow_index == RAY, 201);
+            assert!(before_liquidity_index == RAY, 202);
+
+            let day = 0;
+
+            while (day < 365) {
+                let current_timestamp = oracle::get_timestamp(&mut oracle);
+                oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &mut oracle, USDT_POOL_ID);
+                day = day + 1;
+            };
+
+            let after_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
+            let after_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
+            // Ensure that index will not grow too fast when the utilization rate is low.
+            // borrow rate 4.1% , liquidity rate 1.1%
+            assert!(after_borrow_index < 2 * RAY, 203);
+            assert!(after_liquidity_index < 2 * RAY, 204);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_update_state_with_high_utilization() {
+        // utilization 80%
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = create_dola_address(0, b"BTC");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 8000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 7000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            let before_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
+            let before_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
+            assert!(before_borrow_index == RAY, 201);
+            assert!(before_liquidity_index == RAY, 202);
+
+            let day = 0;
+
+            while (day < 365) {
+                let current_timestamp = oracle::get_timestamp(&mut oracle);
+                oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &mut oracle, USDT_POOL_ID);
+                day = day + 1;
+            };
+
+            let after_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
+            let after_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
+            // Ensure that index will not grow too fast when the utilization rate is high.
+            // borrow rate 199.9% , liquidity rate 143.93%
+            assert!(after_borrow_index < 10 * RAY, 203);
+            assert!(after_liquidity_index < 10 * RAY, 204);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
