@@ -1,6 +1,6 @@
 module test_coins::faucet {
     use std::ascii::String;
-    use std::type_name::{get, into_string};
+    use std::type_name;
 
     use sui::bag::{Self, Bag};
     use sui::balance::{Self, Supply};
@@ -63,7 +63,7 @@ module test_coins::faucet {
 
         bag::add(
             &mut faucet.coins,
-            into_string(get<T>()),
+            type_name::into_string(type_name::get<T>()),
             supply
         )
     }
@@ -72,7 +72,7 @@ module test_coins::faucet {
         faucet: &mut Faucet,
         ctx: &mut TxContext,
     ) {
-        let coin_name = into_string(get<T>());
+        let coin_name = type_name::into_string(type_name::get<T>());
         assert!(
             bag::contains_with_type<String, Supply<T>>(&faucet.coins, coin_name),
             ERR_NOT_ENOUGH_COINS
@@ -106,7 +106,7 @@ module test_coins::faucet {
             ERR_NO_PERMISSIONS
         );
 
-        let coin_name = into_string(get<T>());
+        let coin_name = type_name::into_string(type_name::get<T>());
         assert!(
             bag::contains_with_type<String, Supply<T>>(&faucet.coins, coin_name),
             ERR_NOT_ENOUGH_COINS

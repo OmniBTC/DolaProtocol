@@ -4,7 +4,7 @@ module serde::serde {
     use std::type_name;
     use std::vector;
 
-    use sui::address::from_bytes;
+    use sui::address;
 
     const EINVALID_LENGTH: u64 = 0x00;
 
@@ -262,7 +262,7 @@ module serde::serde {
 
     public fun deserialize_address(buf: &vector<u8>): address {
         assert!(vector::length(buf) == 20, EINVALID_LENGTH);
-        from_bytes(*buf)
+        address::from_bytes(*buf)
     }
 
     public fun get_vector_length(buf: &vector<u8>): u64 {

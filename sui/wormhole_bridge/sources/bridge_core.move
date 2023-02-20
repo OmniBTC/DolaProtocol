@@ -4,7 +4,7 @@ module wormhole_bridge::bridge_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::types::DolaAddress;
     use governance::genesis::GovernanceCap;
-    use omnipool::pool::{Self, decode_send_deposit_payload, decode_send_withdraw_payload, decode_send_deposit_and_withdraw_payload};
+    use omnipool::pool;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
@@ -15,7 +15,7 @@ module wormhole_bridge::bridge_core {
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
-    use user_manager::user_manager::{Self, is_dola_user, UserManagerInfo, register_dola_user_id, UserManagerCap};
+    use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
@@ -113,10 +113,10 @@ module wormhole_bridge::bridge_core {
         //     ctx
         // );
         // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
-        //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
+        //     pool::decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
         let (pool, user, amount, app_id, app_payload) =
-            decode_send_deposit_payload(vaa);
+            pool::decode_send_deposit_payload(vaa);
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
             option::borrow(&core_state.pool_manager_cap),
@@ -127,8 +127,8 @@ module wormhole_bridge::bridge_core {
             amount,
             ctx
         );
-        if (!is_dola_user(user_manager_info, user)) {
-            register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
+        if (!user_manager::is_dola_user(user_manager_info, user)) {
+            user_manager::register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
         };
         // myvaa::destroy(vaa);
         (pool, user, actual_amount, app_payload)
@@ -152,9 +152,9 @@ module wormhole_bridge::bridge_core {
         //     ctx
         // );
         // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
-        //     decode_send_deposit_payload(myvaa::get_payload(&vaa));
+        //     pool::decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
-        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = decode_send_deposit_and_withdraw_payload(
+        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = pool::decode_send_deposit_and_withdraw_payload(
             vaa
         );
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -188,9 +188,9 @@ module wormhole_bridge::bridge_core {
         //     ctx
         // );
         // let (_pool, user, dola_pool_id, app_id, app_payload) =
-        //     decode_send_withdraw_payload(myvaa::get_payload(&vaa));
+        //     pool::decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         let (pool, user, app_id, app_payload) =
-            decode_send_withdraw_payload(vaa);
+            pool::decode_send_withdraw_payload(vaa);
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
 
         // myvaa::destroy(vaa);
