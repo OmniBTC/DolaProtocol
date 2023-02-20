@@ -61,7 +61,10 @@ module lending_core::logic {
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
 
         let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount) = calculate_actual_liquidation(
+            oracle,
+            collateral,
             max_liquidable_collateral,
+            loan,
             max_liquidable_debt,
             repay_debt,
             treasury_factor
@@ -236,7 +239,7 @@ module lending_core::logic {
         dola_pool_id: u16
     ): u64 {
         let scaled_balance = get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
-        let current_index = get_liquidity_index(storage, dola_pool_id);
+        let current_index = get_borrow_index(storage, dola_pool_id);
         balance_of(scaled_balance, current_index)
     }
 
@@ -411,7 +414,10 @@ module lending_core::logic {
     }
 
     public fun calculate_actual_liquidation(
+        oracle: &mut PriceOracle,
+        collateral: u16,
         max_liquidable_collateral: u64,
+        loan: u16,
         max_liquidable_debt: u64,
         repay_debt: u64,
         treasury_factor: u256
@@ -422,8 +428,8 @@ module lending_core::logic {
 
         if (repay_debt >= max_liquidable_debt) {
             excess_repay_amount = repay_debt - max_liquidable_debt;
-            actual_liquidable_collateral = max_liquidable_collateral;
             actual_liquidable_debt = max_liquidable_debt;
+            actual_liquidable_collateral = max_liquidable_collateral;
         } else {
             excess_repay_amount = 0;
             actual_liquidable_debt = repay_debt;
@@ -433,11 +439,11 @@ module lending_core::logic {
             ) as u64);
         };
 
-        let liquidator_acquired_collateral = (ray_mul(
-            (actual_liquidable_collateral as u256),
-            ray() - treasury_factor
-        ) as u64);
-        let treasury_reserved_collateral = (ray_mul((actual_liquidable_collateral as u256), treasury_factor) as u64);
+        let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
+        let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
+        let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
+        let treasury_reserved_collateral = (ray_mul((reward as u256), treasury_factor) as u64);
+        let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
     }
 
@@ -532,7 +538,7 @@ module lending_core::logic {
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-            if (health_collateral_value > health_loan_value) {
+            if (health_collateral_value > health_loan_value && last_update_timestamp > 0) {
                 let health_value = health_collateral_value - health_loan_value;
                 let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
                 let new_average_liquidity = rates::calculate_average_liquidity(
@@ -568,7 +574,7 @@ module lending_core::logic {
             (current_timestamp as u256),
             (last_update_timestamp as u256),
             storage::get_borrow_rate(storage, dola_pool_id)
-        ), current_borrow_index) ;
+        ), current_borrow_index);
 
         let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
             (current_timestamp as u256),
@@ -603,9 +609,9 @@ module lending_core::logic {
             dola_pool_id,
             get_app_id(storage)
         );
+        assert!(liquidity > (reduced_liquidity as u128), ENOT_ENOUGH_LIQUIDITY);
         // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
         liquidity = liquidity - (reduced_liquidity as u128);
-        assert!(liquidity >= 0, ENOT_ENOUGH_LIQUIDITY);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);

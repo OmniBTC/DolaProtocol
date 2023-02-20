@@ -50,7 +50,10 @@ module app_manager::app_manager {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        transfer::share_object(TotalAppInfo {
+            id: object::new(ctx),
+            count: 1
+        })
     }
 
     #[test_only]

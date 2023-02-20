@@ -87,6 +87,13 @@ module oracle::oracle {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        transfer::share_object(PriceOracle {
+            id: object::new(ctx),
+            timestamp: 0,
+            price_oracles: table::new(ctx)
+        });
+        transfer::transfer(OracleCap {
+            id: object::new(ctx),
+        }, tx_context::sender(ctx))
     }
 }
