@@ -44,11 +44,13 @@ module lending_core::lending_wormhole_adapter {
 
     struct LendingCoreEvent has drop, copy {
         nonce: u64,
+        sender_user_id: u64,
         source_chain_id: u16,
         dst_chain_id: u16,
-        pool_address: vector<u8>,
+        dola_pool_id: u16,
         receiver: vector<u8>,
         amount: u64,
+        liquidate_user_id: u64,
         call_type: u8
     }
 
@@ -107,11 +109,13 @@ module lending_core::lending_wormhole_adapter {
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -174,11 +178,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount: actual_amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -231,11 +237,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -267,11 +275,13 @@ module lending_core::lending_wormhole_adapter {
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -296,7 +306,7 @@ module lending_core::lending_wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (_, _, _, _, _, liquidate_user_id) = decode_app_payload(app_payload);
+        let (source_chain_id, nonce, call_type, _, _, liquidate_user_id) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
@@ -321,6 +331,18 @@ module lending_core::lending_wormhole_adapter {
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
         );
+
+        emit(LendingCoreEvent {
+            nonce,
+            sender_user_id: liquidator,
+            source_chain_id,
+            dst_chain_id: dola_chain_id(&deposit_user),
+            dola_pool_id: withdraw_dola_pool_id,
+            receiver: dola_address(&deposit_user),
+            amount: deposit_amount,
+            liquidate_user_id,
+            call_type
+        })
     }
 
     public fun encode_app_payload(

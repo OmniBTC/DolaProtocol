@@ -249,6 +249,17 @@ contract DolaPortal {
             LENDING_APP_ID,
             appPayload
         );
+
+        emit LendingPortalEvent(
+            nonce,
+            msg.sender,
+            abi.encodePacked(token),
+            dolaChainId,
+            0,
+            abi.encodePacked(msg.sender),
+            fixAmount,
+            LIQUIDATE
+        );
     }
 
     function generateNonce() internal returns (bytes32) {

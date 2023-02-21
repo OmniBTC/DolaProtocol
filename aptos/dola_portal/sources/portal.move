@@ -380,7 +380,7 @@ module dola_portal::portal {
 
     public entry fun liquidate<DebtCoinType>(
         sender: &signer,
-        debt_coin: u64,
+        debt_amount: u64,
         liquidate_chain_id: u64,
         liquidate_pool_address: vector<u8>,
         // punished person
@@ -393,10 +393,10 @@ module dola_portal::portal {
             u16::from_u64(get_native_dola_chain_id()),
             nonce,
             LIQUIDATE,
-            normal_amount<DebtCoinType>(debt_coin),
+            normal_amount<DebtCoinType>(debt_amount),
             receiver, liquidate_user_id);
 
-        let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
+        let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_amount);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         send_deposit_and_withdraw<DebtCoinType>(
@@ -408,6 +408,22 @@ module dola_portal::portal {
             u16::from_u64(LENDING_APP_ID),
             app_payload,
         );
+
+        let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
+
+        emit_event(
+            &mut event_handle.lending_event_handle,
+            LendingPortalEvent {
+                nonce,
+                sender: signer::address_of(sender),
+                dola_pool_address: dola_address(&convert_pool_to_dola<DebtCoinType>()),
+                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dst_chain_id: u16::from_u64(0),
+                receiver: to_bytes(&signer::address_of(sender)),
+                amount: debt_amount,
+                call_type: LIQUIDATE
+            }
+        )
     }
 
     public fun encode_lending_app_payload(

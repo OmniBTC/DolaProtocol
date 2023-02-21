@@ -2,7 +2,7 @@ module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address};
+    use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address, dola_chain_id, convert_pool_to_dola};
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
@@ -664,7 +664,7 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-
+        let debt_pool_address = convert_pool_to_dola<DebtCoinType>();
         let receiver = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
@@ -677,7 +677,7 @@ module dola_portal::portal {
             receiver,
             liquidate_user_id
         );
-        
+
         wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
             pool_state,
             wormhole_state,
@@ -690,6 +690,17 @@ module dola_portal::portal {
             app_payload,
             ctx
         );
+
+        emit(LendingPortalEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&debt_pool_address),
+            source_chain_id: get_native_dola_chain_id(),
+            dst_chain_id: dola_chain_id(&receiver),
+            receiver: dola_address(&receiver),
+            amount: debt_amount,
+            call_type: LIQUIDATE
+        })
     }
 
     #[test]
