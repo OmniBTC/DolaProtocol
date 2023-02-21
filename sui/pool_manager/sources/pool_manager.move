@@ -16,6 +16,8 @@ module pool_manager::pool_manager {
     use std::ascii::string;
     #[test_only]
     use sui::test_scenario;
+    #[test_only]
+    use governance::genesis;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -105,7 +107,7 @@ module pool_manager::pool_manager {
     /// the liquidity of the pool can be configured according to the heat of
     /// the chain to prevent the liquidity depletion problem.
     public fun register_pool(
-        _: &PoolManagerCap,
+        _: &GovernanceCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
         dola_pool_name: String,
@@ -387,13 +389,22 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
             let pool = types::create_dola_address(0, b"USDT");
 
-            let cap = register_manager_cap_for_testing();
-
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
+            register_pool(
+                &gonvernance_cap,
+                &mut pool_manager_info,
+                pool,
+                dola_pool_name,
+                0,
+                1,
+                test_scenario::ctx(scenario)
+            );
+            genesis::destroy(gonvernance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -414,12 +425,22 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
             let cap = register_manager_cap_for_testing();
 
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
-
+            register_pool(
+                &gonvernance_cap,
+                &mut pool_manager_info,
+                pool,
+                dola_pool_name,
+                0,
+                1,
+                test_scenario::ctx(scenario)
+            );
+            genesis::destroy(gonvernance_cap);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
@@ -459,11 +480,20 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = register_manager_cap_for_testing();
-
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
+            register_pool(
+                &gonvernance_cap,
+                &mut pool_manager_info,
+                pool,
+                dola_pool_name,
+                0,
+                1,
+                test_scenario::ctx(scenario)
+            );
+            genesis::destroy(gonvernance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };

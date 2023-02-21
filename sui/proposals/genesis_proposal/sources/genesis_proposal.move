@@ -206,11 +206,10 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let pool_manager_cap = pool_manager::register_cap_with_governance(&governance_cap);
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
             pool_manager::register_pool(
-                &pool_manager_cap,
+                &governance_cap,
                 pool_manager_info,
                 pool,
                 string(dola_pool_name),
