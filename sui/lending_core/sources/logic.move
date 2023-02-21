@@ -40,14 +40,14 @@ module lending_core::logic {
         liquidator: u64,
         violator: u64,
         collateral: u16,
-        loan: u16,
-        repay_debt: u64,
+        loan: u16
     ) {
         update_state(cap, storage, oracle, loan);
         update_state(cap, storage, oracle, collateral);
         update_average_liquidity(cap, storage, oracle, liquidator);
         assert!(is_collateral(storage, violator, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
+        assert!(is_collateral(storage, liquidator, loan), ENOT_COLLATERAL);
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
         let (max_liquidable_collateral, max_liquidable_debt) = calculate_max_liquidation(
             storage,
@@ -59,8 +59,9 @@ module lending_core::logic {
         );
 
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
+        let repay_debt = user_loan_balance(storage, liquidator, collateral);
 
-        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount) = calculate_actual_liquidation(
+        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, _) = calculate_actual_liquidation(
             oracle,
             collateral,
             max_liquidable_collateral,
@@ -74,7 +75,7 @@ module lending_core::logic {
         burn_dtoken(cap, storage, violator, loan, actual_liquidable_debt);
         burn_otoken(cap, storage, violator, collateral, actual_liquidable_collateral);
         mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
-
+        burn_otoken(cap, storage, liquidator, loan, actual_liquidable_debt);
         if (is_loan(storage, liquidator, collateral)) {
             let liquidator_debt = user_loan_balance(storage, liquidator, collateral);
             let liquidator_burned_debt = sui::math::min(liquidator_debt, liquidator_acquired_collateral);
@@ -90,7 +91,6 @@ module lending_core::logic {
                 add_user_collateral(cap, storage, oracle, liquidator, collateral);
             };
         };
-        mint_otoken(cap, storage, liquidator, loan, excess_repay_amount);
 
         update_interest_rate(cap, pool_manager_info, storage, collateral, liquidator_acquired_collateral);
         update_interest_rate(cap, pool_manager_info, storage, loan, 0);

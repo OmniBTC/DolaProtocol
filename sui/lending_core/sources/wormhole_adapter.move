@@ -301,6 +301,15 @@ module lending_core::lending_wormhole_adapter {
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
+        execute_supply(
+            cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            liquidator,
+            deposit_dola_pool_id,
+            deposit_amount
+        );
 
         execute_liquidate(
             cap,
@@ -311,7 +320,6 @@ module lending_core::lending_wormhole_adapter {
             liquidate_user_id,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
-            deposit_amount,
         );
     }
 
