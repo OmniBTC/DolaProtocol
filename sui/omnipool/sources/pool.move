@@ -3,7 +3,7 @@ module omnipool::pool {
     use std::type_name;
     use std::vector;
 
-    use dola_types::types::{convert_address_to_dola, convert_pool_to_dola, DolaAddress, convert_dola_to_address, dola_address, encode_dola_address, decode_dola_address};
+    use dola_types::types::{convert_address_to_dola, convert_pool_to_dola, DolaAddress, convert_dola_to_address, dola_address, encode_dola_address, decode_dola_address, create_dola_address};
     use governance::genesis::GovernanceCap;
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use sui::balance::{Self, Balance, zero};
@@ -106,16 +106,18 @@ module omnipool::pool {
         pool_payload
     }
 
-    /// call by user_addr or application
-    public fun withdraw_to<CoinType>(
-        _pool: &mut Pool<CoinType>,
+    /// Note: Merely encoding a withdrawal message does not make a withdrawal
+    /// in the current chain, and generics are not required.
+    public fun withdraw_to(
+        pool_chain_id: u16,
+        pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ): vector<u8> {
-        let user_addr = convert_address_to_dola(tx_context::sender(ctx));
-        let pool_addr = convert_pool_to_dola<CoinType>();
-        let pool_payload = encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
+        let sender = convert_address_to_dola(tx_context::sender(ctx));
+        let withdraw_pool = create_dola_address(pool_chain_id, pool_address);
+        let pool_payload = encode_send_withdraw_payload(withdraw_pool, sender, app_id, app_payload);
         pool_payload
     }
 
@@ -139,9 +141,11 @@ module omnipool::pool {
         transfer::transfer(coin, user_addr);
     }
 
-    public fun deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun deposit_and_withdraw<DepositCoinType>(
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: u16,
+        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
@@ -151,7 +155,7 @@ module omnipool::pool {
         let deposit_pool_address = convert_pool_to_dola<DepositCoinType>();
 
         balance::join(&mut deposit_pool.balance, coin::into_balance(deposit_coin));
-        let withdraw_pool_address = convert_pool_to_dola<WithdrawCoinType>();
+        let withdraw_pool_address = create_dola_address(withdraw_chain_id, withdraw_pool_address);
 
         let pool_payload = encode_send_deposit_and_withdraw_payload(
             deposit_pool_address,

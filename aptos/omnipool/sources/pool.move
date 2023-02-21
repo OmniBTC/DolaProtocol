@@ -9,7 +9,7 @@ module omnipool::pool {
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin::{Self, Coin, is_account_registered};
 
-    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_address, convert_address_to_dola, convert_pool_to_dola, convert_dola_to_address};
+    use dola_types::types::{DolaAddress, encode_dola_address, decode_dola_address, dola_address, convert_address_to_dola, convert_pool_to_dola, convert_dola_to_address, create_dola_address};
     use serde::serde::{serialize_vector, serialize_u64, deserialize_u64, vector_slice, serialize_u16, deserialize_u16};
     use serde::u16::{Self, U16};
 
@@ -146,13 +146,15 @@ module omnipool::pool {
     }
 
     /// call by user_addr or application
-    public fun withdraw_to<CoinType>(
+    public fun withdraw_to(
         sender: &signer,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> {
         let user_addr = convert_address_to_dola(signer::address_of(sender));
-        let pool_addr = convert_pool_to_dola<CoinType>();
+        let pool_addr = create_dola_address(withdraw_chain_id, withdraw_pool_address);
         let pool_payload = encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
         pool_payload
     }
@@ -173,9 +175,11 @@ module omnipool::pool {
     }
 
     // todo! Should this action be moved to the application level or delete
-    public fun deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun deposit_and_withdraw<DepositCoinType>(
         sender: &signer,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
@@ -185,7 +189,7 @@ module omnipool::pool {
 
         let pool = borrow_global_mut<Pool<DepositCoinType>>(get_resource_address());
         coin::merge(&mut pool.balance, deposit_coin);
-        let withdraw_pool_address = convert_pool_to_dola<WithdrawCoinType>();
+        let withdraw_pool_address = create_dola_address(withdraw_chain_id, withdraw_pool_address);
 
         let pool_payload = encode_send_deposit_and_withdraw_payload(
             deposit_pool_address,
