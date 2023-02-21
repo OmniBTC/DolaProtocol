@@ -3,7 +3,7 @@ module lending_core::logic {
 
     use lending_core::rates;
     use lending_core::scaled_balance::{Self, balance_of};
-    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury};
+    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury, get_reserve_ceilings, is_isolated_asset, get_user_liquid_assets, ensure_user_info_exist, is_isolated_mode, add_user_liquid_asset, set_user_isolated, remove_user_liquid_asset, can_borrow_when_isolation};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math::{Self, ray_mul, ray_div, min, ray};
@@ -31,6 +31,12 @@ module lending_core::logic {
     const ENOT_ENOUGH_OTOKEN: u64 = 5;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
+
+    const EREACH_SUPPLY_CEILING: u64 = 7;
+
+    const EREACH_BORROW_CEILING: u64 = 8;
+
+    const EBORROW_UNISOLATED: u64 = 9;
 
     public fun execute_liquidate(
         cap: &StorageCap,
@@ -83,12 +89,12 @@ module lending_core::logic {
             if (liquidator_acquired_collateral > liquidator_debt) {
                 remove_user_loan(cap, storage, liquidator, collateral);
                 mint_otoken(cap, storage, liquidator, collateral, liquidator_acquired_collateral - liquidator_debt);
-                add_user_collateral(cap, storage, oracle, liquidator, collateral);
+                add_user_collateral(cap, storage, liquidator, collateral);
             }
         } else {
             mint_otoken(cap, storage, liquidator, collateral, liquidator_acquired_collateral);
             if (!is_collateral(storage, liquidator, collateral)) {
-                add_user_collateral(cap, storage, oracle, liquidator, collateral);
+                add_user_collateral(cap, storage, liquidator, collateral);
             };
         };
 
@@ -104,13 +110,39 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        supply_amount: u64,
     ) {
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
+        assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
+        ensure_user_info_exist(storage, oracle, dola_user_id);
+
         update_state(cap, storage, oracle, dola_pool_id);
-        mint_otoken(cap, storage, dola_user_id, dola_pool_id, token_amount);
-        if (!is_collateral(storage, dola_user_id, dola_pool_id)) {
-            add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
+        mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
+
+        // Add asset type for the new asset
+        if (!is_collateral(storage, dola_user_id, dola_pool_id) && !is_liquid_asset(
+            storage,
+            dola_user_id,
+            dola_pool_id
+        )) {
+            if (is_isolated_mode(storage, dola_user_id)) {
+                // Users cannot pledge other tokens as collateral in isolated mode.
+                add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+            } else {
+                if (!has_collateral(storage, dola_user_id)) {
+                    add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+                    if (is_isolated_asset(storage, dola_pool_id)) {
+                        set_user_isolated(cap, storage, dola_user_id, true);
+                    }
+                } else {
+                    if (is_isolated_asset(storage, dola_pool_id)) {
+                        // Isolated asset cannot be used as collateral when other collaterals are present.
+                        add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                    } else {
+                        add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+                    }
+                }
+            }
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
@@ -133,7 +165,11 @@ module lending_core::logic {
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (actual_amount == otoken_amount) {
-            remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+            if (is_collateral(storage, dola_user_id, dola_pool_id)) {
+                remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+            } else {
+                remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+            }
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, actual_amount);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
@@ -152,8 +188,15 @@ module lending_core::logic {
         update_state(cap, storage, oracle, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
+        assert!(not_reach_borrow_ceiling(storage, borrow_pool_id, borrow_amount), EREACH_BORROW_CEILING);
+
+        // In isolation mode, can only borrow the allowed assets
+        if (is_isolated_mode(storage, dola_user_id)) {
+            assert!(can_borrow_when_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
+        };
+
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
-            add_user_loan(cap, storage, oracle, dola_user_id, borrow_pool_id);
+            add_user_loan(cap, storage, dola_user_id, borrow_pool_id);
         };
 
         mint_dtoken(cap, storage, dola_user_id, borrow_pool_id, borrow_amount);
@@ -181,21 +224,72 @@ module lending_core::logic {
             let excess_repay_amount = repay_amount - debt;
             if (excess_repay_amount > 0) {
                 mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
-                add_user_collateral(cap, storage, oracle, dola_user_id, dola_pool_id);
+                add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                if (is_isolated_asset(storage, dola_pool_id)) {
+                    set_user_isolated(cap, storage, dola_user_id, false);
+                }
             }
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
+    /// Check whether the maximum supply limit has been reached
+    public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u64): bool {
+        let (supply_ceiling, _) = get_reserve_ceilings(storage, dola_pool_id);
+        if (supply_ceiling == 0) {
+            true
+        } else {
+            let total_supply = total_otoken_supply(storage, dola_pool_id);
+            if (total_supply + (supply_amount as u128) > supply_ceiling) {
+                false
+            } else {
+                true
+            }
+        }
+    }
+
+    /// Check whether the maximum borrow limit has been reached
+    public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_pool_id: u16, borrow_amount: u64): bool {
+        let (_, borrow_ceiling) = get_reserve_ceilings(storage, dola_pool_id);
+        if (borrow_ceiling == 0) {
+            true
+        } else {
+            let total_supply = total_dtoken_supply(storage, dola_pool_id);
+            if (total_supply + (borrow_amount as u128) > borrow_ceiling) {
+                false
+            } else {
+                true
+            }
+        }
+    }
+
     public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
         user_health_factor(storage, oracle, dola_user_id) > ray()
+    }
+
+    public fun is_liquid_asset(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
+        if (exist_user_info(storage, dola_user_id)) {
+            let liquid_assets = get_user_liquid_assets(storage, dola_user_id);
+            vector::contains(&liquid_assets, &dola_pool_id)
+        } else {
+            false
+        }
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
         if (exist_user_info(storage, dola_user_id)) {
             let collaterals = get_user_collaterals(storage, dola_user_id);
             vector::contains(&collaterals, &dola_pool_id)
+        } else {
+            false
+        }
+    }
+
+    public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
+        if (exist_user_info(storage, dola_user_id)) {
+            let collaterals = get_user_collaterals(storage, dola_user_id);
+            vector::length(&collaterals) > 0
         } else {
             false
         }
