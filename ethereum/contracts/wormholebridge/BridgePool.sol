@@ -167,7 +167,8 @@ contract BridgePool {
     function sendDepositAndWithdraw(
         address depositToken,
         uint256 depositAmount,
-        address withdrawToken,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
@@ -176,11 +177,12 @@ contract BridgePool {
             require(msg.value >= depositAmount, "Not enough msg value!");
             payload = IOmniPool(omnipool).depositAndWithdraw{
             value : depositAmount
-            }(depositToken, depositAmount, withdrawToken, appId, appPayload);
+            }(depositToken, depositAmount, withdrawChainId, withdrawToken, appId, appPayload);
         } else {
             payload = IOmniPool(omnipool).depositAndWithdraw(
                 depositToken,
                 depositAmount,
+                withdrawChainId,
                 withdrawToken,
                 appId,
                 appPayload

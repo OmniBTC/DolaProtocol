@@ -9,7 +9,7 @@ module wormhole_bridge::bridge_pool {
     use aptos_framework::event::{EventHandle, emit_event};
 
     use dola_types::types::{DolaAddress, create_dola_address, convert_address_to_dola, encode_dola_address, decode_dola_address, get_native_dola_chain_id, dola_chain_id, dola_address};
-    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw, encode_send_withdraw_payload};
+    use omnipool::pool::{Self, PoolCap, deposit_and_withdraw};
     use serde::serde::{serialize_u16, serialize_vector, serialize_u8, vector_slice, deserialize_u16, deserialize_u8, serialize_u64, deserialize_u64};
     use serde::u16::{U16, Self};
     use wormhole::emitter::EmitterCapability;
@@ -187,14 +187,18 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
-    public fun send_withdraw<CoinType>(
+    public fun send_withdraw(
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
-        let msg = pool::withdraw_to<CoinType>(
+        let msg = pool::withdraw_to(
             sender,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
         );
@@ -205,34 +209,20 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
-    public fun send_withdraw_remote(
-        sender: &signer,
-        wormhole_message_fee: Coin<AptosCoin>,
-        pool: vector<u8>,
-        dst_chain: U16,
-        app_id: U16,
-        app_payload: vector<u8>,
-    ) acquires PoolState {
-        let user_addr = convert_address_to_dola(signer::address_of(sender));
-        let pool_addr = create_dola_address(dst_chain, pool);
-        let msg = encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-
-        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
-    }
-
-    public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun send_deposit_and_withdraw<DepositCoinType>(
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
-        let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+        let msg = deposit_and_withdraw<DepositCoinType>(
             sender,
             deposit_coin,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
         );

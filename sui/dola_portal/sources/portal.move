@@ -648,24 +648,24 @@ module dola_portal::portal {
         })
     }
 
-    public entry fun liquidate<DebtCoinType, CollateralCoinType>(
+    public entry fun liquidate<DebtCoinType>(
         dola_portal: &mut DolaPortal,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        receiver: vector<u8>,
         wormhole_message_coins: vector<Coin<SUI>>,
         wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
+        liquidate_chain_id: u16,
+        liquidate_pool_address: vector<u8>,
         debt_amount: u64,
         liquidate_user_id: u64,
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
 
-        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let receiver = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let nonce = get_nonce(dola_portal);
@@ -677,12 +677,15 @@ module dola_portal::portal {
             receiver,
             liquidate_user_id
         );
-        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
+        
+        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
             pool_state,
             wormhole_state,
             wormhole_message_fee,
             debt_pool,
             debt_coin,
+            liquidate_chain_id,
+            liquidate_pool_address,
             LENDING_APP_ID,
             app_payload,
             ctx

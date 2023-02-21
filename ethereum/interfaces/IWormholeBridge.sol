@@ -21,9 +21,10 @@ interface IWormholeBridge {
     ) external payable;
 
     function sendDepositAndWithdraw(
-        address depositPool,
+        address depositToken,
         uint256 depositAmount,
-        address withdrawPool,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable;
