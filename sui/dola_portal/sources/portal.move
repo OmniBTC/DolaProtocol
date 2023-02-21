@@ -2,7 +2,7 @@ module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address};
+    use dola_types::types::{convert_address_to_dola, create_dola_address, get_native_dola_chain_id, dola_address, dola_chain_id, convert_pool_to_dola};
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
@@ -648,24 +648,24 @@ module dola_portal::portal {
         })
     }
 
-    public entry fun liquidate<DebtCoinType, CollateralCoinType>(
+    public entry fun liquidate<DebtCoinType>(
         dola_portal: &mut DolaPortal,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        receiver: vector<u8>,
         wormhole_message_coins: vector<Coin<SUI>>,
         wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
+        liquidate_chain_id: u16,
+        liquidate_pool_address: vector<u8>,
         debt_amount: u64,
         liquidate_user_id: u64,
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-
-        let receiver = dola_types::types::create_dola_address(dst_chain, receiver);
+        let debt_pool_address = convert_pool_to_dola<DebtCoinType>();
+        let receiver = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let nonce = get_nonce(dola_portal);
@@ -677,16 +677,30 @@ module dola_portal::portal {
             receiver,
             liquidate_user_id
         );
-        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
+
+        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
             pool_state,
             wormhole_state,
             wormhole_message_fee,
             debt_pool,
             debt_coin,
+            liquidate_chain_id,
+            liquidate_pool_address,
             LENDING_APP_ID,
             app_payload,
             ctx
         );
+
+        emit(LendingPortalEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: dola_address(&debt_pool_address),
+            source_chain_id: get_native_dola_chain_id(),
+            dst_chain_id: dola_chain_id(&receiver),
+            receiver: dola_address(&receiver),
+            amount: debt_amount,
+            call_type: LIQUIDATE
+        })
     }
 
     #[test]

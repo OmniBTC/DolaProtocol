@@ -8,7 +8,7 @@ module lending_core::lending_wormhole_adapter {
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{PoolManagerInfo, get_id_by_pool, find_pool_by_chain, get_pool_liquidity};
     use serde::serde::{serialize_u16, serialize_u64, serialize_vector, serialize_u8, deserialize_u16, deserialize_u64, vector_slice, deserialize_u8};
-    use sui::coin::{Self, Coin};
+    use sui::coin::Coin;
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -44,11 +44,13 @@ module lending_core::lending_wormhole_adapter {
 
     struct LendingCoreEvent has drop, copy {
         nonce: u64,
+        sender_user_id: u64,
         source_chain_id: u16,
         dst_chain_id: u16,
-        pool_address: vector<u8>,
+        dola_pool_id: u16,
         receiver: vector<u8>,
         amount: u64,
+        liquidate_user_id: u64,
         call_type: u8
     }
 
@@ -107,11 +109,13 @@ module lending_core::lending_wormhole_adapter {
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -174,11 +178,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount: actual_amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -231,11 +237,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&dst_pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -267,11 +275,13 @@ module lending_core::lending_wormhole_adapter {
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: dola_chain_id(&receiver),
-            pool_address: dola_address(&pool),
+            dola_pool_id,
             receiver: dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -284,7 +294,6 @@ module lending_core::lending_wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -297,17 +306,22 @@ module lending_core::lending_wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (source_chain_id, nonce, _, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
+        let (source_chain_id, nonce, call_type, _, _, liquidate_user_id) = decode_app_payload(app_payload);
 
         let liquidator = get_dola_user_id(user_manager_info, deposit_user);
-        let dst_chain = dola_chain_id(&receiver);
         let deposit_dola_pool_id = get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = get_id_by_pool(pool_manager_info, withdraw_pool);
-        let dst_pool = find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
-        let dst_pool = option::destroy_some(dst_pool);
+        execute_supply(
+            cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            liquidator,
+            deposit_dola_pool_id,
+            deposit_amount
+        );
 
-        let (withdraw_amount, return_repay_amount) = execute_liquidate(
+        execute_liquidate(
             cap,
             pool_manager_info,
             storage,
@@ -316,45 +330,19 @@ module lending_core::lending_wormhole_adapter {
             liquidate_user_id,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
-            deposit_amount,
         );
 
-        // check pool liquidity
-        let pool_liquidity = get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (withdraw_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-
-        bridge_core::send_withdraw(
-            wormhole_state,
-            core_state,
-            get_app_cap(cap, storage),
-            pool_manager_info,
-            dst_pool,
-            receiver,
-            source_chain_id,
+        emit(LendingCoreEvent {
             nonce,
-            withdraw_amount,
-            wormhole_message_fee
-        );
-
-        if (return_repay_amount > 0) {
-            let repay_pool = find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
-            assert!(option::is_some(&repay_pool), EMUST_SOME);
-            let repay_pool = option::destroy_some(repay_pool);
-            let pool_liquidity = get_pool_liquidity(pool_manager_info, repay_pool);
-            assert!(pool_liquidity >= (return_repay_amount as u128), ENOT_ENOUGH_LIQUIDITY);
-            bridge_core::send_withdraw(
-                wormhole_state,
-                core_state,
-                get_app_cap(cap, storage),
-                pool_manager_info,
-                repay_pool,
-                receiver,
-                source_chain_id,
-                nonce,
-                return_repay_amount,
-                coin::zero<SUI>(ctx)
-            );
-        }
+            sender_user_id: liquidator,
+            source_chain_id,
+            dst_chain_id: dola_chain_id(&deposit_user),
+            dola_pool_id: withdraw_dola_pool_id,
+            receiver: dola_address(&deposit_user),
+            amount: deposit_amount,
+            liquidate_user_id,
+            call_type
+        })
     }
 
     public fun encode_app_payload(

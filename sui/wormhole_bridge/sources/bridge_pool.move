@@ -159,17 +159,19 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
-    public fun send_withdraw<CoinType>(
-        pool: &mut Pool<CoinType>,
+    public fun send_withdraw(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
+        withdraw_chain_id: u16,
+        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::withdraw_to<CoinType>(
-            pool,
+        let msg = pool::withdraw_to(
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
             ctx
@@ -179,19 +181,23 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
-    public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun send_deposit_and_withdraw<DepositCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: u16,
+        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+        let msg = deposit_and_withdraw<DepositCoinType>(
             deposit_pool,
             deposit_coin,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
             ctx

@@ -23,6 +23,10 @@ def serde_package():
     return aptos_package(DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("serde"))
 
 
+def dola_portal_package():
+    return aptos_package(DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("dola_portal"))
+
+
 def omnipool_package():
     return aptos_package(DOLA_CONFIG["DOLA_APTOS_PATH"].joinpath("omnipool"))
 

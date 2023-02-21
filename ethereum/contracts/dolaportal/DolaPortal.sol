@@ -226,11 +226,10 @@ contract DolaPortal {
     }
 
     function liquidate(
-        bytes memory receiver,
-        uint16 dstChainId,
         address debtToken,
         uint256 amount,
-        address collateralToken,
+        uint16 liquidateChainId,
+        bytes memory liquidateTokenAddress,
         uint64 liquidateUserId
     ) external {
         uint64 nonce = getNonce();
@@ -239,15 +238,27 @@ contract DolaPortal {
             nonce,
             LIQUIDATE,
             LibDecimals.fixAmountDecimals(amount, tokenDecimals(debtToken)),
-            LibDolaTypes.DolaAddress(dstChainId, receiver),
+            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             liquidateUserId
         );
         IWormholeBridge(bridgePool).sendDepositAndWithdraw(
             debtToken,
             amount,
-            collateralToken,
+            liquidateChainId,
+            liquidateTokenAddress,
             LENDING_APP_ID,
             appPayload
+        );
+
+        emit LendingPortalEvent(
+            nonce,
+            msg.sender,
+            abi.encodePacked(token),
+            dolaChainId,
+            0,
+            abi.encodePacked(msg.sender),
+            fixAmount,
+            LIQUIDATE
         );
     }
 
