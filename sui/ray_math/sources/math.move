@@ -1,4 +1,6 @@
 module ray_math::math {
+
+    /// Used to represent 27-bit precision
     const RAY: u256 = 1000000000000000000000000000;
 
     const HALF_RAY: u256 = 500000000000000000000000000;
@@ -18,10 +20,12 @@ module ray_math::math {
         LN2
     }
 
+    /// Rounding multiplication
     public fun ray_mul(a: u256, b: u256): u256 {
         (a * b + RAY / 2) / RAY
     }
 
+    /// Rounding division
     public fun ray_div(a: u256, b: u256): u256 {
         (a * RAY + b / 2) / b
     }
@@ -44,6 +48,7 @@ module ray_math::math {
         }
     }
 
+    /// Return log2
     public fun ray_log2(x: u256): u256 {
         assert!(x >= RAY, ENEGATIVE_LOG);
 
@@ -73,6 +78,7 @@ module ray_math::math {
         result
     }
 
+    /// Known: value and 2^n=value, solve for n
     public fun log2(value: u256): u8 {
         let result = 0;
         if (value >> 128 > 0) {
@@ -107,5 +113,70 @@ module ray_math::math {
             result = result + 1;
         };
         result
+    }
+
+    #[test]
+    public fun test_ray_mul() {
+        let a = 5000000000000000000000000000;
+        let b = 700000000000000000000000000;
+        let c = 3500000000000000000000000000;
+        assert!(ray_mul(a, b) == c, 0);
+
+        let a = 100000000000000000000000000;
+        let b = 5;
+        let c = 1;
+        assert!(ray_mul(a, b) == c, 0);
+
+        let a = 100000000000000000000000000;
+        let b = 4;
+        let c = 0;
+        assert!(ray_mul(a, b) == c, 0);
+
+        let a = 0;
+        let b = 0;
+        let c = 0;
+        assert!(ray_mul(a, b) == c, 0);
+    }
+
+    #[test]
+    public fun test_ray_div() {
+        let a = 5000000000000000000000000000;
+        let b = 700000000000000000000000000;
+        let c = 3500000000000000000000000000;
+        assert!(ray_div(c, b) == a, 0);
+
+        let a = 1;
+        let b = 2000000000000000000000000000;
+        let c = 1;
+        assert!(ray_div(a, b) == c, 0);
+
+        let a = 1;
+        let b = 3000000000000000000000000000;
+        let c = 0;
+        assert!(ray_div(a, b) == c, 0);
+
+        let a = 0;
+        let b = 1;
+        let c = 0;
+        assert!(ray_div(a, b) == c, 0);
+    }
+
+    #[test]
+    public fun test_log() {
+        let a = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+        let b = 166307941438041216607501375384;
+        assert!(ray_log2(a) == b, 0);
+
+        let a = 1100000000000000000000000000;
+        let b = 137503523749934908329043598;
+        assert!(ray_log2(a) == b, 0);
+
+        let a = 1000000000000000000000000000;
+        let b = 0;
+        assert!(ray_log2(a) == b, 0);
+
+        let a = 8000000000000000000000000000;
+        let b = 3000000000000000000000000000;
+        assert!(ray_log2(a) == b, 0);
     }
 }

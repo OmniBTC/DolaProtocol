@@ -46,6 +46,7 @@ module pool_manager::pool_manager {
         pool_catalog: PoolCatalog,
     }
 
+    /// Manage App information, including the liquidity that each app has
     struct AppInfo has store {
         // app id => app liquidity
         app_liquidity: Table<u16, Liquidity>
