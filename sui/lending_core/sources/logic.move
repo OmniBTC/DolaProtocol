@@ -228,10 +228,13 @@ module lending_core::logic {
             if (excess_repay_amount > 0) {
                 mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
                 add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
-                if (is_isolated_asset(storage, dola_pool_id)) {
-                    set_user_isolated(cap, storage, dola_user_id, false);
-                }
-            }
+            };
+
+            if (is_isolation_mode(storage, dola_user_id) &&
+                user_total_loan_value(storage, oracle, dola_user_id) == 0
+            ) {
+                set_user_isolated(cap, storage, dola_user_id, false);
+            };
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);

@@ -746,6 +746,75 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    public fun test_repay_exit_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let isolate_pool = create_dola_address(0, b"ISOLATE");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let supply_isolate_amount = ONE;
+        let supply_usdt_amount = 1000 * ONE;
+        let borrow_usdt_amount = 50 * ONE;
+
+        // User 0 supply 1 isolate
+        supply_scenario(scenario, creator, isolate_pool, ISOLATE_POOL_ID, 0, supply_isolate_amount);
+        // User 1 supply 1000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 50 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            assert!(is_isolation_mode(&mut storage, 0), 201);
+
+            let repay_usdt_amount = 50 * ONE;
+
+            // User 0 repay 1000 usdt
+            pool_manager::add_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                usdt_pool,
+                LENDING_APP_ID,
+                repay_usdt_amount,
+                test_scenario::ctx(scenario)
+            );
+            logic::execute_repay(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                USDT_POOL_ID,
+                repay_usdt_amount
+            );
+
+            // Check user dtoken
+            assert!(
+                logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID) == (borrow_usdt_amount - repay_usdt_amount),
+                202
+            );
+            // Check user total loan
+            assert!(logic::user_total_loan_value(&mut storage, &mut oracle, 0) == 0, 203);
+            assert!(!is_isolation_mode(&mut storage, 0), 204);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_execute_liquidate() {
         let creator = @0xA;
 
