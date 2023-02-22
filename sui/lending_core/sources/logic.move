@@ -215,8 +215,8 @@ module lending_core::logic {
         // In isolation mode, can only borrow the allowed assets
         if (is_isolation_mode(storage, dola_user_id)) {
             assert!(can_borrow_in_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
-            assert!(not_reach_borrow_ceiling(storage, borrow_pool_id, borrow_amount), EREACH_BORROW_CEILING);
-            add_isolate_debt(cap, storage, borrow_pool_id, borrow_amount);
+            assert!(not_reach_borrow_ceiling(storage, dola_user_id, borrow_amount), EREACH_BORROW_CEILING);
+            add_isolate_debt(cap, storage, dola_user_id, borrow_amount);
         };
 
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
@@ -245,7 +245,7 @@ module lending_core::logic {
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
 
         if (is_isolation_mode(storage, dola_user_id)) {
-            reduce_isolate_debt(cap, storage, dola_pool_id, repay_amount);
+            reduce_isolate_debt(cap, storage, dola_user_id, repay_amount);
         };
 
         // Debt is paid off, moving asset out of the user's debt assets
@@ -318,12 +318,14 @@ module lending_core::logic {
     }
 
     /// Check whether the maximum borrow limit has been reached
-    public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_pool_id: u16, borrow_amount: u64): bool {
-        let borrow_ceiling = get_reserve_ceilings(storage, dola_pool_id);
+    public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_user_id: u64, borrow_amount: u64): bool {
+        let user_collaterals = get_user_collaterals(storage, dola_user_id);
+        let isolate_asset = vector::borrow(&user_collaterals, 0);
+        let borrow_ceiling = get_reserve_ceilings(storage, *isolate_asset);
         if (borrow_ceiling == 0) {
             true
         } else {
-            let isolate_debt = get_isolate_debt(storage, dola_pool_id);
+            let isolate_debt = get_isolate_debt(storage, *isolate_asset);
             if (isolate_debt + (borrow_amount as u128) > borrow_ceiling) {
                 false
             } else {
@@ -713,27 +715,32 @@ module lending_core::logic {
     public fun add_isolate_debt(
         cap: &StorageCap,
         storage: &mut Storage,
-        dola_pool_id: u16,
+        dola_user_id: u64,
         amount: u64,
     ) {
-        let isolate_debt = get_isolate_debt(storage, dola_pool_id);
+        let user_collaterals = get_user_collaterals(storage, dola_user_id);
+        let isolate_asset = vector::borrow(&user_collaterals, 0);
+        let isolate_debt = get_isolate_debt(storage, *isolate_asset);
         let new_isolate_debt = isolate_debt + (amount as u128);
-        storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
+        storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
     }
 
     public fun reduce_isolate_debt(
         cap: &StorageCap,
         storage: &mut Storage,
-        dola_pool_id: u16,
+        dola_user_id: u64,
         amount: u64,
     ) {
-        let isolate_debt = get_isolate_debt(storage, dola_pool_id);
-        let new_isolate_debt = if (isolate_debt >= amount) {
-            isolate_debt - (amount as u128) }
+        let user_collaterals = get_user_collaterals(storage, dola_user_id);
+        let isolate_asset = vector::borrow(&user_collaterals, 0);
+        let isolate_debt = get_isolate_debt(storage, *isolate_asset);
+        let new_isolate_debt = if (isolate_debt >= (amount as u128)) {
+            isolate_debt - (amount as u128)
+        }
         else {
             0
         };
-        storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
+        storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
     }
 
     public fun update_average_liquidity(
