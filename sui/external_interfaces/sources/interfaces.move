@@ -19,28 +19,28 @@ module external_interfaces::interfaces {
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
-        token_liquidity: u128,
+        token_liquidity: u256,
     }
 
     struct AppLiquidityInfo has copy, drop {
         app_id: u16,
         dola_pool_id: u16,
-        token_liquidity: u128,
+        token_liquidity: u256,
     }
 
     struct PoolLiquidityInfo has copy, drop {
         pool_address: DolaAddress,
-        pool_liquidity: u128,
-        pool_equilibrium_fee: u128,
-        pool_weight: u8
+        pool_liquidity: u256,
+        pool_equilibrium_fee: u256,
+        pool_weight: u256
     }
 
     struct LiquidityEquilibriumReward has copy, drop {
-        reward: u64
+        reward: u256
     }
 
     struct LiquidityEquilibriumFee has copy, drop {
-        fee: u64
+        fee: u256
     }
 
     struct AllPoolLiquidityInfo has copy, drop {
@@ -50,14 +50,14 @@ module external_interfaces::interfaces {
     struct LendingReserveInfo has copy, drop {
         dola_pool_id: u16,
         pools: vector<PoolLiquidityInfo>,
-        total_pool_weight: u16,
+        total_pool_weight: u256,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         borrow_apy: u256,
         supply_apy: u256,
-        reserve: u128,
-        supply: u128,
-        debt: u128,
+        reserve: u256,
+        supply: u256,
+        debt: u256,
         utilization_rate: u256
     }
 
@@ -409,13 +409,13 @@ module external_interfaces::interfaces {
         let borrow_apy = borrow_rate * 10000 / math::ray();
         let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
         let supply_apy = liquidity_rate * 10000 / math::ray();
-        let supply = logic::total_otoken_supply(storage, dola_pool_id);
-        let debt = logic::total_dtoken_supply(storage, dola_pool_id);
+        let supply = (logic::total_otoken_supply(storage, dola_pool_id) as u256);
+        let debt = (logic::total_dtoken_supply(storage, dola_pool_id) as u256);
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
 
         let utilization_rate = 0;
         if (debt > 0) {
-            let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
+            let utilization = rates::calculate_utilization(storage, dola_pool_id, (reserve as u128));
             utilization_rate = utilization * 10000 / math::ray();
         };
 
@@ -451,13 +451,13 @@ module external_interfaces::interfaces {
             let borrow_apy = borrow_rate * 10000 /  math::ray();
             let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
             let supply_apy = liquidity_rate * 10000 /  math::ray();
-            let supply = logic::total_otoken_supply(storage, dola_pool_id);
-            let debt = logic::total_dtoken_supply(storage, dola_pool_id);
+            let supply = (logic::total_otoken_supply(storage, dola_pool_id) as u256);
+            let debt = (logic::total_dtoken_supply(storage, dola_pool_id) as u256);
             let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
 
             let utilization_rate = 0;
             if (debt > 0) {
-                let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
+                let utilization = rates::calculate_utilization(storage, dola_pool_id, (reserve as u128));
                 utilization_rate = utilization * 10000 / math::ray();
             };
 
@@ -515,7 +515,7 @@ module external_interfaces::interfaces {
         pool_manager_info: &mut PoolManagerInfo,
         dola_chain_id: u16,
         pool_address: vector<u8>,
-        deposit_amount: u64
+        deposit_amount: u256
     ) {
         let dola_pool_address = types::create_dola_address(dola_chain_id, pool_address);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
@@ -524,13 +524,14 @@ module external_interfaces::interfaces {
         let pool_weight = pool_manager::get_pool_weight(pool_manager_info, dola_pool_address);
         let total_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
         let total_equilibrium_reward = pool_manager::get_pool_equilibrium_fee(pool_manager_info, dola_pool_address);
-        let equilibrium_reward = (equilibrium_fee::calculate_equilibrium_reward(
-            (total_liquidity as u256),
-            (current_liquidity as u256),
-            (deposit_amount as u256),
+        let equilibrium_reward = equilibrium_fee::calculate_equilibrium_reward(
+            total_liquidity,
+            current_liquidity,
+            deposit_amount,
             equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
-            (total_equilibrium_reward as u256)
-        ) as u64);
+            total_equilibrium_reward,
+            pool_manager::get_default_alpha_1()
+        ) ;
         emit(LiquidityEquilibriumReward {
             reward: equilibrium_reward
         })
@@ -540,7 +541,7 @@ module external_interfaces::interfaces {
         pool_manager_info: &mut PoolManagerInfo,
         dola_chain_id: u16,
         pool_address: vector<u8>,
-        withdraw_amount: u64
+        withdraw_amount: u256
     ) {
         let dola_pool_address = types::create_dola_address(dola_chain_id, pool_address);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
@@ -548,12 +549,14 @@ module external_interfaces::interfaces {
         let current_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dola_pool_address);
         let pool_weight = pool_manager::get_pool_weight(pool_manager_info, dola_pool_address);
         let total_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
-        let equilibrium_fee = (equilibrium_fee::calculate_equilibrium_fee(
-            (total_liquidity as u256),
-            (current_liquidity as u256),
-            (withdraw_amount as u256),
+        let equilibrium_fee = equilibrium_fee::calculate_equilibrium_fee(
+            total_liquidity ,
+            current_liquidity ,
+            withdraw_amount,
             equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
-        ) as u64);
+            pool_manager::get_default_alpha_1(),
+            pool_manager::get_default_lambda_1()
+        );
         emit(LiquidityEquilibriumFee {
             fee: equilibrium_fee
         })

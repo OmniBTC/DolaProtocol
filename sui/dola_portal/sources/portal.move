@@ -280,7 +280,7 @@ module dola_portal::portal {
         pool_manager_info,
         pool_addr,
         LENDING_APP_ID,
-        deposit_amount,
+        (deposit_amount as u256),
         ctx
         );
         // Reigster user id for user
@@ -348,7 +348,7 @@ module dola_portal::portal {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
@@ -356,7 +356,7 @@ module dola_portal::portal {
         pool_manager_info,
         dst_pool,
         LENDING_APP_ID,
-        actual_amount
+        (actual_amount as u256)
         );
 
         // Local withdraw
@@ -409,7 +409,7 @@ module dola_portal::portal {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
@@ -417,7 +417,7 @@ module dola_portal::portal {
         pool_manager_info,
         dst_pool,
         LENDING_APP_ID,
-        actual_amount
+        (actual_amount as u256)
         );
 
         let nonce = get_nonce(dola_portal);
@@ -471,7 +471,7 @@ module dola_portal::portal {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         // Execute borrow logic in lending_core app
         lending_core::logic::execute_borrow(
@@ -490,7 +490,7 @@ module dola_portal::portal {
         pool_manager_info,
         dst_pool,
         LENDING_APP_ID,
-        amount
+        (amount as u256)
         );
         // Local borrow
         pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
@@ -530,7 +530,7 @@ module dola_portal::portal {
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         // Execute borrow logic in lending_core app
         lending_core::logic::execute_borrow(
@@ -548,7 +548,7 @@ module dola_portal::portal {
         pool_manager_info,
         dst_pool,
         LENDING_APP_ID,
-        amount
+        (amount as u256)
         );
 
         let nonce = get_nonce(dola_portal);
@@ -616,7 +616,7 @@ module dola_portal::portal {
         pool_manager_info,
         pool_addr,
         LENDING_APP_ID,
-        repay_amount,
+        (repay_amount as u256),
         ctx
         );
         if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {

@@ -603,7 +603,7 @@ module lending_core::logic {
             storage::get_app_id(storage)
         );
         // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
-        liquidity = liquidity - (reduced_liquidity as u128);
+        let liquidity = (liquidity as u128) - (reduced_liquidity as u128);
         assert!(liquidity >= 0, ENOT_ENOUGH_LIQUIDITY);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);

@@ -306,6 +306,14 @@ module pool_manager::pool_manager {
         pool_liquidity.weight
     }
 
+    public fun get_default_alpha_1(): u256 {
+        DEFAULT_ALPHA_1
+    }
+
+    public fun get_default_lambda_1(): u256 {
+        DEFAULT_LAMBDA_1
+    }
+
     public fun add_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
@@ -490,6 +498,7 @@ module pool_manager::pool_manager {
                 amount,
                 test_scenario::ctx(scenario)
             );
+            destroy_manager(cap);
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
@@ -543,6 +552,7 @@ module pool_manager::pool_manager {
                 amount,
                 test_scenario::ctx(scenario)
             );
+            destroy_manager(cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -561,6 +571,7 @@ module pool_manager::pool_manager {
                 0,
                 amount
             );
+            destroy_manager(cap);
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);

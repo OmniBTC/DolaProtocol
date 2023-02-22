@@ -158,7 +158,7 @@ module lending_core::lending_wormhole_adapter {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
@@ -214,7 +214,7 @@ module lending_core::lending_wormhole_adapter {
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         logic::execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         bridge_core::send_withdraw(
@@ -321,7 +321,7 @@ module lending_core::lending_wormhole_adapter {
 
         // check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (withdraw_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= (withdraw_amount as u256), ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
@@ -341,7 +341,7 @@ module lending_core::lending_wormhole_adapter {
             assert!(option::is_some(&repay_pool), EMUST_SOME);
             let repay_pool = option::destroy_some(repay_pool);
             let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, repay_pool);
-            assert!(pool_liquidity >= (return_repay_amount as u128), ENOT_ENOUGH_LIQUIDITY);
+            assert!(pool_liquidity >= (return_repay_amount as u256), ENOT_ENOUGH_LIQUIDITY);
             bridge_core::send_withdraw(
                 wormhole_state,
                 core_state,
