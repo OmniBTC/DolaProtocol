@@ -44,6 +44,8 @@ module lending_core::logic {
 
     const EIN_ISOLATION: u64 = 12;
 
+    const EHAS_DEBT_ISOLATION: u64 = 13;
+
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -275,7 +277,11 @@ module lending_core::logic {
     ) {
         update_state(cap, storage, oracle, dola_pool_id);
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
-        assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
+
+        if (is_isolation_mode(storage, dola_user_id)) {
+            assert!(user_total_loan_value(storage, oracle, dola_user_id) == 0, EHAS_DEBT_ISOLATION);
+            set_user_isolated(cap, storage, dola_user_id, false);
+        };
 
         remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);

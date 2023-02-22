@@ -4,7 +4,7 @@ module lending_core::logic_tests {
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::{create_dola_address, DolaAddress};
-    use lending_core::logic::{Self, is_liquid_asset, is_collateral};
+    use lending_core::logic::{Self, is_liquid_asset, is_collateral, user_health_collateral_value};
     use lending_core::math::{ray_mul, ray_div};
     use lending_core::storage::{Self, Storage, is_isolation_mode};
     use oracle::oracle::{Self, PriceOracle, OracleCap};
@@ -380,6 +380,170 @@ module lending_core::logic_tests {
 
     fun get_percentage(rate: u256): u256 {
         rate * 10000 / RAY
+    }
+
+    #[test]
+    public fun test_cancel_as_collateral() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let btc_pool = create_dola_address(0, b"BTC");
+        let supply_pool = btc_pool;
+        let supply_pool_id = BTC_POOL_ID;
+        let supply_user_id = 0;
+        let supply_amount = ONE;
+        supply_scenario(
+            scenario,
+            creator,
+            supply_pool,
+            supply_pool_id,
+            supply_user_id,
+            supply_amount
+        );
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            assert!(is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                BTC_POOL_ID
+            );
+            assert!(is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 202);
+            assert!(user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 203);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_cancel_as_collateral_in_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let isolate_pool = create_dola_address(0, b"ISOLATE");
+        supply_scenario(
+            scenario,
+            creator,
+            isolate_pool,
+            ISOLATE_POOL_ID,
+            0,
+            ONE
+        );
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            assert!(is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
+            assert!(is_isolation_mode(&mut storage, 0), 202);
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                ISOLATE_POOL_ID
+            );
+            assert!(is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 203);
+            assert!(!is_isolation_mode(&mut storage, 0), 204);
+            assert!(user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 205);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_as_collateral() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let isolate_pool = create_dola_address(0, b"ISOLATE");
+        let btc_pool = create_dola_address(0, b"BTC");
+        supply_scenario(
+            scenario,
+            creator,
+            isolate_pool,
+            ISOLATE_POOL_ID,
+            0,
+            ONE
+        );
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            ONE
+        );
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                ISOLATE_POOL_ID
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+
+            assert!(is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 301);
+            logic::as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                BTC_POOL_ID
+            );
+            assert!(is_collateral(&mut storage, 0, BTC_POOL_ID), 302);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+        };
+        test_scenario::end(scenario_val);
     }
 
     #[test]

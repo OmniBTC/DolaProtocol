@@ -487,8 +487,9 @@ module lending_core::storage {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
 
         let (exist, index) = vector::index_of(&user_info.liquid_assets, &dola_pool_id);
+
         if (exist) {
-            let _ = vector::remove(&mut user_info.collaterals, index);
+            let _ = vector::remove(&mut user_info.liquid_assets, index);
         }
     }
 
