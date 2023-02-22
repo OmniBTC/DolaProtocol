@@ -2,6 +2,7 @@ module pool_manager::equilibrium_fee {
 
     use ray_math::math;
 
+    /// Calculate expected ratio according to weight
     public fun calculate_expected_ratio(total_weight: u256, weight: u256): u256 {
         if (total_weight == 0) {
             0
@@ -10,16 +11,24 @@ module pool_manager::equilibrium_fee {
         }
     }
 
+    /// Calculate liquidity percentage according to current liquidity and expected ratio
     public fun calculate_liquidity_percent(
         current_liquidity: u256,
         total_liquidity: u256,
         expected_ratio: u256
     ): u256 {
-        math::ray_div(math::ray_div(current_liquidity, total_liquidity), expected_ratio)
+        if (total_liquidity == 0) {
+            0
+        }else {
+            let percent = math::ray_div(math::ray_div(current_liquidity, total_liquidity), expected_ratio);
+            math::min(percent, math::ray())
+        }
     }
 
+    /// Calculate equilibrium fee based on the extent to which the current liquidity ratio
+    /// differs from the expected ratio
     /// Reference for details:
-    /// https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#213-single-coin-pool-manager-poolmanage
+    ///     https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#213-single-coin-pool-manager-poolmanage
     public fun calculate_equilibrium_fee(
         total_liquidity: u256,
         current_liquidity: u256,
@@ -32,14 +41,11 @@ module pool_manager::equilibrium_fee {
             return 0
         };
 
-        let after_liquidity_ratio = if (total_liquidity > withdraw_amount)
-            {
-                calculate_liquidity_percent(
-                    current_liquidity - withdraw_amount,
-                    total_liquidity - withdraw_amount,
-                    expected_ratio
-                )
-            } else { 0 };
+        let after_liquidity_ratio = calculate_liquidity_percent(
+            current_liquidity - withdraw_amount,
+            total_liquidity - withdraw_amount,
+            expected_ratio
+        );
 
         let n_start = if (current_liquidity > math::ray_mul(math::ray_mul(total_liquidity, expected_ratio), alpha_1))
             {
@@ -68,6 +74,8 @@ module pool_manager::equilibrium_fee {
         }
     }
 
+    /// Calculate equilibrium reward based on the extent to which the current liquidity ratio
+    /// differs from the expected ratio and deposit amount differs from target amount
     public fun calculate_equilibrium_reward(
         total_liquidity: u256,
         current_liquidity: u256,
@@ -76,7 +84,7 @@ module pool_manager::equilibrium_fee {
         total_equilibrium_reward: u256,
         alpha_1: u256
     ): u256 {
-        if (deposit_amount == 0 || expected_ratio == 0 || total_liquidity == 0) {
+        if (expected_ratio == 0) {
             return 0
         };
 
