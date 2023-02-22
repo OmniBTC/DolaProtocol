@@ -54,6 +54,8 @@ module lending_core::storage {
         is_isolated_asset: bool,
         // Enable borrow when isolation
         borrowable_in_isolation: bool,
+        // Accumulated isolate debt
+        isolate_debt: u128,
         // Timestamp of last update
         // todo: use sui timestamp
         last_update_timestamp: u64,
@@ -61,8 +63,6 @@ module lending_core::storage {
         treasury: u64,
         // Treasury interest factor [ray]
         treasury_factor: u256,
-        // Supply ceiling, 0 means there is no ceiling
-        supply_ceiling: u128,
         // Borrow ceiling, 0 means there is no ceiling
         borrow_ceiling: u128,
         // Current borrow rate [ray]
@@ -144,7 +144,6 @@ module lending_core::storage {
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
-        supply_ceiling: u128,
         borrow_ceiling: u128,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
@@ -158,10 +157,10 @@ module lending_core::storage {
         table::add(&mut storage.reserves, dola_pool_id, ReserveData {
             is_isolated_asset,
             borrowable_in_isolation,
+            isolate_debt: 0,
             last_update_timestamp: get_timestamp(oracle),
             treasury,
             treasury_factor,
-            supply_ceiling,
             borrow_ceiling,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
@@ -275,6 +274,14 @@ module lending_core::storage {
         table::borrow(&storage.reserves, dola_pool_id).treasury
     }
 
+    public fun get_isolate_debt(
+        storage: &mut Storage,
+        dola_pool_id: u16
+    ): u128 {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        table::borrow(&storage.reserves, dola_pool_id).isolate_debt
+    }
+
     public fun get_treasury_factor(
         storage: &mut Storage,
         dola_pool_id: u16
@@ -283,11 +290,10 @@ module lending_core::storage {
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
 
-    public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): (u128, u128) {
+    public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u128 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
-        let supply_ceiling = table::borrow(&storage.reserves, dola_pool_id).supply_ceiling;
         let borrow_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_ceiling;
-        (supply_ceiling, borrow_ceiling)
+        borrow_ceiling
     }
 
     public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
@@ -584,12 +590,10 @@ module lending_core::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        supply_ceiling: u128,
         borrow_ceiling: u128
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.supply_ceiling = supply_ceiling;
         reserve.borrow_ceiling = borrow_ceiling;
     }
 
@@ -621,6 +625,17 @@ module lending_core::storage {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
         user_info.last_update_timestamp = get_timestamp(oracle);
         user_info.average_liquidity = average_liquidity;
+    }
+
+    public fun update_isolate_debt(
+        _: &StorageCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        isolate_debt: u128
+    ) {
+        assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.isolate_debt = isolate_debt;
     }
 
     public fun update_state(

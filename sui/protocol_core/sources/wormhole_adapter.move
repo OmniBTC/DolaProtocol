@@ -66,7 +66,7 @@ module protocol_core::protocol_wormhole_adapter {
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
-        let app_payload = bridge_core::receive_protocol_message(wormhole_state, core_state, vaa);
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
         let (app_id, source_chain_id, nonce, sender, bind_address, call_type) = decode_app_payload(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == binding_type_id(), EINVALID_CALLTYPE);
@@ -102,7 +102,7 @@ module protocol_core::protocol_wormhole_adapter {
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
-        let app_payload = bridge_core::receive_protocol_message(wormhole_state, core_state, vaa);
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
         let (app_id, source_chain_id, nonce, sender, unbind_address, call_type) = decode_app_payload(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == unbinding_type_id(), EINVALID_CALLTYPE);

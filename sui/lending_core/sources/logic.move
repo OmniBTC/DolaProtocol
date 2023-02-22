@@ -3,7 +3,7 @@ module lending_core::logic {
 
     use lending_core::rates;
     use lending_core::scaled_balance::{Self, balance_of};
-    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury, get_reserve_ceilings, is_isolated_asset, get_user_liquid_assets, ensure_user_info_exist, is_isolation_mode, add_user_liquid_asset, set_user_isolated, remove_user_liquid_asset, can_borrow_in_isolation};
+    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury, get_reserve_ceilings, is_isolated_asset, get_user_liquid_assets, ensure_user_info_exist, is_isolation_mode, add_user_liquid_asset, set_user_isolated, remove_user_liquid_asset, can_borrow_in_isolation, get_isolate_debt};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math::{Self, ray_mul, ray_div, min, ray};
@@ -121,7 +121,6 @@ module lending_core::logic {
         supply_amount: u64,
     ) {
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
-        assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
         ensure_user_info_exist(storage, oracle, dola_user_id);
 
         update_state(cap, storage, oracle, dola_pool_id);
@@ -197,11 +196,12 @@ module lending_core::logic {
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
         assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
-        assert!(not_reach_borrow_ceiling(storage, borrow_pool_id, borrow_amount), EREACH_BORROW_CEILING);
 
         // In isolation mode, can only borrow the allowed assets
         if (is_isolation_mode(storage, dola_user_id)) {
             assert!(can_borrow_in_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
+            assert!(not_reach_borrow_ceiling(storage, borrow_pool_id, borrow_amount), EREACH_BORROW_CEILING);
+            add_isolate_debt(cap, storage, borrow_pool_id, borrow_amount);
         };
 
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
@@ -228,14 +228,23 @@ module lending_core::logic {
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
         let repay_debt = sui::math::min(repay_amount, debt);
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
+
+        if (is_isolation_mode(storage, dola_user_id)) {
+            reduce_isolate_debt(cap, storage, dola_pool_id, repay_amount);
+        };
+
+        // Debt is paid off, moving asset out of the user's debt assets
         if (repay_amount >= debt) {
             remove_user_loan(cap, storage, dola_user_id, dola_pool_id);
+
             let excess_repay_amount = repay_amount - debt;
+            // If the user overpays the debt, the excess goes directly to the user's liquid assets.
             if (excess_repay_amount > 0) {
                 mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
                 add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
             };
 
+            // If the user pays off the debt in isolation mode, exit isolation mode
             if (is_isolation_mode(storage, dola_user_id) &&
                 user_total_loan_value(storage, oracle, dola_user_id) == 0
             ) {
@@ -291,29 +300,14 @@ module lending_core::logic {
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
 
-    /// Check whether the maximum supply limit has been reached
-    public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u64): bool {
-        let (supply_ceiling, _) = get_reserve_ceilings(storage, dola_pool_id);
-        if (supply_ceiling == 0) {
-            true
-        } else {
-            let total_supply = total_otoken_supply(storage, dola_pool_id);
-            if (total_supply + (supply_amount as u128) > supply_ceiling) {
-                false
-            } else {
-                true
-            }
-        }
-    }
-
     /// Check whether the maximum borrow limit has been reached
     public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_pool_id: u16, borrow_amount: u64): bool {
-        let (_, borrow_ceiling) = get_reserve_ceilings(storage, dola_pool_id);
+        let borrow_ceiling = get_reserve_ceilings(storage, dola_pool_id);
         if (borrow_ceiling == 0) {
             true
         } else {
-            let total_supply = total_dtoken_supply(storage, dola_pool_id);
-            if (total_supply + (borrow_amount as u128) > borrow_ceiling) {
+            let isolate_debt = reserve_isolate_debt(storage, dola_pool_id);
+            if (isolate_debt + (borrow_amount as u128) > borrow_ceiling) {
                 false
             } else {
                 true
@@ -413,6 +407,15 @@ module lending_core::logic {
         let scaled_balance = get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
         let current_index = get_borrow_index(storage, dola_pool_id);
         balance_of(scaled_balance, current_index)
+    }
+
+    public fun reserve_isolate_debt(
+        storage: &mut Storage,
+        dola_pool_id: u16
+    ): u128 {
+        let scaled_debt = get_isolate_debt(storage, dola_pool_id);
+        let current_index = get_borrow_index(storage, dola_pool_id);
+        (balance_of((scaled_debt as u64), current_index) as u128)
     }
 
     public fun user_health_collateral_value(
@@ -672,7 +675,7 @@ module lending_core::logic {
         dola_pool_id: u16,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_liquidity_index(storage, dola_pool_id));
+        let scaled_amount = scaled_balance::mint_scaled(token_amount, get_borrow_index(storage, dola_pool_id));
         storage::mint_dtoken_scaled(
             cap,
             storage,
@@ -689,7 +692,7 @@ module lending_core::logic {
         dola_pool_id: u16,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_liquidity_index(storage, dola_pool_id));
+        let scaled_amount = scaled_balance::burn_scaled(token_amount, get_borrow_index(storage, dola_pool_id));
         storage::burn_dtoken_scaled(
             cap,
             storage,
@@ -697,6 +700,30 @@ module lending_core::logic {
             dola_user_id,
             scaled_amount
         );
+    }
+
+    public fun add_isolate_debt(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        amount: u64,
+    ) {
+        let scaled_amount = scaled_balance::mint_scaled(amount, get_borrow_index(storage, dola_pool_id));
+        let isolate_debt = get_isolate_debt(storage, dola_pool_id);
+        let new_isolate_debt = isolate_debt + (scaled_amount as u128);
+        storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
+    }
+
+    public fun reduce_isolate_debt(
+        cap: &StorageCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        amount: u64,
+    ) {
+        let scaled_amount = scaled_balance::mint_scaled(amount, get_borrow_index(storage, dola_pool_id));
+        let isolate_debt = get_isolate_debt(storage, dola_pool_id);
+        let new_isolate_debt = isolate_debt - (scaled_amount as u128);
+        storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
     }
 
     public fun update_average_liquidity(
