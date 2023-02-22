@@ -788,6 +788,41 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = logic::EREACH_BORROW_CEILING)]
+    public fun test_borrow_ceiling_in_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let isolate_pool = create_dola_address(0, b"ISOLATE");
+        let usdt_pool = create_dola_address(0, b"USDT");
+        let supply_usdt_amount = 5000 * ONE;
+
+        // usdt borrow ceiling == 1000 * ONE
+        let borrow1_usdt_amount = 500 * ONE;
+        let borrow2_usdt_amount = 501 * ONE;
+
+        supply_scenario(
+            scenario,
+            creator,
+            isolate_pool,
+            ISOLATE_POOL_ID,
+            0,
+            1000 * ONE
+        );
+
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 500 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow1_usdt_amount);
+
+        // User 0 borrow 501 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow2_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     #[expected_failure(abort_code = logic::EBORROW_UNISOLATED)]
     public fun test_borrow_invalid_asset_in_isolation() {
         let creator = @0xA;
