@@ -40,6 +40,10 @@ module lending_core::logic {
 
     const ENOT_BORROWABLE: u64 = 10;
 
+    const ENOT_LIQUID_ASSET: u64 = 11;
+
+    const EIN_ISOLATION: u64 = 12;
+
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -236,6 +240,47 @@ module lending_core::logic {
                 set_user_isolated(cap, storage, dola_user_id, false);
             };
         };
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(cap, storage, oracle, dola_user_id);
+    }
+
+    /// Turn liquid asset into collateral
+    public fun as_collateral(
+        cap: &StorageCap,
+        pool_manager_info: &PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64,
+        dola_pool_id: u16,
+    ) {
+        update_state(cap, storage, oracle, dola_pool_id);
+        assert!(is_liquid_asset(storage, dola_user_id, dola_pool_id), ENOT_LIQUID_ASSET);
+        assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
+
+        remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+        add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(cap, storage, oracle, dola_user_id);
+    }
+
+    /// Turn collateral into liquid asset
+    public fun cancel_as_collateral(
+        cap: &StorageCap,
+        pool_manager_info: &PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64,
+        dola_pool_id: u16,
+    ) {
+        update_state(cap, storage, oracle, dola_pool_id);
+        assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
+        assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
+
+        remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+        add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+
+        assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
     }
