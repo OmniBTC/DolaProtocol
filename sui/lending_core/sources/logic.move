@@ -311,7 +311,7 @@ module lending_core::logic {
 
         remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
-        
+
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
@@ -323,7 +323,7 @@ module lending_core::logic {
         if (borrow_ceiling == 0) {
             true
         } else {
-            let isolate_debt = reserve_isolate_debt(storage, dola_pool_id);
+            let isolate_debt = get_isolate_debt(storage, dola_pool_id);
             if (isolate_debt + (borrow_amount as u128) > borrow_ceiling) {
                 false
             } else {
@@ -424,15 +424,6 @@ module lending_core::logic {
         let scaled_balance = get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
         let current_index = get_borrow_index(storage, dola_pool_id);
         balance_of(scaled_balance, current_index)
-    }
-
-    public fun reserve_isolate_debt(
-        storage: &mut Storage,
-        dola_pool_id: u16
-    ): u128 {
-        let scaled_debt = get_isolate_debt(storage, dola_pool_id);
-        let current_index = get_borrow_index(storage, dola_pool_id);
-        (balance_of((scaled_debt as u64), current_index) as u128)
     }
 
     public fun user_health_collateral_value(
@@ -725,9 +716,8 @@ module lending_core::logic {
         dola_pool_id: u16,
         amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(amount, get_borrow_index(storage, dola_pool_id));
         let isolate_debt = get_isolate_debt(storage, dola_pool_id);
-        let new_isolate_debt = isolate_debt + (scaled_amount as u128);
+        let new_isolate_debt = isolate_debt + (amount as u128);
         storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
     }
 
@@ -737,9 +727,12 @@ module lending_core::logic {
         dola_pool_id: u16,
         amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(amount, get_borrow_index(storage, dola_pool_id));
         let isolate_debt = get_isolate_debt(storage, dola_pool_id);
-        let new_isolate_debt = isolate_debt - (scaled_amount as u128);
+        let new_isolate_debt = if (isolate_debt >= amount) {
+            isolate_debt - (amount as u128) }
+        else {
+            0
+        };
         storage::update_isolate_debt(cap, storage, dola_pool_id, new_isolate_debt)
     }
 
