@@ -53,7 +53,7 @@ module lending_core::storage {
         // Is it a isolated asset
         is_isolated_asset: bool,
         // Enable borrow when isolation
-        can_borrow_isolation: bool,
+        borrowable_in_isolation: bool,
         // Timestamp of last update
         // todo: use sui timestamp
         last_update_timestamp: u64,
@@ -141,7 +141,7 @@ module lending_core::storage {
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
         is_isolated_asset: bool,
-        can_borrow_isolation: bool,
+        borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
         supply_ceiling: u128,
@@ -157,7 +157,7 @@ module lending_core::storage {
         assert!(!table::contains(&storage.reserves, dola_pool_id), EALREADY_EXIST_RESERVE);
         table::add(&mut storage.reserves, dola_pool_id, ReserveData {
             is_isolated_asset,
-            can_borrow_isolation,
+            borrowable_in_isolation,
             last_update_timestamp: get_timestamp(oracle),
             treasury,
             treasury_factor,
@@ -190,12 +190,12 @@ module lending_core::storage {
         table::borrow(&storage.reserves, dola_pool_id).is_isolated_asset
     }
 
-    public fun is_isolated_mode(storage: &mut Storage, dola_user_id: u64): bool {
+    public fun is_isolation_mode(storage: &mut Storage, dola_user_id: u64): bool {
         table::borrow(&storage.user_infos, dola_user_id).isolated_mode
     }
 
-    public fun can_borrow_when_isolation(storage: &mut Storage, dola_pool_id: u16): bool {
-        table::borrow(&storage.reserves, dola_pool_id).can_borrow_isolation
+    public fun can_borrow_in_isolation(storage: &mut Storage, dola_pool_id: u16): bool {
+        table::borrow(&storage.reserves, dola_pool_id).borrowable_in_isolation
     }
 
     public fun get_reserve_length(storage: &mut Storage): u64 {
@@ -568,7 +568,7 @@ module lending_core::storage {
         reserve.is_isolated_asset = isolated;
     }
 
-    public fun set_can_borrow_isolation(
+    public fun set_borrowable_in_isolation(
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
@@ -576,7 +576,7 @@ module lending_core::storage {
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.can_borrow_isolation = can_borrow;
+        reserve.borrowable_in_isolation = can_borrow;
     }
 
     public fun update_reserve_ceilings(

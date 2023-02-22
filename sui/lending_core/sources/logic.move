@@ -3,7 +3,7 @@ module lending_core::logic {
 
     use lending_core::rates;
     use lending_core::scaled_balance::{Self, balance_of};
-    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury, get_reserve_ceilings, is_isolated_asset, get_user_liquid_assets, ensure_user_info_exist, is_isolated_mode, add_user_liquid_asset, set_user_isolated, remove_user_liquid_asset, can_borrow_when_isolation};
+    use lending_core::storage::{Self, StorageCap, Storage, get_liquidity_index, get_user_collaterals, get_user_scaled_otoken, get_user_loans, get_user_scaled_dtoken, add_user_collateral, add_user_loan, get_otoken_scaled_total_supply, get_borrow_index, get_dtoken_scaled_total_supply, get_app_id, remove_user_collateral, remove_user_loan, get_collateral_coefficient, get_borrow_coefficient, exist_user_info, get_user_average_liquidity, get_reserve_treasury, get_reserve_ceilings, is_isolated_asset, get_user_liquid_assets, ensure_user_info_exist, is_isolation_mode, add_user_liquid_asset, set_user_isolated, remove_user_liquid_asset, can_borrow_in_isolation};
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math::{Self, ray_mul, ray_div, min, ray};
@@ -38,6 +38,8 @@ module lending_core::logic {
 
     const EBORROW_UNISOLATED: u64 = 9;
 
+    const ENOT_BORROWABLE: u64 = 10;
+
     public fun execute_liquidate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
@@ -65,7 +67,7 @@ module lending_core::logic {
         );
 
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
-        let repay_debt = user_loan_balance(storage, liquidator, collateral);
+        let repay_debt = user_collateral_balance(storage, liquidator, loan);
 
         let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, _) = calculate_actual_liquidation(
             oracle,
@@ -125,7 +127,7 @@ module lending_core::logic {
             dola_user_id,
             dola_pool_id
         )) {
-            if (is_isolated_mode(storage, dola_user_id)) {
+            if (is_isolation_mode(storage, dola_user_id)) {
                 // Users cannot pledge other tokens as collateral in isolated mode.
                 add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
             } else {
@@ -188,11 +190,12 @@ module lending_core::logic {
         update_state(cap, storage, oracle, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
+        assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
         assert!(not_reach_borrow_ceiling(storage, borrow_pool_id, borrow_amount), EREACH_BORROW_CEILING);
 
         // In isolation mode, can only borrow the allowed assets
-        if (is_isolated_mode(storage, dola_user_id)) {
-            assert!(can_borrow_when_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
+        if (is_isolation_mode(storage, dola_user_id)) {
+            assert!(can_borrow_in_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
         };
 
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
@@ -262,6 +265,10 @@ module lending_core::logic {
                 true
             }
         }
+    }
+
+    public fun is_borrowable_asset(storage: &mut Storage, dola_pool_id: u16): bool {
+        get_borrow_coefficient(storage, dola_pool_id) > 0
     }
 
     public fun is_health(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): bool {
