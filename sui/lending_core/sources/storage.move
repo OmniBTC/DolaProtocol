@@ -63,8 +63,8 @@ module lending_core::storage {
         treasury: u64,
         // Treasury interest factor [ray]
         treasury_factor: u256,
-        // Borrow ceiling, 0 means there is no ceiling
-        borrow_ceiling: u128,
+        // Borrow cap ceiling, 0 means there is no ceiling
+        borrow_cap_ceiling: u128,
         // Current borrow rate [ray]
         current_borrow_rate: u256,
         // Current supply rate [ray]
@@ -144,7 +144,7 @@ module lending_core::storage {
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
-        borrow_ceiling: u128,
+        borrow_cap_ceiling: u128,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         base_borrow_rate: u256,
@@ -161,7 +161,7 @@ module lending_core::storage {
             last_update_timestamp: get_timestamp(oracle),
             treasury,
             treasury_factor,
-            borrow_ceiling,
+            borrow_cap_ceiling,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
             current_borrow_index: ray(),
@@ -292,8 +292,8 @@ module lending_core::storage {
 
     public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u128 {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
-        let borrow_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_ceiling;
-        borrow_ceiling
+        let borrow_cap_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling;
+        borrow_cap_ceiling
     }
 
     public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
@@ -590,11 +590,11 @@ module lending_core::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        borrow_ceiling: u128
+        borrow_cap_ceiling: u128
     ) {
         assert!(table::contains(&storage.reserves, dola_pool_id), ENONEXISTENT_RESERVE);
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.borrow_ceiling = borrow_ceiling;
+        reserve.borrow_cap_ceiling = borrow_cap_ceiling;
     }
 
     public fun update_borrow_rate_factors(
