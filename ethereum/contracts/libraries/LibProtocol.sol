@@ -8,7 +8,6 @@ library LibProtocol {
     using LibBytes for bytes;
     uint16 internal constant APP_ID = 0;
 
-
     struct ProtocolAppPayload {
         uint16 appId;
         uint16 sourceChainId;
@@ -47,9 +46,9 @@ library LibProtocol {
     }
 
     function decodeProtocolAppPayload(bytes memory payload)
-    internal
-    pure
-    returns (ProtocolAppPayload memory)
+        internal
+        pure
+        returns (ProtocolAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
