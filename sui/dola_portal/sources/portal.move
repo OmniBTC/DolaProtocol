@@ -148,7 +148,6 @@ module dola_portal::portal {
         option::fill(&mut dola_portal.storage_cap, storage_cap);
     }
 
-
     public fun merge_coin<CoinType>(
         coins: vector<Coin<CoinType>>,
         amount: u64,
@@ -182,7 +181,65 @@ module dola_portal::portal {
         }
     }
 
-    public entry fun send_binding(
+    public entry fun as_collateral(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_portal: &mut DolaPortal,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        dola_pool_ids: vector<u16>,
+        ctx: &mut TxContext
+    ) {
+        let sender = convert_address_to_dola(tx_context::sender(ctx));
+
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            lending_core::logic::as_collateral(
+                option::borrow(&dola_portal.storage_cap),
+                pool_manager_info,
+                storage,
+                oracle,
+                dola_user_id,
+                *dola_pool_id
+            );
+            i = i + 1;
+        };
+    }
+
+    public entry fun cancel_as_collateral(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_portal: &mut DolaPortal,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        dola_pool_ids: vector<u16>,
+        ctx: &mut TxContext
+    ) {
+        let sender = convert_address_to_dola(tx_context::sender(ctx));
+
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            lending_core::logic::cancel_as_collateral(
+                option::borrow(&dola_portal.storage_cap),
+                pool_manager_info,
+                storage,
+                oracle,
+                dola_user_id,
+                *dola_pool_id
+            );
+            i = i + 1;
+        };
+    }
+
+    public entry fun binding(
         dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
@@ -215,7 +272,7 @@ module dola_portal::portal {
         })
     }
 
-    public entry fun send_unbinding(
+    public entry fun unbinding(
         dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
