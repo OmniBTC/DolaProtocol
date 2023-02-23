@@ -7,6 +7,7 @@ module lending_core::logic {
     use oracle::oracle::{get_token_price, PriceOracle, get_timestamp};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math::{Self, ray_mul, ray_div, min, ray};
+    use sui::event::emit;
     use sui::math::pow;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
@@ -16,6 +17,20 @@ module lending_core::logic {
 
     /// HF 1.25
     const TARGET_HEALTH_FACTOR: u256 = 1250000000000000000000000000;
+
+    const SUPPLY: u8 = 0;
+
+    const WITHDRAW: u8 = 1;
+
+    const BORROW: u8 = 2;
+
+    const REPAY: u8 = 3;
+
+    const LIQUIDATE: u8 = 4;
+
+    const AS_COLLATERAL: u8 = 7;
+
+    const CANCLE_AS_COLLATERAL: u8 = 8;
 
     /// Errors
     const ECOLLATERAL_AS_LOAN: u64 = 0;
@@ -45,6 +60,15 @@ module lending_core::logic {
     const EIN_ISOLATION: u64 = 12;
 
     const EHAS_DEBT_ISOLATION: u64 = 13;
+
+    /// Lending core execute event
+    struct LendingCoreExecuteEvent has drop, copy {
+        user_id: u64,
+        amount: u64,
+        pool_id: u16,
+        violator_id: u64,
+        call_type: u8
+    }
 
     public fun execute_liquidate(
         cap: &StorageCap,
@@ -122,6 +146,14 @@ module lending_core::logic {
         update_interest_rate(cap, pool_manager_info, storage, collateral, 0);
         update_interest_rate(cap, pool_manager_info, storage, loan, 0);
         update_average_liquidity(cap, storage, oracle, violator);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: liquidator,
+            amount: actual_liquidable_collateral,
+            pool_id: collateral,
+            violator_id: violator,
+            call_type: LIQUIDATE
+        })
     }
 
     public fun execute_supply(
@@ -167,6 +199,14 @@ module lending_core::logic {
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: supply_amount,
+            pool_id: dola_pool_id,
+            violator_id: 0,
+            call_type: SUPPLY
+        })
     }
 
     public fun execute_withdraw(
@@ -195,6 +235,15 @@ module lending_core::logic {
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, actual_amount);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: actual_amount,
+            pool_id: dola_pool_id,
+            violator_id: 0,
+            call_type: WITHDRAW
+        });
+
         actual_amount
     }
 
@@ -228,6 +277,14 @@ module lending_core::logic {
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id, borrow_amount);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: borrow_amount,
+            pool_id: borrow_pool_id,
+            violator_id: 0,
+            call_type: BORROW
+        });
     }
 
     public fun execute_repay(
@@ -268,6 +325,14 @@ module lending_core::logic {
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: repay_debt,
+            pool_id: dola_pool_id,
+            violator_id: 0,
+            call_type: REPAY
+        });
     }
 
     /// Turn liquid asset into collateral
@@ -289,6 +354,14 @@ module lending_core::logic {
 
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: 0,
+            pool_id: dola_pool_id,
+            violator_id: 0,
+            call_type: AS_COLLATERAL
+        });
     }
 
     /// Turn collateral into liquid asset
@@ -315,6 +388,14 @@ module lending_core::logic {
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
         update_average_liquidity(cap, storage, oracle, dola_user_id);
+
+        emit(LendingCoreExecuteEvent {
+            user_id: dola_user_id,
+            amount: 0,
+            pool_id: dola_pool_id,
+            violator_id: 0,
+            call_type: CANCLE_AS_COLLATERAL
+        });
     }
 
     /// Check whether the maximum borrow limit has been reached
