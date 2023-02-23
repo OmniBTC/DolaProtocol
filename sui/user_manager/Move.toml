@@ -12,7 +12,7 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework"
-rev = "b63532e36df5b1fcccff3893509259494c719a78"
+rev = "598f106ef5fbdfbe1b644236f0caf46c94f4d1b7"
 
 [dependencies.DolaTypes]
 local = "../dola_types"
