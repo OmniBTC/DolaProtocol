@@ -281,7 +281,6 @@ module dola_portal::portal {
         pool_addr,
         LENDING_APP_ID,
         (deposit_amount as u256),
-        ctx
         );
         // Reigster user id for user
         if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
@@ -617,7 +616,6 @@ module dola_portal::portal {
         pool_addr,
         LENDING_APP_ID,
         (repay_amount as u256),
-        ctx
         );
         if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
         user_manager::user_manager::register_dola_user_id(

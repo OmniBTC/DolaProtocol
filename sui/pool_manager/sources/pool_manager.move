@@ -26,6 +26,14 @@ module pool_manager::pool_manager {
     const DEFAULT_LAMBDA_1: u256 = 5000000000000000000000000;
 
     /// Errors
+    const EEXIST_POOL_CATALOG: u64 = 0;
+
+    const ENOT_POOL_CATALOG: u64 = 0;
+
+    const ENOT_POOL_INFO: u64 = 0;
+
+    const ENOT_APP_INFO: u64 = 0;
+
     const EMUST_DEPLOYER: u64 = 0;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 1;
@@ -134,14 +142,14 @@ module pool_manager::pool_manager {
     ) {
         // Update pool catalog
         let pool_catalog = &mut pool_manager_info.pool_catalog;
+        assert!(!table::contains(&mut pool_catalog.pool_to_id, pool), EEXIST_POOL_CATALOG);
+
+        table::add(&mut pool_catalog.pool_to_id, pool, dola_pool_id);
         if (!table::contains(&mut pool_catalog.id_to_pools, dola_pool_id)) {
             table::add(&mut pool_catalog.id_to_pools, dola_pool_id, vector::empty());
         };
-        if (!table::contains(&mut pool_catalog.pool_to_id, pool)) {
-            table::add(&mut pool_catalog.pool_to_id, pool, dola_pool_id);
-            let pools = table::borrow_mut(&mut pool_catalog.id_to_pools, dola_pool_id);
-            vector::push_back(pools, pool);
-        };
+        let pools = table::borrow_mut(&mut pool_catalog.id_to_pools, dola_pool_id);
+        vector::push_back(pools, pool);
 
         // Update pool info
         let pool_infos = &mut pool_manager_info.pool_infos;
@@ -163,6 +171,14 @@ module pool_manager::pool_manager {
             equilibrium_fee: 0,
             weight: pool_weight
         });
+
+        // Update app info
+        let app_infos = &mut pool_manager_info.app_infos;
+        if (!table::contains(app_infos, dola_pool_id)) {
+            table::add(app_infos, dola_pool_id, AppInfo {
+                app_liquidity: table::new(ctx)
+            }) ;
+        };
     }
 
     /// Set the weight of the liquidity pool by governance.
@@ -175,7 +191,7 @@ module pool_manager::pool_manager {
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        assert!(table::contains(pool_infos, dola_pool_id), ENOT_POOL_INFO);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
         let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
         pool_info.total_weight = pool_info.total_weight - pool_liquidity.weight + weight;
@@ -190,7 +206,7 @@ module pool_manager::pool_manager {
         alpha_1: u256
     ) {
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        assert!(table::contains(pool_infos, dola_pool_id), ENOT_POOL_INFO);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
         pool_info.alpha_1 = alpha_1;
     }
@@ -205,28 +221,30 @@ module pool_manager::pool_manager {
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        assert!(table::contains(pool_infos, dola_pool_id), ENOT_POOL_INFO);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
         let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
-
         pool_liquidity.lambda_1 = lambda_1;
     }
 
+    /// Get all DolaAddress according to dola pool id
     public fun get_pools_by_id(pool_manager: &mut PoolManagerInfo, dola_pool_id: u16): vector<DolaAddress> {
         let pool_catalog = &mut pool_manager.pool_catalog;
-        assert!(table::contains(&mut pool_catalog.id_to_pools, dola_pool_id), ENONEXISTENT_CATALOG);
+        assert!(table::contains(&mut pool_catalog.id_to_pools, dola_pool_id), ENOT_POOL_CATALOG);
         *table::borrow(&mut pool_catalog.id_to_pools, dola_pool_id)
     }
 
+    /// Get pool id according to DolaAddress
     public fun get_id_by_pool(pool_manager: &mut PoolManagerInfo, pool: DolaAddress): u16 {
         let pool_catalog = &mut pool_manager.pool_catalog;
-        assert!(table::contains(&mut pool_catalog.pool_to_id, pool), ENONEXISTENT_CATALOG);
+        assert!(table::contains(&mut pool_catalog.pool_to_id, pool), ENOT_POOL_CATALOG);
         *table::borrow(&mut pool_catalog.pool_to_id, pool)
     }
 
+    /// Get pool name (Such as Btc) according to dola pool id
     public fun get_pool_name_by_id(pool_manager: &mut PoolManagerInfo, dola_pool_id: u16): String {
         let pool_infos = &mut pool_manager.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+        assert!(table::contains(pool_infos, dola_pool_id), ENOT_POOL_INFO);
         let pool_info = table::borrow(pool_infos, dola_pool_id);
         pool_info.name
     }
@@ -237,6 +255,7 @@ module pool_manager::pool_manager {
         }
     }
 
+    /// Find DolaAddress according to dola pool id and dst chain
     public fun find_pool_by_chain(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16,
@@ -265,7 +284,7 @@ module pool_manager::pool_manager {
         if (table::contains(app_infos, dola_pool_id)) {
             let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
 
-            assert!(table::contains(app_liquidity, app_id), ENONEXISTENT_RESERVE);
+            assert!(table::contains(app_liquidity, app_id), ENOT_APP_INFO);
             table::borrow(app_liquidity, app_id).value
         } else { 0 }
     }
@@ -334,8 +353,7 @@ module pool_manager::pool_manager {
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
         app_id: u16,
-        amount: u256,
-        ctx: &mut TxContext
+        amount: u256
     ): (u256, u256) {
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
@@ -356,11 +374,6 @@ module pool_manager::pool_manager {
 
         // Update app infos
         let app_infos = &mut pool_manager_info.app_infos;
-        if (!table::contains(app_infos, dola_pool_id)) {
-            table::add(app_infos, dola_pool_id, AppInfo {
-                app_liquidity: table::new(ctx)
-            }) ;
-        };
         let app_liquidity = &mut table::borrow_mut(app_infos, dola_pool_id).app_liquidity;
         if (!table::contains(app_liquidity, app_id)) {
             table::add(app_liquidity, app_id, Liquidity {
@@ -510,7 +523,6 @@ module pool_manager::pool_manager {
                 pool,
                 0,
                 amount,
-                test_scenario::ctx(scenario)
             );
             destroy_manager(cap);
 
@@ -564,7 +576,6 @@ module pool_manager::pool_manager {
                 pool,
                 0,
                 amount,
-                test_scenario::ctx(scenario)
             );
             destroy_manager(cap);
 

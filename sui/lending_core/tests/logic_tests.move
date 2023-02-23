@@ -260,8 +260,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 supply_pool,
                 0,
-                supply_amount,
-                test_scenario::ctx(scenario)
+                (supply_amount as u256),
             );
             logic::execute_supply(
                 &storage_cap,
@@ -460,8 +459,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 usdt_pool,
                 0,
-                repay_usdt_amount,
-                test_scenario::ctx(scenario)
+                (repay_usdt_amount as u256),
             );
             logic::execute_repay(
                 &storage_cap,

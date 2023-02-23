@@ -125,7 +125,6 @@ module wormhole_bridge::bridge_core {
             app_manager::get_app_id(app_cap),
             // todo: use wormhole chainid
             (amount as u256),
-            ctx
         );
         if (!user_manager::is_dola_user(user_manager_info, user)) {
             user_manager::register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
@@ -166,7 +165,6 @@ module wormhole_bridge::bridge_core {
             // todo: use wormhole chainid
             // wormhole_u16::to_u64(myvaa::get_emitter_chain(&vaa)),
             (deposit_amount as u256),
-            ctx
         );
         // myvaa::destroy(vaa);
         (deposit_pool, deposit_user, (actual_amount as u64), withdraw_pool, app_id, app_payload)
