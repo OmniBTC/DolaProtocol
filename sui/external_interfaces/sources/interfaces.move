@@ -530,7 +530,7 @@ module external_interfaces::interfaces {
             deposit_amount,
             equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
             total_equilibrium_reward,
-            pool_manager::get_default_alpha_1()
+            pool_manager::get_default_lambda_1()
         ) ;
         emit(LiquidityEquilibriumReward {
             reward: equilibrium_reward

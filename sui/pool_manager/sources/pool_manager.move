@@ -336,7 +336,7 @@ module pool_manager::pool_manager {
             amount,
             equilibrium_fee::calculate_expected_ratio(pool_info.total_weight, pool_liquidity.weight),
             pool_liquidity.equilibrium_fee,
-            pool_info.alpha_1
+            pool_info.lambda_1
         );
         let actual_amount = amount + equilibrium_reward;
 
