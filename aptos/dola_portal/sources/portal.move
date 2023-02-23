@@ -13,7 +13,7 @@ module dola_portal::portal {
     use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
     use serde::u16::{Self, U16};
     use wormhole::state;
-    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw, send_binding, send_unbinding};
+    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw, send_protocol_payload, send_lending_helper_payload};
 
     /// Errors
     const EINVALID_LENGTH: u64 = 0;
@@ -37,6 +37,10 @@ module dola_portal::portal {
     const BINDING: u8 = 5;
 
     const UNBINDING: u8 = 6;
+
+    const AS_COLLATERAL: u8 = 7;
+
+    const CANCEL_AS_COLLATERAL: u8 = 8;
 
     /// Events
     struct PortalEventHandle has key {
@@ -81,13 +85,27 @@ module dola_portal::portal {
         nonce
     }
 
+    public entry fun as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u64>,
+    ) {
+        send_lending_helper_payload(sender, dola_pool_ids, AS_COLLATERAL);
+    }
+
+    public entry fun cancel_as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u64>,
+    ) {
+        send_lending_helper_payload(sender, dola_pool_ids, CANCEL_AS_COLLATERAL);
+    }
+
     public entry fun binding(
         sender: &signer,
         dola_chain_id: u64,
         bind_address: vector<u8>,
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        send_binding(sender, nonce, dola_chain_id, bind_address);
+        send_protocol_payload(sender, nonce, dola_chain_id, bind_address, BINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
             &mut event_handle.protocol_event_handle,
@@ -108,7 +126,7 @@ module dola_portal::portal {
         unbind_address: vector<u8>
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        send_unbinding(sender, nonce, dola_chain_id, unbind_address);
+        send_protocol_payload(sender, nonce, dola_chain_id, unbind_address, UNBINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         emit_event(
             &mut event_handle.protocol_event_handle,

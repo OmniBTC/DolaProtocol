@@ -110,50 +110,6 @@ contract BridgePool {
         increaseNonce();
     }
 
-    function sendBinding(
-        uint64 nonce,
-        uint8 callType,
-        uint16 bindDolaChainId,
-        bytes memory bindAddress
-    ) external payable {
-        bytes memory payload = LibProtocol.encodeProtocolAppPayload(
-            dolaChainId,
-            nonce,
-            callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
-        );
-        cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
-        increaseNonce();
-    }
-
-    function sendUnbinding(
-        uint64 nonce,
-        uint8 callType,
-        uint16 unbindDolaChainId,
-        bytes memory unbindAddress
-    ) external payable {
-        bytes memory payload = LibProtocol.encodeProtocolAppPayload(
-            dolaChainId,
-            nonce,
-            callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress)
-        );
-        cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
-        increaseNonce();
-    }
-
     function sendDeposit(
         address token,
         uint256 amount,

@@ -412,7 +412,7 @@ module lending_core::lending_wormhole_adapter {
         sender: DolaAddress,
         dola_pool_ids: vector<u16>,
         call_type: u8,
-    ) {
+    ): vector<u8> {
         let payload = vector::empty<u8>();
 
         let sender = encode_dola_address(sender);
@@ -428,6 +428,7 @@ module lending_core::lending_wormhole_adapter {
         };
 
         serialize_u8(&mut payload, call_type);
+        payload
     }
 
     public fun decode_app_helper_payload(
