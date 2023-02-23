@@ -87,7 +87,7 @@ contract OmniPool {
             decimals(token)
         );
         if (token == address(0)) {
-            (bool success,) = to.call{value : fixedAmount}("");
+            (bool success, ) = to.call{value: fixedAmount}("");
             require(success, "ETH transfer failed");
         } else {
             bool success = IERC20(token).transfer(to, fixedAmount);
