@@ -231,22 +231,22 @@ module user_manager::user_manager {
 
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5, 2);
+            register_dola_chain_id(&governance_cap, &mut user_manager_info, 5, 2);
             assert!(*table::borrow(&user_manager_info.chain_id_to_group, 5) == 2, 0);
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
-            unregister_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5);
+            unregister_dola_chain_id(&governance_cap, &mut user_manager_info, 5);
             assert!(!table::contains(&user_manager_info.chain_id_to_group, 5), 0);
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(user_manager_info);
         };
@@ -267,20 +267,20 @@ module user_manager::user_manager {
 
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 2, 2);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5, 2);
+            register_dola_chain_id(&governance_cap, &mut user_manager_info, 2, 2);
+            register_dola_chain_id(&governance_cap, &mut user_manager_info, 5, 2);
             assert!(*table::borrow(&user_manager_info.chain_id_to_group, 2) == 2, 0);
             assert!(*table::borrow(&user_manager_info.chain_id_to_group, 5) == 2, 0);
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
             let user_manager_cap = UserManagerCap {};
 
@@ -299,7 +299,7 @@ module user_manager::user_manager {
             assert!(!vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);
             assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user3), 0);
 
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
             destroy_manager(user_manager_cap);
 
             test_scenario::return_shared(user_manager_info);

@@ -1,6 +1,6 @@
 #[test_only]
 module lending_core::logic_tests {
-    use std::ascii::string;
+    use std::ascii;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::{Self, DolaAddress};
@@ -74,7 +74,7 @@ module lending_core::logic_tests {
     const ETH_BF: u256 = 1100000000000000000000000000;
 
 
-    public fun init(ctx: &mut TxContext) {
+    public fun init_for_test(ctx: &mut TxContext) {
         oracle::init_for_testing(ctx);
         app_manager::init_for_testing(ctx);
         pool_manager::init_for_testing(ctx);
@@ -101,28 +101,61 @@ module lending_core::logic_tests {
     }
 
     public fun init_pools(pool_manager_info: &mut PoolManagerInfo, ctx: &mut TxContext) {
-        let gonvernance_cap = genesis::register_governance_cap_for_testing();
+        let governance_cap = genesis::register_governance_cap_for_testing();
 
 
         // register btc pool
         let pool = types::create_dola_address(0, b"BTC");
-        let pool_name = string(b"BTC");
-        pool_manager::register_pool(&gonvernance_cap, pool_manager_info, pool, pool_name, BTC_POOL_ID, 1, ctx);
+        let pool_name = ascii::string(b"BTC");
+        pool_manager::register_pool_id(
+            &governance_cap,
+            pool_manager_info,
+            pool_name,
+            BTC_POOL_ID,
+            ctx
+        );
+        pool_manager::register_pool(&governance_cap, pool_manager_info, pool, BTC_POOL_ID);
+        pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register usdt pool
         let pool = types::create_dola_address(0, b"USDT");
-        let pool_name = string(b"USDT");
-        pool_manager::register_pool(&gonvernance_cap, pool_manager_info, pool, pool_name, USDT_POOL_ID, 1, ctx);
+        let pool_name = ascii::string(b"USDT");
+        pool_manager::register_pool_id(
+            &governance_cap,
+            pool_manager_info,
+            pool_name,
+            USDT_POOL_ID,
+            ctx
+        );
+        pool_manager::register_pool(&governance_cap, pool_manager_info, pool, USDT_POOL_ID);
+        pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register usdc pool
         let pool = types::create_dola_address(0, b"USDC");
-        let pool_name = string(b"USDC");
-        pool_manager::register_pool(&gonvernance_cap, pool_manager_info, pool, pool_name, USDC_POOL_ID, 1, ctx);
+        let pool_name = ascii::string(b"USDC");
+        pool_manager::register_pool_id(
+            &governance_cap,
+            pool_manager_info,
+            pool_name,
+            USDC_POOL_ID,
+            ctx
+        );
+        pool_manager::register_pool(&governance_cap, pool_manager_info, pool, USDC_POOL_ID);
+        pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register eth pool
         let pool = types::create_dola_address(0, b"ETH");
-        let pool_name = string(b"ETH");
-        pool_manager::register_pool(&gonvernance_cap, pool_manager_info, pool, pool_name, ETH_POOL_ID, 1, ctx);
+        let pool_name = ascii::string(b"ETH");
+        pool_manager::register_pool_id(
+            &governance_cap,
+            pool_manager_info,
+            pool_name,
+            ETH_POOL_ID,
+            ctx
+        );
+        pool_manager::register_pool(&governance_cap, pool_manager_info, pool, ETH_POOL_ID);
+        pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
+        genesis::destroy(governance_cap);
     }
 
     public fun init_reserves(storage: &mut Storage, oracle: &mut PriceOracle, ctx: &mut TxContext) {
@@ -200,7 +233,7 @@ module lending_core::logic_tests {
         let scenario_val = test_scenario::begin(creator);
         let scenario = &mut scenario_val;
         {
-            init(test_scenario::ctx(scenario));
+            init_for_test(test_scenario::ctx(scenario));
         };
         test_scenario::next_tx(scenario, creator);
         {
@@ -278,6 +311,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            pool_manager::destroy_manager(pool_manager_cap);
         };
     }
 
@@ -312,7 +346,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 borrow_pool,
                 0,
-                borrow_amount
+                (borrow_amount as u256)
             );
 
             // Check user dtoken
@@ -321,6 +355,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            pool_manager::destroy_manager(pool_manager_cap);
         };
     }
 
@@ -382,7 +417,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 btc_pool,
                 0,
-                withdraw_amount
+                (withdraw_amount as u256)
             );
 
             // Check user otoken
@@ -394,6 +429,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -480,6 +516,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }

@@ -100,7 +100,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u64, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
@@ -139,7 +139,7 @@ module wormhole_bridge::bridge_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
-        ctx: &mut TxContext
+        _ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now

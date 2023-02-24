@@ -18,6 +18,7 @@ module pool_manager::pool_manager {
     use sui::test_scenario;
     #[test_only]
     use governance::genesis;
+    use sui::event;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
@@ -27,32 +28,18 @@ module pool_manager::pool_manager {
 
     /// Errors
     const EEXIST_POOL_ID: u64 = 0;
-    const ENOT_POOL_ID: u64 = 0;
 
-    const EEXIST_CERTAIN_POOL: u64 = 0;
-    const ENOT_CERTAIN_POOL: u64 = 0;
+    const ENOT_POOL_ID: u64 = 1;
 
-    const EEXIST_POOL_CATALOG: u64 = 0;
+    const EEXIST_CERTAIN_POOL: u64 = 2;
 
-    const ENOT_POOL_CATALOG: u64 = 0;
+    const ENOT_CERTAIN_POOL: u64 = 3;
 
-    const ENOT_POOL_INFO: u64 = 0;
+    const ENOT_APP_INFO: u64 = 4;
 
-    const ENOT_APP_INFO: u64 = 0;
+    const ENOT_ENOUGH_APP_LIQUIDITY: u64 = 5;
 
-    const EMUST_DEPLOYER: u64 = 0;
-
-    const ENOT_ENOUGH_APP_LIQUIDITY: u64 = 1;
-
-    const ENOT_ENOUGH_POOL_LIQUIDITY: u64 = 1;
-
-    const EONLY_ONE_ADMIN: u64 = 2;
-
-    const EMUST_SOME: u64 = 3;
-
-    const ENONEXISTENT_RESERVE: u64 = 4;
-
-    const ENONEXISTENT_CATALOG: u64 = 5;
+    const ENOT_ENOUGH_POOL_LIQUIDITY: u64 = 6;
 
     /// Capability allowing liquidity status modification.
     /// Owned by bridge adapters (wormhole, layerzero, etc).
@@ -111,6 +98,22 @@ module pool_manager::pool_manager {
         pool_to_id: Table<DolaAddress, u16>,
         // dola_pool_id => pool addresses
         id_to_pools: Table<u16, vector<DolaAddress>>
+    }
+
+    /// Events
+
+    /// The event of add liquidity
+    struct AddLiquidity has copy, drop {
+        pool: DolaAddress,
+        amount: u256,
+        equilibrium_reward: u256
+    }
+
+    /// The event of remove liquidity
+    struct RemoveLiquidity has copy, drop {
+        pool: DolaAddress,
+        amount: u256,
+        equilibrium_fee: u256
     }
 
     fun init(ctx: &mut TxContext) {
@@ -277,7 +280,6 @@ module pool_manager::pool_manager {
     public fun get_id_by_pool(pool_manager_info: &mut PoolManagerInfo, pool: DolaAddress): u16 {
         assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let pool_catalog = &mut pool_manager_info.pool_catalog;
-        assert!(table::contains(&mut pool_catalog.pool_to_id, pool), ENOT_POOL_CATALOG);
         *table::borrow(&mut pool_catalog.pool_to_id, pool)
     }
 
@@ -324,8 +326,11 @@ module pool_manager::pool_manager {
 
         let app_infos = &pool_manager_info.app_infos;
         let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
-        assert!(table::contains(app_liquidity, app_id), ENOT_APP_INFO);
-        table::borrow(app_liquidity, app_id).value
+        if (table::contains(app_liquidity, app_id)) {
+            table::borrow(app_liquidity, app_id).value
+        }else {
+            0
+        }
     }
 
     /// Get all liquidity for dola pool id
@@ -434,6 +439,12 @@ module pool_manager::pool_manager {
         pool_liquidity.value = pool_liquidity.value + amount;
         pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee - equilibrium_reward;
 
+        event::emit(AddLiquidity {
+            pool,
+            amount,
+            equilibrium_reward
+        });
+
         (actual_amount, equilibrium_reward)
     }
 
@@ -477,6 +488,12 @@ module pool_manager::pool_manager {
         pool_liquidity.value = pool_liquidity.value - actual_amount;
         pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + equilibrium_fee;
 
+        event::emit(RemoveLiquidity {
+            pool,
+            amount,
+            equilibrium_fee
+        });
+
         (actual_amount, equilibrium_fee)
     }
 
@@ -506,23 +523,23 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
             let pool = types::create_dola_address(0, b"USDT");
             let dola_pool_id = 0;
             register_pool_id(
-                &gonvernance_cap,
+                &governance_cap,
                 &mut pool_manager_info,
                 dola_pool_name,
                 dola_pool_id,
                 test_scenario::ctx(scenario)
             );
-            register_pool(&gonvernance_cap, &mut pool_manager_info, pool, dola_pool_id, );
-            set_pool_weight(&gonvernance_cap, &mut pool_manager_info, pool, 1, );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id, );
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1, );
 
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -543,21 +560,21 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_id = 0;
             register_pool_id(
-                &gonvernance_cap,
+                &governance_cap,
                 &mut pool_manager_info,
                 dola_pool_name,
                 dola_pool_id,
                 test_scenario::ctx(scenario)
             );
-            register_pool(&gonvernance_cap, &mut pool_manager_info, pool, dola_pool_id, );
-            set_pool_weight(&gonvernance_cap, &mut pool_manager_info, pool, 1, );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id, );
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1, );
 
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
@@ -597,22 +614,22 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let gonvernance_cap = genesis::register_governance_cap_for_testing();
+            let governance_cap = genesis::register_governance_cap_for_testing();
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
             let dola_pool_id = 0;
             register_pool_id(
-                &gonvernance_cap,
+                &governance_cap,
                 &mut pool_manager_info,
                 dola_pool_name,
                 dola_pool_id,
                 test_scenario::ctx(scenario)
             );
-            register_pool(&gonvernance_cap, &mut pool_manager_info, pool, dola_pool_id, );
-            set_pool_weight(&gonvernance_cap, &mut pool_manager_info, pool, 1, );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id);
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1);
 
-            genesis::destroy(gonvernance_cap);
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };

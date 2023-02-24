@@ -1,5 +1,5 @@
 module genesis_proposal::genesis_proposal {
-    use std::ascii::string;
+    use std::ascii;
     use std::option;
 
     use protocol_core::protocol_wormhole_adapter;
@@ -208,15 +208,17 @@ module genesis_proposal::genesis_proposal {
 
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
-            pool_manager::register_pool(
-                &governance_cap,
-                pool_manager_info,
-                pool,
-                string(dola_pool_name),
-                dola_pool_id,
-                0,
-                ctx
-            );
+            if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+                pool_manager::register_pool_id(
+                    &governance_cap,
+                    pool_manager_info,
+                    ascii::string(dola_pool_name),
+                    dola_pool_id,
+                    ctx
+                );
+            };
+            pool_manager::register_pool(&governance_cap, pool_manager_info, pool, dola_pool_id);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
