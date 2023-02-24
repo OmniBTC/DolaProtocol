@@ -1,19 +1,19 @@
 module dola_portal::portal {
-    use std::bcs::to_bytes;
+    use std::bcs;
     use std::signer;
     use std::vector;
 
-    use aptos_framework::account::new_event_handle;
+    use aptos_framework::account;
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin;
-    use aptos_framework::event::{EventHandle, emit_event};
+    use aptos_framework::event::{Self, EventHandle};
 
-    use dola_types::types::{create_dola_address, decode_dola_address, DolaAddress, convert_address_to_dola, encode_dola_address, get_native_dola_chain_id, convert_pool_to_dola, dola_address, dola_chain_id};
-    use omnipool::pool::normal_amount;
-    use serde::serde::{serialize_u64, serialize_u8, deserialize_u8, vector_slice, deserialize_u64, serialize_u16, serialize_vector, deserialize_u16};
+    use dola_types::types::{Self, DolaAddress};
+    use omnipool::pool;
+    use serde::serde;
     use serde::u16::{Self, U16};
     use wormhole::state;
-    use wormhole_bridge::bridge_pool::{send_deposit, send_withdraw, send_deposit_and_withdraw, send_protocol_payload, send_lending_helper_payload};
+    use wormhole_bridge::bridge_pool;
 
     /// Errors
     const EINVALID_LENGTH: u64 = 0;
@@ -73,8 +73,8 @@ module dola_portal::portal {
         assert!(signer::address_of(account) == @dola_portal, ENOT_DEPLOYER);
         move_to(account, PortalEventHandle {
             nonce: 0,
-            protocol_event_handle: new_event_handle<ProtocolPortalEvent>(account),
-            lending_event_handle: new_event_handle<LendingPortalEvent>(account)
+            protocol_event_handle: account::new_event_handle<ProtocolPortalEvent>(account),
+            lending_event_handle: account::new_event_handle<LendingPortalEvent>(account)
         })
     }
 
@@ -89,32 +89,32 @@ module dola_portal::portal {
         sender: &signer,
         dola_pool_ids: vector<u64>,
     ) {
-        send_lending_helper_payload(sender, dola_pool_ids, AS_COLLATERAL);
+        bridge_pool::send_lending_helper_payload(sender, dola_pool_ids, AS_COLLATERAL);
     }
 
     public entry fun cancel_as_collateral(
         sender: &signer,
         dola_pool_ids: vector<u64>,
     ) {
-        send_lending_helper_payload(sender, dola_pool_ids, CANCEL_AS_COLLATERAL);
+        bridge_pool::send_lending_helper_payload(sender, dola_pool_ids, CANCEL_AS_COLLATERAL);
     }
 
     public entry fun binding(
         sender: &signer,
         dola_chain_id: u64,
-        bind_address: vector<u8>,
+        binded_address: vector<u8>,
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        send_protocol_payload(sender, nonce, dola_chain_id, bind_address, BINDING);
+        bridge_pool::send_protocol_payload(sender, nonce, dola_chain_id, binded_address, BINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
-        emit_event(
+        event::emit_event(
             &mut event_handle.protocol_event_handle,
             ProtocolPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 user_chain_id: u16::from_u64(dola_chain_id),
-                user_address: bind_address,
+                user_address: binded_address,
                 call_type: BINDING
             }
         )
@@ -123,19 +123,19 @@ module dola_portal::portal {
     public entry fun unbinding(
         sender: &signer,
         dola_chain_id: u64,
-        unbind_address: vector<u8>
+        unbinded_address: vector<u8>
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        send_protocol_payload(sender, nonce, dola_chain_id, unbind_address, UNBINDING);
+        bridge_pool::send_protocol_payload(sender, nonce, dola_chain_id, unbinded_address, UNBINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
-        emit_event(
+        event::emit_event(
             &mut event_handle.protocol_event_handle,
             ProtocolPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 user_chain_id: u16::from_u64(dola_chain_id),
-                user_address: unbind_address,
+                user_address: unbinded_address,
                 call_type: UNBINDING
             }
         )
@@ -145,12 +145,12 @@ module dola_portal::portal {
         sender: &signer,
         deposit_coin: u64,
     ) acquires PortalEventHandle {
-        let user = convert_address_to_dola(signer::address_of(sender));
+        let user = types::convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
         let nonce = get_nonce();
-        let amount = normal_amount<CoinType>(deposit_coin);
+        let amount = pool::normal_amount<CoinType>(deposit_coin);
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             SUPPLY,
             amount,
@@ -159,18 +159,18 @@ module dola_portal::portal {
         );
         let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
 
-        send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(LENDING_APP_ID), app_payload);
+        bridge_pool::send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(LENDING_APP_ID), app_payload);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<CoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(0),
-                receiver: to_bytes(&signer::address_of(sender)),
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
                 amount,
                 call_type: SUPPLY
             }
@@ -183,38 +183,38 @@ module dola_portal::portal {
         dst_chain: u64,
         amount: u64,
     ) acquires PortalEventHandle {
-        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
+        let receiver = types::create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
         let nonce = get_nonce();
-        let amount = normal_amount<CoinType>(amount);
+        let amount = pool::normal_amount<CoinType>(amount);
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             WITHDRAW,
             amount,
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        let withdraw_pool = convert_pool_to_dola<CoinType>();
+        let withdraw_pool = types::convert_pool_to_dola<CoinType>();
 
-        send_withdraw(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
-            dola_chain_id(&withdraw_pool),
-            dola_address(&withdraw_pool),
+            types::get_dola_chain_id(&withdraw_pool),
+            types::get_dola_address(&withdraw_pool),
             u16::from_u64(LENDING_APP_ID),
             app_payload
         );
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<CoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
                 amount,
@@ -230,18 +230,18 @@ module dola_portal::portal {
         dst_chain: u64,
         amount: u64,
     ) acquires PortalEventHandle {
-        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
+        let receiver = types::create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
         let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             WITHDRAW,
             amount,
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        send_withdraw(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
             u16::from_u64(dst_chain),
@@ -252,13 +252,13 @@ module dola_portal::portal {
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
                 dola_pool_address: pool,
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
                 amount,
@@ -273,12 +273,12 @@ module dola_portal::portal {
         dst_chain: u64,
         amount: u64,
     ) acquires PortalEventHandle {
-        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
+        let receiver = types::create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
         let nonce = get_nonce();
-        let amount = normal_amount<CoinType>(amount);
+        let amount = pool::normal_amount<CoinType>(amount);
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             BORROW,
             amount,
@@ -286,26 +286,26 @@ module dola_portal::portal {
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        let withdraw_pool = convert_pool_to_dola<CoinType>();
+        let withdraw_pool = types::convert_pool_to_dola<CoinType>();
 
-        send_withdraw(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
-            dola_chain_id(&withdraw_pool),
-            dola_address(&withdraw_pool),
+            types::get_dola_chain_id(&withdraw_pool),
+            types::get_dola_address(&withdraw_pool),
             u16::from_u64(LENDING_APP_ID),
             app_payload
         );
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<CoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
                 amount,
@@ -321,18 +321,18 @@ module dola_portal::portal {
         dst_chain: u64,
         amount: u64,
     ) acquires PortalEventHandle {
-        let receiver = create_dola_address(u16::from_u64(dst_chain), receiver_addr);
+        let receiver = types::create_dola_address(u16::from_u64(dst_chain), receiver_addr);
 
         let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             BORROW,
             amount,
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        send_withdraw(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
             u16::from_u64(dst_chain),
@@ -343,13 +343,13 @@ module dola_portal::portal {
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
                 dola_pool_address: pool,
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(dst_chain),
                 receiver: receiver_addr,
                 amount,
@@ -362,12 +362,12 @@ module dola_portal::portal {
         sender: &signer,
         repay_coin: u64,
     ) acquires PortalEventHandle {
-        let user_addr = convert_address_to_dola(signer::address_of(sender));
+        let user_addr = types::convert_address_to_dola(signer::address_of(sender));
 
         let nonce = get_nonce();
-        let amount = normal_amount<CoinType>(repay_coin);
+        let amount = pool::normal_amount<CoinType>(repay_coin);
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             REPAY,
             amount,
@@ -377,19 +377,19 @@ module dola_portal::portal {
 
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        send_deposit(sender, wormhole_message_fee, repay_coin, u16::from_u64(LENDING_APP_ID), app_payload);
+        bridge_pool::send_deposit(sender, wormhole_message_fee, repay_coin, u16::from_u64(LENDING_APP_ID), app_payload);
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<CoinType>()),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<CoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(0),
-                receiver: to_bytes(&signer::address_of(sender)),
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
                 amount,
                 call_type: REPAY
             }
@@ -404,20 +404,20 @@ module dola_portal::portal {
         // punished person
         liquidate_user_id: u64,
     ) acquires PortalEventHandle {
-        let receiver = convert_address_to_dola(signer::address_of(sender));
+        let receiver = types::convert_address_to_dola(signer::address_of(sender));
 
         let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
-            u16::from_u64(get_native_dola_chain_id()),
+            u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             LIQUIDATE,
-            normal_amount<DebtCoinType>(debt_amount),
+            pool::normal_amount<DebtCoinType>(debt_amount),
             receiver, liquidate_user_id);
 
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_amount);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        send_deposit_and_withdraw<DebtCoinType>(
+        bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
             sender,
             wormhole_message_fee,
             debt_coin,
@@ -429,15 +429,15 @@ module dola_portal::portal {
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
-        emit_event(
+        event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
                 nonce,
                 sender: signer::address_of(sender),
-                dola_pool_address: dola_address(&convert_pool_to_dola<DebtCoinType>()),
-                source_chain_id: u16::from_u64(get_native_dola_chain_id()),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<DebtCoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 dst_chain_id: u16::from_u64(0),
-                receiver: to_bytes(&signer::address_of(sender)),
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
                 amount: debt_amount,
                 call_type: LIQUIDATE
             }
@@ -454,15 +454,15 @@ module dola_portal::portal {
     ): vector<u8> {
         let payload = vector::empty<u8>();
 
-        serialize_u16(&mut payload, source_chain_id);
-        serialize_u64(&mut payload, nonce);
+        serde::serialize_u16(&mut payload, source_chain_id);
+        serde::serialize_u64(&mut payload, nonce);
 
-        serialize_u64(&mut payload, amount);
-        let receiver = encode_dola_address(receiver);
-        serialize_u16(&mut payload, u16::from_u64(vector::length(&receiver)));
-        serialize_vector(&mut payload, receiver);
-        serialize_u64(&mut payload, liquidate_user_id);
-        serialize_u8(&mut payload, call_type);
+        serde::serialize_u64(&mut payload, amount);
+        let receiver = types::encode_dola_address(receiver);
+        serde::serialize_u16(&mut payload, u16::from_u64(vector::length(&receiver)));
+        serde::serialize_vector(&mut payload, receiver);
+        serde::serialize_u64(&mut payload, liquidate_user_id);
+        serde::serialize_u8(&mut payload, call_type);
         payload
     }
 
@@ -471,31 +471,31 @@ module dola_portal::portal {
         let data_len;
 
         data_len = 2;
-        let source_chain_id = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let source_chain_id = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let nonce = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let amount = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let amount = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
-        let receive_length = deserialize_u16(&vector_slice(&app_payload, index, index + data_len));
+        let receive_length = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = u16::to_u64(receive_length);
-        let receiver = decode_dola_address(vector_slice(&app_payload, index, index + data_len));
+        let receiver = types::decode_dola_address(serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
-        let liquidate_user_id = deserialize_u64(&vector_slice(&app_payload, index, index + data_len));
+        let liquidate_user_id = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
-        let call_type = deserialize_u8(&vector_slice(&app_payload, index, index + data_len));
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);

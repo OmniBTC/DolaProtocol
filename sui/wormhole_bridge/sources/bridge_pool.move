@@ -1,7 +1,7 @@
 module wormhole_bridge::bridge_pool {
-    use dola_types::types::{DolaAddress, dola_chain_id, dola_address};
+    use dola_types::types::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
-    use omnipool::pool::{Self, Pool, PoolCap, deposit_and_withdraw};
+    use omnipool::pool::{Self, Pool, PoolCap};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -92,19 +92,19 @@ module wormhole_bridge::bridge_pool {
     //     nonce: u64,
     //     source_chain_id: u16,
     //     dola_chain_id: u16,
-    //     bind_address: vector<u8>,
+    //     binded_address: vector<u8>,
     //     call_type: u8,
     //     ctx: &mut TxContext
     // ) {
     //     let user = tx_context::sender(ctx);
     //     let user = convert_address_to_dola(user);
-    //     let bind_address = create_dola_address(dola_chain_id, bind_address);
+    //     let binded_address = create_dola_address(dola_chain_id, binded_address);
     //     let payload = protocol_wormhole_adapter::encode_app_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,
     //         user,
-    //         bind_address
+    //         binded_address
     //     );
     //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
     //     let index = table::length(&pool_state.cache_vaas) + 1;
@@ -118,19 +118,19 @@ module wormhole_bridge::bridge_pool {
     //     nonce: u64,
     //     source_chain_id: u16,
     //     dola_chain_id: u16,
-    //     unbind_address: vector<u8>,
+    //     unbinded_address: vector<u8>,
     //     call_type: u8,
     //     ctx: &mut TxContext
     // ) {
     //     let user = tx_context::sender(ctx);
     //     let user = convert_address_to_dola(user);
-    //     let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+    //     let unbinded_address = create_dola_address(dola_chain_id, unbinded_address);
     //     let payload = protocol_wormhole_adapter::encode_app_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,
     //         user,
-    //         unbind_address
+    //         unbinded_address
     //     );
     //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
     //     let index = table::length(&pool_state.cache_vaas) + 1;
@@ -193,7 +193,7 @@ module wormhole_bridge::bridge_pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = deposit_and_withdraw<DepositCoinType>(
+        let msg = pool::deposit_and_withdraw<DepositCoinType>(
             deposit_pool,
             deposit_coin,
             withdraw_chain_id,
@@ -232,9 +232,9 @@ module wormhole_bridge::bridge_pool {
         emit(PoolWithdrawEvent {
             nonce,
             source_chain_id,
-            dst_chain_id: dola_chain_id(&pool_address),
-            pool_address: dola_address(&pool_address),
-            receiver: dola_address(&receiver),
+            dst_chain_id: types::get_dola_chain_id(&pool_address),
+            pool_address: types::get_dola_address(&pool_address),
+            receiver: types::get_dola_address(&receiver),
             amount
         })
     }

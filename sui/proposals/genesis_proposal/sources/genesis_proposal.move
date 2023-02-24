@@ -1,5 +1,5 @@
 module genesis_proposal::genesis_proposal {
-    use std::ascii::string;
+    use std::ascii;
     use std::option;
 
     use protocol_core::protocol_wormhole_adapter;
@@ -18,6 +18,8 @@ module genesis_proposal::genesis_proposal {
     use wormhole::state::State;
     use wormhole_bridge::bridge_core::{Self, CoreState};
     use wormhole_bridge::bridge_pool::{Self, PoolState};
+
+    const EVM_GROUP_ID: u16 = 2;
 
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
@@ -141,9 +143,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let user_manager_cap = user_manager::register_cap_with_governance(&governance_cap);
-            // todo: chain id should be fixed, initializing multiple evm_chain_id according to the actual situation
-            user_manager::register_evm_chain_id(&user_manager_cap, user_manager, evm_chain_id);
+            user_manager::register_dola_chain_id(&governance_cap, user_manager, evm_chain_id, EVM_GROUP_ID);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
@@ -206,18 +206,19 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let pool_manager_cap = pool_manager::register_cap_with_governance(&governance_cap);
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
-            pool_manager::register_pool(
-                &pool_manager_cap,
-                pool_manager_info,
-                pool,
-                string(dola_pool_name),
-                dola_pool_id,
-                0,
-                ctx
-            );
+            if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+                pool_manager::register_pool_id(
+                    &governance_cap,
+                    pool_manager_info,
+                    ascii::string(dola_pool_name),
+                    dola_pool_id,
+                    ctx
+                );
+            };
+            pool_manager::register_pool(&governance_cap, pool_manager_info, pool, dola_pool_id);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 

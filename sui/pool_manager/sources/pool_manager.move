@@ -4,36 +4,46 @@ module pool_manager::pool_manager {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{DolaAddress, dola_chain_id};
+    use dola_types::types::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
-    use pool_manager::equilibrium_fee::{calculate_equilibrium_fee, calculate_expected_ratio, calculate_equilibrium_reward};
+    use pool_manager::equilibrium_fee;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
     #[test_only]
-    use dola_types::types::create_dola_address;
-    #[test_only]
     use std::ascii::string;
     #[test_only]
     use sui::test_scenario;
+    #[test_only]
+    use governance::genesis;
+    use sui::event;
 
-    const EMUST_DEPLOYER: u64 = 0;
+    /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
+    const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 1;
+    /// Fee ratio 0.5%
+    const DEFAULT_LAMBDA_1: u256 = 5000000000000000000000000;
 
-    const EONLY_ONE_ADMIN: u64 = 2;
+    /// Errors
+    const EEXIST_POOL_ID: u64 = 0;
 
-    const EMUST_SOME: u64 = 3;
+    const ENOT_POOL_ID: u64 = 1;
 
-    const ENONEXISTENT_RESERVE: u64 = 4;
+    const EEXIST_CERTAIN_POOL: u64 = 2;
 
-    const ENONEXISTENT_CATALOG: u64 = 5;
+    const ENOT_CERTAIN_POOL: u64 = 3;
 
-    /// Capability allowing pool creation, liquidity status modification.
+    const ENOT_APP_INFO: u64 = 4;
+
+    const ENOT_ENOUGH_APP_LIQUIDITY: u64 = 5;
+
+    const ENOT_ENOUGH_POOL_LIQUIDITY: u64 = 6;
+
+    /// Capability allowing liquidity status modification.
     /// Owned by bridge adapters (wormhole, layerzero, etc).
-    struct PoolManagerCap has store, drop {}
+    struct PoolManagerCap has store {}
 
     /// Responsible for maintaining the global state of different chain pools
     struct PoolManagerInfo has key, store {
@@ -42,10 +52,11 @@ module pool_manager::pool_manager {
         app_infos: Table<u16, AppInfo>,
         // dola_pool_id => PoolInfo
         pool_infos: Table<u16, PoolInfo>,
-        // token and pool catalogs
+        // pool catalogs
         pool_catalog: PoolCatalog,
     }
 
+    /// Manage App information, including the liquidity that each app has
     struct AppInfo has store {
         // app id => app liquidity
         app_liquidity: Table<u16, Liquidity>
@@ -56,20 +67,30 @@ module pool_manager::pool_manager {
         name: String,
         // Total liquidity for the pool
         reserve: Liquidity,
-        // Total weight
-        weight: u16,
+        // Current liquidity ratio starts with the boundary value of the
+        // charge. Used to evaluate equilibrium fees
+        alpha_1: u256,
+        // Total weight. Used to evaluate equilibrium fees
+        total_weight: u256,
         // Every chain liquidity for the pool
         pools: Table<DolaAddress, PoolLiquidity>,
     }
 
     struct Liquidity has store {
-        value: u128
+        value: u256
     }
 
     struct PoolLiquidity has store {
-        balance: u128,
-        equilibrium_fee: u128,
-        weight: u8
+        // Liquidity of a certain chain pool
+        value: u256,
+        // The maximum rate of equilibrium fees. Separate settings due to different gas
+        // fees for different chains. Used to evaluate equilibrium fees
+        lambda_1: u256,
+        // The accumulated equilibrium fees of a certain chain pool. The equilibrium fee
+        // is kept in the pool manager and is not used
+        equilibrium_fee: u256,
+        // Weight of a certain chain pool
+        weight: u256
     }
 
     struct PoolCatalog has store {
@@ -77,6 +98,22 @@ module pool_manager::pool_manager {
         pool_to_id: Table<DolaAddress, u16>,
         // dola_pool_id => pool addresses
         id_to_pools: Table<u16, vector<DolaAddress>>
+    }
+
+    /// Events
+
+    /// The event of add liquidity
+    struct AddLiquidity has copy, drop {
+        pool: DolaAddress,
+        amount: u256,
+        equilibrium_reward: u256
+    }
+
+    /// The event of remove liquidity
+    struct RemoveLiquidity has copy, drop {
+        pool: DolaAddress,
+        amount: u256,
+        equilibrium_fee: u256
     }
 
     fun init(ctx: &mut TxContext) {
@@ -91,12 +128,67 @@ module pool_manager::pool_manager {
         })
     }
 
+    /// Determine if the dola pool id is registered
+    public fun exist_pool_id(
+        pool_manager_info: &PoolManagerInfo,
+        dola_pool_id: u16
+    ): bool {
+        table::contains(&pool_manager_info.pool_infos, dola_pool_id)
+    }
+
+    /// Determine if certain pool is registered
+    public fun exist_certain_pool(
+        pool_manager_info: &PoolManagerInfo,
+        pool: DolaAddress
+    ): bool {
+        let pool_catalog = &pool_manager_info.pool_catalog;
+        table::contains(&pool_catalog.pool_to_id, pool)
+    }
+
+    /// Giving the bridge adapter the right to make changes to the `pool_manager` module through governance
     public fun register_cap_with_governance(_: &GovernanceCap): PoolManagerCap {
         PoolManagerCap {}
     }
 
-    /// Add the pool to the protocol for management, and the application
-    /// in the protocol can use the pool after authorization.
+    /// Create a new pool id for managing similar tokens from different chains (e.g. USDC)
+    ///
+    /// params:
+    ///  - `dola_pool_name`: The name of the pool token is valid only for
+    /// the name of the first token registered for the token setting.
+    ///  - `dola_pool_id`: Represents a class of token in the protocol,
+    public fun register_pool_id(
+        _: &GovernanceCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_name: String,
+        dola_pool_id: u16,
+        ctx: &mut TxContext
+    ) {
+        assert!(!exist_pool_id(pool_manager_info, dola_pool_id), EEXIST_POOL_ID);
+
+        // Add pool info
+        let pool_infos = &mut pool_manager_info.pool_infos;
+        let pool_info = PoolInfo {
+            name: dola_pool_name,
+            reserve: zero_liquidity(),
+            pools: table::new(ctx),
+            alpha_1: DEFAULT_ALPHA_1,
+            total_weight: 0
+        };
+        table::add(pool_infos, dola_pool_id, pool_info);
+
+        // Add pool catalog
+        let pool_catalog = &mut pool_manager_info.pool_catalog;
+        table::add(&mut pool_catalog.id_to_pools, dola_pool_id, vector::empty());
+
+        // Add app info
+        let app_infos = &mut pool_manager_info.app_infos;
+        let app_info = AppInfo {
+            app_liquidity: table::new(ctx)
+        };
+        table::add(app_infos, dola_pool_id, app_info) ;
+    }
+
+    /// Add the pool of a certain chain to dola pool id for management
     ///
     /// params:
     ///  - `dola_pool_name`: The name of the pool token is valid only for
@@ -107,42 +199,28 @@ module pool_manager::pool_manager {
     /// the liquidity of the pool can be configured according to the heat of
     /// the chain to prevent the liquidity depletion problem.
     public fun register_pool(
-        _: &PoolManagerCap,
+        _: &GovernanceCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-        dola_pool_name: String,
-        dola_pool_id: u16,
-        pool_weight: u8,
-        ctx: &mut TxContext
+        dola_pool_id: u16
     ) {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
+        assert!(!exist_certain_pool(pool_manager_info, pool), EEXIST_CERTAIN_POOL);
+
         // Update pool catalog
         let pool_catalog = &mut pool_manager_info.pool_catalog;
-        if (!table::contains(&mut pool_catalog.id_to_pools, dola_pool_id)) {
-            table::add(&mut pool_catalog.id_to_pools, dola_pool_id, vector::empty());
-        };
-        if (!table::contains(&mut pool_catalog.pool_to_id, pool)) {
-            table::add(&mut pool_catalog.pool_to_id, pool, dola_pool_id);
-            let pools = table::borrow_mut(&mut pool_catalog.id_to_pools, dola_pool_id);
-            vector::push_back(pools, pool);
-        };
+        table::add(&mut pool_catalog.pool_to_id, pool, dola_pool_id);
+        let pools = table::borrow_mut(&mut pool_catalog.id_to_pools, dola_pool_id);
+        vector::push_back(pools, pool);
 
         // Update pool info
         let pool_infos = &mut pool_manager_info.pool_infos;
-        if (!table::contains(pool_infos, dola_pool_id)) {
-            let pool_info = PoolInfo {
-                name: dola_pool_name,
-                reserve: zero_liquidity(),
-                pools: table::new(ctx),
-                weight: 0
-            };
-            table::add(pool_infos, dola_pool_id, pool_info);
-        };
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
-        pool_info.weight = pool_info.weight + (pool_weight as u16);
         table::add(&mut pool_info.pools, pool, PoolLiquidity {
-            balance: 0,
+            value: 0,
+            lambda_1: DEFAULT_ALPHA_1,
             equilibrium_fee: 0,
-            weight: pool_weight
+            weight: 0
         });
     }
 
@@ -151,34 +229,66 @@ module pool_manager::pool_manager {
         _: &GovernanceCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-        weight: u8
+        weight: u256
     ) {
-        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
 
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
-        let pools_liquidity = &mut pool_info.pools;
-        let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        pool_info.weight = pool_info.weight - (pool_liquidity.weight as u16) + (weight as u16);
+        let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
+        pool_info.total_weight = pool_info.total_weight - pool_liquidity.weight + weight;
         pool_liquidity.weight = weight;
     }
 
-    public fun get_pools_by_id(pool_manager: &mut PoolManagerInfo, dola_pool_id: u16): vector<DolaAddress> {
-        let pool_catalog = &mut pool_manager.pool_catalog;
-        assert!(table::contains(&mut pool_catalog.id_to_pools, dola_pool_id), ENONEXISTENT_CATALOG);
+    /// Set the alpha of equilibrium fee by governance.
+    public fun set_equilibrium_alpha(
+        _: &GovernanceCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16,
+        alpha_1: u256
+    ) {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
+
+        let pool_infos = &mut pool_manager_info.pool_infos;
+        let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
+        pool_info.alpha_1 = alpha_1;
+    }
+
+    /// Set the lambda of equilibrium fee by governance.
+    public fun set_equilibrium_lambda(
+        _: &GovernanceCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        pool: DolaAddress,
+        lambda_1: u256
+    ) {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
+
+        let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
+        let pool_infos = &mut pool_manager_info.pool_infos;
+        let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
+        let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
+        pool_liquidity.lambda_1 = lambda_1;
+    }
+
+    /// Get all DolaAddress according to dola pool id
+    public fun get_pools_by_id(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): vector<DolaAddress> {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
+        let pool_catalog = &mut pool_manager_info.pool_catalog;
         *table::borrow(&mut pool_catalog.id_to_pools, dola_pool_id)
     }
 
-    public fun get_id_by_pool(pool_manager: &mut PoolManagerInfo, pool: DolaAddress): u16 {
-        let pool_catalog = &mut pool_manager.pool_catalog;
-        assert!(table::contains(&mut pool_catalog.pool_to_id, pool), ENONEXISTENT_CATALOG);
+    /// Get pool id according to DolaAddress
+    public fun get_id_by_pool(pool_manager_info: &mut PoolManagerInfo, pool: DolaAddress): u16 {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
+        let pool_catalog = &mut pool_manager_info.pool_catalog;
         *table::borrow(&mut pool_catalog.pool_to_id, pool)
     }
 
-    public fun get_pool_name_by_id(pool_manager: &mut PoolManagerInfo, dola_pool_id: u16): String {
-        let pool_infos = &mut pool_manager.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+    /// Get pool name (Such as Btc) according to dola pool id
+    public fun get_pool_name_by_id(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): String {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
+        let pool_infos = &mut pool_manager_info.pool_infos;
         let pool_info = table::borrow(pool_infos, dola_pool_id);
         pool_info.name
     }
@@ -189,6 +299,7 @@ module pool_manager::pool_manager {
         }
     }
 
+    /// Find DolaAddress according to dola pool id and dst chain
     public fun find_pool_by_chain(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16,
@@ -199,7 +310,7 @@ module pool_manager::pool_manager {
         let i = 0;
         while (i < len) {
             let d = *vector::borrow(&pools, i);
-            if (dola_chain_id(&d) == dst_chain) {
+            if (types::get_dola_chain_id(&d) == dst_chain) {
                 return option::some(d)
             };
             i = i + 1;
@@ -207,160 +318,190 @@ module pool_manager::pool_manager {
         option::none()
     }
 
+    /// Get app liquidity for dola pool id
     public fun get_app_liquidity(
         pool_manager_info: &PoolManagerInfo,
         dola_pool_id: u16,
         app_id: u16
-    ): u128 {
+    ): u256 {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
+
         let app_infos = &pool_manager_info.app_infos;
-
-        if (table::contains(app_infos, dola_pool_id)) {
-            let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
-
-            assert!(table::contains(app_liquidity, app_id), ENONEXISTENT_RESERVE);
+        let app_liquidity = &table::borrow(app_infos, dola_pool_id).app_liquidity;
+        if (table::contains(app_liquidity, app_id)) {
             table::borrow(app_liquidity, app_id).value
-        } else { 0 }
+        }else {
+            0
+        }
     }
 
-    public fun get_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): u128 {
-        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+    /// Get all liquidity for dola pool id
+    public fun get_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): u256 {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
         pool_info.reserve.value
     }
 
+    /// Get liquidity for certain pool
     public fun get_pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-    ): u128 {
+    ): u256 {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
-        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow(&pool_info.pools, pool);
-        pool_liquidity.balance
+        pool_liquidity.value
     }
 
+    /// Get equilibrium fee for certain pool
     public fun get_pool_equilibrium_fee(
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-    ): u128 {
+    ): u256 {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
-        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow(&pool_info.pools, pool);
         pool_liquidity.equilibrium_fee
     }
 
+    /// Get total weight for dola pool id
     public fun get_pool_total_weight(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16,
-    ): u16 {
-        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
+    ): u256 {
+        assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
-        pool_info.weight
+        pool_info.total_weight
     }
 
+    /// Get pool weight for certain pool
     public fun get_pool_weight(
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
-    ): u8 {
+    ): u256 {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
-        assert!(table::contains(&pool_manager_info.pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow(&pool_manager_info.pool_infos, dola_pool_id);
-        assert!(table::contains(&pool_info.pools, pool), ENONEXISTENT_RESERVE);
         let pool_liquidity = table::borrow(&pool_info.pools, pool);
         pool_liquidity.weight
     }
 
+    /// Get default alpha_1
+    public fun get_default_alpha_1(): u256 {
+        DEFAULT_ALPHA_1
+    }
+
+    /// Get default lambda 1
+    public fun get_default_lambda_1(): u256 {
+        DEFAULT_LAMBDA_1
+    }
+
+    /// Certain pool has a user deposit operation, update the pool manager status
     public fun add_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
         app_id: u16,
-        amount: u64,
-        ctx: &mut TxContext
-    ): (u64, u64) {
+        amount: u256
+    ): (u256, u256) {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
         // Calculate equilibrium reward
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
-        let pools_liquidity = &mut pool_info.pools;
-        let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        let equilibrium_reward = (calculate_equilibrium_reward(
-            (pool_info.reserve.value as u256),
-            (pool_liquidity.balance as u256),
-            (amount as u256),
-            calculate_expected_ratio(pool_info.weight, pool_liquidity.weight),
-            (pool_liquidity.equilibrium_fee as u256)
-        ) as u64);
+        let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
+        let equilibrium_reward = equilibrium_fee::calculate_equilibrium_reward(
+            pool_info.reserve.value,
+            pool_liquidity.value,
+            amount,
+            equilibrium_fee::calculate_expected_ratio(pool_info.total_weight, pool_liquidity.weight),
+            pool_liquidity.equilibrium_fee,
+            pool_liquidity.lambda_1
+        );
         let actual_amount = amount + equilibrium_reward;
 
-        // Update app infos
+        // Update liquidity of app infos
         let app_infos = &mut pool_manager_info.app_infos;
-        if (!table::contains(app_infos, dola_pool_id)) {
-            table::add(app_infos, dola_pool_id, AppInfo {
-                app_liquidity: table::new(ctx)
-            }) ;
-        };
         let app_liquidity = &mut table::borrow_mut(app_infos, dola_pool_id).app_liquidity;
         if (!table::contains(app_liquidity, app_id)) {
             table::add(app_liquidity, app_id, Liquidity {
-                value: (actual_amount as u128)
+                value: actual_amount
             });
         }else {
             let cur_app_liquidity = table::borrow_mut(app_liquidity, app_id);
-            cur_app_liquidity.value = cur_app_liquidity.value + (actual_amount as u128)
+            cur_app_liquidity.value = cur_app_liquidity.value + actual_amount
         };
 
-        // Update pool infos
-        pool_info.reserve.value = pool_info.reserve.value + (actual_amount as u128);
-        pool_liquidity.balance = pool_liquidity.balance + (actual_amount as u128);
-        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee - (equilibrium_reward as u128);
+        // Update liquidity of pool infos
+        // The pool liquidity store always stores the real number
+        pool_info.reserve.value = pool_info.reserve.value + amount;
+        pool_liquidity.value = pool_liquidity.value + amount;
+        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee - equilibrium_reward;
+
+        event::emit(AddLiquidity {
+            pool,
+            amount,
+            equilibrium_reward
+        });
 
         (actual_amount, equilibrium_reward)
     }
 
+    /// Certain pool has a user withdraw operation, update the pool manager status
     public fun remove_liquidity(
         _: &PoolManagerCap,
         pool_manager_info: &mut PoolManagerInfo,
         pool: DolaAddress,
         app_id: u16,
-        amount: u64,
-    ): (u64, u64) {
+        amount: u256,
+    ): (u256, u256) {
+        assert!(exist_certain_pool(pool_manager_info, pool), ENOT_CERTAIN_POOL);
         let dola_pool_id = get_id_by_pool(pool_manager_info, pool);
 
         // Calculate equilibrium fee
         let pool_infos = &mut pool_manager_info.pool_infos;
-        assert!(table::contains(pool_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
-        let pools_liquidity = &mut pool_info.pools;
-        assert!(table::contains(pools_liquidity, pool), ENONEXISTENT_RESERVE);
-        let pool_liquidity = table::borrow_mut(pools_liquidity, pool);
-        let equilibrium_fee = (calculate_equilibrium_fee(
-            (pool_info.reserve.value as u256),
-            (pool_liquidity.balance as u256),
-            (amount as u256),
-            calculate_expected_ratio(pool_info.weight, pool_liquidity.weight)
-        ) as u64);
+        let pool_liquidity = table::borrow_mut(&mut pool_info.pools, pool);
+        assert!(pool_liquidity.value >= amount, ENOT_ENOUGH_POOL_LIQUIDITY);
+        let equilibrium_fee = equilibrium_fee::calculate_equilibrium_fee(
+            pool_info.reserve.value,
+            pool_liquidity.value,
+            amount,
+            equilibrium_fee::calculate_expected_ratio(pool_info.total_weight, pool_liquidity.weight),
+            pool_info.alpha_1,
+            pool_liquidity.lambda_1
+        );
         let actual_amount = amount - equilibrium_fee;
 
-        // Update app infos
+        // Update liquidity of app infos
         let app_infos = &mut pool_manager_info.app_infos;
-        assert!(table::contains(app_infos, dola_pool_id), ENONEXISTENT_RESERVE);
         let app_liquidity = &mut table::borrow_mut(app_infos, dola_pool_id).app_liquidity;
+        assert!(table::contains(app_liquidity, app_id), ENOT_APP_INFO);
         let cur_app_liquidity = table::borrow_mut(app_liquidity, app_id);
-        cur_app_liquidity.value = cur_app_liquidity.value - (amount as u128);
+        assert!(cur_app_liquidity.value >= amount, ENOT_ENOUGH_APP_LIQUIDITY);
+        cur_app_liquidity.value = cur_app_liquidity.value - amount;
 
-        // Update pool infos
-        assert!(pool_liquidity.balance >= (amount as u128), ENOT_ENOUGH_LIQUIDITY);
-        pool_info.reserve.value = pool_info.reserve.value - (amount as u128);
-        pool_liquidity.balance = pool_liquidity.balance - (amount as u128);
-        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + (equilibrium_fee as u128);
+        // Update liquidity of pool infos
+        // The pool liquidity store always stores the real number
+        pool_info.reserve.value = pool_info.reserve.value - actual_amount;
+        pool_liquidity.value = pool_liquidity.value - actual_amount;
+        pool_liquidity.equilibrium_fee = pool_liquidity.equilibrium_fee + equilibrium_fee;
+
+        event::emit(RemoveLiquidity {
+            pool,
+            amount,
+            equilibrium_fee
+        });
 
         (actual_amount, equilibrium_fee)
+    }
+
+    /// Destroy manager
+    public fun destroy_manager(pool_manager_cap: PoolManagerCap) {
+        let PoolManagerCap {} = pool_manager_cap;
     }
 
     #[test_only]
@@ -392,13 +533,23 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let governance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = create_dola_address(0, b"USDT");
+            let pool = types::create_dola_address(0, b"USDT");
+            let dola_pool_id = 0;
+            register_pool_id(
+                &governance_cap,
+                &mut pool_manager_info,
+                dola_pool_name,
+                dola_pool_id,
+                test_scenario::ctx(scenario)
+            );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id, );
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1, );
 
-            let cap = register_manager_cap_for_testing();
-
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -409,7 +560,7 @@ module pool_manager::pool_manager {
     public fun test_add_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = create_dola_address(0, b"USDT");
+        let pool = types::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -419,12 +570,21 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let governance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let dola_pool_id = 0;
+            register_pool_id(
+                &governance_cap,
+                &mut pool_manager_info,
+                dola_pool_name,
+                dola_pool_id,
+                test_scenario::ctx(scenario)
+            );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id, );
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1, );
 
-            let cap = register_manager_cap_for_testing();
-
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
-
+            genesis::destroy(governance_cap);
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
@@ -438,11 +598,11 @@ module pool_manager::pool_manager {
                 pool,
                 0,
                 amount,
-                test_scenario::ctx(scenario)
             );
+            destroy_manager(cap);
 
-            assert!(get_token_liquidity(&mut pool_manager_info, 0) == (amount as u128), 0);
-            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == (amount as u128), 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -454,7 +614,7 @@ module pool_manager::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = create_dola_address(0, b"USDT");
+        let pool = types::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -464,11 +624,22 @@ module pool_manager::pool_manager {
         };
         test_scenario::next_tx(scenario, manager);
         {
+            let governance_cap = genesis::register_governance_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
 
-            let cap = register_manager_cap_for_testing();
+            let dola_pool_id = 0;
+            register_pool_id(
+                &governance_cap,
+                &mut pool_manager_info,
+                dola_pool_name,
+                dola_pool_id,
+                test_scenario::ctx(scenario)
+            );
+            register_pool(&governance_cap, &mut pool_manager_info, pool, dola_pool_id);
+            set_pool_weight(&governance_cap, &mut pool_manager_info, pool, 1);
 
-            register_pool(&cap, &mut pool_manager_info, pool, dola_pool_name, 0, 1, test_scenario::ctx(scenario));
+            genesis::destroy(governance_cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -482,8 +653,8 @@ module pool_manager::pool_manager {
                 pool,
                 0,
                 amount,
-                test_scenario::ctx(scenario)
             );
+            destroy_manager(cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
@@ -492,8 +663,8 @@ module pool_manager::pool_manager {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let cap = register_manager_cap_for_testing();
 
-            assert!(get_token_liquidity(&mut pool_manager_info, 0) == (amount as u128), 0);
-            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == (amount as u128), 0);
+            assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
+            assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             remove_liquidity(
                 &cap,
@@ -502,6 +673,7 @@ module pool_manager::pool_manager {
                 0,
                 amount
             );
+            destroy_manager(cap);
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);

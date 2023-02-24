@@ -1,14 +1,11 @@
 module wormhole_bridge::verify {
     use wormhole::external_address::ExternalAddress;
-    use std::option::Option;
-    use std::option;
+    use std::option::{Self, Option};
     use wormhole::vaa::{Self as vaa, VAA};
     use wormhole::u16::{Self as wormhole_u16};
-    use aptos_std::table::Table;
-    use aptos_std::table;
-    use serde::u16::{U16, Self};
-    use wormhole::set::Set;
-    use wormhole::set;
+    use aptos_std::table::{Self, Table};
+    use serde::u16::{Self, U16};
+    use wormhole::set::{Self, Set};
 
     const EUNKNOWN_CHAIN: u64 = 1;
 
@@ -52,7 +49,7 @@ module wormhole_bridge::verify {
         registered_emitters: &Table<U16, ExternalAddress>,
         consumed_vaas: &mut Set<vector<u8>>,
         vaa: vector<u8>): VAA {
-        let vaa = parse_and_verify( registered_emitters, vaa);
+        let vaa = parse_and_verify(registered_emitters, vaa);
         replay_protect(consumed_vaas, &vaa);
         vaa
     }
