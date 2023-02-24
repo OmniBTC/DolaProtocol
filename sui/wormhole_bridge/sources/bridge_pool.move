@@ -118,19 +118,19 @@ module wormhole_bridge::bridge_pool {
     //     nonce: u64,
     //     source_chain_id: u16,
     //     dola_chain_id: u16,
-    //     unbind_address: vector<u8>,
+    //     unbinded_address: vector<u8>,
     //     call_type: u8,
     //     ctx: &mut TxContext
     // ) {
     //     let user = tx_context::sender(ctx);
     //     let user = convert_address_to_dola(user);
-    //     let unbind_address = create_dola_address(dola_chain_id, unbind_address);
+    //     let unbinded_address = create_dola_address(dola_chain_id, unbinded_address);
     //     let payload = protocol_wormhole_adapter::encode_app_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,
     //         user,
-    //         unbind_address
+    //         unbinded_address
     //     );
     //     wormhole::publish_message(&mut pool_state.sender, wormhole_state, 0, payload, wormhole_message_fee);
     //     let index = table::length(&pool_state.cache_vaas) + 1;
@@ -159,17 +159,19 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
-    public fun send_withdraw<CoinType>(
-        pool: &mut Pool<CoinType>,
+    public fun send_withdraw(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
+        withdraw_chain_id: u16,
+        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::withdraw_to<CoinType>(
-            pool,
+        let msg = pool::withdraw_to(
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
             ctx
@@ -179,19 +181,23 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
-    public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun send_deposit_and_withdraw<DepositCoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
         deposit_pool: &mut Pool<DepositCoinType>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: u16,
+        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+        let msg = pool::deposit_and_withdraw<DepositCoinType>(
             deposit_pool,
             deposit_coin,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
             ctx

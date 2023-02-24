@@ -72,9 +72,9 @@ library LibPool {
     }
 
     function decodeSendDepositPayload(bytes memory payload)
-    internal
-    pure
-    returns (SendDepositPayload memory)
+        internal
+        pure
+        returns (SendDepositPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -154,9 +154,9 @@ library LibPool {
     }
 
     function decodeSendWithdrawPayload(bytes memory payload)
-    internal
-    pure
-    returns (SendWithdrawPayload memory)
+        internal
+        pure
+        returns (SendWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -241,9 +241,9 @@ library LibPool {
     }
 
     function decodeSendDepositAndWithdrawPayload(bytes memory payload)
-    internal
-    pure
-    returns (SendDepositAndWithdrawPayload memory)
+        internal
+        pure
+        returns (SendDepositAndWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -333,9 +333,9 @@ library LibPool {
     }
 
     function decodeReceiveWithdrawPayload(bytes memory payload)
-    internal
-    pure
-    returns (ReceiveWithdrawPayload memory)
+        internal
+        pure
+        returns (ReceiveWithdrawPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

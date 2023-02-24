@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/LibPool.sol";
+import "../libraries/LibLending.sol";
 import "../libraries/LibProtocol.sol";
 import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
@@ -18,7 +19,14 @@ contract MockBridgePool {
     // convenient for testing
     mapping(uint32 => bytes) public cachedVAA;
 
-    event PoolWithdrawEvent(uint64 nonce, uint16 sourceChainId, uint16 dstChianId, bytes poolAddress, bytes receiver, uint64 amount);
+    event PoolWithdrawEvent(
+        uint64 nonce,
+        uint16 sourceChainId,
+        uint16 dstChianId,
+        bytes poolAddress,
+        bytes receiver,
+        uint64 amount
+    );
 
     constructor(
         address _wormholeBridge,
@@ -72,31 +80,31 @@ contract MockBridgePool {
         return completeVAA[_hash];
     }
 
-    function sendBinding(uint64 nonce, uint8 callType, uint16 bindDolaChainId, bytes memory bindAddress)
-    external
-    payable
-    {
+    function sendLendingHelperPayload(
+        uint16[] memory dolaPoolIds,
+        uint8 callType
+    ) external payable {
+        bytes memory payload = LibLending.encodeAppHelperPayload(
+            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
+            dolaPoolIds,
+            callType
+        );
+        cachedVAA[getNonce()] = payload;
+        increaseNonce();
+    }
+
+    function sendProtocolPayload(
+        uint64 nonce,
+        uint8 callType,
+        uint16 bindDolaChainId,
+        bytes memory bindAddress
+    ) external payable {
         bytes memory payload = LibProtocol.encodeProtocolAppPayload(
             dolaChainId,
             nonce,
             callType,
             LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
             LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
-        );
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
-    }
-
-    function sendUnbinding(uint64 nonce, uint8 callType, uint16 unbindDolaChainId, bytes memory unbindAddress)
-    external
-    payable
-    {
-        bytes memory payload = LibProtocol.encodeProtocolAppPayload(
-            dolaChainId,
-            nonce,
-            callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress)
         );
         cachedVAA[getNonce()] = payload;
         increaseNonce();
@@ -111,7 +119,7 @@ contract MockBridgePool {
         bytes memory payload;
         if (token == address(0)) {
             require(msg.value >= amount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositTo{value : amount}(
+            payload = IOmniPool(omnipool).depositTo{value: amount}(
                 token,
                 amount,
                 appId,
@@ -147,7 +155,8 @@ contract MockBridgePool {
     function sendDepositAndWithdraw(
         address depositToken,
         uint256 depositAmount,
-        address withdrawToken,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable {
@@ -155,12 +164,20 @@ contract MockBridgePool {
         if (depositToken == address(0)) {
             require(msg.value >= depositAmount, "Not enough msg value!");
             payload = IOmniPool(omnipool).depositAndWithdraw{
-            value : depositAmount
-            }(depositToken, depositAmount, withdrawToken, appId, appPayload);
+                value: depositAmount
+            }(
+                depositToken,
+                depositAmount,
+                withdrawChainId,
+                withdrawToken,
+                appId,
+                appPayload
+            );
         } else {
             payload = IOmniPool(omnipool).depositAndWithdraw(
                 depositToken,
                 depositAmount,
+                withdrawChainId,
                 withdrawToken,
                 appId,
                 appPayload
@@ -173,10 +190,17 @@ contract MockBridgePool {
 
     function receiveWithdraw(bytes memory vaa) public {
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
-        .decodeReceiveWithdrawPayload(vaa);
+            .decodeReceiveWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
         IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);
-        emit PoolWithdrawEvent(payload.nonce, payload.sourceChainId, payload.pool.dolaChainId, payload.pool.externalAddress, payload.user.externalAddress, payload.amount);
+        emit PoolWithdrawEvent(
+            payload.nonce,
+            payload.sourceChainId,
+            payload.pool.dolaChainId,
+            payload.pool.externalAddress,
+            payload.user.externalAddress,
+            payload.amount
+        );
     }
 }

@@ -31,7 +31,8 @@ interface IOmniPool {
     function depositAndWithdraw(
         address depositToken,
         uint256 depositAmount,
-        address withdrawToken,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable returns (bytes memory);

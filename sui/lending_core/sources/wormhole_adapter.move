@@ -8,7 +8,7 @@ module lending_core::lending_wormhole_adapter {
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde;
-    use sui::coin::{Self, Coin};
+    use sui::coin::Coin;
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -17,6 +17,7 @@ module lending_core::lending_wormhole_adapter {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
+    use sui::event;
 
     const SUPPLY: u8 = 0;
 
@@ -28,6 +29,10 @@ module lending_core::lending_wormhole_adapter {
 
     const LIQUIDATE: u8 = 4;
 
+    const AS_COLLATERAL: u8 = 7;
+
+    const CANCLE_AS_COLLATERAL: u8 = 8;
+
     /// Errors
     const EMUST_NONE: u64 = 0;
 
@@ -37,6 +42,8 @@ module lending_core::lending_wormhole_adapter {
 
     const EINVALID_LENGTH: u64 = 3;
 
+    const EINVALID_CALL_TYPE: u64 = 4;
+
     struct WormholeAdapter has key {
         id: UID,
         storage_cap: Option<StorageCap>
@@ -44,11 +51,13 @@ module lending_core::lending_wormhole_adapter {
 
     struct LendingCoreEvent has drop, copy {
         nonce: u64,
+        sender_user_id: u64,
         source_chain_id: u16,
         dst_chain_id: u16,
-        pool_address: vector<u8>,
+        dola_pool_id: u16,
         receiver: vector<u8>,
         amount: u64,
+        liquidate_user_id: u64,
         call_type: u8
     }
 
@@ -105,13 +114,16 @@ module lending_core::lending_wormhole_adapter {
             amount
         );
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
+        assert!(call_type == SUPPLY, EINVALID_CALL_TYPE);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: types::get_dola_address(&pool),
+            dola_pool_id,
             receiver: types::get_dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -139,7 +151,7 @@ module lending_core::lending_wormhole_adapter {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
-
+        assert!(call_type == WITHDRAW, EINVALID_CALL_TYPE);
         let dst_chain = types::get_dola_chain_id(&receiver);
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
         assert!(option::is_some(&dst_pool), EMUST_SOME);
@@ -174,11 +186,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: types::get_dola_address(&dst_pool),
+            dola_pool_id,
             receiver: types::get_dola_address(&receiver),
             amount: actual_amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -207,6 +221,7 @@ module lending_core::lending_wormhole_adapter {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
+        assert!(call_type == BORROW, EINVALID_CALL_TYPE);
 
         let dst_chain = types::get_dola_chain_id(&receiver);
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -231,11 +246,13 @@ module lending_core::lending_wormhole_adapter {
         );
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: types::get_dola_address(&dst_pool),
+            dola_pool_id,
             receiver: types::get_dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -265,13 +282,16 @@ module lending_core::lending_wormhole_adapter {
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
+        assert!(call_type == REPAY, EINVALID_CALL_TYPE);
         emit(LendingCoreEvent {
             nonce,
+            sender_user_id: dola_user_id,
             source_chain_id,
             dst_chain_id: types::get_dola_chain_id(&receiver),
-            pool_address: types::get_dola_address(&pool),
+            dola_pool_id,
             receiver: types::get_dola_address(&receiver),
             amount,
+            liquidate_user_id: 0,
             call_type
         })
     }
@@ -284,7 +304,6 @@ module lending_core::lending_wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
@@ -297,17 +316,23 @@ module lending_core::lending_wormhole_adapter {
             pool_manager_info,
             ctx
         );
-        let (source_chain_id, nonce, _, _, receiver, liquidate_user_id) = decode_app_payload(app_payload);
+        let (source_chain_id, nonce, call_type, _, _, liquidate_user_id) = decode_app_payload(app_payload);
+        assert!(call_type == LIQUIDATE, EINVALID_CALL_TYPE);
 
         let liquidator = user_manager::get_dola_user_id(user_manager_info, deposit_user);
-        let dst_chain = types::get_dola_chain_id(&receiver);
         let deposit_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, withdraw_pool);
-        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, withdraw_dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
-        let dst_pool = option::destroy_some(dst_pool);
+        logic::execute_supply(
+            cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            liquidator,
+            deposit_dola_pool_id,
+            deposit_amount
+        );
 
-        let (withdraw_amount, return_repay_amount) = logic::execute_liquidate(
+        logic::execute_liquidate(
             cap,
             pool_manager_info,
             storage,
@@ -316,47 +341,134 @@ module lending_core::lending_wormhole_adapter {
             liquidate_user_id,
             withdraw_dola_pool_id,
             deposit_dola_pool_id,
-            deposit_amount,
         );
 
-        // check pool liquidity
-        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (withdraw_amount as u256), ENOT_ENOUGH_LIQUIDITY);
-
-        bridge_core::send_withdraw(
-            wormhole_state,
-            core_state,
-            storage::get_app_cap(cap, storage),
-            pool_manager_info,
-            dst_pool,
-            receiver,
-            source_chain_id,
+        event::emit(LendingCoreEvent {
             nonce,
-            withdraw_amount,
-            wormhole_message_fee
-        );
-
-        if (return_repay_amount > 0) {
-            let repay_pool = pool_manager::find_pool_by_chain(pool_manager_info, deposit_dola_pool_id, dst_chain);
-            assert!(option::is_some(&repay_pool), EMUST_SOME);
-            let repay_pool = option::destroy_some(repay_pool);
-            let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, repay_pool);
-            assert!(pool_liquidity >= (return_repay_amount as u256), ENOT_ENOUGH_LIQUIDITY);
-            bridge_core::send_withdraw(
-                wormhole_state,
-                core_state,
-                storage::get_app_cap(cap, storage),
-                pool_manager_info,
-                repay_pool,
-                receiver,
-                source_chain_id,
-                nonce,
-                return_repay_amount,
-                coin::zero<SUI>(ctx)
-            );
-        }
+            sender_user_id: liquidator,
+            source_chain_id,
+            dst_chain_id: types::get_dola_chain_id(&deposit_user),
+            dola_pool_id: withdraw_dola_pool_id,
+            receiver: types::get_dola_address(&deposit_user),
+            amount: deposit_amount,
+            liquidate_user_id,
+            call_type
+        })
     }
 
+    public entry fun as_collateral(
+        wormhole_adapter: &WormholeAdapter,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        vaa: vector<u8>
+    ) {
+        let cap = get_storage_cap(wormhole_adapter);
+        // Verify that a message is valid using the wormhole
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
+        let (sender, dola_pool_ids, call_type) = decode_app_helper_payload(app_payload);
+        assert!(call_type == AS_COLLATERAL, EINVALID_CALL_TYPE);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            logic::as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
+            i = i + 1;
+        };
+    }
+
+    public entry fun cancel_as_collateral(
+        wormhole_adapter: &WormholeAdapter,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        vaa: vector<u8>
+    ) {
+        let cap = get_storage_cap(wormhole_adapter);
+        // Verify that a message is valid using the wormhole
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
+        let (sender, dola_pool_ids, call_type) = decode_app_helper_payload(app_payload);
+        assert!(call_type == CANCLE_AS_COLLATERAL, EINVALID_CALL_TYPE);
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            logic::as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
+            i = i + 1;
+        };
+    }
+
+    // App helper function payload
+    public fun encode_app_helper_payload(
+        sender: DolaAddress,
+        dola_pool_ids: vector<u16>,
+        call_type: u8,
+    ): vector<u8> {
+        let payload = vector::empty<u8>();
+
+        let sender = types::encode_dola_address(sender);
+        serde::serialize_u16(&mut payload, (vector::length(&sender) as u16));
+        serde::serialize_vector(&mut payload, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        serde::serialize_u16(&mut payload, (pool_ids_length as u16));
+        let i = 0;
+        while (i < pool_ids_length) {
+            serde::serialize_u16(&mut payload, *vector::borrow(&dola_pool_ids, i));
+            i = i + 1;
+        };
+
+        serde::serialize_u8(&mut payload, call_type);
+        payload
+    }
+
+    public fun decode_app_helper_payload(
+        payload: vector<u8>
+    ): (DolaAddress, vector<u16>, u8) {
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let sender_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = (sender_length as u64);
+        let sender = types::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let pool_ids_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        let i = 0;
+        let dola_pool_ids = vector::empty<u16>();
+        while (i < pool_ids_length) {
+            data_len = 2;
+            let dola_pool_id = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+            vector::push_back(&mut dola_pool_ids, dola_pool_id);
+            index = index + data_len;
+            i = i + 1;
+        };
+
+        data_len = 1;
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(index == vector::length(&payload), EINVALID_LENGTH);
+        (sender, dola_pool_ids, call_type)
+    }
+
+    // App core function payload
     public fun encode_app_payload(
         source_chain_id: u16,
         nonce: u64,

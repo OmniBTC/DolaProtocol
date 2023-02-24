@@ -99,7 +99,8 @@ contract OmniPool {
     function depositAndWithdraw(
         address depositToken,
         uint256 depositAmount,
-        address withdrawToken,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) public payable isBridgePool(msg.sender) returns (bytes memory) {
@@ -120,7 +121,7 @@ contract OmniPool {
                 depositAmount,
                 decimals(depositToken)
             ),
-            LibDolaTypes.addressToDolaAddress(dolaChainId, withdrawToken),
+            LibDolaTypes.DolaAddress(withdrawChainId, withdrawToken),
             appId,
             appPayload
         );

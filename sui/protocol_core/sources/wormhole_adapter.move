@@ -66,7 +66,7 @@ module protocol_core::protocol_wormhole_adapter {
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
-        let app_payload = bridge_core::receive_protocol_message(wormhole_state, core_state, vaa);
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
         let (app_id, source_chain_id, nonce, sender, binded_address, call_type) = decode_app_payload(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == message_types::binding_type_id(), EINVALID_CALLTYPE);
@@ -102,8 +102,8 @@ module protocol_core::protocol_wormhole_adapter {
         core_state: &mut CoreState,
         vaa: vector<u8>
     ) {
-        let app_payload = bridge_core::receive_protocol_message(wormhole_state, core_state, vaa);
-        let (app_id, source_chain_id, nonce, sender, unbind_address, call_type) = decode_app_payload(app_payload);
+        let app_payload = bridge_core::receive_app_message(wormhole_state, core_state, vaa);
+        let (app_id, source_chain_id, nonce, sender, unbinded_address, call_type) = decode_app_payload(app_payload);
         assert!(app_id == message_types::app_id(), EINVALID_APPID);
         assert!(call_type == message_types::unbinding_type_id(), EINVALID_CALLTYPE);
 
@@ -111,14 +111,14 @@ module protocol_core::protocol_wormhole_adapter {
             option::borrow(&wormhole_adapter.user_manager_cap),
             user_manager_info,
             sender,
-            unbind_address
+            unbinded_address
         );
         event::emit(ProtocolCoreEvent {
             nonce,
             sender: types::get_dola_address(&sender),
             source_chain_id,
-            user_chain_id: types::get_dola_chain_id(&unbind_address),
-            user_address: types::get_dola_address(&unbind_address),
+            user_chain_id: types::get_dola_chain_id(&unbinded_address),
+            user_address: types::get_dola_address(&unbinded_address),
             call_type
         })
     }

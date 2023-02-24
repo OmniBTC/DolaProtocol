@@ -187,24 +187,24 @@ module user_manager::user_manager {
         _: &UserManagerCap,
         user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress,
-        unbind_address: DolaAddress
+        unbinded_address: DolaAddress
     ) {
         let dola_user_id = get_dola_user_id(user_manager_info, user_address);
-        let unbind_user_id = get_dola_user_id(user_manager_info, unbind_address);
+        let unbind_user_id = get_dola_user_id(user_manager_info, unbinded_address);
         assert!(dola_user_id == unbind_user_id, EINVALID_UNBINDING);
-        let unbind_address = process_group_id(user_manager_info, unbind_address);
+        let unbinded_address = process_group_id(user_manager_info, unbinded_address);
 
         let user_catelog = &mut user_manager_info.user_address_catalog;
         let user_addresses = table::borrow_mut(&mut user_catelog.user_id_to_addresses, unbind_user_id);
         assert!(vector::length(user_addresses) >= 2, ETOO_FEW_ADDRESS);
-        let (_, index) = vector::index_of(user_addresses, &unbind_address);
+        let (_, index) = vector::index_of(user_addresses, &unbinded_address);
 
         // Remove dola address
-        table::remove(&mut user_catelog.user_address_to_user_id, unbind_address);
+        table::remove(&mut user_catelog.user_address_to_user_id, unbinded_address);
         vector::remove(user_addresses, index);
 
         event::emit(UnbindUser {
-            dola_user_address: unbind_address,
+            dola_user_address: unbinded_address,
             dola_user_id
         });
     }

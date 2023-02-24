@@ -78,7 +78,7 @@ module wormhole_bridge::bridge_core {
     }
 
     /// Only verify that the message is valid, and the message is processed by the corresponding app
-    public fun receive_protocol_message(
+    public fun receive_app_message(
         _wormhole_state: &mut WormholeState,
         _core_state: &mut CoreState,
         vaa: vector<u8>,

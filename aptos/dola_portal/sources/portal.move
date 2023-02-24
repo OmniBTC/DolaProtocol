@@ -38,6 +38,10 @@ module dola_portal::portal {
 
     const UNBINDING: u8 = 6;
 
+    const AS_COLLATERAL: u8 = 7;
+
+    const CANCEL_AS_COLLATERAL: u8 = 8;
+
     /// Events
     struct PortalEventHandle has key {
         nonce: u64,
@@ -81,13 +85,27 @@ module dola_portal::portal {
         nonce
     }
 
+    public entry fun as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u64>,
+    ) {
+        bridge_pool::send_lending_helper_payload(sender, dola_pool_ids, AS_COLLATERAL);
+    }
+
+    public entry fun cancel_as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u64>,
+    ) {
+        bridge_pool::send_lending_helper_payload(sender, dola_pool_ids, CANCEL_AS_COLLATERAL);
+    }
+
     public entry fun binding(
         sender: &signer,
         dola_chain_id: u64,
         binded_address: vector<u8>,
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        bridge_pool::send_binding(sender, nonce, dola_chain_id, binded_address);
+        bridge_pool::send_protocol_payload(sender, nonce, dola_chain_id, binded_address, BINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         event::emit_event(
             &mut event_handle.protocol_event_handle,
@@ -105,10 +123,10 @@ module dola_portal::portal {
     public entry fun unbinding(
         sender: &signer,
         dola_chain_id: u64,
-        unbind_address: vector<u8>
+        unbinded_address: vector<u8>
     ) acquires PortalEventHandle {
         let nonce = get_nonce();
-        bridge_pool::send_unbinding(sender, nonce, dola_chain_id, unbind_address);
+        bridge_pool::send_protocol_payload(sender, nonce, dola_chain_id, unbinded_address, UNBINDING);
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
         event::emit_event(
             &mut event_handle.protocol_event_handle,
@@ -117,7 +135,7 @@ module dola_portal::portal {
                 sender: signer::address_of(sender),
                 source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
                 user_chain_id: u16::from_u64(dola_chain_id),
-                user_address: unbind_address,
+                user_address: unbinded_address,
                 call_type: UNBINDING
             }
         )
@@ -177,7 +195,16 @@ module dola_portal::portal {
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        bridge_pool::send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(LENDING_APP_ID), app_payload);
+        let withdraw_pool = types::convert_pool_to_dola<CoinType>();
+
+        bridge_pool::send_withdraw(
+            sender,
+            wormhole_message_fee,
+            types::get_dola_chain_id(&withdraw_pool),
+            types::get_dola_address(&withdraw_pool),
+            u16::from_u64(LENDING_APP_ID),
+            app_payload
+        );
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
@@ -214,11 +241,11 @@ module dola_portal::portal {
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        bridge_pool::send_withdraw_remote(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
-            pool,
             u16::from_u64(dst_chain),
+            pool,
             u16::from_u64(LENDING_APP_ID),
             app_payload
         );
@@ -259,7 +286,16 @@ module dola_portal::portal {
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        bridge_pool::send_withdraw<CoinType>(sender, wormhole_message_fee, u16::from_u64(LENDING_APP_ID), app_payload);
+        let withdraw_pool = types::convert_pool_to_dola<CoinType>();
+
+        bridge_pool::send_withdraw(
+            sender,
+            wormhole_message_fee,
+            types::get_dola_chain_id(&withdraw_pool),
+            types::get_dola_address(&withdraw_pool),
+            u16::from_u64(LENDING_APP_ID),
+            app_payload
+        );
 
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
@@ -296,11 +332,11 @@ module dola_portal::portal {
             receiver,
             0);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        bridge_pool::send_withdraw_remote(
+        bridge_pool::send_withdraw(
             sender,
             wormhole_message_fee,
-            pool,
             u16::from_u64(dst_chain),
+            pool,
             u16::from_u64(LENDING_APP_ID),
             app_payload
         );
@@ -360,34 +396,52 @@ module dola_portal::portal {
         )
     }
 
-    public entry fun liquidate<DebtCoinType, CollateralCoinType>(
+    public entry fun liquidate<DebtCoinType>(
         sender: &signer,
-        receiver: vector<u8>,
-        dst_chain: u64,
-        debt_coin: u64,
+        debt_amount: u64,
+        liquidate_chain_id: u64,
+        liquidate_pool_address: vector<u8>,
         // punished person
         liquidate_user_id: u64,
     ) acquires PortalEventHandle {
-        let receiver = types::create_dola_address(u16::from_u64(dst_chain), receiver);
+        let receiver = types::convert_address_to_dola(signer::address_of(sender));
 
         let nonce = get_nonce();
         let app_payload = encode_lending_app_payload(
             u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
             LIQUIDATE,
-            pool::normal_amount<DebtCoinType>(debt_coin),
+            pool::normal_amount<DebtCoinType>(debt_amount),
             receiver, liquidate_user_id);
 
-        let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_coin);
+        let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_amount);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
+        bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
             sender,
             wormhole_message_fee,
             debt_coin,
+            u16::from_u64(liquidate_chain_id),
+            liquidate_pool_address,
             u16::from_u64(LENDING_APP_ID),
             app_payload,
         );
+
+        let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
+
+        event::emit_event(
+            &mut event_handle.lending_event_handle,
+            LendingPortalEvent {
+                nonce,
+                sender: signer::address_of(sender),
+                dola_pool_address: types::get_dola_address(&types::convert_pool_to_dola<DebtCoinType>()),
+                source_chain_id: u16::from_u64(types::get_native_dola_chain_id()),
+                dst_chain_id: u16::from_u64(0),
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
+                amount: debt_amount,
+                call_type: LIQUIDATE
+            }
+        )
     }
 
     public fun encode_lending_app_payload(

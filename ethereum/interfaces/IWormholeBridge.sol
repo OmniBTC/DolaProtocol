@@ -3,9 +3,14 @@
 pragma solidity ^0.8.0;
 
 interface IWormholeBridge {
-    function sendBinding(uint64 nonce, uint8 callType, uint16 bindDolaChainId, bytes memory bindAddress) external;
+    function sendLendingHelperPayload(uint16[] memory dolaPoolIds, uint8 callType) external payable;
 
-    function sendUnbinding(uint64 nonce, uint8 callType, uint16 unbindDolaChainId, bytes memory unbindAddress) external;
+    function sendProtocolPayload(
+        uint64 nonce,
+        uint8 callType,
+        uint16 bindDolaChainId,
+        bytes memory bindAddress
+    ) external payable;
 
     function sendDeposit(
         address pool,
@@ -21,9 +26,10 @@ interface IWormholeBridge {
     ) external payable;
 
     function sendDepositAndWithdraw(
-        address depositPool,
+        address depositToken,
         uint256 depositAmount,
-        address withdrawPool,
+        uint16 withdrawChainId,
+        bytes memory withdrawToken,
         uint16 appId,
         bytes memory appPayload
     ) external payable;

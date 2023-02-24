@@ -20,10 +20,6 @@ module wormhole_bridge::bridge_pool {
 
     const PROTOCOL_APP_ID: u64 = 0;
 
-    const BINDING: u8 = 5;
-
-    const UNBINDING: u8 = 6;
-
     const EMUST_DEPLOYER: u64 = 0;
 
     const EMUST_ADMIN: u64 = 1;
@@ -119,44 +115,41 @@ module wormhole_bridge::bridge_pool {
         );
     }
 
-    public entry fun send_binding(
+    public fun send_lending_helper_payload(
         sender: &signer,
-        nonce: u64,
-        dola_chain_id: u64,
-        binded_address: vector<u8>,
+        dola_pool_ids: vector<u64>,
+        call_type: u8
     ) acquires PoolState {
-        let binded_address = types::create_dola_address(u16::from_u64(dola_chain_id), binded_address);
         let user = types::convert_address_to_dola(signer::address_of(sender));
-        let msg = encode_protocol_app_payload(
-            u16::from_u64(types::get_native_dola_chain_id()),
-            nonce,
-            BINDING,
+        let msg = encode_lending_helper_payload(
             user,
-            binded_address
+            dola_pool_ids,
+            call_type
         );
-        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+
+        let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
         pool_state.nonce = pool_state.nonce + 1;
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
-    public entry fun send_unbinding(
+    public fun send_protocol_payload(
         sender: &signer,
         nonce: u64,
         dola_chain_id: u64,
-        unbind_address: vector<u8>
+        bind_address: vector<u8>,
+        call_type: u8
     ) acquires PoolState {
-        let unbind_address = types::create_dola_address(u16::from_u64(dola_chain_id), unbind_address);
+        let bind_address = types::create_dola_address(u16::from_u64(dola_chain_id), bind_address);
         let user = types::convert_address_to_dola(signer::address_of(sender));
         let msg = encode_protocol_app_payload(
             u16::from_u64(types::get_native_dola_chain_id()),
             nonce,
-            UNBINDING,
+            call_type,
             user,
-            unbind_address
+            bind_address
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
@@ -187,14 +180,18 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
-    public fun send_withdraw<CoinType>(
+    public fun send_withdraw(
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
-        let msg = pool::withdraw_to<CoinType>(
+        let msg = pool::withdraw_to(
             sender,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
         );
@@ -205,34 +202,20 @@ module wormhole_bridge::bridge_pool {
         table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
-    public fun send_withdraw_remote(
-        sender: &signer,
-        wormhole_message_fee: Coin<AptosCoin>,
-        pool: vector<u8>,
-        dst_chain: U16,
-        app_id: U16,
-        app_payload: vector<u8>,
-    ) acquires PoolState {
-        let user_addr = types::convert_address_to_dola(signer::address_of(sender));
-        let pool_addr = types::create_dola_address(dst_chain, pool);
-        let msg = pool::encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-
-        wormhole::publish_message(&mut pool_state.sender, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
-    }
-
-    public fun send_deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+    public fun send_deposit_and_withdraw<DepositCoinType>(
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
+        withdraw_chain_id: U16,
+        withdraw_pool_address: vector<u8>,
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
-        let msg = pool::deposit_and_withdraw<DepositCoinType, WithdrawCoinType>(
+        let msg = pool::deposit_and_withdraw<DepositCoinType>(
             sender,
             deposit_coin,
+            withdraw_chain_id,
+            withdraw_pool_address,
             app_id,
             app_payload,
         );
@@ -295,6 +278,65 @@ module wormhole_bridge::bridge_pool {
             user,
             amount
         })
+    }
+
+    public fun encode_lending_helper_payload(
+        sender: DolaAddress,
+        dola_pool_ids: vector<u64>,
+        call_type: u8,
+    ): vector<u8> {
+        let payload = vector::empty<u8>();
+
+        let sender = types::encode_dola_address(sender);
+        serde::serialize_u16(&mut payload, u16::from_u64(vector::length(&sender)));
+        serde::serialize_vector(&mut payload, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        serde::serialize_u16(&mut payload, u16::from_u64(pool_ids_length));
+        let i = 0;
+        while (i < pool_ids_length) {
+            serde::serialize_u16(&mut payload, u16::from_u64(*vector::borrow(&dola_pool_ids, i)));
+            i = i + 1;
+        };
+
+        serde::serialize_u8(&mut payload, call_type);
+        payload
+    }
+
+    public fun decode_lending_helper_payload(
+        payload: vector<u8>
+    ): (DolaAddress, vector<U16>, u8) {
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let sender_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = u16::to_u64(sender_length);
+        let sender = types::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let pool_ids_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        let i = 0;
+        let dola_pool_ids = vector::empty<U16>();
+        while (i < u16::to_u64(pool_ids_length)) {
+            data_len = 2;
+            let dola_pool_id = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
+            vector::push_back(&mut dola_pool_ids, dola_pool_id);
+            index = index + data_len;
+            i = i + 1;
+        };
+
+        data_len = 1;
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(index == vector::length(&payload), EINVALID_LENGTH);
+        (sender, dola_pool_ids, call_type)
     }
 
     public fun encode_protocol_app_payload(

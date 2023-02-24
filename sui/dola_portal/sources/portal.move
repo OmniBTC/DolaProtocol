@@ -148,7 +148,6 @@ module dola_portal::portal {
         option::fill(&mut dola_portal.storage_cap, storage_cap);
     }
 
-
     public fun merge_coin<CoinType>(
         coins: vector<Coin<CoinType>>,
         amount: u64,
@@ -182,7 +181,65 @@ module dola_portal::portal {
         }
     }
 
-    public entry fun send_binding(
+    public entry fun as_collateral(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_portal: &mut DolaPortal,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        dola_pool_ids: vector<u16>,
+        ctx: &mut TxContext
+    ) {
+        let sender = types::convert_address_to_dola(tx_context::sender(ctx));
+
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            lending_core::logic::as_collateral(
+                option::borrow(&dola_portal.storage_cap),
+                pool_manager_info,
+                storage,
+                oracle,
+                dola_user_id,
+                *dola_pool_id
+            );
+            i = i + 1;
+        };
+    }
+
+    public entry fun cancel_as_collateral(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_portal: &mut DolaPortal,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        dola_pool_ids: vector<u16>,
+        ctx: &mut TxContext
+    ) {
+        let sender = types::convert_address_to_dola(tx_context::sender(ctx));
+
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+
+        let pool_ids_length = vector::length(&dola_pool_ids);
+        let i = 0;
+        while (i < pool_ids_length) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, i);
+            lending_core::logic::cancel_as_collateral(
+                option::borrow(&dola_portal.storage_cap),
+                pool_manager_info,
+                storage,
+                oracle,
+                dola_user_id,
+                *dola_pool_id
+            );
+            i = i + 1;
+        };
+    }
+
+    public entry fun binding(
         dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
@@ -215,16 +272,16 @@ module dola_portal::portal {
         })
     }
 
-    public entry fun send_unbinding(
+    public entry fun unbinding(
         dola_portal: &mut DolaPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
-        unbind_address: vector<u8>,
+        unbinded_address: vector<u8>,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         let user = types::convert_address_to_dola(sender);
-        let unbind_dola_address = types::create_dola_address(dola_chain_id, unbind_address);
+        let unbind_dola_address = types::create_dola_address(dola_chain_id, unbinded_address);
         user_manager::unbind_user_address(
             option::borrow(&dola_portal.user_manager_cap),
             user_manager_info,
@@ -236,7 +293,7 @@ module dola_portal::portal {
             nonce: get_nonce(dola_portal),
             sender,
             user_chain_id: dola_chain_id,
-            user_address: unbind_address,
+            user_address: unbinded_address,
             call_type: UNBINDING
         })
     }
@@ -646,24 +703,24 @@ module dola_portal::portal {
         })
     }
 
-    public entry fun liquidate<DebtCoinType, CollateralCoinType>(
+    public entry fun liquidate<DebtCoinType>(
         dola_portal: &mut DolaPortal,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        dst_chain: u16,
-        receiver: vector<u8>,
         wormhole_message_coins: vector<Coin<SUI>>,
         wormhole_message_amount: u64,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
+        liquidate_chain_id: u16,
+        liquidate_pool_address: vector<u8>,
         debt_amount: u64,
         liquidate_user_id: u64,
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-
-        let receiver = types::create_dola_address(dst_chain, receiver);
+        let debt_pool_address = types::convert_pool_to_dola<DebtCoinType>();
+        let receiver = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
 
         let wormhole_message_fee = merge_coin<SUI>(wormhole_message_coins, wormhole_message_amount, ctx);
         let nonce = get_nonce(dola_portal);
@@ -675,16 +732,30 @@ module dola_portal::portal {
         receiver,
         liquidate_user_id
         );
-        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType, CollateralCoinType>(
-        pool_state,
-        wormhole_state,
-        wormhole_message_fee,
-        debt_pool,
-        debt_coin,
-        LENDING_APP_ID,
-        app_payload,
-        ctx
+
+        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
+            pool_state,
+            wormhole_state,
+            wormhole_message_fee,
+            debt_pool,
+            debt_coin,
+            liquidate_chain_id,
+            liquidate_pool_address,
+            LENDING_APP_ID,
+            app_payload,
+            ctx
         );
+
+        emit(LendingPortalEvent {
+            nonce,
+            sender: tx_context::sender(ctx),
+            dola_pool_address: types::get_dola_address(&debt_pool_address),
+            source_chain_id: types::get_native_dola_chain_id(),
+            dst_chain_id: types::get_dola_chain_id(&receiver),
+            receiver: types::get_dola_address(&receiver),
+            amount: debt_amount,
+            call_type: LIQUIDATE
+        })
     }
 
     #[test]
