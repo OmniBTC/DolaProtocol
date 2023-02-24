@@ -82,11 +82,11 @@ module user_manager::user_manager {
     /// Register the chain ids that need to be grouped
     public fun register_dola_chain_id(
         _: &GovernanceCap,
-        user_manager: &mut UserManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         group_id: u16
     ) {
-        let chain_id_to_group = &mut user_manager.chain_id_to_group;
+        let chain_id_to_group = &mut user_manager_info.chain_id_to_group;
         assert!(!table::contains(chain_id_to_group, dola_chain_id), EALREADY_GROUP);
         table::add(chain_id_to_group, dola_chain_id, group_id);
     }
@@ -94,17 +94,17 @@ module user_manager::user_manager {
     /// Unregister the chain ids that need to be grouped
     public fun unregister_dola_chain_id(
         _: &GovernanceCap,
-        user_manager: &mut UserManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16) {
-        let chain_id_to_group = &mut user_manager.chain_id_to_group;
+        let chain_id_to_group = &mut user_manager_info.chain_id_to_group;
         assert!(table::contains(chain_id_to_group, dola_chain_id), ENOT_GROUP);
         table::remove(chain_id_to_group, dola_chain_id);
     }
 
     /// Convert DolaAddress to a new DolaAddress based on group_id
-    public fun process_group_id(user_manager: &UserManagerInfo, user_address: DolaAddress): DolaAddress {
+    public fun process_group_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): DolaAddress {
         let dola_chain_id = types::get_dola_chain_id(&user_address);
-        let chain_id_to_group = &user_manager.chain_id_to_group;
+        let chain_id_to_group = &user_manager_info.chain_id_to_group;
         if (table::contains(chain_id_to_group, dola_chain_id)) {
             types::update_dola_chain_id(user_address, *table::borrow(chain_id_to_group, dola_chain_id))
         }else {
@@ -113,23 +113,23 @@ module user_manager::user_manager {
     }
 
     /// Determine if DolaAddress is already bound
-    public fun is_dola_user(user_manager: &UserManagerInfo, user_address: DolaAddress): bool {
-        let user_address = process_group_id(user_manager, user_address);
-        let user_catalog = &user_manager.user_address_catalog;
+    public fun is_dola_user(user_manager_info: &UserManagerInfo, user_address: DolaAddress): bool {
+        let user_address = process_group_id(user_manager_info, user_address);
+        let user_catalog = &user_manager_info.user_address_catalog;
         table::contains(&user_catalog.user_address_to_user_id, user_address)
     }
 
     /// Get dola_user_id from DolaAddress
-    public fun get_dola_user_id(user_manager: &UserManagerInfo, user_address: DolaAddress): u64 {
-        let user_address = process_group_id(user_manager, user_address);
-        let user_catalog = &user_manager.user_address_catalog;
+    public fun get_dola_user_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): u64 {
+        let user_address = process_group_id(user_manager_info, user_address);
+        let user_catalog = &user_manager_info.user_address_catalog;
         assert!(table::contains(&user_catalog.user_address_to_user_id, user_address), ENOT_USER);
         *table::borrow(&user_catalog.user_address_to_user_id, user_address)
     }
 
     /// Get all DolaAddressd from dola_user_id
-    public fun get_user_addresses(user_manager: &UserManagerInfo, dola_user_id: u64): vector<DolaAddress> {
-        let user_catalog = &user_manager.user_address_catalog;
+    public fun get_user_addresses(user_manager_info: &UserManagerInfo, dola_user_id: u64): vector<DolaAddress> {
+        let user_catalog = &user_manager_info.user_address_catalog;
         assert!(table::contains(&user_catalog.user_id_to_addresses, dola_user_id), ENOT_USER);
         *table::borrow(&user_catalog.user_id_to_addresses, dola_user_id)
     }
@@ -137,11 +137,11 @@ module user_manager::user_manager {
     /// Register new DolaAddress
     public fun register_dola_user_id(
         _: &UserManagerCap,
-        user_manager: &mut UserManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress
     ) {
-        let user_address = process_group_id(user_manager, user_address);
-        let user_catalog = &mut user_manager.user_address_catalog;
+        let user_address = process_group_id(user_manager_info, user_address);
+        let user_catalog = &mut user_manager_info.user_address_catalog;
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, user_address), EALREADY_USER);
 
         let dola_user_id = table::length(&user_catalog.user_id_to_addresses) + 1;
@@ -161,14 +161,14 @@ module user_manager::user_manager {
     /// Bind a DolaAddress to an existing DolaAddress
     public fun bind_user_address(
         _: &UserManagerCap,
-        user_manager: &mut UserManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress,
         binded_address: DolaAddress
     ) {
-        let dola_user_id = get_dola_user_id(user_manager, user_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, user_address);
 
-        let binded_address = process_group_id(user_manager, binded_address);
-        let user_catalog = &mut user_manager.user_address_catalog;
+        let binded_address = process_group_id(user_manager_info, binded_address);
+        let user_catalog = &mut user_manager_info.user_address_catalog;
         assert!(!table::contains(&mut user_catalog.user_address_to_user_id, binded_address), EALREADY_USER);
         let user_addresses = table::borrow_mut(&mut user_catalog.user_id_to_addresses, dola_user_id);
 
@@ -185,16 +185,16 @@ module user_manager::user_manager {
     /// Unbind a DolaAddress to an existing DolaAddress
     public fun unbind_user_address(
         _: &UserManagerCap,
-        user_manager: &mut UserManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress,
         unbind_address: DolaAddress
     ) {
-        let dola_user_id = get_dola_user_id(user_manager, user_address);
-        let unbind_user_id = get_dola_user_id(user_manager, unbind_address);
+        let dola_user_id = get_dola_user_id(user_manager_info, user_address);
+        let unbind_user_id = get_dola_user_id(user_manager_info, unbind_address);
         assert!(dola_user_id == unbind_user_id, EINVALID_UNBINDING);
-        let unbind_address = process_group_id(user_manager, unbind_address);
+        let unbind_address = process_group_id(user_manager_info, unbind_address);
 
-        let user_catelog = &mut user_manager.user_address_catalog;
+        let user_catelog = &mut user_manager_info.user_address_catalog;
         let user_addresses = table::borrow_mut(&mut user_catelog.user_id_to_addresses, unbind_user_id);
         assert!(vector::length(user_addresses) >= 2, ETOO_FEW_ADDRESS);
         let (_, index) = vector::index_of(user_addresses, &unbind_address);
@@ -210,8 +210,8 @@ module user_manager::user_manager {
     }
 
     /// Destroy manager
-    public fun destroy_manager(user_manager: UserManagerCap) {
-        let UserManagerCap {} = user_manager;
+    public fun destroy_manager(user_manager_cap: UserManagerCap) {
+        let UserManagerCap {} = user_manager_cap;
     }
 
     #[test_only]
@@ -232,23 +232,23 @@ module user_manager::user_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let gonvernance_cap = genesis::register_governance_cap_for_testing();
-            let user_manager = test_scenario::take_shared<UserManagerInfo>(scenario);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager, 5, 2);
-            assert!(*table::borrow(&user_manager.chain_id_to_group, 5) == 2, 0);
+            let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
+            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5, 2);
+            assert!(*table::borrow(&user_manager_info.chain_id_to_group, 5) == 2, 0);
             genesis::destroy(gonvernance_cap);
 
-            test_scenario::return_shared(user_manager);
+            test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::next_tx(scenario, manager);
         {
             let gonvernance_cap = genesis::register_governance_cap_for_testing();
-            let user_manager = test_scenario::take_shared<UserManagerInfo>(scenario);
-            unregister_dola_chain_id(&gonvernance_cap, &mut user_manager, 5);
-            assert!(!table::contains(&user_manager.chain_id_to_group, 5), 0);
+            let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
+            unregister_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5);
+            assert!(!table::contains(&user_manager_info.chain_id_to_group, 5), 0);
             genesis::destroy(gonvernance_cap);
 
-            test_scenario::return_shared(user_manager);
+            test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::end(scenario_val);
@@ -268,41 +268,41 @@ module user_manager::user_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let gonvernance_cap = genesis::register_governance_cap_for_testing();
-            let user_manager = test_scenario::take_shared<UserManagerInfo>(scenario);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager, 2, 2);
-            register_dola_chain_id(&gonvernance_cap, &mut user_manager, 5, 2);
-            assert!(*table::borrow(&user_manager.chain_id_to_group, 2) == 2, 0);
-            assert!(*table::borrow(&user_manager.chain_id_to_group, 5) == 2, 0);
+            let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
+            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 2, 2);
+            register_dola_chain_id(&gonvernance_cap, &mut user_manager_info, 5, 2);
+            assert!(*table::borrow(&user_manager_info.chain_id_to_group, 2) == 2, 0);
+            assert!(*table::borrow(&user_manager_info.chain_id_to_group, 5) == 2, 0);
             genesis::destroy(gonvernance_cap);
 
-            test_scenario::return_shared(user_manager);
+            test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::next_tx(scenario, manager);
         {
             let gonvernance_cap = genesis::register_governance_cap_for_testing();
-            let user_manager = test_scenario::take_shared<UserManagerInfo>(scenario);
+            let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
             let user_manager_cap = UserManagerCap {};
 
             let user1 = types::convert_address_to_dola(@11);
             let user2 = types::update_dola_chain_id(user1, 2);
             let user3 = types::update_dola_chain_id(user1, 3);
             let user4 = types::update_dola_chain_id(user1, 5);
-            register_dola_user_id(&user_manager_cap, &mut user_manager, user1);
-            assert!(get_dola_user_id(&user_manager, user1) == 1, 0);
-            assert!(vector::contains(&get_user_addresses(&user_manager, 1), &user1), 0);
-            register_dola_user_id(&user_manager_cap, &mut user_manager, user4);
-            assert!(get_dola_user_id(&user_manager, user2) == 2, 0);
-            bind_user_address(&user_manager_cap, &mut user_manager, user1, user3);
-            assert!(get_dola_user_id(&user_manager, user3) == 1, 0);
-            unbind_user_address(&user_manager_cap, &mut user_manager, user3, user1);
-            assert!(!vector::contains(&get_user_addresses(&user_manager, 1), &user1), 0);
-            assert!(vector::contains(&get_user_addresses(&user_manager, 1), &user3), 0);
+            register_dola_user_id(&user_manager_cap, &mut user_manager_info, user1);
+            assert!(get_dola_user_id(&user_manager_info, user1) == 1, 0);
+            assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);
+            register_dola_user_id(&user_manager_cap, &mut user_manager_info, user4);
+            assert!(get_dola_user_id(&user_manager_info, user2) == 2, 0);
+            bind_user_address(&user_manager_cap, &mut user_manager_info, user1, user3);
+            assert!(get_dola_user_id(&user_manager_info, user3) == 1, 0);
+            unbind_user_address(&user_manager_cap, &mut user_manager_info, user3, user1);
+            assert!(!vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);
+            assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user3), 0);
 
             genesis::destroy(gonvernance_cap);
             destroy_manager(user_manager_cap);
 
-            test_scenario::return_shared(user_manager);
+            test_scenario::return_shared(user_manager_info);
         };
 
         test_scenario::end(scenario_val);
