@@ -128,6 +128,7 @@ module pool_manager::pool_manager {
         })
     }
 
+    /// Determine if the dola pool id is registered
     public fun exist_pool_id(
         pool_manager_info: &PoolManagerInfo,
         dola_pool_id: u16
@@ -135,6 +136,7 @@ module pool_manager::pool_manager {
         table::contains(&pool_manager_info.pool_infos, dola_pool_id)
     }
 
+    /// Determine if certain pool is registered
     public fun exist_certain_pool(
         pool_manager_info: &PoolManagerInfo,
         pool: DolaAddress

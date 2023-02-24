@@ -24,6 +24,7 @@ module app_manager::app_manager {
         })
     }
 
+    /// Register app cap for application
     fun register_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
         let id = object::new(ctx);
         vector::push_back(&mut total_app_info.app_caps, object::uid_to_inner(&id));
