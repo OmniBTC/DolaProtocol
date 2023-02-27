@@ -1318,7 +1318,9 @@ class SuiPackage:
                 continue
             if not isinstance(param_args[k], int):
                 continue
-            assert len(CacheObject[is_coin][self.account.account_address]), f"Not found coin"
+            object_ids = list(self.get_coins(self.account.account_address, str(is_coin)[16:-1]).keys())
+            assert len(object_ids), f"Not found coin"
+            CacheObject[is_coin][self.account.account_address] = object_ids
 
             normal_coin.append(is_coin)
 
