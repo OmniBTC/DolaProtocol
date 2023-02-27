@@ -655,7 +655,10 @@ module lending_core::logic {
 
         let max_liquidable_collateral_value = (math::ray_div((target_health_value as u256), target_coefficient) as u64);
         let user_max_collateral_value = user_collateral_value(storage, oracle, violator, collateral);
-        let collateral_ratio = math::ray_div((user_max_collateral_value as u256), (max_liquidable_collateral_value as u256));
+        let collateral_ratio = math::ray_div(
+            (user_max_collateral_value as u256),
+            (max_liquidable_collateral_value as u256)
+        );
 
         let max_liquidable_debt_vaule = (math::ray_mul(
             (max_liquidable_collateral_value as u256),
@@ -731,7 +734,10 @@ module lending_core::logic {
         dola_pool_id: u16,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::mint_scaled(token_amount, storage::get_liquidity_index(storage, dola_pool_id));
+        let scaled_amount = scaled_balance::mint_scaled(
+            token_amount,
+            storage::get_liquidity_index(storage, dola_pool_id)
+        );
         storage::mint_otoken_scaled(
             cap,
             storage,
@@ -748,7 +754,10 @@ module lending_core::logic {
         dola_pool_id: u16,
         token_amount: u64,
     ) {
-        let scaled_amount = scaled_balance::burn_scaled(token_amount, storage::get_liquidity_index(storage, dola_pool_id));
+        let scaled_amount = scaled_balance::burn_scaled(
+            token_amount,
+            storage::get_liquidity_index(storage, dola_pool_id)
+        );
         storage::burn_otoken_scaled(
             cap,
             storage,
@@ -905,7 +914,7 @@ module lending_core::logic {
             dola_pool_id,
             storage::get_app_id(storage)
         );
-        assert!(liquidity > (reduced_liquidity as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(liquidity >= (reduced_liquidity as u256), ENOT_ENOUGH_LIQUIDITY);
         // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
         let liquidity = (liquidity as u128) - (reduced_liquidity as u128);
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);

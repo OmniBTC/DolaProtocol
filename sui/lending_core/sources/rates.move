@@ -10,7 +10,11 @@ module lending_core::rates {
         let scale_balance = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         let cur_borrow_index = storage::get_borrow_index(storage, dola_pool_id);
         let debt = math::ray_mul((scale_balance as u256), cur_borrow_index);
-        math::ray_div(debt, debt + (liquidity as u256))
+        if (debt + (liquidity as u256) == 0) {
+            0
+        } else {
+            math::ray_div(debt, debt + (liquidity as u256))
+        }
     }
 
     public fun calculate_borrow_rate(storage: &mut Storage, dola_pool_id: u16, liquidity: u128): u256 {
