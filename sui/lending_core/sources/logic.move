@@ -398,7 +398,7 @@ module lending_core::logic {
         });
     }
 
-    public fun withdraw_from_treasury(
+    public fun claim_from_treasury(
         _: &GovernanceCap,
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
