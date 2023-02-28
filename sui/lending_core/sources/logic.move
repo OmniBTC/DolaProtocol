@@ -1,6 +1,7 @@
 module lending_core::logic {
     use std::vector;
 
+    use governance::genesis::GovernanceCap;
     use lending_core::rates;
     use lending_core::scaled_balance;
     use lending_core::storage::{Self, StorageCap, Storage};
@@ -395,6 +396,26 @@ module lending_core::logic {
             violator_id: 0,
             call_type: CANCLE_AS_COLLATERAL
         });
+    }
+
+    public fun withdraw_from_treasury(
+        _: &GovernanceCap,
+        cap: &StorageCap,
+        pool_manager_info: &PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        receiver_id: u64,
+        withdraw_amount: u64
+    ) {
+        update_state(cap, storage, oracle, dola_pool_id);
+        let treasury_id = storage::get_reserve_treasury(storage, dola_pool_id);
+        let treasury_amount = user_collateral_balance(storage, treasury_id, dola_pool_id);
+        let amount = sui::math::min(treasury_amount, withdraw_amount);
+        burn_otoken(cap, storage, treasury_id, dola_pool_id, amount);
+        mint_otoken(cap, storage, receiver_id, dola_pool_id, amount);
+
+        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
     }
 
     /// Check whether the maximum borrow limit has been reached
