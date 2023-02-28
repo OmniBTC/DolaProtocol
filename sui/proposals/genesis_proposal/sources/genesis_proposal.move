@@ -272,4 +272,36 @@ module genesis_proposal::genesis_proposal {
 
         option::destroy_none(governance_cap);
     }
+
+    public entry fun vote_claim_from_treasury(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16,
+        dola_user_id: u64,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
+            lending_core::logic::claim_from_treasury(
+                &governance_cap,
+                &storage_cap,
+                pool_manager_info,
+                storage,
+                oracle,
+                dola_pool_id,
+                dola_user_id,
+                amount
+            );
+            governance_v1::destory_governance_cap(governance_cap);
+        };
+
+        option::destroy_none(governance_cap);
+    }
 }
