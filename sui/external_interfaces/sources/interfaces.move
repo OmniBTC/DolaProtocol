@@ -57,6 +57,10 @@ module external_interfaces::interfaces {
         reserve: u256,
         supply: u256,
         debt: u256,
+        current_isolate_debt: u256,
+        isolate_debt_ceiling: u256,
+        is_isolate_asset: bool,
+        borrowable_in_isolation: bool,
         utilization_rate: u256
     }
 
@@ -70,10 +74,21 @@ module external_interfaces::interfaces {
         net_apy: u256,
         total_supply_apy: u256,
         total_borrow_apy: u256,
+        liquid_asset_infos: vector<UserLiquidAssetInfo>,
+        total_liquid_value: u256,
         collateral_infos: vector<UserCollateralInfo>,
         total_collateral_value: u256,
         debt_infos: vector<UserDebtInfo>,
-        total_debt_value: u256
+        total_debt_value: u256,
+        isolation_mode: bool
+    }
+
+    struct UserLiquidAssetInfo has copy, drop {
+        dola_pool_id: u16,
+        borrow_apy: u256,
+        supply_apy: u256,
+        liquid_amount: u256,
+        liquid_value: u256
     }
 
     struct UserCollateralInfo has copy, drop {
@@ -294,6 +309,10 @@ module external_interfaces::interfaces {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
     ) {
+        let liquid_asset_infos = vector::empty<UserLiquidAssetInfo>();
+        let liquid_assets = storage::get_user_liquid_assets(storage, dola_user_id);
+        let total_liquid_value = 0;
+
         let collateral_infos = vector::empty<UserCollateralInfo>();
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let total_collateral_value = 0;
@@ -304,6 +323,28 @@ module external_interfaces::interfaces {
 
         let total_supply_apy_value = 0;
         let total_borrow_apy_value = 0;
+
+        let length = vector::length(&collaterals);
+        let i = 0;
+        while (i < length) {
+            let liquid_asset = vector::borrow(&liquid_assets, i);
+            let borrow_rate = storage::get_borrow_rate(storage, *liquid_asset);
+            let borrow_apy = borrow_rate * 10000 / math::ray();
+            let liquidity_rate = storage::get_liquidity_rate(storage, *liquid_asset);
+            let supply_apy = liquidity_rate * 10000 / math::ray();
+            let liquid_amount = logic::user_collateral_balance(storage, dola_user_id, *liquid_asset);
+            let liquid_value = logic::user_collateral_value(storage, oracle, dola_user_id, *liquid_asset);
+            total_supply_apy_value = total_supply_apy_value + math::ray_mul(liquid_value, liquidity_rate);
+            vector::push_back(&mut liquid_asset_infos, UserLiquidAssetInfo {
+                dola_pool_id: *liquid_asset,
+                borrow_apy,
+                supply_apy,
+                liquid_amount,
+                liquid_value
+            });
+            total_liquid_value = total_liquid_value + liquid_value;
+            i = i + 1;
+        };
 
         let length = vector::length(&collaterals);
         let i = 0;
@@ -382,16 +423,21 @@ module external_interfaces::interfaces {
         total_supply_apy = total_supply_apy * 10000 / math::ray();
         total_borrow_apy = total_borrow_apy * 10000 / math::ray();
 
+        let isolation_mode = storage::is_isolation_mode(storage, dola_user_id);
+
         emit(UserLendingInfo {
             health_factor,
             profit_state,
             net_apy,
             total_supply_apy,
             total_borrow_apy,
+            liquid_asset_infos,
+            total_liquid_value,
             collateral_infos,
             total_collateral_value,
             debt_infos,
-            total_debt_value
+            total_debt_value,
+            isolation_mode,
         })
     }
 
@@ -411,6 +457,10 @@ module external_interfaces::interfaces {
         let supply = logic::total_otoken_supply(storage, dola_pool_id);
         let debt = logic::total_dtoken_supply(storage, dola_pool_id);
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
+        let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
+        let isolate_debt_ceiling = storage::get_reserve_ceilings(storage, dola_pool_id);
+        let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
+        let borrowable_in_isolation = storage::can_borrow_in_isolation(storage, dola_pool_id);
 
         let utilization_rate = 0;
         if (debt > 0) {
@@ -429,6 +479,10 @@ module external_interfaces::interfaces {
             debt,
             utilization_rate,
             pools,
+            current_isolate_debt,
+            isolate_debt_ceiling,
+            is_isolate_asset,
+            borrowable_in_isolation,
             total_pool_weight
         })
     }
@@ -457,12 +511,17 @@ module external_interfaces::interfaces {
                 dola_pool_id,
                 storage::get_app_id(storage)
             );
+            let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
+            let isolate_debt_ceiling = storage::get_reserve_ceilings(storage, dola_pool_id);
+            let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
+            let borrowable_in_isolation = storage::can_borrow_in_isolation(storage, dola_pool_id);
 
             let utilization_rate = 0;
             if (debt > 0) {
                 let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
                 utilization_rate = utilization * 10000 / math::ray();
             };
+
 
             let reserve_info = LendingReserveInfo {
                 dola_pool_id,
@@ -475,6 +534,10 @@ module external_interfaces::interfaces {
                 debt,
                 utilization_rate,
                 pools,
+                current_isolate_debt,
+                isolate_debt_ceiling,
+                is_isolate_asset,
+                borrowable_in_isolation,
                 total_pool_weight
             };
             vector::push_back(&mut reserve_infos, reserve_info);
