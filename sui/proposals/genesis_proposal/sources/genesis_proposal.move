@@ -234,7 +234,7 @@ module genesis_proposal::genesis_proposal {
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
-        borrow_cap_ceiling: u128,
+        borrow_cap_ceiling: u256,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         base_borrow_rate: u256,
@@ -297,7 +297,7 @@ module genesis_proposal::genesis_proposal {
                 oracle,
                 dola_pool_id,
                 dola_user_id,
-                amount
+                (amount as u256)
             );
             governance_v1::destory_governance_cap(governance_cap);
         };

@@ -6,18 +6,18 @@ module lending_core::rates {
 
     const SECONDS_PER_DAY: u256 = 86400;
 
-    public fun calculate_utilization(storage: &mut Storage, dola_pool_id: u16, liquidity: u128): u256 {
+    public fun calculate_utilization(storage: &mut Storage, dola_pool_id: u16, liquidity: u256): u256 {
         let scale_balance = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         let cur_borrow_index = storage::get_borrow_index(storage, dola_pool_id);
-        let debt = math::ray_mul((scale_balance as u256), cur_borrow_index);
-        if (debt + (liquidity as u256) == 0) {
+        let debt = math::ray_mul(scale_balance, cur_borrow_index);
+        if (debt + liquidity == 0) {
             0
         } else {
-            math::ray_div(debt, debt + (liquidity as u256))
+            math::ray_div(debt, debt + liquidity)
         }
     }
 
-    public fun calculate_borrow_rate(storage: &mut Storage, dola_pool_id: u16, liquidity: u128): u256 {
+    public fun calculate_borrow_rate(storage: &mut Storage, dola_pool_id: u16, liquidity: u256): u256 {
         let utilization = calculate_utilization(storage, dola_pool_id, liquidity);
         let (base_borrow_rate, borrow_rate_slope1, borrow_rate_slope2, optimal_utilization) = storage::get_borrow_rate_factors(
             storage,
@@ -37,7 +37,7 @@ module lending_core::rates {
         storage: &mut Storage,
         dola_pool_id: u16,
         borrow_rate: u256,
-        liquidity: u128
+        liquidity: u256
     ): u256 {
         let utilization = calculate_utilization(storage, dola_pool_id, liquidity);
         let treasury_factor = storage::get_treasury_factor(storage, dola_pool_id);
@@ -47,14 +47,14 @@ module lending_core::rates {
     public fun calculate_average_liquidity(
         current_timestamp: u256,
         last_update_timestamp: u256,
-        average_liquidity: u64,
-        health_value: u64
-    ): u64 {
+        average_liquidity: u256,
+        health_value: u256
+    ): u256 {
         let delta_time = current_timestamp - last_update_timestamp;
         if (delta_time >= SECONDS_PER_DAY) {
             health_value
         } else {
-            ((average_liquidity as u256) * delta_time / SECONDS_PER_DAY + (health_value as u256) as u64)
+            average_liquidity * delta_time / SECONDS_PER_DAY + health_value
         }
     }
 

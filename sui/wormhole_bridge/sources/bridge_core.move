@@ -101,7 +101,7 @@ module wormhole_bridge::bridge_core {
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         _ctx: &mut TxContext
-    ): (DolaAddress, DolaAddress, u64, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u256, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
@@ -130,7 +130,7 @@ module wormhole_bridge::bridge_core {
             user_manager::register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
         };
         // myvaa::destroy(vaa);
-        (pool, user, (actual_amount as u64), app_payload)
+        (pool, user, actual_amount, app_payload)
     }
 
     public fun receive_deposit_and_withdraw(
@@ -140,7 +140,7 @@ module wormhole_bridge::bridge_core {
         vaa: vector<u8>,
         pool_manager_info: &mut PoolManagerInfo,
         _ctx: &mut TxContext
-    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u256, DolaAddress, u16, vector<u8>) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
@@ -167,7 +167,7 @@ module wormhole_bridge::bridge_core {
             (deposit_amount as u256),
         );
         // myvaa::destroy(vaa);
-        (deposit_pool, deposit_user, (actual_amount as u64), withdraw_pool, app_id, app_payload)
+        (deposit_pool, deposit_user, actual_amount, withdraw_pool, app_id, app_payload)
     }
 
     public fun receive_withdraw(
@@ -205,7 +205,7 @@ module wormhole_bridge::bridge_core {
         user: DolaAddress,
         source_chain_id: u16,
         nonce: u64,
-        amount: u64,
+        amount: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
         assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
@@ -214,9 +214,15 @@ module wormhole_bridge::bridge_core {
             pool_manager_info,
             pool_address,
             app_manager::get_app_id(app_cap),
-            (amount as u256)
+            amount
         );
-        let msg = pool::encode_receive_withdraw_payload(source_chain_id, nonce, pool_address, user, (actual_amount as u64));
+        let msg = pool::encode_receive_withdraw_payload(
+            source_chain_id,
+            nonce,
+            pool_address,
+            user,
+            (actual_amount as u64)
+        );
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);

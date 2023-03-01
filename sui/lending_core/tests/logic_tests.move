@@ -4,6 +4,7 @@ module lending_core::logic_tests {
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_types::types::{Self, DolaAddress};
+    use governance::genesis;
     use lending_core::logic;
     use lending_core::math::{ray_mul, ray_div};
     use lending_core::storage::{Self, Storage, is_isolation_mode};
@@ -11,15 +12,14 @@ module lending_core::logic_tests {
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::test_scenario::{Self, Scenario};
     use sui::tx_context::TxContext;
-    use governance::genesis;
 
-    const ONE: u64 = 100000000;
+    const ONE: u256 = 100000000;
 
     const RAY: u256 = 1000000000000000000000000000;
 
-    const SECONDS_PER_DAY: u64 = 86400;
+    const SECONDS_PER_DAY: u256 = 86400;
 
-    const SECONDS_PER_YEAR: u64 = 31536000;
+    const SECONDS_PER_YEAR: u256 = 31536000;
 
     const LENDING_APP_ID: u16 = 1;
 
@@ -277,7 +277,7 @@ module lending_core::logic_tests {
             false,
             666,
             TREASURY_FACTOR,
-            (1000 * ONE as u128),
+            1000 * ONE,
             ISOLATE_CF,
             0,
             BASE_BORROW_RATE,
@@ -338,7 +338,7 @@ module lending_core::logic_tests {
         supply_pool: DolaAddress,
         supply_pool_id: u16,
         supply_user_id: u64,
-        supply_amount: u64
+        supply_amount: u256
     ) {
         test_scenario::next_tx(scenario, creator);
         {
@@ -352,7 +352,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 supply_pool,
                 LENDING_APP_ID,
-                (supply_amount as u256),
+                supply_amount,
             );
             logic::execute_supply(
                 &storage_cap,
@@ -379,7 +379,7 @@ module lending_core::logic_tests {
         borrow_pool: DolaAddress,
         borrow_pool_id: u16,
         borrow_user_id: u64,
-        borrow_amount: u64
+        borrow_amount: u256
     ) {
         test_scenario::next_tx(scenario, creator);
         {
@@ -404,7 +404,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 borrow_pool,
                 LENDING_APP_ID,
-                (borrow_amount as u256)
+                borrow_amount
             );
 
             // Check user dtoken
@@ -763,7 +763,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 btc_pool,
                 LENDING_APP_ID,
-                (withdraw_amount as u256)
+                withdraw_amount
             );
 
             // Check user otoken
@@ -959,7 +959,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
-                (repay_usdt_amount as u256),
+                repay_usdt_amount,
             );
             logic::execute_repay(
                 &storage_cap,
@@ -1024,7 +1024,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
-                (repay_usdt_amount as u256),
+                repay_usdt_amount,
             );
             logic::execute_repay(
                 &storage_cap,
@@ -1068,7 +1068,7 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = (ray_div(ray_mul((user_btc_value as u256), BTC_CF), USDT_BF) as u64);
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         // User 0 supply 1 btc
@@ -1137,11 +1137,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = (ray_div(ray_mul((user_btc_value as u256), BTC_CF), USDT_BF) as u64);
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = (ray_div(ray_mul((user_eth_value as u256), ETH_CF), USDC_BF) as u64);
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1214,11 +1214,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = (ray_div(ray_mul((user_btc_value as u256), BTC_CF), USDT_BF) as u64);
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = (ray_div(ray_mul((user_eth_value as u256), ETH_CF), USDC_BF) as u64);
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1286,11 +1286,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = (ray_div(ray_mul((user_btc_value as u256), BTC_CF), USDT_BF) as u64);
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = (ray_div(ray_mul((user_eth_value as u256), ETH_CF), USDC_BF) as u64);
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1358,11 +1358,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = (ray_div(ray_mul((user_btc_value as u256), BTC_CF), USDT_BF) as u64);
+        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = (ray_div(ray_mul((user_eth_value as u256), ETH_CF), USDC_BF) as u64);
+        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
