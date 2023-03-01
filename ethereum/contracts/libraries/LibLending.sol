@@ -11,7 +11,7 @@ library LibLending {
         uint16 sourceChainId;
         uint64 nonce;
         uint8 callType;
-        uint64 amount;
+        uint256 amount;
         LibDolaTypes.DolaAddress receiver;
         uint64 liquidateUserId;
     }
@@ -98,7 +98,7 @@ library LibLending {
         bytes memory encodeData = abi.encodePacked(
             sourceChainId,
             nonce,
-            amount,
+            uint256(amount),
             uint16(dolaAddress.length),
             dolaAddress,
             liquidateUserId,
@@ -125,8 +125,8 @@ library LibLending {
         decodeData.nonce = payload.toUint64(index);
         index += dataLen;
 
-        dataLen = 8;
-        decodeData.amount = payload.toUint64(index);
+        dataLen = 32;
+        decodeData.amount = payload.toUint256(index);
         index += dataLen;
 
         dataLen = 2;
