@@ -112,6 +112,7 @@ module lending_core::lending_wormhole_adapter {
             dola_pool_id,
             amount
         );
+        // emit event
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == SUPPLY, EINVALID_CALL_TYPE);
         event::emit(LendingCoreEvent {
@@ -183,6 +184,7 @@ module lending_core::lending_wormhole_adapter {
             actual_amount,
             wormhole_message_fee
         );
+
         event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
@@ -242,6 +244,7 @@ module lending_core::lending_wormhole_adapter {
             amount,
             wormhole_message_fee
         );
+
         event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
@@ -279,6 +282,8 @@ module lending_core::lending_wormhole_adapter {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
+
+        // emit event
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == REPAY, EINVALID_CALL_TYPE);
         event::emit(LendingCoreEvent {

@@ -494,6 +494,8 @@ module lending_core::logic {
         user_collateral_value == 0 && user_loan_value > 0
     }
 
+    /// If the user is liquidated and still has debts, transfer his debts to the Treasury,
+    /// which will cover his debts.
     public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, dola_user_id: u64) {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
@@ -650,6 +652,8 @@ module lending_core::logic {
         math::ray() - math::ray_div(health_collateral_value, health_loan_value)
     }
 
+    /// The liquidation discount is calculated based on the average
+    /// liquidity of the user on the basis of the base discount.
     public fun calculate_liquidation_discount(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -672,6 +676,11 @@ module lending_core::logic {
         math::min(liquidation_discount, MAX_DISCOUNT)
     }
 
+    /// Calculate the maximum number of users that can be cleared based
+    /// on the target health factor and clearing discount.
+    ///
+    /// The calculation details refer to:
+    ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=period%20of%20time.-,Liquidation,-Liquidation%20is%20when]
     public fun calculate_max_liquidation(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -732,6 +741,7 @@ module lending_core::logic {
         (max_liquidable_collateral, max_liquidable_debt)
     }
 
+    /// Determine the amount of collateral that can be liquidated based on the user's ability to repay.
     public fun calculate_actual_liquidation(
         oracle: &mut PriceOracle,
         collateral: u16,
@@ -761,6 +771,7 @@ module lending_core::logic {
         let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
         let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
         let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
+        // the treasury keeps a portion of the discount incentive
         let treasury_reserved_collateral = math::ray_mul(reward, treasury_factor);
         let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
@@ -779,7 +790,7 @@ module lending_core::logic {
     }
 
     public fun mint_otoken(
-        cap: &StorageCap, // todo! Where manage this?
+        cap: &StorageCap,
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -882,6 +893,7 @@ module lending_core::logic {
         storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
     }
 
+    /// Update the average liquidity of user
     public fun update_average_liquidity(
         cap: &StorageCap,
         storage: &mut Storage,
@@ -909,6 +921,10 @@ module lending_core::logic {
         }
     }
 
+    /// Update the index and deposit a portion of the interest into the Treasury
+    ///
+    /// More details refer to:
+    ///    [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
     public fun update_state(
         cap: &StorageCap,
         storage: &mut Storage,
@@ -937,10 +953,10 @@ module lending_core::logic {
             storage::get_liquidity_rate(storage, dola_pool_id)
         ), current_liquidity_index);
 
-        let mint_to_treasury = (math::ray_mul(
+        let mint_to_treasury = math::ray_mul(
             math::ray_mul((dtoken_scaled_total_supply), (new_borrow_index - current_borrow_index)),
             treasury_factor
-        ));
+        );
         storage::update_state(
             cap,
             storage,
@@ -952,6 +968,10 @@ module lending_core::logic {
         );
     }
 
+    /// Update the interest rate on the reserve
+    ///
+    /// More details refer to:
+    ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
     public fun update_interest_rate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,

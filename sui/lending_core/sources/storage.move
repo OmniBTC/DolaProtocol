@@ -61,7 +61,7 @@ module lending_core::storage {
         treasury_factor: u256,
         // Borrow cap ceiling, 0 means there is no ceiling
         borrow_cap_ceiling: u256,
-        // Current borrow rate [ray]
+        // Current borrow rate [math::ray]
         current_borrow_rate: u256,
         // Current supply rate [math::ray]
         current_liquidity_rate: u256,
