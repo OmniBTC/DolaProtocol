@@ -55,7 +55,7 @@ module lending_core::lending_wormhole_adapter {
         dst_chain_id: u16,
         dola_pool_id: u16,
         receiver: vector<u8>,
-        amount: u64,
+        amount: u256,
         liquidate_user_id: u64,
         call_type: u8
     }
@@ -169,7 +169,7 @@ module lending_core::lending_wormhole_adapter {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
@@ -195,7 +195,6 @@ module lending_core::lending_wormhole_adapter {
             call_type
         })
     }
-
 
     public entry fun borrow(
         wormhole_adapter: &WormholeAdapter,
@@ -228,7 +227,7 @@ module lending_core::lending_wormhole_adapter {
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
         logic::execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         bridge_core::send_withdraw(
@@ -472,7 +471,7 @@ module lending_core::lending_wormhole_adapter {
         source_chain_id: u16,
         nonce: u64,
         call_type: u8,
-        amount: u64,
+        amount: u256,
         receiver: DolaAddress,
         liquidate_user_id: u64
     ): vector<u8> {
@@ -481,7 +480,7 @@ module lending_core::lending_wormhole_adapter {
         serde::serialize_u16(&mut payload, source_chain_id);
         serde::serialize_u64(&mut payload, nonce);
 
-        serde::serialize_u64(&mut payload, amount);
+        serde::serialize_u256(&mut payload, amount);
         let receiver = types::encode_dola_address(receiver);
         serde::serialize_u16(&mut payload, (vector::length(&receiver) as u16));
         serde::serialize_vector(&mut payload, receiver);
@@ -490,7 +489,7 @@ module lending_core::lending_wormhole_adapter {
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u16, u64, u8, u64, DolaAddress, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u16, u64, u8, u256, DolaAddress, u64) {
         let index = 0;
         let data_len;
 
@@ -503,7 +502,7 @@ module lending_core::lending_wormhole_adapter {
         index = index + data_len;
 
         data_len = 8;
-        let amount = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
+        let amount = serde::deserialize_u256(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;

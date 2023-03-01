@@ -19,13 +19,13 @@ module oracle::oracle {
     struct PriceOracle has key {
         id: UID,
         // todo: use sui timestamp
-        timestamp: u64,
+        timestamp: u256,
         // dola_pool_id => price
         price_oracles: Table<u16, Price>
     }
 
     struct Price has store {
-        value: u64,
+        value: u256,
         // 2 decimals should be 100,
         decimal: u8
     }
@@ -44,9 +44,9 @@ module oracle::oracle {
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
-        timestamp: u64,
+        timestamp: u256,
         dola_pool_id: u16,
-        token_price: u64,
+        token_price: u256,
         price_decimal: u8
     ) {
         price_oracle.timestamp = timestamp;
@@ -62,7 +62,7 @@ module oracle::oracle {
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,
-        token_price: u64
+        token_price: u256
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
@@ -70,18 +70,18 @@ module oracle::oracle {
         price.value = token_price;
     }
 
-    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16): (u64, u8) {
+    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16): (u256, u8) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, dola_pool_id);
         (price.value, price.decimal)
     }
 
-    public entry fun update_timestamp(_: &OracleCap, oracle: &mut PriceOracle, timestamp: u64) {
+    public entry fun update_timestamp(_: &OracleCap, oracle: &mut PriceOracle, timestamp: u256) {
         oracle.timestamp = timestamp;
     }
 
-    public fun get_timestamp(oracle: &mut PriceOracle): u64 {
+    public fun get_timestamp(oracle: &mut PriceOracle): u256 {
         oracle.timestamp
     }
 

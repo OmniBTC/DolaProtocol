@@ -32,9 +32,9 @@ module lending_core::storage {
 
     struct UserInfo has store {
         // Average liquidity
-        average_liquidity: u64,
+        average_liquidity: u256,
         // Timestamp of last update
-        last_update_timestamp: u64,
+        last_update_timestamp: u256,
         // Isolated mode, the user's collateral is isolated assets will go into isolated mode
         isolated_mode: bool,
         // Tokens as liquid assets, they can still capture the yield but won't be able to use it as collateral
@@ -51,16 +51,16 @@ module lending_core::storage {
         // Enable borrow when isolation
         borrowable_in_isolation: bool,
         // Accumulated isolate debt
-        isolate_debt: u128,
+        isolate_debt: u256,
         // Timestamp of last update
         // todo: use sui timestamp
-        last_update_timestamp: u64,
+        last_update_timestamp: u256,
         // Treasury (dola_user_id)
         treasury: u64,
         // Treasury interest factor [math::ray]
         treasury_factor: u256,
         // Borrow cap ceiling, 0 means there is no ceiling
-        borrow_cap_ceiling: u128,
+        borrow_cap_ceiling: u256,
         // Current borrow rate [ray]
         current_borrow_rate: u256,
         // Current supply rate [math::ray]
@@ -83,9 +83,9 @@ module lending_core::storage {
 
     struct ScaledBalance has store {
         // dola_user_id address => scale balance
-        user_state: Table<u64, u64>,
+        user_state: Table<u64, u256>,
         // total supply of scale balance
-        total_supply: u128,
+        total_supply: u256,
     }
 
     struct BorrowRateFactors has store {
@@ -140,7 +140,7 @@ module lending_core::storage {
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
-        borrow_cap_ceiling: u128,
+        borrow_cap_ceiling: u256,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         base_borrow_rate: u256,
@@ -171,11 +171,11 @@ module lending_core::storage {
                 optimal_utilization
             },
             otoken_scaled: ScaledBalance {
-                user_state: table::new<u64, u64>(ctx),
+                user_state: table::new<u64, u256>(ctx),
                 total_supply: 0,
             },
             dtoken_scaled: ScaledBalance {
-                user_state: table::new<u64, u64>(ctx),
+                user_state: table::new<u64, u256>(ctx),
                 total_supply: 0,
             },
         });
@@ -205,14 +205,14 @@ module lending_core::storage {
         table::contains(&mut storage.reserves, dola_pool_id)
     }
 
-    public fun get_user_last_timestamp(storage: &mut Storage, dola_user_id: u64): u64 {
+    public fun get_user_last_timestamp(storage: &mut Storage, dola_user_id: u64): u256 {
         if (exist_user_info(storage, dola_user_id)) {
             let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
             user_info.last_update_timestamp
         } else { 0 }
     }
 
-    public fun get_user_average_liquidity(storage: &mut Storage, dola_user_id: u64): u64 {
+    public fun get_user_average_liquidity(storage: &mut Storage, dola_user_id: u64): u256 {
         if (exist_user_info(storage, dola_user_id)) {
             let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
             user_info.average_liquidity
@@ -239,7 +239,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let reserve = table::borrow(&storage.reserves, dola_pool_id);
         if (table::contains(&reserve.otoken_scaled.user_state, dola_user_id)) {
             *table::borrow(&reserve.otoken_scaled.user_state, dola_user_id)
@@ -252,7 +252,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let reserve = table::borrow(&storage.reserves, dola_pool_id);
         if (table::contains(&reserve.dtoken_scaled.user_state, dola_user_id)) {
             *table::borrow(&reserve.dtoken_scaled.user_state, dola_user_id)
@@ -271,7 +271,7 @@ module lending_core::storage {
     public fun get_isolate_debt(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u128 {
+    ): u256 {
         table::borrow(&storage.reserves, dola_pool_id).isolate_debt
     }
 
@@ -282,7 +282,7 @@ module lending_core::storage {
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
 
-    public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u128 {
+    public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u256 {
         let borrow_cap_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling;
         borrow_cap_ceiling
     }
@@ -298,21 +298,21 @@ module lending_core::storage {
     public fun get_last_update_timestamp(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         table::borrow(&storage.reserves, dola_pool_id).last_update_timestamp
     }
 
     public fun get_otoken_scaled_total_supply(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u128 {
+    ): u256 {
         table::borrow(&storage.reserves, dola_pool_id).otoken_scaled.total_supply
     }
 
     public fun get_dtoken_scaled_total_supply(
         storage: &mut Storage,
         dola_pool_id: u16
-    ): u128 {
+    ): u256 {
         table::borrow(&storage.reserves, dola_pool_id).dtoken_scaled.total_supply
     }
 
@@ -357,7 +357,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
-        scaled_amount: u64
+        scaled_amount: u256
     ) {
         let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
@@ -368,7 +368,7 @@ module lending_core::storage {
             current_amount = 0
         };
         table::add(&mut otoken_scaled.user_state, dola_user_id, scaled_amount + current_amount);
-        otoken_scaled.total_supply = otoken_scaled.total_supply + (scaled_amount as u128);
+        otoken_scaled.total_supply = otoken_scaled.total_supply + scaled_amount;
     }
 
     public fun burn_otoken_scaled(
@@ -376,7 +376,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
-        scaled_amount: u64
+        scaled_amount: u256
     ) {
         let otoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).otoken_scaled;
         let current_amount;
@@ -388,7 +388,7 @@ module lending_core::storage {
         };
         assert!(current_amount >= scaled_amount, EAMOUNT_NOT_ENOUGH);
         table::add(&mut otoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
-        otoken_scaled.total_supply = otoken_scaled.total_supply - (scaled_amount as u128);
+        otoken_scaled.total_supply = otoken_scaled.total_supply - scaled_amount;
     }
 
     public fun mint_dtoken_scaled(
@@ -396,7 +396,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
-        scaled_amount: u64
+        scaled_amount: u256
     ) {
         let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
@@ -407,7 +407,7 @@ module lending_core::storage {
             current_amount = 0
         };
         table::add(&mut dtoken_scaled.user_state, dola_user_id, scaled_amount + current_amount);
-        dtoken_scaled.total_supply = dtoken_scaled.total_supply + (scaled_amount as u128);
+        dtoken_scaled.total_supply = dtoken_scaled.total_supply + scaled_amount;
     }
 
     public fun burn_dtoken_scaled(
@@ -415,7 +415,7 @@ module lending_core::storage {
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
-        scaled_amount: u64
+        scaled_amount: u256
     ) {
         let dtoken_scaled = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).dtoken_scaled;
         let current_amount;
@@ -427,7 +427,7 @@ module lending_core::storage {
         };
         assert!(current_amount >= scaled_amount, EAMOUNT_NOT_ENOUGH);
         table::add(&mut dtoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
-        dtoken_scaled.total_supply = dtoken_scaled.total_supply - (scaled_amount as u128);
+        dtoken_scaled.total_supply = dtoken_scaled.total_supply - scaled_amount;
     }
 
     public fun ensure_user_info_exist(
@@ -560,7 +560,7 @@ module lending_core::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        borrow_cap_ceiling: u128
+        borrow_cap_ceiling: u256
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.borrow_cap_ceiling = borrow_cap_ceiling;
@@ -587,7 +587,7 @@ module lending_core::storage {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64,
-        average_liquidity: u64
+        average_liquidity: u256
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
         user_info.last_update_timestamp = oracle::get_timestamp(oracle);
@@ -598,7 +598,7 @@ module lending_core::storage {
         _: &StorageCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        isolate_debt: u128
+        isolate_debt: u256
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.isolate_debt = isolate_debt;
@@ -610,8 +610,8 @@ module lending_core::storage {
         dola_pool_id: u16,
         new_borrow_index: u256,
         new_liquidity_index: u256,
-        last_update_timestamp: u64,
-        mint_to_treasury_scaled: u64
+        last_update_timestamp: u256,
+        mint_to_treasury_scaled: u256
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_index = new_borrow_index;
