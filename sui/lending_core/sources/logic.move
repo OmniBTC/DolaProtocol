@@ -766,16 +766,16 @@ module lending_core::logic {
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
     }
 
-    public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u128 {
+    public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {
         let scaled_total_otoken_supply = storage::get_otoken_scaled_total_supply(storage, dola_pool_id);
         let current_index = storage::get_liquidity_index(storage, dola_pool_id);
-        (math::ray_mul((scaled_total_otoken_supply), current_index) as u128)
+        math::ray_mul((scaled_total_otoken_supply), current_index)
     }
 
-    public fun total_dtoken_supply(storage: &mut Storage, dola_pool_id: u16): u128 {
+    public fun total_dtoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {
         let scaled_total_dtoken_supply = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         let current_index = storage::get_borrow_index(storage, dola_pool_id);
-        (math::ray_mul((scaled_total_dtoken_supply), current_index) as u128)
+        math::ray_mul((scaled_total_dtoken_supply), current_index)
     }
 
     public fun mint_otoken(

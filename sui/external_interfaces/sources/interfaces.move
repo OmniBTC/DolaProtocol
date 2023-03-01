@@ -408,8 +408,8 @@ module external_interfaces::interfaces {
         let borrow_apy = borrow_rate * 10000 / math::ray();
         let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
         let supply_apy = liquidity_rate * 10000 / math::ray();
-        let supply = (logic::total_otoken_supply(storage, dola_pool_id) as u256);
-        let debt = (logic::total_dtoken_supply(storage, dola_pool_id) as u256);
+        let supply = logic::total_otoken_supply(storage, dola_pool_id);
+        let debt = logic::total_dtoken_supply(storage, dola_pool_id);
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
 
         let utilization_rate = 0;
@@ -450,8 +450,8 @@ module external_interfaces::interfaces {
             let borrow_apy = borrow_rate * 10000 / math::ray();
             let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
             let supply_apy = liquidity_rate * 10000 / math::ray();
-            let supply = (logic::total_otoken_supply(storage, dola_pool_id) as u256);
-            let debt = (logic::total_dtoken_supply(storage, dola_pool_id) as u256);
+            let supply = logic::total_otoken_supply(storage, dola_pool_id);
+            let debt = logic::total_dtoken_supply(storage, dola_pool_id);
             let reserve = pool_manager::get_app_liquidity(
                 pool_manager_info,
                 dola_pool_id,
