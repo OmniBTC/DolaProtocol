@@ -10,12 +10,11 @@ module external_interfaces::interfaces {
     use lending_core::rates;
     use lending_core::storage::{Self, Storage};
     use oracle::oracle::{Self, PriceOracle};
+    use pool_manager::equilibrium_fee;
+    use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
     use sui::event::emit;
-    use sui::math::min;
     use user_manager::user_manager::{Self, UserManagerInfo};
-    use pool_manager::equilibrium_fee;
-     use pool_manager::pool_manager::{Self, PoolManagerInfo};
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -72,33 +71,33 @@ module external_interfaces::interfaces {
         total_supply_apy: u256,
         total_borrow_apy: u256,
         collateral_infos: vector<UserCollateralInfo>,
-        total_collateral_value: u64,
+        total_collateral_value: u256,
         debt_infos: vector<UserDebtInfo>,
-        total_debt_value: u64
+        total_debt_value: u256
     }
 
     struct UserCollateralInfo has copy, drop {
         dola_pool_id: u16,
         borrow_apy: u256,
         supply_apy: u256,
-        collateral_amount: u64,
-        collateral_value: u64
+        collateral_amount: u256,
+        collateral_value: u256
     }
 
     struct UserDebtInfo has copy, drop {
         dola_pool_id: u16,
         borrow_apy: u256,
         supply_apy: u256,
-        debt_amount: u64,
-        debt_value: u64
+        debt_amount: u256,
+        debt_value: u256
     }
 
     struct UserAllowedBorrow has copy, drop {
         borrow_token: vector<u8>,
-        max_borrow_amount: u64,
-        max_borrow_value: u64,
-        borrow_amount: u64,
-        borrow_value: u64,
+        max_borrow_amount: u256,
+        max_borrow_value: u256,
+        borrow_amount: u256,
+        borrow_value: u256,
         reason: Option<String>
     }
 
@@ -124,7 +123,7 @@ module external_interfaces::interfaces {
 
     struct TokenPrice has copy, drop {
         dola_pool_id: u16,
-        price: u64,
+        price: u256,
         decimal: u8
     }
 
@@ -316,7 +315,7 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / math::ray();
             let collateral_amount = logic::user_collateral_balance(storage, dola_user_id, *collateral);
             let collateral_value = logic::user_collateral_value(storage, oracle, dola_user_id, *collateral);
-            total_supply_apy_value = total_supply_apy_value + math::ray_mul((collateral_value as u256), liquidity_rate);
+            total_supply_apy_value = total_supply_apy_value + math::ray_mul(collateral_value, liquidity_rate);
             vector::push_back(&mut collateral_infos, UserCollateralInfo {
                 dola_pool_id: *collateral,
                 borrow_apy,
@@ -338,7 +337,7 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / math::ray();
             let debt_amount = logic::user_loan_balance(storage, dola_user_id, *loan);
             let debt_value = logic::user_loan_value(storage, oracle, dola_user_id, *loan);
-            total_borrow_apy_value = total_borrow_apy_value + math::ray_mul((debt_value as u256), borrow_rate);
+            total_borrow_apy_value = total_borrow_apy_value + math::ray_mul(debt_value, borrow_rate);
             vector::push_back(&mut debt_infos, UserDebtInfo {
                 dola_pool_id: *loan,
                 borrow_apy,
@@ -360,12 +359,12 @@ module external_interfaces::interfaces {
         let profit_state = true;
 
         if (user_total_supply_value > 0) {
-            total_supply_apy = math::ray_div(total_supply_apy_value, (user_total_supply_value as u256));
+            total_supply_apy = math::ray_div(total_supply_apy_value, user_total_supply_value);
             profit_state = true;
         };
 
         if (user_total_debt_value > 0) {
-            total_borrow_apy = math::ray_div(total_borrow_apy_value, (user_total_debt_value as u256));
+            total_borrow_apy = math::ray_div(total_borrow_apy_value, user_total_debt_value);
             profit_state = false;
         };
 
@@ -415,7 +414,7 @@ module external_interfaces::interfaces {
 
         let utilization_rate = 0;
         if (debt > 0) {
-            let utilization = rates::calculate_utilization(storage, dola_pool_id, (reserve as u128));
+            let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
             utilization_rate = utilization * 10000 / math::ray();
         };
 
@@ -448,16 +447,20 @@ module external_interfaces::interfaces {
             let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
             let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
             let borrow_rate = storage::get_borrow_rate(storage, dola_pool_id);
-            let borrow_apy = borrow_rate * 10000 /  math::ray();
+            let borrow_apy = borrow_rate * 10000 / math::ray();
             let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
-            let supply_apy = liquidity_rate * 10000 /  math::ray();
+            let supply_apy = liquidity_rate * 10000 / math::ray();
             let supply = (logic::total_otoken_supply(storage, dola_pool_id) as u256);
             let debt = (logic::total_dtoken_supply(storage, dola_pool_id) as u256);
-            let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
+            let reserve = pool_manager::get_app_liquidity(
+                pool_manager_info,
+                dola_pool_id,
+                storage::get_app_id(storage)
+            );
 
             let utilization_rate = 0;
             if (debt > 0) {
-                let utilization = rates::calculate_utilization(storage, dola_pool_id, (reserve as u128));
+                let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
                 utilization_rate = utilization * 10000 / math::ray();
             };
 
@@ -550,8 +553,8 @@ module external_interfaces::interfaces {
         let pool_weight = pool_manager::get_pool_weight(pool_manager_info, dola_pool_address);
         let total_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
         let equilibrium_fee = equilibrium_fee::calculate_equilibrium_fee(
-            total_liquidity ,
-            current_liquidity ,
+            total_liquidity,
+            current_liquidity,
             withdraw_amount,
             equilibrium_fee::calculate_expected_ratio(total_weight, pool_weight),
             pool_manager::get_default_alpha_1(),
@@ -585,10 +588,10 @@ module external_interfaces::interfaces {
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
         let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
         let borrow_coefficient = storage::get_borrow_coefficient(storage, borrow_pool_id);
-        let can_borrow_value = (math::ray_div(
-            ((health_collateral_value - health_loan_value) as u256),
+        let can_borrow_value = math::ray_div(
+            (health_collateral_value - health_loan_value),
             borrow_coefficient
-        ) as u64);
+        );
         let borrow_amount = logic::calculate_amount(oracle, borrow_pool_id, can_borrow_value);
         let pool_address = pool_manager::find_pool_by_chain(pool_manager_info, borrow_pool_id, dola_chain_id);
 
@@ -599,8 +602,8 @@ module external_interfaces::interfaces {
         };
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, borrow_pool_id, 0);
 
-        let max_borrow_amount = min(borrow_amount, (reserve as u64));
-        borrow_amount = min(borrow_amount, (pool_liquidity as u64));
+        let max_borrow_amount = math::min(borrow_amount, reserve);
+        borrow_amount = math::min(borrow_amount, pool_liquidity);
         let max_borrow_value = logic::calculate_value(oracle, borrow_pool_id, max_borrow_amount);
         let borrow_value = logic::calculate_value(oracle, borrow_pool_id, borrow_amount);
         emit(UserAllowedBorrow {
