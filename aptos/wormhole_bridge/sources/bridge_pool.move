@@ -30,6 +30,15 @@ module wormhole_bridge::bridge_pool {
 
     const SEED: vector<u8> = b"Dola wormhole_bridge";
 
+    /// `wormhole_bridge` adapts to wormhole, enabling cross-chain messaging.
+    /// For VAA data, the following validations are required.
+    /// wormhole official library:
+    ///     1. verify the signature
+    /// Wormhole_bridge itself:
+    ///     1. make sure it comes from the correct (emitter_chain, emitter_address) by VAA
+    ///     2. make sure the data has not been processed by VAA hash
+    ///     3. receive_withdraw_with_payload: reserved for future extensions to ensure the
+    /// correctness of the recipient's address
     struct PoolState has key, store {
         resource_cap: SignerCapability,
         pool_cap: PoolCap,
@@ -258,6 +267,39 @@ module wormhole_bridge::bridge_pool {
             }
         )
     }
+
+    // public fun receive_withdraw_with_payload<CoinType>(
+    //     vaa: vector<u8>,
+    // ): (Coin<CoinType>, vector<u8>) acquires PoolState, PoolEventHandle {
+    //     // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
+    //     // let vaa = parse_verify_and_replay_protect(
+    //     //     wormhole_state,
+    //     //     &pool_state.registered_emitters,
+    //     //     &mut pool_state.consumed_vaas,
+    //     //     vaa,
+    //     //     ctx
+    //     // );
+    //     // let (_pool_address, user, amount, token_name) =
+    //     //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
+    //     let (source_chain_id, nonce, pool_address, receiver, amount) =
+    //         pool::decode_receive_withdraw_payload(vaa);
+    //     let pool_state = borrow_global_mut<PoolState>(get_resource_address());
+    //
+    //     pool::inner_withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
+    //     // myvaa::destroy(vaa);
+    //     let event_handle = borrow_global_mut<PoolEventHandle>(@wormhole_bridge);
+    //     event::emit_event(
+    //         &mut event_handle.pool_withdraw_handle,
+    //         PoolWithdrawEvent {
+    //             nonce,
+    //             source_chain_id,
+    //             dst_chain_id: types::get_dola_chain_id(&pool_address),
+    //             pool_address: types::get_dola_address(&pool_address),
+    //             receiver: types::get_dola_address(&receiver),
+    //             amount
+    //         }
+    //     )
+    // }
 
     public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());

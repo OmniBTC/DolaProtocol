@@ -28,6 +28,14 @@ module wormhole_bridge::bridge_core {
 
     const EINVALID_APP: u64 = 2;
 
+    /// `wormhole_bridge` adapts to wormhole, enabling cross-chain messaging.
+    /// For VAA data, the following validations are required.
+    /// wormhole official library:
+    ///     1. verify the signature
+    /// Wormhole_bridge itself:
+    ///     1. make sure it comes from the correct (emitter_chain, emitter_address) by VAA
+    ///     2. make sure the data has not been processed by VAA hash
+    ///     3. make sure the caller is from the correct application by app_id from pool payload
     struct CoreState has key, store {
         id: UID,
         user_manager_cap: Option<UserManagerCap>,
