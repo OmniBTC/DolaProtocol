@@ -43,7 +43,7 @@ module lending_core::logic {
 
     const ENOT_LOAN: u64 = 4;
 
-    const ENOT_ENOUGH_OTOKEN: u64 = 5;
+    const EINVALID_POOL_ID: u64 = 5;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
 
@@ -126,7 +126,7 @@ module lending_core::logic {
 
         // Check if violator cause a lending deficit, use treasury to cover the deficit.
         if (has_deficit(storage, oracle, violator)) {
-            cover_deficit(cap, storage, oracle, violator);
+            cover_deficit(cap, storage, violator);
         };
 
         // Give the collateral to the liquidator.
@@ -172,8 +172,9 @@ module lending_core::logic {
         dola_pool_id: u16,
         supply_amount: u64,
     ) {
-        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
         storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
 
         update_state(cap, storage, oracle, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
@@ -225,6 +226,9 @@ module lending_core::logic {
         dola_pool_id: u16,
         withdraw_amount: u64,
     ): u64 {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let actual_amount = sui::math::min(withdraw_amount, otoken_amount);
@@ -263,6 +267,9 @@ module lending_core::logic {
         borrow_pool_id: u16,
         borrow_amount: u64,
     ) {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
@@ -303,6 +310,9 @@ module lending_core::logic {
         dola_pool_id: u16,
         repay_amount: u64,
     ) {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
         let repay_debt = sui::math::min(repay_amount, debt);
@@ -405,6 +415,7 @@ module lending_core::logic {
         });
     }
 
+    /// Extract funds from the Treasury through governance
     public fun claim_from_treasury(
         _: &GovernanceCap,
         cap: &StorageCap,
@@ -462,30 +473,18 @@ module lending_core::logic {
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
-            vector::contains(&collaterals, &dola_pool_id)
-        } else {
-            false
-        }
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        vector::contains(&collaterals, &dola_pool_id)
     }
 
     public fun is_loan(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let loans = storage::get_user_loans(storage, dola_user_id);
-            vector::contains(&loans, &dola_pool_id)
-        } else {
-            false
-        }
+        let loans = storage::get_user_loans(storage, dola_user_id);
+        vector::contains(&loans, &dola_pool_id)
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
-            vector::length(&collaterals) > 0
-        } else {
-            false
-        }
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        vector::length(&collaterals) > 0
     }
 
     /// If the user has a collateral value of 0 but still has debt, the system has a deficit.
@@ -495,8 +494,7 @@ module lending_core::logic {
         user_collateral_value == 0 && user_loan_value > 0
     }
 
-    public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64) {
-        assert!(has_deficit(storage, oracle, dola_user_id), ENOT_DEFICIT);
+    public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, dola_user_id: u64) {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let i = 0;

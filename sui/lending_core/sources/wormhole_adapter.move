@@ -9,7 +9,7 @@ module lending_core::lending_wormhole_adapter {
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde;
     use sui::coin::Coin;
-    use sui::event::emit;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -17,7 +17,6 @@ module lending_core::lending_wormhole_adapter {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
-    use sui::event;
 
     const SUPPLY: u8 = 0;
 
@@ -115,7 +114,7 @@ module lending_core::lending_wormhole_adapter {
         );
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == SUPPLY, EINVALID_CALL_TYPE);
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -184,7 +183,7 @@ module lending_core::lending_wormhole_adapter {
             actual_amount,
             wormhole_message_fee
         );
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -244,7 +243,7 @@ module lending_core::lending_wormhole_adapter {
             amount,
             wormhole_message_fee
         );
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -283,7 +282,7 @@ module lending_core::lending_wormhole_adapter {
         logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == REPAY, EINVALID_CALL_TYPE);
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
