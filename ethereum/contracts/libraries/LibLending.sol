@@ -36,17 +36,17 @@ library LibLending {
             dolaAddress
         );
         for (uint256 i = 0; i < dolaPoolIds.length; i++) {
-            encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
+            encodeData = encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
         }
 
-        encodeData.concat(abi.encodePacked(callType));
+        encodeData = encodeData.concat(abi.encodePacked(callType));
         return encodeData;
     }
 
     function decodeAppHelperPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppHelperPayload memory)
+    internal
+    pure
+    returns (LendingAppHelperPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -108,9 +108,9 @@ library LibLending {
     }
 
     function decodeLendingAppPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppPayload memory)
+    internal
+    pure
+    returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

@@ -506,7 +506,7 @@ module lending_core::lending_wormhole_adapter {
         let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = 8;
+        data_len = 32;
         let amount = serde::deserialize_u256(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
