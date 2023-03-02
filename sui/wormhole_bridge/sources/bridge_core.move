@@ -1,6 +1,4 @@
 module wormhole_bridge::bridge_core {
-    use std::option::{Self, Option};
-
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::types::DolaAddress;
     use governance::genesis::GovernanceCap;
@@ -38,15 +36,22 @@ module wormhole_bridge::bridge_core {
     ///     3. make sure the caller is from the correct application by app_id from pool payload
     struct CoreState has key, store {
         id: UID,
-        user_manager_cap: Option<UserManagerCap>,
-        pool_manager_cap: Option<PoolManagerCap>,
+        // Allow modification of user_manager storage through UserManagerCap
+        user_manager_cap: UserManagerCap,
+        // Allow modification of pool_manager storage via PoolManagerCap
+        pool_manager_cap: PoolManagerCap,
+        // Move does not have a contract address, Wormhole uses the emitter
+        // in EmitterCapability to represent the send address of this contract
         sender: EmitterCapability,
+        // Used to verify that the VAA has been processed
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
+        // Used to verify that (emitter_chain, emitter_address) is correct
         registered_emitters: VecMap<u16, ExternalAddress>,
         // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>
     }
 
+    // todo! Delete after wormhole running
     struct VaaEvent has copy, drop {
         vaa: vector<u8>,
         nonce: u64
@@ -60,8 +65,8 @@ module wormhole_bridge::bridge_core {
         transfer::share_object(
             CoreState {
                 id: object::new(ctx),
-                user_manager_cap: option::some(user_manager::register_cap_with_governance(governance)),
-                pool_manager_cap: option::some(pool_manager::register_cap_with_governance(governance)),
+                user_manager_cap: user_manager::register_cap_with_governance(governance),
+                pool_manager_cap: pool_manager::register_cap_with_governance(governance),
                 sender: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
@@ -110,8 +115,6 @@ module wormhole_bridge::bridge_core {
         user_manager_info: &mut UserManagerInfo,
         _ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u64, vector<u8>) {
-        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
-        assert!(option::is_some(&core_state.user_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -127,7 +130,7 @@ module wormhole_bridge::bridge_core {
             pool::decode_send_deposit_payload(vaa);
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
-            option::borrow(&core_state.pool_manager_cap),
+            &core_state.pool_manager_cap,
             pool_manager_info,
             pool,
             app_manager::get_app_id(app_cap),
@@ -135,7 +138,7 @@ module wormhole_bridge::bridge_core {
             (amount as u256),
         );
         if (!user_manager::is_dola_user(user_manager_info, user)) {
-            user_manager::register_dola_user_id(option::borrow(&core_state.user_manager_cap), user_manager_info, user);
+            user_manager::register_dola_user_id(&core_state.user_manager_cap, user_manager_info, user);
         };
         // myvaa::destroy(vaa);
         (pool, user, (actual_amount as u64), app_payload)
@@ -149,7 +152,6 @@ module wormhole_bridge::bridge_core {
         pool_manager_info: &mut PoolManagerInfo,
         _ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
-        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -166,7 +168,7 @@ module wormhole_bridge::bridge_core {
         );
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
-            option::borrow(&core_state.pool_manager_cap),
+            &core_state.pool_manager_cap,
             pool_manager_info,
             deposit_pool,
             app_manager::get_app_id(app_cap),
@@ -216,15 +218,20 @@ module wormhole_bridge::bridge_core {
         amount: u64,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        assert!(option::is_some(&core_state.pool_manager_cap), EMUST_SOME);
         let (actual_amount, _) = pool_manager::remove_liquidity(
-            option::borrow(&core_state.pool_manager_cap),
+            &core_state.pool_manager_cap,
             pool_manager_info,
             pool_address,
             app_manager::get_app_id(app_cap),
             (amount as u256)
         );
-        let msg = pool::encode_receive_withdraw_payload(source_chain_id, nonce, pool_address, user, (actual_amount as u64));
+        let msg = pool::encode_receive_withdraw_payload(
+            source_chain_id,
+            nonce,
+            pool_address,
+            user,
+            (actual_amount as u64)
+        );
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);
