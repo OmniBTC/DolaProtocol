@@ -406,7 +406,7 @@ module lending_core::lending_wormhole_adapter {
         let i = 0;
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
-            logic::as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
+            logic::cancel_as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
             i = i + 1;
         };
     }
