@@ -8,6 +8,10 @@ import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
 contract BridgePool {
+    uint16 public constant SUI_EMITTER_CHAIN = 24;
+
+    bytes32 public constant SUI_EMITTER_ADDRESS = 0x0000000000000000000000000000000000000000000000000000000000000004;
+
     address wormholeBridge;
     uint32 vaaNonce;
     uint16 dolaChainId;
@@ -119,7 +123,7 @@ contract BridgePool {
         bytes memory payload;
         if (token == address(0)) {
             require(msg.value >= amount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositTo{value: amount}(
+            payload = IOmniPool(omnipool).depositTo{value : amount}(
                 token,
                 amount,
                 appId,
@@ -135,7 +139,7 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value: getWormholeMessageFee()}(
+        wormhole().publishMessage{value : getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
@@ -154,7 +158,7 @@ contract BridgePool {
             appPayload
         );
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
+        IWormhole(wormhole()).publishMessage{value : getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
@@ -174,7 +178,7 @@ contract BridgePool {
         if (depositToken == address(0)) {
             require(msg.value >= depositAmount, "Not enough msg value!");
             payload = IOmniPool(omnipool).depositAndWithdraw{
-                value: depositAmount
+            value : depositAmount
             }(
                 depositToken,
                 depositAmount,
@@ -195,7 +199,7 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value: getWormholeMessageFee()}(
+        IWormhole(wormhole()).publishMessage{value : getWormholeMessageFee()}(
             getNonce(),
             payload,
             getFinality()
@@ -212,7 +216,7 @@ contract BridgePool {
         //     .decodeReceiveWithdrawPayload(vm.payload);
 
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
-            .decodeReceiveWithdrawPayload(vaa);
+        .decodeReceiveWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
         IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);

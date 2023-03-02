@@ -57,6 +57,7 @@ module wormhole_bridge::bridge_core {
         nonce: u64
     }
 
+    /// Initializing the wormhole bridge through governance
     public fun initialize_wormhole_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
@@ -75,14 +76,16 @@ module wormhole_bridge::bridge_core {
         );
     }
 
+    /// Register the remote bridge through governance
+    /// Steps for registering a remote bridge:
+    ///  1. Deploy a remote bridge containing (SUI_EMIT_CHAIN, SUI_EMITTER_CHAIN) to represent this contract
+    ///  2. By governing the call to `register_remote_bridge`
     public fun register_remote_bridge(
         _: &GovernanceCap,
         core_state: &mut CoreState,
         emitter_chain_id: u16,
-        emitter_address: vector<u8>,
-        _ctx: &mut TxContext
+        emitter_address: vector<u8>
     ) {
-        // todo! consider remote register
         vec_map::insert(
             &mut core_state.registered_emitters,
             emitter_chain_id,

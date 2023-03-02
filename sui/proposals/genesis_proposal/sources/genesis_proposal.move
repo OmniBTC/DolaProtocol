@@ -163,27 +163,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
-            governance_v1::destory_governance_cap(governance_cap);
-        };
-
-        option::destroy_none(governance_cap);
-    }
-
-    public entry fun vote_register_pool_remote_bridge(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        pool_state: &mut PoolState,
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-
-        if (option::is_some(&governance_cap)) {
-            let governance_cap = option::extract(&mut governance_cap);
-
-            bridge_pool::register_remote_bridge(&governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
+            bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

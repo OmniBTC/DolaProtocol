@@ -18,6 +18,10 @@ module wormhole_bridge::bridge_pool {
     use wormhole::state;
     use wormhole::wormhole;
 
+    const SUI_EMITTER_CHAIN: u64 = 24;
+
+    const SUI_EMITTER_ADDRESS: vector<u8> = x"0000000000000000000000000000000000000000000000000000000000000004";
+
     const PROTOCOL_APP_ID: u64 = 0;
 
     const EMUST_DEPLOYER: u64 = 0;
@@ -92,7 +96,7 @@ module wormhole_bridge::bridge_pool {
 
         let wormhole_emitter = wormhole::register_emitter();
         let (resource_signer, resource_cap) = account::create_resource_account(sender, SEED);
-        move_to(&resource_signer, PoolState {
+        let pool_state = PoolState {
             resource_cap,
             pool_cap: pool::register_cap(sender),
             sender: wormhole_emitter,
@@ -100,28 +104,17 @@ module wormhole_bridge::bridge_pool {
             registered_emitters: table::new(),
             cache_vaas: table::new(),
             nonce: 0
-        });
-
+        };
+        table::add(
+            &mut pool_state.registered_emitters,
+            u16::from_u64(SUI_EMITTER_CHAIN),
+            external_address::from_bytes(SUI_EMITTER_ADDRESS)
+        );
+        
+        move_to(&resource_signer, pool_state);
         move_to(sender, PoolEventHandle {
             pool_withdraw_handle: account::new_event_handle<PoolWithdrawEvent>(sender)
         })
-    }
-
-    public fun register_remote_bridge(
-        sender: &signer,
-        emitter_chain_id: U16,
-        emitter_address: vector<u8>,
-    ) acquires PoolState {
-        // todo! change into govern permission
-        assert!(ensure_admin(sender), EMUST_ADMIN);
-
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        // todo! consider remote register
-        table::add(
-            &mut pool_state.registered_emitters,
-            emitter_chain_id,
-            external_address::from_bytes(emitter_address)
-        );
     }
 
     public fun send_lending_helper_payload(

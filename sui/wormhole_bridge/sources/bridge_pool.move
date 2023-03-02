@@ -23,6 +23,10 @@ module wormhole_bridge::bridge_pool {
 
     const U64_MAX: u64 = 18446744073709551615;
 
+    const SUI_EMITTER_CHAIN: u16 = 24;
+
+    const SUI_EMITTER_ADDRESS: vector<u8> = x"0000000000000000000000000000000000000000000000000000000000000004";
+
     struct PoolState has key, store {
         id: UID,
         pool_cap: PoolCap,
@@ -58,31 +62,20 @@ module wormhole_bridge::bridge_pool {
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
     ) {
-        transfer::share_object(
-            PoolState {
-                id: object::new(ctx),
-                pool_cap: pool::register_cap(governance, ctx),
-                sender: wormhole::register_emitter(wormhole_state, ctx),
-                consumed_vaas: object_table::new(ctx),
-                registered_emitters: vec_map::empty(),
-                cache_vaas: table::new(ctx)
-            }
-        );
-    }
-
-    public fun register_remote_bridge(
-        _: &GovernanceCap,
-        pool_state: &mut PoolState,
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>,
-        _ctx: &mut TxContext
-    ) {
-        // todo! consider remote register
+        let pool_state = PoolState {
+            id: object::new(ctx),
+            pool_cap: pool::register_cap(governance, ctx),
+            sender: wormhole::register_emitter(wormhole_state, ctx),
+            consumed_vaas: object_table::new(ctx),
+            registered_emitters: vec_map::empty(),
+            cache_vaas: table::new(ctx)
+        };
         vec_map::insert(
             &mut pool_state.registered_emitters,
-            emitter_chain_id,
-            external_address::from_bytes(emitter_address)
+            SUI_EMITTER_CHAIN,
+            external_address::from_bytes(SUI_EMITTER_ADDRESS)
         );
+        transfer::share_object(pool_state);
     }
 
     // public fun send_binding(
