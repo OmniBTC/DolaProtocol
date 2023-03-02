@@ -324,7 +324,7 @@ module external_interfaces::interfaces {
         let total_supply_apy_value = 0;
         let total_borrow_apy_value = 0;
 
-        let length = vector::length(&collaterals);
+        let length = vector::length(&liquid_assets);
         let i = 0;
         while (i < length) {
             let liquid_asset = vector::borrow(&liquid_assets, i);
@@ -391,33 +391,33 @@ module external_interfaces::interfaces {
         };
         let health_factor = logic::user_health_factor(storage, oracle, dola_user_id);
 
-        let user_total_supply_value = logic::user_total_collateral_value(storage, oracle, dola_user_id);
-        let user_total_debt_value = logic::user_total_loan_value(storage, oracle, dola_user_id);
-
-        let net_apy = 0;
         let total_supply_apy = 0;
         let total_borrow_apy = 0;
-        let profit_state = true;
+        let profit_state;
 
-        if (user_total_supply_value > 0) {
-            total_supply_apy = math::ray_div(total_supply_apy_value, user_total_supply_value);
+        if (total_collateral_value > 0) {
+            total_supply_apy = math::ray_div(total_supply_apy_value, total_collateral_value);
+        };
+
+        if (total_debt_value > 0) {
+            total_borrow_apy = math::ray_div(total_borrow_apy_value, total_debt_value);
+        };
+
+        let net_apy_value = if (total_supply_apy_value >= total_borrow_apy_value) {
             profit_state = true;
-        };
-
-        if (user_total_debt_value > 0) {
-            total_borrow_apy = math::ray_div(total_borrow_apy_value, user_total_debt_value);
+            total_supply_apy_value - total_borrow_apy_value
+        } else {
             profit_state = false;
+            total_borrow_apy_value - total_supply_apy_value
         };
 
-        if (user_total_supply_value > 0 && user_total_debt_value > 0) {
-            if (total_supply_apy >= total_borrow_apy) {
-                net_apy = total_supply_apy - total_borrow_apy;
-                profit_state = true;
-            } else {
-                net_apy = total_borrow_apy - total_supply_apy;
-                profit_state = false;
-            }
+        let net_value = if (total_liquid_value + total_collateral_value >= total_debt_value) {
+            total_liquid_value + total_collateral_value - total_debt_value
+        } else {
+            total_debt_value - (total_liquid_value + total_collateral_value)
         };
+
+        let net_apy = if (net_value >= 0) { math::ray_div(net_apy_value, net_value) } else { 0 };
 
         net_apy = net_apy * 10000 / math::ray();
         total_supply_apy = total_supply_apy * 10000 / math::ray();
