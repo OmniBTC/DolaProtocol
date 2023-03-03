@@ -1,4 +1,9 @@
-module wormhole_bridge::verify {
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+/// Verification logic module for Wormhole Vaa. Including 1) verifying the signature; 2) ensuring that the VAA has
+/// not been reused; 3) verifying the reliability of the source of the message
+module omnipool::wormhole_adapter_verify {
     use sui::vec_map::VecMap;
     use wormhole::external_address::ExternalAddress;
     use std::option::Option;

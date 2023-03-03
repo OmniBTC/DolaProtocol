@@ -4,7 +4,7 @@ module dola_portal::portal {
 
     use dola_types::types;
     use lending_core::storage::{StorageCap, Storage};
-    use omnipool::pool::{Pool, normal_amount, Self, PoolCap};
+    use omnipool::single_pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use sui::coin::{Self, Coin};
@@ -15,8 +15,8 @@ module dola_portal::portal {
     use sui::tx_context::{Self, TxContext};
     use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use wormhole::state::State as WormholeState;
-    use wormhole_bridge::bridge_core::CoreState;
-    use wormhole_bridge::bridge_pool::PoolState;
+    use wormhole_bridge::wormhole_adapter_core::CoreState;
+    use wormhole_bridge::wormhole_adapter_pool::PoolState;
 
     const EINVALID_LENGTH: u64 = 0;
 
@@ -323,7 +323,7 @@ module dola_portal::portal {
             0
         );
         // Deposit the token into the pool
-        omnipool::pool::deposit_to(
+        omnipool::single_pool::deposit_to(
             pool,
             deposit_coin,
             LENDING_APP_ID,
@@ -416,7 +416,7 @@ module dola_portal::portal {
         );
 
         // Local withdraw
-        pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
@@ -478,7 +478,7 @@ module dola_portal::portal {
 
         let nonce = get_nonce(dola_portal);
         // Cross-chain withdraw
-        wormhole_bridge::bridge_core::send_withdraw(
+        wormhole_bridge::wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             lending_core::storage::get_app_cap(option::borrow(&dola_portal.storage_cap), storage),
@@ -549,7 +549,7 @@ module dola_portal::portal {
             (amount as u256)
         );
         // Local borrow
-        pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
@@ -609,7 +609,7 @@ module dola_portal::portal {
 
         let nonce = get_nonce(dola_portal);
         // Cross-chain borrow
-        wormhole_bridge::bridge_core::send_withdraw(
+        wormhole_bridge::wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             lending_core::storage::get_app_cap(option::borrow(&dola_portal.storage_cap), storage),
@@ -659,7 +659,7 @@ module dola_portal::portal {
             0
         );
         // Deposit the token into the pool
-        omnipool::pool::deposit_to(
+        omnipool::single_pool::deposit_to(
             pool,
             repay_coin,
             LENDING_APP_ID,
@@ -730,7 +730,7 @@ module dola_portal::portal {
             liquidate_user_id
         );
 
-        wormhole_bridge::bridge_pool::send_deposit_and_withdraw<DebtCoinType>(
+        wormhole_bridge::wormhole_adapter_pool::send_deposit_and_withdraw<DebtCoinType>(
             pool_state,
             wormhole_state,
             coin::zero<SUI>(ctx),

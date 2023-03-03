@@ -10,14 +10,14 @@ module genesis_proposal::genesis_proposal {
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::lending_wormhole_adapter;
     use lending_core::storage::Storage;
-    use omnipool::pool;
+    use omnipool::single_pool;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::tx_context::TxContext;
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
-    use wormhole_bridge::bridge_core::{Self, CoreState};
-    use wormhole_bridge::bridge_pool::{Self, PoolState};
+    use wormhole_bridge::wormhole_adapter_core::{Self, CoreState};
+    use wormhole_bridge::wormhole_adapter_pool::{Self, PoolState};
 
     const EVM_GROUP_ID: u16 = 2;
 
@@ -39,8 +39,8 @@ module genesis_proposal::genesis_proposal {
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
-            bridge_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
-            bridge_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
+            wormhole_adapter_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
+            wormhole_adapter_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
             governance_v1::destory_governance_cap(governance_cap);
         };
 
@@ -117,7 +117,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let pool_cap = pool::register_cap(&governance_cap, ctx);
+            let pool_cap = single_pool::register_cap(&governance_cap, ctx);
             let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
             let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(&governance_cap);
             let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
@@ -163,7 +163,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address);
+            wormhole_adapter_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

@@ -1,7 +1,13 @@
-module wormhole_bridge::bridge_pool {
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+/// Wormhole bridge adapter, this module is responsible for adapting wormhole to transmit messages across chains
+/// for the Sui single currency pool (distinct from the bridge core). The main purposes of this module are: 1) Receive
+/// AppPalod from the application portal, use single currency pool encoding, and transmit messages; 2) Receive
+/// withdrawal messages from bridge core for withdrawal
+module omnipool::wormhole_adapter_pool {
     use dola_types::types::{Self, DolaAddress};
-    use governance::genesis::GovernanceCap;
-    use omnipool::pool::{Self, Pool, PoolCap};
+    use omnipool::single_pool::{Self, Pool, PoolCap};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -15,7 +21,7 @@ module wormhole_bridge::bridge_pool {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use wormhole_bridge::verify::Unit;
+    use omnipool::wormhole_adapter_verify::Unit;
 
     const EAMOUNT_NOT_ENOUGH: u64 = 0;
 
@@ -58,13 +64,12 @@ module wormhole_bridge::bridge_pool {
     }
 
     public fun initialize_wormhole_with_governance(
-        governance: &GovernanceCap,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
     ) {
         let pool_state = PoolState {
             id: object::new(ctx),
-            pool_cap: pool::register_cap(governance, ctx),
+            pool_cap: single_pool::register_cap(ctx),
             sender: wormhole::register_emitter(wormhole_state, ctx),
             consumed_vaas: object_table::new(ctx),
             registered_emitters: vec_map::empty(),
@@ -140,7 +145,7 @@ module wormhole_bridge::bridge_pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::deposit_to<CoinType>(
+        let msg = single_pool::deposit_to<CoinType>(
             pool,
             deposit_coin,
             app_id,
@@ -162,7 +167,7 @@ module wormhole_bridge::bridge_pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::withdraw_to(
+        let msg = single_pool::withdraw_to(
             withdraw_chain_id,
             withdraw_pool_address,
             app_id,
@@ -186,7 +191,7 @@ module wormhole_bridge::bridge_pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = pool::deposit_and_withdraw<DepositCoinType>(
+        let msg = single_pool::deposit_and_withdraw<DepositCoinType>(
             deposit_pool,
             deposit_coin,
             withdraw_chain_id,
@@ -218,8 +223,8 @@ module wormhole_bridge::bridge_pool {
         // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (source_chain_id, nonce, pool_address, receiver, amount) =
-            pool::decode_receive_withdraw_payload(vaa);
-        pool::inner_withdraw(&pool_state.pool_cap, pool, receiver, amount, pool_address, ctx);
+            single_pool::decode_receive_withdraw_payload(vaa);
+        single_pool::inner_withdraw(&pool_state.pool_cap, pool, receiver, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
 
         emit(PoolWithdrawEvent {
@@ -244,7 +249,7 @@ module wormhole_bridge::bridge_pool {
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
         let (_, _, pool_address, user, amount) =
-            pool::decode_receive_withdraw_payload(vaa);
+            single_pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {
             pool_address,

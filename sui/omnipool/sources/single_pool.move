@@ -1,16 +1,23 @@
-module omnipool::pool {
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+/// The Sui single pool module is responsible for hosting Sui user assets. When the single currency pool starts,
+/// Wormhole is used as the basic bridge. In the future, more bridges can be introduced through governance without
+/// changing the single currency pool module.
+module omnipool::single_pool {
     use std::ascii;
     use std::type_name;
     use std::vector;
 
     use dola_types::types::{Self, DolaAddress};
-    use governance::genesis::GovernanceCap;
     use serde::serde;
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::transfer::{Self, share_object};
     use sui::tx_context::{Self, TxContext};
+
+    friend omnipool::wormhole_adapter_pool;
 
     #[test_only]
     use sui::sui::SUI;
@@ -38,7 +45,7 @@ module omnipool::pool {
         id: UID
     }
 
-    public fun register_cap(_: &GovernanceCap, ctx: &mut TxContext): PoolCap {
+    public(friend) fun register_cap(ctx: &mut TxContext): PoolCap {
         PoolCap {
             id: object::new(ctx)
         }
@@ -135,7 +142,9 @@ module omnipool::pool {
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
         assert!(
-            types::get_dola_address(&pool_addr) == ascii::into_bytes(type_name::into_string(type_name::get<CoinType>())),
+            types::get_dola_address(&pool_addr) == ascii::into_bytes(
+                type_name::into_string(type_name::get<CoinType>())
+            ),
             EINVALID_TOKEN
         );
         transfer::transfer(coin, user_addr);
