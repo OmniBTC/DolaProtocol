@@ -4,11 +4,11 @@
 /// Wormhole bridge adapter, this module is responsible for adapting wormhole to pass messages for settlement center
 /// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and
 /// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
-module omnipool::wormhole_adapter_core {
+module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::types::DolaAddress;
     use governance::genesis::GovernanceCap;
-    use omnipool::single_pool;
+    use wormhole_adapter_core::codec_pool;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
@@ -24,7 +24,7 @@ module omnipool::wormhole_adapter_core {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use omnipool::wormhole_adapter_verify::Unit;
+    use wormhole_adapter_core::wormhole_adapter_verify::Unit;
 
     const EMUST_DEPLOYER: u64 = 0;
 
@@ -134,7 +134,7 @@ module omnipool::wormhole_adapter_core {
         //     pool::decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
         let (pool, user, amount, app_id, app_payload) =
-            single_pool::decode_send_deposit_payload(vaa);
+            codec_pool::decode_send_deposit_payload(vaa);
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
         let (actual_amount, _) = pool_manager::add_liquidity(
             &core_state.pool_manager_cap,
@@ -170,7 +170,7 @@ module omnipool::wormhole_adapter_core {
         // let (pool, user, amount, dola_pool_id, app_id, app_payload) =
         //     pool::decode_send_deposit_payload(myvaa::get_payload(&vaa));
 
-        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = single_pool::decode_send_deposit_and_withdraw_payload(
+        let (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload) = codec_pool::decode_send_deposit_and_withdraw_payload(
             vaa
         );
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -205,7 +205,7 @@ module omnipool::wormhole_adapter_core {
         // let (_pool, user, dola_pool_id, app_id, app_payload) =
         //     pool::decode_send_withdraw_payload(myvaa::get_payload(&vaa));
         let (pool, user, app_id, app_payload) =
-            single_pool::decode_send_withdraw_payload(vaa);
+            codec_pool::decode_send_withdraw_payload(vaa);
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
 
         // myvaa::destroy(vaa);
@@ -232,7 +232,7 @@ module omnipool::wormhole_adapter_core {
             app_manager::get_app_id(app_cap),
             amount
         );
-        let msg = single_pool::encode_receive_withdraw_payload(
+        let msg = codec_pool::encode_receive_withdraw_payload(
             source_chain_id,
             nonce,
             pool_address,

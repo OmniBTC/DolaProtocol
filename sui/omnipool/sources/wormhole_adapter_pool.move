@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Wormhole bridge adapter, this module is responsible for adapting wormhole to transmit messages across chains
-/// for the Sui single currency pool (distinct from the bridge core). The main purposes of this module are: 1) Receive
-/// AppPalod from the application portal, use single currency pool encoding, and transmit messages; 2) Receive
-/// withdrawal messages from bridge core for withdrawal
+/// for the Sui single currency pool (distinct from the wormhole adapter core). The main purposes of this module are:
+/// 1) Receive AppPalod from the application portal, use single currency pool encoding, and transmit messages;
+/// 2) Receive withdrawal messages from bridge core for withdrawal
 module omnipool::wormhole_adapter_pool {
     use dola_types::types::{Self, DolaAddress};
+    use omnipool::codec_pool;
     use omnipool::single_pool::{Self, Pool, PoolCap};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
@@ -223,7 +224,7 @@ module omnipool::wormhole_adapter_pool {
         // let (_pool_address, user, amount, dola_pool_id) =
         //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (source_chain_id, nonce, pool_address, receiver, amount) =
-            single_pool::decode_receive_withdraw_payload(vaa);
+            codec_pool::decode_receive_withdraw_payload(vaa);
         single_pool::inner_withdraw(&pool_state.pool_cap, pool, receiver, amount, pool_address, ctx);
         // myvaa::destroy(vaa);
 
@@ -249,7 +250,7 @@ module omnipool::wormhole_adapter_pool {
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
         let (_, _, pool_address, user, amount) =
-            single_pool::decode_receive_withdraw_payload(vaa);
+            codec_pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {
             pool_address,
