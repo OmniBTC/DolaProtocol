@@ -11,7 +11,7 @@ module omnipool::single_pool {
     use dola_types::types::{Self, DolaAddress};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, ID};
     use sui::transfer::{Self, share_object};
     use sui::tx_context::{Self, TxContext};
 
@@ -23,7 +23,6 @@ module omnipool::single_pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario;
-    #[test_only]
     use std::vector;
 
     const EINVALID_LENGTH: u64 = 0;
@@ -47,13 +46,36 @@ module omnipool::single_pool {
         id: UID
     }
 
-    public(friend) fun register_cap(ctx: &mut TxContext): PoolCap {
-        PoolCap {
-            id: object::new(ctx)
-        }
+    /// Record the existing `PoolCap` object.
+    struct PoolInfo has key {
+        id: UID,
+        cap_ids: vector<ID>
     }
 
-    public fun delete_cap(pool_cap: PoolCap) {
+
+    fun init(ctx: &mut TxContext) {
+        transfer::share_object(PoolInfo {
+            id: object::new(ctx),
+            cap_ids: vector::empty()
+        });
+    }
+
+
+    public(friend) fun register_cap(
+        pool_info: &mut PoolInfo,
+        ctx: &mut TxContext
+    ): PoolCap {
+        let pool_cap = PoolCap {
+            id: object::new(ctx)
+        };
+        vector::push_back(&mut pool_info.cap_ids, object::id(&pool_cap));
+        pool_cap
+    }
+
+    public fun delete_cap(pool_info: &mut PoolInfo, pool_cap: PoolCap) {
+        let pool_id = object::id(&pool_cap);
+        let (_, index) = vector::index_of(&pool_info.cap_ids, &pool_id);
+        vector::remove(&mut pool_info.cap_ids, index);
         let PoolCap { id } = pool_cap;
         object::delete(id);
     }
@@ -179,13 +201,6 @@ module omnipool::single_pool {
         pool_payload
     }
 
-    #[test_only]
-    public fun register_pool_cap_for_testing(ctx: &mut TxContext): PoolCap {
-        PoolCap {
-            id: object::new(ctx),
-        }
-    }
-
     #[test]
     public fun test_encode_decode() {
         let pool = @0x11;
@@ -291,12 +306,16 @@ module omnipool::single_pool {
         let scenario = &mut scenario_val;
         {
             let ctx = test_scenario::ctx(scenario);
+            init(ctx);
+
             create_pool<SUI>(9, ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
-            let manager_cap = register_pool_cap_for_testing(test_scenario::ctx(scenario));
+            let pool_info = test_scenario::take_shared<PoolInfo>(scenario);
+
+            let manager_cap = register_cap(&mut pool_info, test_scenario::ctx(scenario));
             let ctx = test_scenario::ctx(scenario);
             let pool_addr = types::convert_pool_to_dola<SUI>();
 
@@ -309,9 +328,10 @@ module omnipool::single_pool {
             inner_withdraw<SUI>(&manager_cap, &mut pool, types::convert_address_to_dola(user_addr), 10, pool_addr, ctx);
 
             assert!(balance::value(&pool.balance) == 0, 0);
+            delete_cap(&mut pool_info, manager_cap);
 
             test_scenario::return_shared(pool);
-            delete_cap(manager_cap);
+            test_scenario::return_shared(pool_info);
         };
         test_scenario::end(scenario_val);
     }

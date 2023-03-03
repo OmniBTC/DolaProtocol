@@ -8,7 +8,7 @@
 module omnipool::wormhole_adapter_pool {
     use dola_types::types::{Self, DolaAddress};
     use omnipool::codec_pool;
-    use omnipool::single_pool::{Self, Pool, PoolCap};
+    use omnipool::single_pool::{Self, Pool, PoolCap, PoolInfo};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -65,12 +65,13 @@ module omnipool::wormhole_adapter_pool {
     }
 
     public fun initialize_wormhole_with_governance(
+        pool_info: &mut PoolInfo,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
     ) {
         let pool_state = PoolState {
             id: object::new(ctx),
-            pool_cap: single_pool::register_cap(ctx),
+            pool_cap: single_pool::register_cap(pool_info, ctx),
             sender: wormhole::register_emitter(wormhole_state, ctx),
             consumed_vaas: object_table::new(ctx),
             registered_emitters: vec_map::empty(),
