@@ -11,7 +11,7 @@ library LibLending {
         uint16 sourceChainId;
         uint64 nonce;
         uint8 callType;
-        uint64 amount;
+        uint256 amount;
         LibDolaTypes.DolaAddress receiver;
         uint64 liquidateUserId;
     }
@@ -36,17 +36,17 @@ library LibLending {
             dolaAddress
         );
         for (uint256 i = 0; i < dolaPoolIds.length; i++) {
-            encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
+            encodeData = encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
         }
 
-        encodeData.concat(abi.encodePacked(callType));
+        encodeData = encodeData.concat(abi.encodePacked(callType));
         return encodeData;
     }
 
     function decodeAppHelperPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppHelperPayload memory)
+    internal
+    pure
+    returns (LendingAppHelperPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -98,7 +98,7 @@ library LibLending {
         bytes memory encodeData = abi.encodePacked(
             sourceChainId,
             nonce,
-            amount,
+            uint256(amount),
             uint16(dolaAddress.length),
             dolaAddress,
             liquidateUserId,
@@ -108,9 +108,9 @@ library LibLending {
     }
 
     function decodeLendingAppPayload(bytes memory payload)
-        internal
-        pure
-        returns (LendingAppPayload memory)
+    internal
+    pure
+    returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -125,8 +125,8 @@ library LibLending {
         decodeData.nonce = payload.toUint64(index);
         index += dataLen;
 
-        dataLen = 8;
-        decodeData.amount = payload.toUint64(index);
+        dataLen = 32;
+        decodeData.amount = payload.toUint256(index);
         index += dataLen;
 
         dataLen = 2;

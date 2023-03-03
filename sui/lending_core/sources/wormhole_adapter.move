@@ -9,7 +9,7 @@ module lending_core::lending_wormhole_adapter {
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use serde::serde;
     use sui::coin::Coin;
-    use sui::event::emit;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::transfer;
@@ -17,7 +17,6 @@ module lending_core::lending_wormhole_adapter {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_bridge::bridge_core::{Self, CoreState};
-    use sui::event;
 
     const SUPPLY: u8 = 0;
 
@@ -56,7 +55,7 @@ module lending_core::lending_wormhole_adapter {
         dst_chain_id: u16,
         dola_pool_id: u16,
         receiver: vector<u8>,
-        amount: u64,
+        amount: u256,
         liquidate_user_id: u64,
         call_type: u8
     }
@@ -113,9 +112,10 @@ module lending_core::lending_wormhole_adapter {
             dola_pool_id,
             amount
         );
+        // emit event
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == SUPPLY, EINVALID_CALL_TYPE);
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -170,7 +170,7 @@ module lending_core::lending_wormhole_adapter {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
         bridge_core::send_withdraw(
             wormhole_state,
@@ -184,7 +184,8 @@ module lending_core::lending_wormhole_adapter {
             actual_amount,
             wormhole_message_fee
         );
-        emit(LendingCoreEvent {
+
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -196,7 +197,6 @@ module lending_core::lending_wormhole_adapter {
             call_type
         })
     }
-
 
     public entry fun borrow(
         wormhole_adapter: &WormholeAdapter,
@@ -229,7 +229,7 @@ module lending_core::lending_wormhole_adapter {
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
         logic::execute_borrow(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
         bridge_core::send_withdraw(
@@ -244,7 +244,8 @@ module lending_core::lending_wormhole_adapter {
             amount,
             wormhole_message_fee
         );
-        emit(LendingCoreEvent {
+
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -281,9 +282,11 @@ module lending_core::lending_wormhole_adapter {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
+
+        // emit event
         let (source_chain_id, nonce, call_type, amount, receiver, _) = decode_app_payload(app_payload);
         assert!(call_type == REPAY, EINVALID_CALL_TYPE);
-        emit(LendingCoreEvent {
+        event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
             source_chain_id,
@@ -403,7 +406,7 @@ module lending_core::lending_wormhole_adapter {
         let i = 0;
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
-            logic::as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
+            logic::cancel_as_collateral(cap, pool_manager_info, storage, oracle, dola_user_id, *dola_pool_id);
             i = i + 1;
         };
     }
@@ -473,7 +476,7 @@ module lending_core::lending_wormhole_adapter {
         source_chain_id: u16,
         nonce: u64,
         call_type: u8,
-        amount: u64,
+        amount: u256,
         receiver: DolaAddress,
         liquidate_user_id: u64
     ): vector<u8> {
@@ -482,7 +485,7 @@ module lending_core::lending_wormhole_adapter {
         serde::serialize_u16(&mut payload, source_chain_id);
         serde::serialize_u64(&mut payload, nonce);
 
-        serde::serialize_u64(&mut payload, amount);
+        serde::serialize_u256(&mut payload, amount);
         let receiver = types::encode_dola_address(receiver);
         serde::serialize_u16(&mut payload, (vector::length(&receiver) as u16));
         serde::serialize_vector(&mut payload, receiver);
@@ -491,7 +494,7 @@ module lending_core::lending_wormhole_adapter {
         payload
     }
 
-    public fun decode_app_payload(app_payload: vector<u8>): (u16, u64, u8, u64, DolaAddress, u64) {
+    public fun decode_app_payload(app_payload: vector<u8>): (u16, u64, u8, u256, DolaAddress, u64) {
         let index = 0;
         let data_len;
 
@@ -503,8 +506,8 @@ module lending_core::lending_wormhole_adapter {
         let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = 8;
-        let amount = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
+        data_len = 32;
+        let amount = serde::deserialize_u256(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;

@@ -318,7 +318,7 @@ module dola_portal::portal {
             types::get_native_dola_chain_id(),
             nonce,
             SUPPLY,
-            deposit_amount,
+            (deposit_amount as u256),
             user_addr,
             0
         );
@@ -357,7 +357,7 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            deposit_amount
+            (deposit_amount as u256)
         );
 
         emit(LocalLendingEvent {
@@ -399,12 +399,12 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount,
+            (amount as u256),
         );
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
         // Remove pool liquidity for dst ppol
         pool_manager::remove_liquidity(
@@ -412,7 +412,7 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
-            (actual_amount as u256)
+            actual_amount
         );
 
         // Local withdraw
@@ -422,7 +422,7 @@ module dola_portal::portal {
             nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
             dola_pool_address: types::get_dola_address(&pool_addr),
-            amount: actual_amount,
+            amount: (actual_amount as u64),
             call_type: WITHDRAW
         })
     }
@@ -460,7 +460,7 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount,
+            (amount as u256),
         );
 
         // Check pool liquidity
@@ -498,7 +498,7 @@ module dola_portal::portal {
             source_chain_id: types::get_native_dola_chain_id(),
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
-            amount: actual_amount,
+            amount: (actual_amount as u64),
             call_type: WITHDRAW
         })
     }
@@ -537,7 +537,7 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount
+            (amount as u256)
         );
 
         // Remove pool liquidity
@@ -596,7 +596,7 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            amount
+            (amount as u256)
         );
         // Remove pool liquidity
         pool_manager::remove_liquidity(
@@ -618,7 +618,7 @@ module dola_portal::portal {
             receiver,
             types::get_native_dola_chain_id(),
             nonce,
-            amount,
+            (amount as u256),
             coin::zero<SUI>(ctx)
         );
 
@@ -654,7 +654,7 @@ module dola_portal::portal {
             types::get_native_dola_chain_id(),
             nonce,
             SUPPLY,
-            repay_amount,
+            (repay_amount as u256),
             user_addr,
             0
         );
@@ -691,7 +691,7 @@ module dola_portal::portal {
             oracle,
             dola_user_id,
             dola_pool_id,
-            repay_amount
+            (repay_amount as u256)
         );
 
         emit(LocalLendingEvent {
@@ -725,7 +725,7 @@ module dola_portal::portal {
             types::get_native_dola_chain_id(),
             nonce,
             LIQUIDATE,
-            normal_amount(debt_pool, coin::value(&debt_coin)),
+            (normal_amount(debt_pool, coin::value(&debt_coin)) as u256),
             receiver,
             liquidate_user_id
         );

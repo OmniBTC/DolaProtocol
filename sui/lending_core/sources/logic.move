@@ -43,7 +43,7 @@ module lending_core::logic {
 
     const ENOT_LOAN: u64 = 4;
 
-    const ENOT_ENOUGH_OTOKEN: u64 = 5;
+    const EINVALID_POOL_ID: u64 = 5;
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
 
@@ -66,7 +66,7 @@ module lending_core::logic {
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
         user_id: u64,
-        amount: u64,
+        amount: u256,
         pool_id: u16,
         violator_id: u64,
         call_type: u8
@@ -126,14 +126,14 @@ module lending_core::logic {
 
         // Check if violator cause a lending deficit, use treasury to cover the deficit.
         if (has_deficit(storage, oracle, violator)) {
-            cover_deficit(cap, storage, oracle, violator);
+            cover_deficit(cap, storage, violator);
         };
 
         // Give the collateral to the liquidator.
         if (is_loan(storage, liquidator, collateral)) {
             // If the liquidator has debt for the collateral, help the liquidator repay the debt first.
             let liquidator_debt = user_loan_balance(storage, liquidator, collateral);
-            let liquidator_burned_debt = sui::math::min(liquidator_debt, liquidator_acquired_collateral);
+            let liquidator_burned_debt = math::min(liquidator_debt, liquidator_acquired_collateral);
             burn_dtoken(cap, storage, liquidator, collateral, liquidator_burned_debt);
             if (liquidator_acquired_collateral > liquidator_debt) {
                 // If the liquidator has paid off the debt and still has the collateral left over,
@@ -170,10 +170,11 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16,
-        supply_amount: u64,
+        supply_amount: u256,
     ) {
-        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
         storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
 
         update_state(cap, storage, oracle, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
@@ -223,11 +224,14 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16,
-        withdraw_amount: u64,
-    ): u64 {
+        withdraw_amount: u256,
+    ): u256 {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
-        let actual_amount = sui::math::min(withdraw_amount, otoken_amount);
+        let actual_amount = math::min(withdraw_amount, otoken_amount);
 
         burn_otoken(cap, storage, dola_user_id, dola_pool_id, actual_amount);
 
@@ -261,8 +265,11 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         borrow_pool_id: u16,
-        borrow_amount: u64,
+        borrow_amount: u256,
     ) {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
@@ -301,11 +308,14 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16,
-        repay_amount: u64,
+        repay_amount: u256,
     ) {
+        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+
         update_state(cap, storage, oracle, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
-        let repay_debt = sui::math::min(repay_amount, debt);
+        let repay_debt = math::min(repay_amount, debt);
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
 
         if (storage::is_isolation_mode(storage, dola_user_id)) {
@@ -405,6 +415,7 @@ module lending_core::logic {
         });
     }
 
+    /// Extract funds from the Treasury through governance
     public fun claim_from_treasury(
         _: &GovernanceCap,
         cap: &StorageCap,
@@ -413,14 +424,14 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_pool_id: u16,
         receiver_id: u64,
-        withdraw_amount: u64
+        withdraw_amount: u256
     ) {
         update_state(cap, storage, oracle, dola_pool_id);
         let treasury_id = storage::get_reserve_treasury(storage, dola_pool_id);
         let treasury_amount = user_collateral_balance(storage, treasury_id, dola_pool_id);
         let deficit = user_loan_balance(storage, treasury_id, dola_pool_id);
         let treasury_avaliable_amount = if (treasury_amount > deficit) { treasury_amount - deficit } else { 0 };
-        let amount = sui::math::min(treasury_avaliable_amount, withdraw_amount);
+        let amount = math::min(treasury_avaliable_amount, withdraw_amount);
         burn_otoken(cap, storage, treasury_id, dola_pool_id, amount);
         mint_otoken(cap, storage, receiver_id, dola_pool_id, amount);
 
@@ -428,7 +439,7 @@ module lending_core::logic {
     }
 
     /// Check whether the maximum borrow limit has been reached
-    public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_user_id: u64, borrow_amount: u64): bool {
+    public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_user_id: u64, borrow_amount: u256): bool {
         let user_collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let isolate_asset = vector::borrow(&user_collaterals, 0);
         let borrow_ceiling = storage::get_reserve_ceilings(storage, *isolate_asset);
@@ -436,7 +447,7 @@ module lending_core::logic {
             true
         } else {
             let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
-            if (isolate_debt + (borrow_amount as u128) > borrow_ceiling) {
+            if (isolate_debt + borrow_amount > borrow_ceiling) {
                 false
             } else {
                 true
@@ -462,30 +473,18 @@ module lending_core::logic {
     }
 
     public fun is_collateral(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
-            vector::contains(&collaterals, &dola_pool_id)
-        } else {
-            false
-        }
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        vector::contains(&collaterals, &dola_pool_id)
     }
 
     public fun is_loan(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let loans = storage::get_user_loans(storage, dola_user_id);
-            vector::contains(&loans, &dola_pool_id)
-        } else {
-            false
-        }
+        let loans = storage::get_user_loans(storage, dola_user_id);
+        vector::contains(&loans, &dola_pool_id)
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
-        if (storage::exist_user_info(storage, dola_user_id)) {
-            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
-            vector::length(&collaterals) > 0
-        } else {
-            false
-        }
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        vector::length(&collaterals) > 0
     }
 
     /// If the user has a collateral value of 0 but still has debt, the system has a deficit.
@@ -495,8 +494,9 @@ module lending_core::logic {
         user_collateral_value == 0 && user_loan_value > 0
     }
 
-    public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64) {
-        assert!(has_deficit(storage, oracle, dola_user_id), ENOT_DEFICIT);
+    /// If the user is liquidated and still has debts, transfer his debts to the Treasury,
+    /// which will cover his debts.
+    public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, dola_user_id: u64) {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let i = 0;
@@ -515,7 +515,7 @@ module lending_core::logic {
         let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
         let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
         if (health_loan_value > 0) {
-            math::ray_div((health_collateral_value as u256), (health_loan_value as u256))
+            math::ray_div((health_collateral_value), (health_loan_value))
         } else {
             U256_MAX
         }
@@ -526,7 +526,7 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let balance = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         calculate_value(oracle, dola_pool_id, balance)
     }
@@ -535,7 +535,7 @@ module lending_core::logic {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let scaled_balance = storage::get_user_scaled_otoken(storage, dola_user_id, dola_pool_id);
         let current_index = storage::get_liquidity_index(storage, dola_pool_id);
         scaled_balance::balance_of(scaled_balance, current_index)
@@ -546,7 +546,7 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let balance = user_loan_balance(storage, dola_user_id, dola_pool_id);
         calculate_value(oracle, dola_pool_id, balance)
     }
@@ -555,7 +555,7 @@ module lending_core::logic {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
-    ): u64 {
+    ): u256 {
         let scaled_balance = storage::get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
         let current_index = storage::get_borrow_index(storage, dola_pool_id);
         scaled_balance::balance_of(scaled_balance, current_index)
@@ -565,7 +565,7 @@ module lending_core::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64
-    ): u64 {
+    ): u256 {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let length = vector::length(&collaterals);
         let value = 0;
@@ -574,7 +574,7 @@ module lending_core::logic {
             let collateral = vector::borrow(&collaterals, i);
             let collateral_coefficient = storage::get_collateral_coefficient(storage, *collateral);
             let collateral_value = user_collateral_value(storage, oracle, dola_user_id, *collateral);
-            value = value + (math::ray_mul((collateral_value as u256), collateral_coefficient) as u64);
+            value = value + math::ray_mul(collateral_value, collateral_coefficient);
             i = i + 1;
         };
         value
@@ -584,7 +584,7 @@ module lending_core::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64
-    ): u64 {
+    ): u256 {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let value = 0;
@@ -593,7 +593,7 @@ module lending_core::logic {
             let loan = vector::borrow(&loans, i);
             let borrow_coefficient = storage::get_borrow_coefficient(storage, *loan);
             let loan_value = user_loan_value(storage, oracle, dola_user_id, *loan);
-            value = value + (math::ray_mul((loan_value as u256), borrow_coefficient) as u64);
+            value = value + math::ray_mul(loan_value, borrow_coefficient);
             i = i + 1;
         };
         value
@@ -603,7 +603,7 @@ module lending_core::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64
-    ): u64 {
+    ): u256 {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let length = vector::length(&collaterals);
         let value = 0;
@@ -617,7 +617,7 @@ module lending_core::logic {
         value
     }
 
-    public fun user_total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): u64 {
+    public fun user_total_loan_value(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): u256 {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let value = 0;
@@ -631,14 +631,14 @@ module lending_core::logic {
         value
     }
 
-    public fun calculate_value(oracle: &mut PriceOracle, dola_pool_id: u16, amount: u64): u64 {
+    public fun calculate_value(oracle: &mut PriceOracle, dola_pool_id: u16, amount: u256): u256 {
         let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
-        (((amount as u128) * (price as u128) / (sui::math::pow(10, decimal) as u128)) as u64)
+        amount * price / (sui::math::pow(10, decimal) as u256)
     }
 
-    public fun calculate_amount(oracle: &mut PriceOracle, dola_pool_id: u16, value: u64): u64 {
+    public fun calculate_amount(oracle: &mut PriceOracle, dola_pool_id: u16, value: u256): u256 {
         let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
-        (((value as u128) * (sui::math::pow(10, decimal) as u128)) / (price as u128) as u64)
+        value * (sui::math::pow(10, decimal) as u256) / price
     }
 
     public fun calculate_liquidation_base_discount(
@@ -649,9 +649,11 @@ module lending_core::logic {
         let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
         // health_collateral_value < health_loan_value
-        math::ray() - math::ray_div((health_collateral_value as u256), (health_loan_value as u256))
+        math::ray() - math::ray_div(health_collateral_value, health_loan_value)
     }
 
+    /// The liquidation discount is calculated based on the average
+    /// liquidity of the user on the basis of the base discount.
     public fun calculate_liquidation_discount(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -665,8 +667,8 @@ module lending_core::logic {
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
         let borrow_coefficient = storage::get_borrow_coefficient(storage, loan);
         let discount_booster = math::ray_div(
-            (average_liquidity as u256),
-            5 * math::ray_mul((health_loan_value as u256), borrow_coefficient)
+            (average_liquidity),
+            5 * math::ray_mul((health_loan_value), borrow_coefficient)
         );
         discount_booster = math::min(discount_booster, math::ray()) + math::ray();
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
@@ -674,6 +676,11 @@ module lending_core::logic {
         math::min(liquidation_discount, MAX_DISCOUNT)
     }
 
+    /// Calculate the maximum number of users that can be cleared based
+    /// on the target health factor and clearing discount.
+    ///
+    /// The calculation details refer to:
+    ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=period%20of%20time.-,Liquidation,-Liquidation%20is%20when]
     public fun calculate_max_liquidation(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -681,7 +688,7 @@ module lending_core::logic {
         violator: u64,
         collateral: u16,
         loan: u16
-    ): (u64, u64) {
+    ): (u256, u256) {
         let liquidation_discount = calculate_liquidation_discount(
             storage,
             oracle,
@@ -697,52 +704,53 @@ module lending_core::logic {
         let borrow_coefficient = storage::get_borrow_coefficient(storage, loan);
         let collateral_coefficient = storage::get_collateral_coefficient(storage, collateral);
 
-        let target_health_value = (math::ray_mul(
-            (health_loan_value as u256),
-            TARGET_HEALTH_FACTOR
-        ) as u64) - health_collateral_value;
+        let target_health_value = math::ray_mul(
+            health_loan_value,
+            TARGET_HEALTH_FACTOR)
+            - health_collateral_value;
         let target_coefficient = math::ray_mul(
             math::ray_mul(TARGET_HEALTH_FACTOR, math::ray() - liquidation_discount),
             borrow_coefficient
         ) - collateral_coefficient;
 
-        let max_liquidable_collateral_value = (math::ray_div((target_health_value as u256), target_coefficient) as u64);
+        let max_liquidable_collateral_value = math::ray_div(target_health_value, target_coefficient);
         let user_max_collateral_value = user_collateral_value(storage, oracle, violator, collateral);
         let collateral_ratio = math::ray_div(
-            (user_max_collateral_value as u256),
-            (max_liquidable_collateral_value as u256)
+            user_max_collateral_value,
+            max_liquidable_collateral_value
         );
 
-        let max_liquidable_debt_vaule = (math::ray_mul(
-            (max_liquidable_collateral_value as u256),
+        let max_liquidable_debt_vaule = math::ray_mul(
+            max_liquidable_collateral_value,
             math::ray() - liquidation_discount
-        ) as u64);
+        );
         let user_max_debt_value = user_loan_value(storage, oracle, violator, loan);
-        let debt_ratio = math::ray_div((user_max_debt_value as u256), (max_liquidable_debt_vaule as u256));
+        let debt_ratio = math::ray_div(user_max_debt_value, max_liquidable_debt_vaule);
 
         let ratio = math::min(math::min(collateral_ratio, debt_ratio), math::ray());
         let max_liquidable_collateral = calculate_amount(
             oracle,
             collateral,
-            (math::ray_mul((max_liquidable_collateral_value as u256), ratio) as u64)
+            math::ray_mul(max_liquidable_collateral_value, ratio)
         );
         let max_liquidable_debt = calculate_amount(
             oracle,
             loan,
-            (math::ray_mul((max_liquidable_debt_vaule as u256), ratio) as u64)
+            math::ray_mul(max_liquidable_debt_vaule, ratio)
         );
         (max_liquidable_collateral, max_liquidable_debt)
     }
 
+    /// Determine the amount of collateral that can be liquidated based on the user's ability to repay.
     public fun calculate_actual_liquidation(
         oracle: &mut PriceOracle,
         collateral: u16,
-        max_liquidable_collateral: u64,
+        max_liquidable_collateral: u256,
         loan: u16,
-        max_liquidable_debt: u64,
-        repay_debt: u64,
+        max_liquidable_debt: u256,
+        repay_debt: u256,
         treasury_factor: u256
-    ): (u64, u64, u64, u64, u64) {
+    ): (u256, u256, u256, u256, u256) {
         let excess_repay_amount;
         let actual_liquidable_collateral;
         let actual_liquidable_debt;
@@ -754,38 +762,39 @@ module lending_core::logic {
         } else {
             excess_repay_amount = 0;
             actual_liquidable_debt = repay_debt;
-            actual_liquidable_collateral = (math::ray_mul(
-                (max_liquidable_collateral as u256),
-                math::ray_div((actual_liquidable_debt as u256), (max_liquidable_debt as u256))
-            ) as u64);
+            actual_liquidable_collateral = math::ray_mul(
+                (max_liquidable_collateral),
+                math::ray_div(actual_liquidable_debt, max_liquidable_debt)
+            );
         };
 
         let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
         let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
         let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
-        let treasury_reserved_collateral = (math::ray_mul((reward as u256), treasury_factor) as u64);
+        // the treasury keeps a portion of the discount incentive
+        let treasury_reserved_collateral = math::ray_mul(reward, treasury_factor);
         let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
         (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
     }
 
-    public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u128 {
+    public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {
         let scaled_total_otoken_supply = storage::get_otoken_scaled_total_supply(storage, dola_pool_id);
         let current_index = storage::get_liquidity_index(storage, dola_pool_id);
-        (math::ray_mul((scaled_total_otoken_supply as u256), current_index) as u128)
+        math::ray_mul((scaled_total_otoken_supply), current_index)
     }
 
-    public fun total_dtoken_supply(storage: &mut Storage, dola_pool_id: u16): u128 {
+    public fun total_dtoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {
         let scaled_total_dtoken_supply = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         let current_index = storage::get_borrow_index(storage, dola_pool_id);
-        (math::ray_mul((scaled_total_dtoken_supply as u256), current_index) as u128)
+        math::ray_mul((scaled_total_dtoken_supply), current_index)
     }
 
     public fun mint_otoken(
-        cap: &StorageCap, // todo! Where manage this?
+        cap: &StorageCap,
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        token_amount: u256,
     ) {
         let scaled_amount = scaled_balance::mint_scaled(
             token_amount,
@@ -805,7 +814,7 @@ module lending_core::logic {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        token_amount: u256,
     ) {
         let scaled_amount = scaled_balance::burn_scaled(
             token_amount,
@@ -825,7 +834,7 @@ module lending_core::logic {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        token_amount: u256,
     ) {
         let scaled_amount = scaled_balance::mint_scaled(token_amount, storage::get_borrow_index(storage, dola_pool_id));
         storage::mint_dtoken_scaled(
@@ -842,7 +851,7 @@ module lending_core::logic {
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
-        token_amount: u64,
+        token_amount: u256,
     ) {
         let scaled_amount = scaled_balance::burn_scaled(token_amount, storage::get_borrow_index(storage, dola_pool_id));
         storage::burn_dtoken_scaled(
@@ -858,12 +867,12 @@ module lending_core::logic {
         cap: &StorageCap,
         storage: &mut Storage,
         dola_user_id: u64,
-        amount: u64,
+        amount: u256,
     ) {
         let user_collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let isolate_asset = vector::borrow(&user_collaterals, 0);
         let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
-        let new_isolate_debt = isolate_debt + (amount as u128);
+        let new_isolate_debt = isolate_debt + amount;
         storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
     }
 
@@ -871,20 +880,20 @@ module lending_core::logic {
         cap: &StorageCap,
         storage: &mut Storage,
         dola_user_id: u64,
-        amount: u64,
+        amount: u256,
     ) {
         let user_collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let isolate_asset = vector::borrow(&user_collaterals, 0);
         let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
-        let new_isolate_debt = if (isolate_debt >= (amount as u128)) {
-            isolate_debt - (amount as u128)
-        }
-        else {
+        let new_isolate_debt = if (isolate_debt >= amount) {
+            isolate_debt - amount
+        } else {
             0
         };
         storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
     }
 
+    /// Update the average liquidity of user
     public fun update_average_liquidity(
         cap: &StorageCap,
         storage: &mut Storage,
@@ -900,8 +909,8 @@ module lending_core::logic {
                 let health_value = health_collateral_value - health_loan_value;
                 let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
                 let new_average_liquidity = rates::calculate_average_liquidity(
-                    (current_timestamp as u256),
-                    (last_update_timestamp as u256),
+                    current_timestamp,
+                    last_update_timestamp,
                     average_liquidity,
                     health_value
                 );
@@ -912,6 +921,10 @@ module lending_core::logic {
         }
     }
 
+    /// Update the index and deposit a portion of the interest into the Treasury
+    ///
+    /// More details refer to:
+    ///    [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
     public fun update_state(
         cap: &StorageCap,
         storage: &mut Storage,
@@ -929,21 +942,21 @@ module lending_core::logic {
         let treasury_factor = storage::get_treasury_factor(storage, dola_pool_id);
 
         let new_borrow_index = math::ray_mul(rates::calculate_compounded_interest(
-            (current_timestamp as u256),
-            (last_update_timestamp as u256),
+            (current_timestamp),
+            (last_update_timestamp),
             storage::get_borrow_rate(storage, dola_pool_id)
         ), current_borrow_index);
 
         let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
-            (current_timestamp as u256),
-            (last_update_timestamp as u256),
+            (current_timestamp),
+            (last_update_timestamp),
             storage::get_liquidity_rate(storage, dola_pool_id)
         ), current_liquidity_index);
 
-        let mint_to_treasury = (math::ray_mul(
-            math::ray_mul((dtoken_scaled_total_supply as u256), (new_borrow_index - current_borrow_index)),
+        let mint_to_treasury = math::ray_mul(
+            math::ray_mul((dtoken_scaled_total_supply), (new_borrow_index - current_borrow_index)),
             treasury_factor
-        ) as u64);
+        );
         storage::update_state(
             cap,
             storage,
@@ -955,21 +968,25 @@ module lending_core::logic {
         );
     }
 
+    /// Update the interest rate on the reserve
+    ///
+    /// More details refer to:
+    ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
     public fun update_interest_rate(
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         dola_pool_id: u16,
-        reduced_liquidity: u64
+        reduced_liquidity: u256
     ) {
         let liquidity = pool_manager::get_app_liquidity(
             pool_manager_info,
             dola_pool_id,
             storage::get_app_id(storage)
         );
-        assert!(liquidity >= (reduced_liquidity as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(liquidity >= (reduced_liquidity), ENOT_ENOUGH_LIQUIDITY);
         // Since the removed liquidity is later, it needs to be calculated with the updated liquidity
-        let liquidity = (liquidity as u128) - (reduced_liquidity as u128);
+        let liquidity = liquidity - reduced_liquidity;
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);

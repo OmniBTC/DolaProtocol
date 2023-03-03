@@ -12,6 +12,7 @@ module dola_portal::portal {
     use omnipool::pool;
     use serde::serde;
     use serde::u16::{Self, U16};
+    use serde::u256;
     use wormhole::state;
     use wormhole_bridge::bridge_pool;
 
@@ -159,7 +160,13 @@ module dola_portal::portal {
         );
         let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
 
-        bridge_pool::send_deposit(sender, wormhole_message_fee, deposit_coin, u16::from_u64(LENDING_APP_ID), app_payload);
+        bridge_pool::send_deposit(
+            sender,
+            wormhole_message_fee,
+            deposit_coin,
+            u16::from_u64(LENDING_APP_ID),
+            app_payload
+        );
         let event_handle = borrow_global_mut<PortalEventHandle>(@dola_portal);
 
         event::emit_event(
@@ -457,7 +464,7 @@ module dola_portal::portal {
         serde::serialize_u16(&mut payload, source_chain_id);
         serde::serialize_u64(&mut payload, nonce);
 
-        serde::serialize_u64(&mut payload, amount);
+        serde::serialize_u256(&mut payload, u256::from_u64(amount));
         let receiver = types::encode_dola_address(receiver);
         serde::serialize_u16(&mut payload, u16::from_u64(vector::length(&receiver)));
         serde::serialize_vector(&mut payload, receiver);
@@ -478,8 +485,8 @@ module dola_portal::portal {
         let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
-        data_len = 8;
-        let amount = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
+        data_len = 32;
+        let amount = serde::deserialize_u256(&serde::vector_slice(&app_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -500,6 +507,6 @@ module dola_portal::portal {
 
         assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
 
-        (source_chain_id, nonce, call_type, amount, receiver, liquidate_user_id)
+        (source_chain_id, nonce, call_type, u256::as_u64(amount), receiver, liquidate_user_id)
     }
 }
