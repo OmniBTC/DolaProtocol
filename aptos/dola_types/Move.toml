@@ -10,6 +10,11 @@ aptos_std = "0x1"
 dola_types = "_"
 serde = "_"
 
+[dev-addresses]
+# sha256 "OmniBTC | DolaProtocol | DolaTypes"
+dola_types = "0x8b97658dd9f52ad00684467269e5dee7b3e6e7f763f9b1da68e7310a07794b39"
+serde = "0xcb56c63012804b0defed1d1196b817aec2857df516b39355a2e35fb5d65d2fbe"
+
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
 rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"

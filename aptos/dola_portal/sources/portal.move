@@ -509,4 +509,22 @@ module dola_portal::portal {
 
         (source_chain_id, nonce, call_type, u256::as_u64(amount), receiver, liquidate_user_id)
     }
+
+    #[test]
+    public fun test_encode_decode() {
+        let user = @0x11;
+        let lending_payload = encode_lending_app_payload(
+            u16::from_u64(0),
+            0,
+            WITHDRAW,
+            100000000,
+            types::convert_address_to_dola(user),
+            0
+        );
+
+        let (_, _, call_type, amount, user_addr, _) = decode_lending_app_payload(lending_payload);
+        assert!(call_type == WITHDRAW, 0);
+        assert!(amount == 100000000, 0);
+        assert!(user_addr == types::convert_address_to_dola(user), 0);
+    }
 }

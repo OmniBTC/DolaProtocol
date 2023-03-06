@@ -405,4 +405,54 @@ module wormhole_bridge::bridge_pool {
         assert!(length == index, EINVALID_LENGTH);
         (app_id, source_chain_id, nonce, user, binded_address, call_type)
     }
+
+    #[test]
+    public fun test_encode_decode() {
+        let user = @0x11;
+        // test encode lending_helper_payload
+        let helper_payload = encode_lending_helper_payload(
+            types::convert_address_to_dola(user),
+            vector::empty(),
+            7
+        );
+        let (sender, pool_ids, call_type) = decode_lending_helper_payload(helper_payload);
+        assert!(call_type == 7, 0);
+        assert!(sender == types::convert_address_to_dola(user), 0);
+        assert!(pool_ids == vector::empty<U16>(), 0);
+
+        let dola_pool_ids = vector::empty<u64>();
+        vector::push_back(&mut dola_pool_ids, 1);
+        vector::push_back(&mut dola_pool_ids, 2);
+
+        let helper_payload = encode_lending_helper_payload(
+            types::convert_address_to_dola(user),
+            dola_pool_ids,
+            7
+        );
+        let (sender, pool_ids, call_type) = decode_lending_helper_payload(helper_payload);
+        assert!(call_type == 7, 0);
+        assert!(sender == types::convert_address_to_dola(user), 0);
+        assert!(vector::borrow(&pool_ids, 0) == &u16::from_u64(1), 0);
+        assert!(vector::borrow(&pool_ids, 1) == &u16::from_u64(2), 0);
+
+        // test encode protocol_app_payload
+        let sender = @0x11;
+        let bind_address = @0x22;
+        let protocol_app_payload = encode_protocol_app_payload(
+            u16::from_u64(0),
+            0,
+            5,
+            types::convert_address_to_dola(sender),
+            types::convert_address_to_dola(bind_address)
+        );
+        let (app_id, source_chain_id, nonce, decode_sender, decode_user, call_type) = decode_protocol_app_payload(
+            protocol_app_payload
+        );
+        assert!(app_id == u16::from_u64(0), 0);
+        assert!(source_chain_id == u16::from_u64(0), 0);
+        assert!(nonce == 0, 0);
+        assert!(decode_sender == types::convert_address_to_dola(sender), 0);
+        assert!(decode_user == types::convert_address_to_dola(bind_address), 0);
+        assert!(call_type == 5, 0);
+    }
 }

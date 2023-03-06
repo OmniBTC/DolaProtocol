@@ -189,4 +189,26 @@ module protocol_core::protocol_wormhole_adapter {
         assert!(length == index, EINVALID_LENGTH);
         (app_id, source_chain_id, nonce, user, binded_address, call_type)
     }
+
+    #[test]
+    public fun test_encode_decode() {
+        let sender = @0x11;
+        let bind_address = @0x22;
+        let protocol_app_payload = encode_app_payload(
+            0,
+            0,
+            5,
+            types::convert_address_to_dola(sender),
+            types::convert_address_to_dola(bind_address)
+        );
+        let (app_id, source_chain_id, nonce, decode_sender, decode_user, call_type) = decode_app_payload(
+            protocol_app_payload
+        );
+        assert!(app_id == 0, 0);
+        assert!(source_chain_id == 0, 0);
+        assert!(nonce == 0, 0);
+        assert!(decode_sender == types::convert_address_to_dola(sender), 0);
+        assert!(decode_user == types::convert_address_to_dola(bind_address), 0);
+        assert!(call_type == 5, 0);
+    }
 }
