@@ -39,8 +39,8 @@ module genesis_proposal::genesis_proposal {
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
-            wormhole_adapter_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
-            wormhole_adapter_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
+            wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, state, ctx);
+            wormhole_adapter_pool::initialize_cap_with_governance(&governance_cap, state, ctx);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

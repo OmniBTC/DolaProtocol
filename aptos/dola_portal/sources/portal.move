@@ -369,7 +369,7 @@ module dola_portal::portal {
         sender: &signer,
         repay_coin: u64,
     ) acquires PortalEventHandle {
-        let user_addr = types::convert_address_to_dola(signer::address_of(sender));
+        let user_address = types::convert_address_to_dola(signer::address_of(sender));
 
         let nonce = get_nonce();
         let amount = pool::normal_amount<CoinType>(repay_coin);
@@ -378,7 +378,7 @@ module dola_portal::portal {
             nonce,
             REPAY,
             amount,
-            user_addr,
+            user_address,
             0);
         let repay_coin = coin::withdraw<CoinType>(sender, repay_coin);
 

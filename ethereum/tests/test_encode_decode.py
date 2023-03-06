@@ -18,8 +18,8 @@ def test_encode_decode(encode_decode):
     app_id = 0
     app_payload = b"test"
     dola_chain_id = 1
-    pool_addr = encode_decode.encodeDolaAddress(dola_chain_id, pool)
-    result = encode_decode.decodeDolaAddress(pool_addr)
+    pool_address = encode_decode.encodeDolaAddress(dola_chain_id, pool)
+    result = encode_decode.decodeDolaAddress(pool_address)
     assert result == (dola_chain_id, pool)
     send_deposit_payload = encode_decode.encodeSendDepositPayload(
         [dola_chain_id, pool],

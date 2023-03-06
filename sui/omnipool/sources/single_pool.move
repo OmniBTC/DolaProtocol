@@ -41,7 +41,7 @@ module omnipool::single_pool {
     const EINVALID_CHAIN: u64 = 3;
 
 
-    /// The user_addr's information is recorded in the protocol, and the pool only needs to record itself
+    /// The user_address's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
         id: UID,
         balance: Balance<CoinType>,
@@ -156,7 +156,7 @@ module omnipool::single_pool {
         convert_amount(amount, cur_decimal, target_decimal)
     }
 
-    /// call by user_addr or application
+    /// call by user_address or application
     public fun deposit_to<CoinType>(
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
@@ -165,9 +165,9 @@ module omnipool::single_pool {
         ctx: &mut TxContext
     ): vector<u8> {
         let amount = normal_amount(pool, coin::value(&deposit_coin));
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
-        let pool_payload = codec_pool::encode_send_deposit_payload(pool_addr, user_addr, amount, app_id, app_payload);
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let pool_payload = codec_pool::encode_send_deposit_payload(pool_address, user_address, amount, app_id, app_payload);
         balance::join(&mut pool.balance, coin::into_balance(deposit_coin));
         pool_payload
     }
@@ -192,27 +192,27 @@ module omnipool::single_pool {
         pool_approval: &PoolApproval,
         dola_contract: &DolaContract,
         pool: &mut Pool<CoinType>,
-        user_addr: DolaAddress,
+        user_address: DolaAddress,
         amount: u64,
-        pool_addr: DolaAddress,
+        pool_address: DolaAddress,
         ctx: &mut TxContext
     ) {
         assert!(
             vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)),
             EINVALID_WITHDRAW
         );
-        let user_addr = types::convert_dola_to_address(user_addr);
+        let user_address = types::convert_dola_to_address(user_address);
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
-        assert!(types::get_native_dola_chain_id() == types::get_dola_chain_id(&pool_addr), EINVALID_CHAIN);
+        assert!(types::get_native_dola_chain_id() == types::get_dola_chain_id(&pool_address), EINVALID_CHAIN);
         assert!(
-            types::get_dola_address(&pool_addr) == ascii::into_bytes(
+            types::get_dola_address(&pool_address) == ascii::into_bytes(
                 type_name::into_string(type_name::get<CoinType>())
             ),
             EINVALID_TOKEN
         );
-        transfer::transfer(coin, user_addr);
+        transfer::transfer(coin, user_address);
     }
 
     public fun deposit_and_withdraw<DepositCoinType>(
@@ -341,7 +341,7 @@ module omnipool::single_pool {
     #[test]
     public fun test_withdraw_to() {
         let manager = @0x0;
-        let user_addr = @0xC;
+        let user_address = @0xC;
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
@@ -358,7 +358,7 @@ module omnipool::single_pool {
 
             let manager_cap = register_cap(&mut pool_info, test_scenario::ctx(scenario));
             let ctx = test_scenario::ctx(scenario);
-            let pool_addr = types::convert_pool_to_dola<SUI>();
+            let pool_address = types::convert_pool_to_dola<SUI>();
 
             let balance = balance::create_for_testing<SUI>(100);
 
@@ -366,7 +366,7 @@ module omnipool::single_pool {
 
             assert!(balance::value(&pool.balance) == 100, 0);
 
-            inner_withdraw<SUI>(&manager_cap, &mut pool, types::convert_address_to_dola(user_addr), 10, pool_addr, ctx);
+            inner_withdraw<SUI>(&manager_cap, &mut pool, types::convert_address_to_dola(user_address), 10, pool_address, ctx);
 
             assert!(balance::value(&pool.balance) == 0, 0);
             delete_cap(&mut pool_info, manager_cap);

@@ -34,7 +34,7 @@ module omnipool::pool {
         resource_cap: SignerCapability
     }
 
-    /// The user_addr's information is recorded in the protocol, and the pool only needs to record itself
+    /// The user_address's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
         balance: Coin<CoinType>
     }
@@ -42,7 +42,7 @@ module omnipool::pool {
     /// Give permission to the bridge when Pool is in use
     struct PoolCap has key, store {}
 
-    /// Make sure the user_addr has aptos coin, and help register if they don't.
+    /// Make sure the user_address has aptos coin, and help register if they don't.
     fun transfer<X>(coin_x: Coin<X>, to: address) {
         if (!coin::is_account_registered<X>(to) && type_info::type_of<X>() == type_info::type_of<AptosCoin>()) {
             aptos_account::create_account(to);
@@ -127,7 +127,7 @@ module omnipool::pool {
         });
     }
 
-    /// call by user_addr or application
+    /// call by user_address or application
     public fun deposit_to<CoinType>(
         sender: &signer,
         deposit_coin: Coin<CoinType>,
@@ -135,17 +135,17 @@ module omnipool::pool {
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
         let amount = normal_amount<CoinType>(coin::value(&deposit_coin));
-        let user_addr = types::convert_address_to_dola(signer::address_of(sender));
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
+        let user_address = types::convert_address_to_dola(signer::address_of(sender));
+        let pool_address = types::convert_pool_to_dola<CoinType>();
         let pool_payload = encode_send_deposit_payload(
-            pool_addr, user_addr, amount, app_id, app_payload
+            pool_address, user_address, amount, app_id, app_payload
         );
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         coin::merge(&mut pool.balance, deposit_coin);
         pool_payload
     }
 
-    /// call by user_addr or application
+    /// call by user_address or application
     public fun withdraw_to(
         sender: &signer,
         withdraw_chain_id: U16,
@@ -153,25 +153,25 @@ module omnipool::pool {
         app_id: U16,
         app_payload: vector<u8>,
     ): vector<u8> {
-        let user_addr = types::convert_address_to_dola(signer::address_of(sender));
-        let pool_addr = types::create_dola_address(withdraw_chain_id, withdraw_pool_address);
-        let pool_payload = encode_send_withdraw_payload(pool_addr, user_addr, app_id, app_payload);
+        let user_address = types::convert_address_to_dola(signer::address_of(sender));
+        let pool_address = types::create_dola_address(withdraw_chain_id, withdraw_pool_address);
+        let pool_payload = encode_send_withdraw_payload(pool_address, user_address, app_id, app_payload);
         pool_payload
     }
 
     /// call by bridge
     public fun inner_withdraw<CoinType>(
         _: &PoolCap,
-        user_addr: DolaAddress,
+        user_address: DolaAddress,
         amount: u64,
-        pool_addr: DolaAddress,
+        pool_address: DolaAddress,
     ) acquires Pool {
-        let user_addr = types::convert_dola_to_address(user_addr);
+        let user_address = types::convert_dola_to_address(user_address);
         amount = unnormal_amount<CoinType>(amount);
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         let balance = coin::extract(&mut pool.balance, amount);
-        assert!(types::get_dola_address(&pool_addr) == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
-        transfer(balance, user_addr);
+        assert!(types::get_dola_address(&pool_address) == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
+        transfer(balance, user_address);
     }
 
     // todo! Should this action be moved to the application level or delete
@@ -205,21 +205,21 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_send_deposit_payload(
-        pool_addr: DolaAddress,
-        user_addr: DolaAddress,
+        pool_address: DolaAddress,
+        user_address: DolaAddress,
         amount: u64,
         app_id: U16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        let pool_addr = types::encode_dola_address(pool_addr);
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
-        serde::serialize_vector(&mut pool_payload, pool_addr);
+        let pool_address = types::encode_dola_address(pool_address);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_address)));
+        serde::serialize_vector(&mut pool_payload, pool_address);
 
-        let user_addr = types::encode_dola_address(user_addr);
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user_addr)));
-        serde::serialize_vector(&mut pool_payload, user_addr);
+        let user_address = types::encode_dola_address(user_address);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user_address)));
+        serde::serialize_vector(&mut pool_payload, user_address);
 
         serde::serialize_u64(&mut pool_payload, amount);
 
@@ -245,7 +245,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(pool_len);
-        let pool_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -253,7 +253,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(user_len);
-        let user_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let user_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
@@ -277,25 +277,25 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_addr, user_addr, amount, app_id, app_payload)
+        (pool_address, user_address, amount, app_id, app_payload)
     }
 
     /// encode whihdraw msg
     public fun encode_send_withdraw_payload(
-        pool_addr: DolaAddress,
-        user_addr: DolaAddress,
+        pool_address: DolaAddress,
+        user_address: DolaAddress,
         app_id: U16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        let pool_addr = types::encode_dola_address(pool_addr);
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
-        serde::serialize_vector(&mut pool_payload, pool_addr);
+        let pool_address = types::encode_dola_address(pool_address);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_address)));
+        serde::serialize_vector(&mut pool_payload, pool_address);
 
-        let user_addr = types::encode_dola_address(user_addr);
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user_addr)));
-        serde::serialize_vector(&mut pool_payload, user_addr);
+        let user_address = types::encode_dola_address(user_address);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user_address)));
+        serde::serialize_vector(&mut pool_payload, user_address);
 
         serde::serialize_u16(&mut pool_payload, app_id);
 
@@ -319,7 +319,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(pool_len);
-        let pool_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -327,7 +327,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(user_len);
-        let user_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let user_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -347,7 +347,7 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_addr, user_addr, app_id, app_payload)
+        (pool_address, user_address, app_id, app_payload)
     }
 
     public fun encode_send_deposit_and_withdraw_payload(
@@ -441,8 +441,8 @@ module omnipool::pool {
     public fun encode_receive_withdraw_payload(
         source_chain_id: U16,
         nonce: u64,
-        pool_addr: DolaAddress,
-        user_addr: DolaAddress,
+        pool_address: DolaAddress,
+        user_address: DolaAddress,
         amount: u64
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -450,12 +450,12 @@ module omnipool::pool {
         serde::serialize_u16(&mut pool_payload, source_chain_id);
         serde::serialize_u64(&mut pool_payload, nonce);
 
-        let pool_addr = types::encode_dola_address(pool_addr);
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
-        serde::serialize_vector(&mut pool_payload, pool_addr);
+        let pool_address = types::encode_dola_address(pool_address);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_address)));
+        serde::serialize_vector(&mut pool_payload, pool_address);
 
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&types::get_dola_address(&user_addr))));
-        serde::serialize_vector(&mut pool_payload, types::get_dola_address(&user_addr));
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&types::get_dola_address(&user_address))));
+        serde::serialize_vector(&mut pool_payload, types::get_dola_address(&user_address));
 
         serde::serialize_u64(&mut pool_payload, amount);
 
@@ -481,7 +481,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(pool_len);
-        let pool_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -489,7 +489,7 @@ module omnipool::pool {
         index = index + data_len;
 
         data_len = u16::to_u64(user_len);
-        let user_addr = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
+        let user_address = types::decode_dola_address(serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 8;
@@ -498,6 +498,6 @@ module omnipool::pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (source_chain_id, nonce, pool_addr, user_addr, amount)
+        (source_chain_id, nonce, pool_address, user_address, amount)
     }
 }

@@ -69,7 +69,7 @@ module omnipool::wormhole_adapter_pool {
         amount: u64
     }
 
-    public fun initialize_wormhole_with_governance(
+    public fun initialize_cap_with_governance(
         pool_approval: &mut PoolApproval,
         dola_contract_registry: &mut DolaContractRegistry,
         wormhole_state: &mut WormholeState,

@@ -309,8 +309,8 @@ module dola_portal::portal {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = types::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
         let nonce = get_nonce(dola_portal);
@@ -319,7 +319,7 @@ module dola_portal::portal {
             nonce,
             SUPPLY,
             (deposit_amount as u256),
-            user_addr,
+            user_address,
             0
         );
         // Deposit the token into the pool
@@ -335,21 +335,21 @@ module dola_portal::portal {
         pool_manager::add_liquidity(
             option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
-            pool_addr,
+            pool_address,
             LENDING_APP_ID,
             (deposit_amount as u256),
         );
         // Reigster user id for user
-        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
+        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_address)) {
             user_manager::user_manager::register_dola_user_id(
                 option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
-                user_addr
+                user_address
             );
         };
         // Execute supply logic in lending_core app
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
         lending_core::logic::execute_supply(
             option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
@@ -363,7 +363,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             amount: deposit_amount,
             call_type: SUPPLY
         })
@@ -381,10 +381,10 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let dst_chain = types::get_native_dola_chain_id();
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
         // Locate withdrawal pool
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -416,12 +416,12 @@ module dola_portal::portal {
         );
 
         // Local withdraw
-        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             amount: (actual_amount as u64),
             call_type: WITHDRAW
         })
@@ -442,10 +442,10 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let receiver = types::create_dola_address(dst_chain, receiver_addr);
-        let pool_addr = types::create_dola_address(dst_chain, pool);
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let pool_address = types::create_dola_address(dst_chain, pool);
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
         // Locate withdrawal pool
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -494,7 +494,7 @@ module dola_portal::portal {
         emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             source_chain_id: types::get_native_dola_chain_id(),
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
@@ -515,10 +515,10 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let dst_chain = types::get_native_dola_chain_id();
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
         // Locate withdraw pool
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -549,12 +549,12 @@ module dola_portal::portal {
             (amount as u256)
         );
         // Local borrow
-        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_addr, amount, pool_addr, ctx);
+        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             amount,
             call_type: BORROW
         })
@@ -575,10 +575,10 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let receiver = types::create_dola_address(dst_chain, receiver_addr);
-        let pool_addr = types::create_dola_address(dst_chain, pool);
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let pool_address = types::create_dola_address(dst_chain, pool);
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
         // Locate withdraw pool
         let dst_pool = pool_manager::pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
@@ -625,7 +625,7 @@ module dola_portal::portal {
         emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             source_chain_id: types::get_native_dola_chain_id(),
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
@@ -645,8 +645,8 @@ module dola_portal::portal {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user_addr = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_addr = types::convert_pool_to_dola<CoinType>();
+        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = types::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
         let nonce = get_nonce(dola_portal);
@@ -655,7 +655,7 @@ module dola_portal::portal {
             nonce,
             SUPPLY,
             (repay_amount as u256),
-            user_addr,
+            user_address,
             0
         );
         // Deposit the token into the pool
@@ -670,20 +670,20 @@ module dola_portal::portal {
         pool_manager::add_liquidity(
             option::borrow(&dola_portal.pool_manager_cap),
             pool_manager_info,
-            pool_addr,
+            pool_address,
             LENDING_APP_ID,
             (repay_amount as u256),
         );
-        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_addr)) {
+        if (!user_manager::user_manager::is_dola_user(user_manager_info, user_address)) {
             user_manager::user_manager::register_dola_user_id(
                 option::borrow(&dola_portal.user_manager_cap),
                 user_manager_info,
-                user_addr
+                user_address
             );
         };
 
-        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_addr);
-        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_addr);
+        let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
+        let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
         lending_core::logic::execute_repay(
             option::borrow(&dola_portal.storage_cap),
             pool_manager_info,
@@ -697,7 +697,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_addr),
+            dola_pool_address: types::get_dola_address(&pool_address),
             amount: repay_amount,
             call_type: REPAY
         })
@@ -766,9 +766,9 @@ module dola_portal::portal {
             types::convert_address_to_dola(user),
             0
         );
-        let (_, _, call_type, amount, user_addr, _) = lending_core::logic::decode_app_payload(payload);
+        let (_, _, call_type, amount, user_address, _) = lending_core::logic::decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_addr == types::convert_address_to_dola(user), 0);
+        assert!(user_address == types::convert_address_to_dola(user), 0);
     }
 }
