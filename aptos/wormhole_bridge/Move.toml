@@ -17,6 +17,11 @@ deployer = "_"
 [dev-addresses]
 wormhole = "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
 deployer = "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
+# sha256 "OmniBTC | DolaProtocol | WormholeBridge"
+wormhole_bridge = "0xf8a18ef4cdf8ddb9ea0d023105d9ac407b4daf15956afe76b4c712b9a237bdc0"
+serde = "0xcb56c63012804b0defed1d1196b817aec2857df516b39355a2e35fb5d65d2fbe"
+omnipool = "0x9ff66a4abb97848131c18ae17e346334ea4e888f07f18b3f8eaf3c49da1c95ec"
+dola_types = "0x8b97658dd9f52ad00684467269e5dee7b3e6e7f763f9b1da68e7310a07794b39"
 
 
 [dependencies.AptosFramework]

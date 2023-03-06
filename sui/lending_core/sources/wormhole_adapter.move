@@ -530,4 +530,46 @@ module lending_core::lending_wormhole_adapter {
 
         (source_chain_id, nonce, call_type, amount, receiver, liquidate_user_id)
     }
+
+
+    #[test]
+    fun test_encode_decode() {
+        let user = @0x11;
+        let lending_payload = encode_app_payload(
+            0,
+            0,
+            WITHDRAW,
+            100000000,
+            types::convert_address_to_dola(user),
+            0
+        );
+        let (_, _, call_type, amount, user_addr, _) = decode_app_payload(lending_payload);
+        assert!(call_type == WITHDRAW, 0);
+        assert!(amount == 100000000, 0);
+        assert!(user_addr == types::convert_address_to_dola(user), 0);
+
+        let helper_payload = encode_app_helper_payload(
+            types::convert_address_to_dola(user),
+            vector::empty(),
+            AS_COLLATERAL
+        );
+        let (sender, pool_ids, call_type) = decode_app_helper_payload(helper_payload);
+        assert!(call_type == AS_COLLATERAL, 0);
+        assert!(sender == types::convert_address_to_dola(user), 0);
+        assert!(pool_ids == vector::empty<u16>(), 0);
+
+        let dola_pool_ids = vector::empty<u16>();
+        vector::push_back(&mut dola_pool_ids, 1);
+        vector::push_back(&mut dola_pool_ids, 2);
+
+        let helper_payload = encode_app_helper_payload(
+            types::convert_address_to_dola(user),
+            dola_pool_ids,
+            AS_COLLATERAL
+        );
+        let (sender, pool_ids, call_type) = decode_app_helper_payload(helper_payload);
+        assert!(call_type == AS_COLLATERAL, 0);
+        assert!(sender == types::convert_address_to_dola(user), 0);
+        assert!(pool_ids == dola_pool_ids, 0);
+    }
 }

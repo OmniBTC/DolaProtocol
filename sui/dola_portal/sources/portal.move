@@ -754,21 +754,4 @@ module dola_portal::portal {
             call_type: LIQUIDATE
         })
     }
-
-    #[test]
-    fun test_encode_decode() {
-        let user = @0x11;
-        let payload = lending_core::lending_wormhole_adapter::encode_app_payload(
-            0,
-            0,
-            WITHDRAW,
-            100000000,
-            types::convert_address_to_dola(user),
-            0
-        );
-        let (_, _, call_type, amount, user_addr, _) = lending_core::logic::decode_app_payload(payload);
-        assert!(call_type == WITHDRAW, 0);
-        assert!(amount == 100000000, 0);
-        assert!(user_addr == types::convert_address_to_dola(user), 0);
-    }
 }
