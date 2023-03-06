@@ -126,8 +126,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Call by governance
 
     /// Register the remote wormhole adapter pool through governance
-    /// Steps for registering a remote bridge: 1) Deploy a remote bridge containing (SUI_EMIT_CHAIN, SUI_WORMHOLE_EMITTER_CHAIN)
-    /// to represent this contract; 2) By governing the call to `register_remote_bridge`
+    /// Steps for registering a remote bridge:
+    /// 1) By governing the call to `initialize_cap_with_governance` of wormhole adapter core 
+    /// 2) Call to `initialize_cap_with_governance` of wormhole adapter pool
+    /// 3) By governing the call to `register_remote_bridge`
     public fun register_remote_bridge(
         _: &GovernanceCap,
         core_state: &mut CoreState,
