@@ -170,7 +170,10 @@ module omnipool::pool {
         amount = unnormal_amount<CoinType>(amount);
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
         let balance = coin::extract(&mut pool.balance, amount);
-        assert!(types::get_dola_address(&pool_addr) == *string::bytes(&type_info::type_name<CoinType>()), EINVALID_TOKEN);
+        assert!(
+            types::get_dola_address(&pool_addr) == *string::bytes(&type_info::type_name<CoinType>()),
+            EINVALID_TOKEN
+        );
         transfer(balance, user_addr);
     }
 
@@ -421,12 +424,12 @@ module omnipool::pool {
         let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 2;
+        let app_payload_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
-            data_len = 2;
-            let app_payload_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
-            index = index + data_len;
-
             data_len = u16::to_u64(app_payload_len);
             app_payload = serde::vector_slice(&pool_payload, index, index + data_len);
             index = index + data_len;
@@ -454,8 +457,9 @@ module omnipool::pool {
         serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&pool_addr)));
         serde::serialize_vector(&mut pool_payload, pool_addr);
 
-        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&types::get_dola_address(&user_addr))));
-        serde::serialize_vector(&mut pool_payload, types::get_dola_address(&user_addr));
+        let user_addr = types::encode_dola_address(user_addr);
+        serde::serialize_u16(&mut pool_payload, u16::from_u64(vector::length(&user_addr)));
+        serde::serialize_vector(&mut pool_payload, user_addr);
 
         serde::serialize_u64(&mut pool_payload, amount);
 
@@ -499,5 +503,79 @@ module omnipool::pool {
         assert!(length == index, EINVALID_LENGTH);
 
         (source_chain_id, nonce, pool_addr, user_addr, amount)
+    }
+
+    #[test]
+    public fun test_encode_decode() {
+        let pool = @0x11;
+        let user = @0x22;
+        let amount = 100;
+        let app_id = u16::from_u64(0);
+        let app_payload = vector::empty<u8>();
+        // test encode and decode send_deposit_payload
+        let send_deposit_payload = encode_send_deposit_payload(
+            types::convert_address_to_dola(pool),
+            types::convert_address_to_dola(user),
+            amount,
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_amount, decoded_app_id, decoded_app_payload) = decode_send_deposit_payload(
+            send_deposit_payload
+        );
+        assert!(types::convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(types::convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode send_withdraw_payload
+        let send_withdraw_payload = encode_send_withdraw_payload(
+            types::convert_address_to_dola(pool),
+            types::convert_address_to_dola(user),
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_app_id, decoded_app_payload) = decode_send_withdraw_payload(
+            send_withdraw_payload
+        );
+        assert!(types::convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(types::convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode send_deposit_and_withdraw_payload
+        let withdraw_pool = @0x33;
+        let send_deposit_and_withdraw_payload = encode_send_deposit_and_withdraw_payload(
+            types::convert_address_to_dola(pool),
+            types::convert_address_to_dola(user),
+            amount,
+            types::convert_address_to_dola(withdraw_pool),
+            app_id,
+            app_payload
+        );
+        let (decoded_pool, decoded_user, decoded_amount, decoded_withdraw_pool, decoded_app_id, decoded_app_payload) = decode_send_deposit_and_withdraw_payload(
+            send_deposit_and_withdraw_payload
+        );
+        assert!(types::convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(types::convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
+        assert!(types::convert_dola_to_address(decoded_withdraw_pool) == withdraw_pool, 0);
+        assert!(decoded_app_id == app_id, 0);
+        assert!(decoded_app_payload == app_payload, 0);
+        // test encode and decode receive_withdraw_payload
+        let receive_withdraw_payload = encode_receive_withdraw_payload(
+            u16::from_u64(0),
+            0,
+            types::convert_address_to_dola(pool),
+            types::convert_address_to_dola(user),
+            amount
+        );
+        let (source_chain_id, nonce, decoded_pool, decoded_user, decoded_amount) = decode_receive_withdraw_payload(
+            receive_withdraw_payload
+        );
+        assert!(source_chain_id == u16::from_u64(0), 0);
+        assert!(nonce == 0, 0);
+        assert!(types::convert_dola_to_address(decoded_pool) == pool, 0);
+        assert!(types::convert_dola_to_address(decoded_user) == user, 0);
+        assert!(decoded_amount == amount, 0);
     }
 }
