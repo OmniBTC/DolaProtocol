@@ -2,7 +2,7 @@ module protocol_core::protocol_wormhole_adapter {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_address::{Self, DolaAddress};
     use protocol_core::message_types;
     use serde::serde;
     use sui::event;
@@ -87,10 +87,10 @@ module protocol_core::protocol_wormhole_adapter {
         };
         event::emit(ProtocolCoreEvent {
             nonce,
-            sender: types::get_dola_address(&sender),
+            sender: dola_address::get_dola_address(&sender),
             source_chain_id,
-            user_chain_id: types::get_dola_chain_id(&binded_address),
-            user_address: types::get_dola_address(&binded_address),
+            user_chain_id: dola_address::get_dola_chain_id(&binded_address),
+            user_address: dola_address::get_dola_address(&binded_address),
             call_type
         })
     }
@@ -115,10 +115,10 @@ module protocol_core::protocol_wormhole_adapter {
         );
         event::emit(ProtocolCoreEvent {
             nonce,
-            sender: types::get_dola_address(&sender),
+            sender: dola_address::get_dola_address(&sender),
             source_chain_id,
-            user_chain_id: types::get_dola_chain_id(&unbinded_address),
-            user_address: types::get_dola_address(&unbinded_address),
+            user_chain_id: dola_address::get_dola_chain_id(&unbinded_address),
+            user_address: dola_address::get_dola_address(&unbinded_address),
             call_type
         })
     }
@@ -137,11 +137,11 @@ module protocol_core::protocol_wormhole_adapter {
         serde::serialize_u16(&mut payload, source_chain_id);
         serde::serialize_u64(&mut payload, nonce);
 
-        let user = types::encode_dola_address(sender);
+        let user = dola_address::encode_dola_address(sender);
         serde::serialize_u16(&mut payload, (vector::length(&user) as u16));
         serde::serialize_vector(&mut payload, user);
 
-        let user_address = types::encode_dola_address(user_address);
+        let user_address = dola_address::encode_dola_address(user_address);
         serde::serialize_u16(&mut payload, (vector::length(&user_address) as u16));
         serde::serialize_vector(&mut payload, user_address);
 
@@ -171,7 +171,7 @@ module protocol_core::protocol_wormhole_adapter {
         index = index + data_len;
 
         data_len = (user_len as u64);
-        let user = types::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
+        let user = dola_address::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 2;
@@ -179,7 +179,7 @@ module protocol_core::protocol_wormhole_adapter {
         index = index + data_len;
 
         data_len = (bind_len as u64);
-        let binded_address = types::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
+        let binded_address = dola_address::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;

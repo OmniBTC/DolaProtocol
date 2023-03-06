@@ -6,7 +6,7 @@ module genesis_proposal::genesis_proposal {
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_portal::portal::DolaPortal;
-    use dola_types::types::create_dola_address;
+    use dola_types::dola_address::create_dola_address;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::lending_wormhole_adapter;
     use lending_core::storage::Storage;

@@ -6,7 +6,7 @@
 /// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
 module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
-    use dola_types::types::DolaAddress;
+    use dola_types::dola_address::DolaAddress;
     use governance::genesis::GovernanceCap;
     use wormhole_adapter_core::codec_pool;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
@@ -39,7 +39,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
     /// For VAA data, the following validations are required.
     /// For wormhole official library: 1) verify the signature.
-    /// For wormhole_bridge_adapter itself: 1) make sure it comes from the correct (emitter_chain, emitter_address) by
+    /// For wormhole_bridge_adapter itself: 1) make sure it comes from the correct (emitter_chain, wormhole_emitter_address) by
     /// VAA; 2) make sure the data has not been processed by VAA hash; 3) make sure the caller is from the correct
     /// application by app_id from pool payload.
     struct CoreState has key, store {
@@ -50,10 +50,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         pool_manager_cap: PoolManagerCap,
         // Move does not have a contract address, Wormhole uses the emitter
         // in EmitterCapability to represent the send address of this contract
-        sender: EmitterCapability,
+        wormhole_emitter: EmitterCapability,
         // Used to verify that the VAA has been processed
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
-        // Used to verify that (emitter_chain, emitter_address) is correct
+        // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
         registered_emitters: VecMap<u16, ExternalAddress>,
         // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>
@@ -63,14 +63,14 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Event for register bridge
     struct RegisterBridge has copy, drop {
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
     }
 
     /// Event for delete bridge
     struct DeleteBridge  has copy, drop {
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
     }
 
     /// Event for register owner
@@ -115,7 +115,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
                 id: object::new(ctx),
                 user_manager_cap: user_manager::register_cap_with_governance(governance),
                 pool_manager_cap: pool_manager::register_cap_with_governance(governance),
-                sender: wormhole::register_emitter(wormhole_state, ctx),
+                wormhole_emitter: wormhole::register_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
                 cache_vaas: table::new(ctx)
@@ -126,37 +126,37 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Call by governance
 
     /// Register the remote wormhole adapter pool through governance
-    /// Steps for registering a remote bridge: 1) Deploy a remote bridge containing (SUI_EMIT_CHAIN, SUI_EMITTER_CHAIN)
+    /// Steps for registering a remote bridge: 1) Deploy a remote bridge containing (SUI_EMIT_CHAIN, SUI_WORMHOLE_EMITTER_CHAIN)
     /// to represent this contract; 2) By governing the call to `register_remote_bridge`
     public fun register_remote_bridge(
         _: &GovernanceCap,
         core_state: &mut CoreState,
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
     ) {
-        assert!(!vec_map::contains(&core_state.registered_emitters, &emitter_chain_id), EHAS_REGISTERED_EMITTER);
+        assert!(!vec_map::contains(&core_state.registered_emitters, &wormhole_emitter_chain), EHAS_REGISTERED_EMITTER);
         vec_map::insert(
             &mut core_state.registered_emitters,
-            emitter_chain_id,
-            external_address::from_bytes(emitter_address)
+            wormhole_emitter_chain,
+            external_address::from_bytes(wormhole_emitter_address)
         );
-        event::emit(RegisterBridge { emitter_chain_id, emitter_address });
+        event::emit(RegisterBridge { wormhole_emitter_chain, wormhole_emitter_address });
     }
 
     /// Delete the remote wormhole adapter pool through governance
     public fun delete_remote_bridge(
         _: &GovernanceCap,
         core_state: &mut CoreState,
-        emitter_chain_id: u16
+        wormhole_emitter_chain: u16
     ) {
-        assert!(vec_map::contains(&core_state.registered_emitters, &emitter_chain_id), ENOT_REGISTERED_EMITTER);
-        let (_, emitter_address) = vec_map::remove(
+        assert!(vec_map::contains(&core_state.registered_emitters, &wormhole_emitter_chain), ENOT_REGISTERED_EMITTER);
+        let (_, wormhole_emitter_address) = vec_map::remove(
             &mut core_state.registered_emitters,
-            &emitter_chain_id
+            &wormhole_emitter_chain
         );
         event::emit(RegisterBridge {
-            emitter_chain_id,
-            emitter_address: external_address::get_bytes(&emitter_address)
+            wormhole_emitter_chain,
+            wormhole_emitter_address: external_address::get_bytes(&wormhole_emitter_address)
         });
     }
 
@@ -173,7 +173,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_chain_id,
             dola_contract
         );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -193,7 +193,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_chain_id,
             dola_contract
         );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -213,7 +213,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_chain_id,
             dola_contract
         );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -233,7 +233,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_chain_id,
             dola_contract
         );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -400,7 +400,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             user_address,
             (actual_amount as u64)
         );
-        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
 
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);

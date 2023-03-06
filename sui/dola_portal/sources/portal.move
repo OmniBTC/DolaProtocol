@@ -2,7 +2,7 @@ module dola_portal::portal {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types;
+    use dola_types::dola_address;
     use lending_core::storage::{StorageCap, Storage};
     use omnipool::single_pool::{Pool, normal_amount, Self, PoolCap};
     use oracle::oracle::PriceOracle;
@@ -190,7 +190,7 @@ module dola_portal::portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
-        let sender = types::convert_address_to_dola(tx_context::sender(ctx));
+        let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
 
@@ -219,7 +219,7 @@ module dola_portal::portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
-        let sender = types::convert_address_to_dola(tx_context::sender(ctx));
+        let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
 
@@ -247,8 +247,8 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        let user = types::convert_address_to_dola(sender);
-        let bind_dola_address = types::create_dola_address(dola_chain_id, binded_address);
+        let user = dola_address::convert_address_to_dola(sender);
+        let bind_dola_address = dola_address::create_dola_address(dola_chain_id, binded_address);
         if (user == bind_dola_address) {
             user_manager::register_dola_user_id(
                 option::borrow(&dola_portal.user_manager_cap),
@@ -280,8 +280,8 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        let user = types::convert_address_to_dola(sender);
-        let unbind_dola_address = types::create_dola_address(dola_chain_id, unbinded_address);
+        let user = dola_address::convert_address_to_dola(sender);
+        let unbind_dola_address = dola_address::create_dola_address(dola_chain_id, unbinded_address);
         user_manager::unbind_user_address(
             option::borrow(&dola_portal.user_manager_cap),
             user_manager_info,
@@ -309,13 +309,13 @@ module dola_portal::portal {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = normal_amount(pool, coin::value(&deposit_coin));
         let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
-            types::get_native_dola_chain_id(),
+            dola_address::get_native_dola_chain_id(),
             nonce,
             SUPPLY,
             (deposit_amount as u256),
@@ -363,7 +363,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: deposit_amount,
             call_type: SUPPLY
         })
@@ -380,9 +380,9 @@ module dola_portal::portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let dst_chain = types::get_native_dola_chain_id();
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let dst_chain = dola_address::get_native_dola_chain_id();
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
@@ -421,7 +421,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: (actual_amount as u64),
             call_type: WITHDRAW
         })
@@ -441,9 +441,9 @@ module dola_portal::portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = types::create_dola_address(dst_chain, receiver_addr);
-        let pool_address = types::create_dola_address(dst_chain, pool);
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
+        let pool_address = dola_address::create_dola_address(dst_chain, pool);
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
@@ -485,7 +485,7 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
-            types::get_native_dola_chain_id(),
+            dola_address::get_native_dola_chain_id(),
             nonce,
             actual_amount,
             coin::zero<SUI>(ctx)
@@ -494,8 +494,8 @@ module dola_portal::portal {
         emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
-            source_chain_id: types::get_native_dola_chain_id(),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
+            source_chain_id: dola_address::get_native_dola_chain_id(),
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount: (actual_amount as u64),
@@ -514,9 +514,9 @@ module dola_portal::portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let dst_chain = types::get_native_dola_chain_id();
-        let pool_address = types::convert_pool_to_dola<CoinType>();
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let dst_chain = dola_address::get_native_dola_chain_id();
+        let pool_address = dola_address::convert_pool_to_dola<CoinType>();
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
@@ -554,7 +554,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount,
             call_type: BORROW
         })
@@ -574,9 +574,9 @@ module dola_portal::portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let receiver = types::create_dola_address(dst_chain, receiver_addr);
-        let pool_address = types::create_dola_address(dst_chain, pool);
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
+        let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
+        let pool_address = dola_address::create_dola_address(dst_chain, pool);
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let dola_pool_id = pool_manager::pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::user_manager::get_dola_user_id(user_manager_info, user_address);
 
@@ -616,7 +616,7 @@ module dola_portal::portal {
             pool_manager_info,
             dst_pool,
             receiver,
-            types::get_native_dola_chain_id(),
+            dola_address::get_native_dola_chain_id(),
             nonce,
             (amount as u256),
             coin::zero<SUI>(ctx)
@@ -625,8 +625,8 @@ module dola_portal::portal {
         emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
-            source_chain_id: types::get_native_dola_chain_id(),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
+            source_chain_id: dola_address::get_native_dola_chain_id(),
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount,
@@ -645,13 +645,13 @@ module dola_portal::portal {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
-        let user_address = types::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_address = types::convert_pool_to_dola<CoinType>();
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = normal_amount(pool, coin::value(&repay_coin));
         let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
-            types::get_native_dola_chain_id(),
+            dola_address::get_native_dola_chain_id(),
             nonce,
             SUPPLY,
             (repay_amount as u256),
@@ -697,7 +697,7 @@ module dola_portal::portal {
         emit(LocalLendingEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&pool_address),
+            dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: repay_amount,
             call_type: REPAY
         })
@@ -717,12 +717,12 @@ module dola_portal::portal {
         ctx: &mut TxContext
     ) {
         let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-        let debt_pool_address = types::convert_pool_to_dola<DebtCoinType>();
-        let receiver = dola_types::types::convert_address_to_dola(tx_context::sender(ctx));
+        let debt_pool_address = dola_address::convert_pool_to_dola<DebtCoinType>();
+        let receiver = dola_types::dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let nonce = get_nonce(dola_portal);
         let app_payload = lending_core::lending_wormhole_adapter::encode_app_payload(
-            types::get_native_dola_chain_id(),
+            dola_address::get_native_dola_chain_id(),
             nonce,
             LIQUIDATE,
             (normal_amount(debt_pool, coin::value(&debt_coin)) as u256),
@@ -746,10 +746,10 @@ module dola_portal::portal {
         emit(LendingPortalEvent {
             nonce,
             sender: tx_context::sender(ctx),
-            dola_pool_address: types::get_dola_address(&debt_pool_address),
-            source_chain_id: types::get_native_dola_chain_id(),
-            dst_chain_id: types::get_dola_chain_id(&receiver),
-            receiver: types::get_dola_address(&receiver),
+            dola_pool_address: dola_address::get_dola_address(&debt_pool_address),
+            source_chain_id: dola_address::get_native_dola_chain_id(),
+            dst_chain_id: dola_address::get_dola_chain_id(&receiver),
+            receiver: dola_address::get_dola_address(&receiver),
             amount: debt_amount,
             call_type: LIQUIDATE
         })
@@ -763,12 +763,12 @@ module dola_portal::portal {
             0,
             WITHDRAW,
             100000000,
-            types::convert_address_to_dola(user),
+            dola_address::convert_address_to_dola(user),
             0
         );
         let (_, _, call_type, amount, user_address, _) = lending_core::logic::decode_app_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
-        assert!(user_address == types::convert_address_to_dola(user), 0);
+        assert!(user_address == dola_address::convert_address_to_dola(user), 0);
     }
 }

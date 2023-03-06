@@ -17,29 +17,37 @@ module omnipool::wormhole_adapter_verify {
     use sui::object::UID;
     use sui::object;
 
+    /// Errors
+
+    /// Unkonwn chain
     const EUNKNOWN_CHAIN: u64 = 1;
 
+    /// Unkonwn emitter
     const EUNKNOWN_EMITTER: u64 = 2;
 
+    /// Placeholder for map
     struct Unit has key, store { id: UID, }
 
-    public fun get_registered_emitter(registered_emitters: &VecMap<u16, ExternalAddress>, chain_id: &u16): Option<ExternalAddress> {
-        if (vec_map::contains(registered_emitters, chain_id)) {
-            option::some(*vec_map::get(registered_emitters, chain_id))
+    /// Get wormhole emitter address by wormhole chain id
+    public fun get_registered_emitter(registered_emitters: &VecMap<u16, ExternalAddress>, wormhole_chain_id: &u16): Option<ExternalAddress> {
+        if (vec_map::contains(registered_emitters, wormhole_chain_id)) {
+            option::some(*vec_map::get(registered_emitters, wormhole_chain_id))
         } else {
             option::none()
         }
     }
 
+    /// Ensure known wormhole emitter address by vaa
     public fun assert_known_emitter(registered_emitters: &VecMap<u16, ExternalAddress>, vm: &VAA) {
-        let chain_id = (wormhole_u16::to_u64(vaa::get_emitter_chain(vm)) as u16);
-        let maybe_emitter = get_registered_emitter(registered_emitters, &chain_id);
+        let wormhole_chain_id = (wormhole_u16::to_u64(vaa::get_emitter_chain(vm)) as u16);
+        let maybe_emitter = get_registered_emitter(registered_emitters, &wormhole_chain_id);
         assert!(option::is_some<ExternalAddress>(&maybe_emitter), EUNKNOWN_CHAIN);
 
         let emitter = option::extract(&mut maybe_emitter);
         assert!(emitter == vaa::get_emitter_address(vm), EUNKNOWN_EMITTER);
     }
 
+    /// Verify signature and known wormhole emitter
     public fun parse_and_verify(
         wormhole_state: &mut WormholeState,
         registered_emitters: &VecMap<u16, ExternalAddress>,
@@ -51,6 +59,7 @@ module omnipool::wormhole_adapter_verify {
         vaa
     }
 
+    /// Ensure that vaa is not reused
     public fun replay_protect(consumed_vaas: &mut object_table::ObjectTable<vector<u8>, Unit>, vaa: &VAA, ctx: &mut TxContext) {
         // this calls set::add which aborts if the element already exists
         object_table::add<vector<u8>, Unit>(
@@ -60,6 +69,7 @@ module omnipool::wormhole_adapter_verify {
         );
     }
 
+    /// Parse and verify
     public fun parse_verify_and_replay_protect(
         wormhole_state: &mut WormholeState,
         registered_emitters: &VecMap<u16, ExternalAddress>,

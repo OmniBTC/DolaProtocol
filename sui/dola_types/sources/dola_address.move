@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 ///
-module dola_types::types {
+module dola_types::dola_address {
     use std::ascii;
     use std::type_name;
     use std::vector;

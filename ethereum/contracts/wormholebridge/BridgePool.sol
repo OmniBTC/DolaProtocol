@@ -8,9 +8,9 @@ import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
 contract BridgePool {
-    uint16 public constant SUI_EMITTER_CHAIN = 24;
+    uint16 public constant SUI_WORMHOLE_EMITTER_CHAIN = 24;
 
-    bytes32 public constant SUI_EMITTER_ADDRESS = 0x0000000000000000000000000000000000000000000000000000000000000004;
+    bytes32 public constant SUI_WORMHOLE_EMITTER_ADDRESS = 0x0000000000000000000000000000000000000000000000000000000000000004;
 
     address wormholeBridge;
     uint32 vaaNonce;

@@ -18,9 +18,9 @@ module wormhole_bridge::bridge_pool {
     use wormhole::state;
     use wormhole::wormhole;
 
-    const SUI_EMITTER_CHAIN: u64 = 24;
+    const SUI_WORMHOLE_EMITTER_CHAIN: u64 = 24;
 
-    const SUI_EMITTER_ADDRESS: vector<u8> = x"0000000000000000000000000000000000000000000000000000000000000004";
+    const SUI_WORMHOLE_EMITTER_ADDRESS: vector<u8> = x"0000000000000000000000000000000000000000000000000000000000000004";
 
     const PROTOCOL_APP_ID: u64 = 0;
 
@@ -107,10 +107,10 @@ module wormhole_bridge::bridge_pool {
         };
         table::add(
             &mut pool_state.registered_emitters,
-            u16::from_u64(SUI_EMITTER_CHAIN),
-            external_address::from_bytes(SUI_EMITTER_ADDRESS)
+            u16::from_u64(SUI_WORMHOLE_EMITTER_CHAIN),
+            external_address::from_bytes(SUI_WORMHOLE_EMITTER_ADDRESS)
         );
-        
+
         move_to(&resource_signer, pool_state);
         move_to(sender, PoolEventHandle {
             pool_withdraw_handle: account::new_event_handle<PoolWithdrawEvent>(sender)

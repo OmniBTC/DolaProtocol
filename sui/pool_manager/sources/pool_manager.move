@@ -4,7 +4,7 @@ module pool_manager::pool_manager {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
     use pool_manager::equilibrium_fee;
     use sui::object::{Self, UID};
@@ -310,7 +310,7 @@ module pool_manager::pool_manager {
         let i = 0;
         while (i < len) {
             let d = *vector::borrow(&pools, i);
-            if (types::get_dola_chain_id(&d) == dst_chain) {
+            if (dola_address::get_dola_chain_id(&d) == dst_chain) {
                 return option::some(d)
             };
             i = i + 1;
@@ -537,7 +537,7 @@ module pool_manager::pool_manager {
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = types::create_dola_address(0, b"USDT");
+            let pool = dola_address::create_dola_address(0, b"USDT");
             let dola_pool_id = 0;
             register_pool_id(
                 &governance_cap,
@@ -560,7 +560,7 @@ module pool_manager::pool_manager {
     public fun test_add_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = types::create_dola_address(0, b"USDT");
+        let pool = dola_address::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -614,7 +614,7 @@ module pool_manager::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @pool_manager;
         let dola_pool_name = string(b"USDT");
-        let pool = types::create_dola_address(0, b"USDT");
+        let pool = dola_address::create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
