@@ -31,6 +31,8 @@ module omnipool::wormhole_adapter_pool {
 
     const EINVALIE_CONTRACT: u64 = 1;
 
+    const EINVALIE_CHAIN: u64 = 1;
+
     const U64_MAX: u64 = 18446744073709551615;
 
     const SUI_EMITTER_CHAIN: u16 = 24;
@@ -91,7 +93,7 @@ module omnipool::wormhole_adapter_pool {
         transfer::share_object(pool_state);
     }
 
-    public fun register_new_owner(
+    public fun register_owner(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
         vaa: vector<u8>,
@@ -104,12 +106,13 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (_source_chain_id, _nonce, dola_contract, _call_type) = codec_pool::decode_receive_owner_payload(vaa);
+        let (dola_chain_id, dola_contract, _call_type) = codec_pool::decode_register_owner_payload(vaa);
+        assert!(dola_chain_id == types::get_native_dola_chain_id(), EINVALIE_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_CONTRACT);
-        single_pool::register_new_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
+        single_pool::register_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
     }
 
-    public fun register_new_spender(
+    public fun register_spender(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
         vaa: vector<u8>,
@@ -122,9 +125,44 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (_source_chain_id, _nonce, dola_contract, _call_type) = codec_pool::decode_receive_spender_payload(vaa);
+        let (dola_chain_id, dola_contract, _call_type) = codec_pool::decode_register_spender_payload(vaa);
+        assert!(dola_chain_id == types::get_native_dola_chain_id(), EINVALIE_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_CONTRACT);
-        single_pool::register_new_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
+        single_pool::register_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
+    }
+
+    public fun delete_owner(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    ) {
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &pool_state.registered_emitters,
+        //     &mut pool_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        let (dola_chain_id, dola_contract, _call_type) = codec_pool::decode_delete_owner_payload(vaa);
+        assert!(dola_chain_id == types::get_native_dola_chain_id(), EINVALIE_CHAIN);
+        single_pool::delete_owner(pool_approval, &pool_state.dola_contract, dola_contract);
+    }
+
+    public fun delete_spender(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    ) {
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &pool_state.registered_emitters,
+        //     &mut pool_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        let (dola_chain_id, dola_contract, _call_type) = codec_pool::decode_delete_spender_payload(vaa);
+        assert!(dola_chain_id == types::get_native_dola_chain_id(), EINVALIE_CHAIN);
+        single_pool::delete_owner(pool_approval, &pool_state.dola_contract, dola_contract);
     }
 
     // public fun send_binding(

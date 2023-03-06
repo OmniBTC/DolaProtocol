@@ -14,7 +14,11 @@ module wormhole_adapter_core::codec_pool {
 
     const POOL_REGISTER_OWNER: u8 = 2;
 
-    const POOL_REGISTER_SPENDER: u8 = 2;
+    const POOL_REGISTER_SPENDER: u8 = 3;
+
+    const POOL_DELETE_OWNER: u8 = 4;
+
+    const POOL_DELETE_SPENDER: u8 = 5;
 
 
     /// encode deposit msg
@@ -332,15 +336,12 @@ module wormhole_adapter_core::codec_pool {
 
     /// encode withdraw msg
     public fun encode_register_owner_payload(
-        source_chain_id: u16,
-        nonce: u64,
+        doal_chain_id: u16,
         dola_contract: u256
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        // encode nonce
-        serde::serialize_u16(&mut pool_payload, source_chain_id);
-        serde::serialize_u64(&mut pool_payload, nonce);
+        serde::serialize_u16(&mut pool_payload, doal_chain_id);
 
         serde::serialize_u256(&mut pool_payload, dola_contract);
 
@@ -350,17 +351,13 @@ module wormhole_adapter_core::codec_pool {
     }
 
     /// decode withdraw msg
-    public fun decode_receive_owner_payload(pool_payload: vector<u8>): (u16, u64, u256, u8) {
+    public fun decode_register_owner_payload(pool_payload: vector<u8>): (u16, u256, u8) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
 
         data_len = 2;
-        let source_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let nonce = serde::deserialize_u64(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let doal_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 32;
@@ -375,20 +372,17 @@ module wormhole_adapter_core::codec_pool {
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (source_chain_id, nonce, dola_contract, call_type)
+        (doal_chain_id, dola_contract, call_type)
     }
 
     /// encode withdraw msg
     public fun encode_register_spender_payload(
-        source_chain_id: u16,
-        nonce: u64,
+        doal_chain_id: u16,
         dola_contract: u256
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
-        // encode nonce
-        serde::serialize_u16(&mut pool_payload, source_chain_id);
-        serde::serialize_u64(&mut pool_payload, nonce);
+        serde::serialize_u16(&mut pool_payload, doal_chain_id);
 
         serde::serialize_u256(&mut pool_payload, dola_contract);
 
@@ -398,17 +392,13 @@ module wormhole_adapter_core::codec_pool {
     }
 
     /// decode withdraw msg
-    public fun decode_receive_spender_payload(pool_payload: vector<u8>): (u16, u64, u256, u8) {
+    public fun decode_register_spender_payload(pool_payload: vector<u8>): (u16, u256, u8) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
 
         data_len = 2;
-        let source_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 8;
-        let nonce = serde::deserialize_u64(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let doal_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 32;
@@ -422,6 +412,86 @@ module wormhole_adapter_core::codec_pool {
         assert!(call_type == POOL_REGISTER_SPENDER, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (source_chain_id, nonce, dola_contract, call_type)
+        (doal_chain_id, dola_contract, call_type)
+    }
+
+    /// encode withdraw msg
+    public fun encode_delete_owner_payload(
+        doal_chain_id: u16,
+        dola_contract: u256
+    ): vector<u8> {
+        let pool_payload = vector::empty<u8>();
+
+        serde::serialize_u16(&mut pool_payload, doal_chain_id);
+
+        serde::serialize_u256(&mut pool_payload, dola_contract);
+
+        serde::serialize_u8(&mut pool_payload, POOL_DELETE_OWNER);
+
+        pool_payload
+    }
+
+    /// decode withdraw msg
+    public fun decode_delete_owner_payload(pool_payload: vector<u8>): (u16, u256, u8) {
+        let length = vector::length(&pool_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let doal_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 32;
+        let dola_contract = serde::deserialize_u256(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(call_type == POOL_DELETE_OWNER, EINVALID_CALL_TYPE);
+        assert!(length == index, EINVALID_LENGTH);
+
+        (doal_chain_id, dola_contract, call_type)
+    }
+
+    /// encode withdraw msg
+    public fun encode_delete_spender_payload(
+        doal_chain_id: u16,
+        dola_contract: u256
+    ): vector<u8> {
+        let pool_payload = vector::empty<u8>();
+
+        serde::serialize_u16(&mut pool_payload, doal_chain_id);
+
+        serde::serialize_u256(&mut pool_payload, dola_contract);
+
+        serde::serialize_u8(&mut pool_payload, POOL_DELETE_SPENDER);
+
+        pool_payload
+    }
+
+    /// decode withdraw msg
+    public fun decode_delete_spender_payload(pool_payload: vector<u8>): (u16, u256, u8) {
+        let length = vector::length(&pool_payload);
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let doal_chain_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 32;
+        let dola_contract = serde::deserialize_u256(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 1;
+        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(call_type == POOL_DELETE_SPENDER, EINVALID_CALL_TYPE);
+        assert!(length == index, EINVALID_LENGTH);
+
+        (doal_chain_id, dola_contract, call_type)
     }
 }

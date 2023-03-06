@@ -36,6 +36,8 @@ module omnipool::single_pool {
 
     const EINVALID_OWNER: u64 = 2;
 
+    const EINVALID_SPENDER: u64 = 2;
+
     const EINVALID_CHAIN: u64 = 3;
 
 
@@ -73,22 +75,44 @@ module omnipool::single_pool {
         vector::push_back(&mut pool_approval.spenders, dola_contract::get_dola_contract(dola_contract));
     }
 
-    public fun register_new_owner(
+    public fun register_owner(
         pool_approval: &mut PoolApproval,
-        old_owner_emitter: &DolaContract,
-        new_owner_emitter: &DolaContract
-    ){
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(old_owner_emitter)), EINVALID_OWNER);
-        vector::push_back(&mut pool_approval.owners, dola_contract::get_dola_contract(new_owner_emitter));
+        old_owner: &DolaContract,
+        new_owner: &DolaContract
+    ) {
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(old_owner)), EINVALID_OWNER);
+        vector::push_back(&mut pool_approval.owners, dola_contract::get_dola_contract(new_owner));
     }
 
-    public fun register_new_spender(
+    public fun delete_owner(
         pool_approval: &mut PoolApproval,
-        owner_emitter: &DolaContract,
-        spend_emitter: &DolaContract
-    ){
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner_emitter)), EINVALID_OWNER);
-        vector::push_back(&mut pool_approval.spenders, dola_contract::get_dola_contract(spend_emitter));
+        owner: &DolaContract,
+        deleted_dola_contract: u256
+    ) {
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), EINVALID_OWNER);
+        let (flag, index) = vector::index_of(&mut pool_approval.owners, &deleted_dola_contract);
+        assert!(flag, EINVALID_OWNER);
+        vector::remove(&mut pool_approval.owners, index);
+    }
+
+    public fun register_spender(
+        pool_approval: &mut PoolApproval,
+        owner: &DolaContract,
+        spend: &DolaContract
+    ) {
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), EINVALID_OWNER);
+        vector::push_back(&mut pool_approval.spenders, dola_contract::get_dola_contract(spend));
+    }
+
+    public fun delete_spender(
+        pool_approval: &mut PoolApproval,
+        owner: &DolaContract,
+        deleted_dola_contract: u256
+    ) {
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), EINVALID_OWNER);
+        let (flag, index) = vector::index_of(&mut pool_approval.spenders, &deleted_dola_contract);
+        assert!(flag, EINVALID_SPENDER);
+        vector::remove(&mut pool_approval.spenders, index);
     }
 
     /// todo! Realize cross create pool
@@ -173,7 +197,10 @@ module omnipool::single_pool {
         pool_addr: DolaAddress,
         ctx: &mut TxContext
     ) {
-        assert!(vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)), EINVALID_WITHDRAW);
+        assert!(
+            vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)),
+            EINVALID_WITHDRAW
+        );
         let user_addr = types::convert_dola_to_address(user_addr);
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);

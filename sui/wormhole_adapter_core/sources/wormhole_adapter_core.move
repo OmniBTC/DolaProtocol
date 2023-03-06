@@ -212,19 +212,16 @@ module wormhole_adapter_core::wormhole_adapter_core {
         (pool, user, app_payload)
     }
 
-
-    public fun register_remote_new_spender(
+    public fun remote_register_owner(
         _: &GovernanceCap,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        source_chain_id: u16,
-        nonce: u64,
+        doal_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_register_spender_payload(
-            source_chain_id,
-            nonce,
+        let msg = codec_pool::encode_register_owner_payload(
+            doal_chain_id,
             dola_contract
         );
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
@@ -232,18 +229,52 @@ module wormhole_adapter_core::wormhole_adapter_core {
         table::add(&mut core_state.cache_vaas, index, msg);
     }
 
-    public fun register_remote_new_owner(
+
+    public fun remote_register_spender(
         _: &GovernanceCap,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
-        source_chain_id: u16,
-        nonce: u64,
+        dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_register_owner_payload(
-            source_chain_id,
-            nonce,
+        let msg = codec_pool::encode_register_spender_payload(
+            dola_chain_id,
+            dola_contract
+        );
+        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&core_state.cache_vaas) + 1;
+        table::add(&mut core_state.cache_vaas, index, msg);
+    }
+
+
+    public fun remote_delete_owner(
+        _: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        doal_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+    ) {
+        let msg = codec_pool::encode_delete_owner_payload(
+            doal_chain_id,
+            dola_contract
+        );
+        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&core_state.cache_vaas) + 1;
+        table::add(&mut core_state.cache_vaas, index, msg);
+    }
+
+    public fun remote_delete_spender(
+        _: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+    ) {
+        let msg = codec_pool::encode_delete_spender_payload(
+            dola_chain_id,
             dola_contract
         );
         wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
