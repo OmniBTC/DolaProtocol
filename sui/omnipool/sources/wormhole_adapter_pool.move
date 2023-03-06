@@ -29,6 +29,8 @@ module omnipool::wormhole_adapter_pool {
 
     const EAMOUNT_MUST_ZERO: u64 = 1;
 
+    const EINVALIE_CONTRACT: u64 = 1;
+
     const U64_MAX: u64 = 18446744073709551615;
 
     const SUI_EMITTER_CHAIN: u16 = 24;
@@ -92,7 +94,7 @@ module omnipool::wormhole_adapter_pool {
     public fun register_new_owner(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
-        _vaa: vector<u8>,
+        vaa: vector<u8>,
         new_owner_emitter: &DolaContract
     ) {
         // let vaa = parse_verify_and_replay_protect(
@@ -102,14 +104,15 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        // todo! verify spend_emitter dola_contract
+        let (_source_chain_id, _nonce, dola_contract, _call_type) = codec_pool::decode_receive_owner_payload(vaa);
+        assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_CONTRACT);
         single_pool::register_new_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
     }
 
     public fun register_new_spender(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
-        _vaa: vector<u8>,
+        vaa: vector<u8>,
         spend_emitter: &DolaContract
     ) {
         // let vaa = parse_verify_and_replay_protect(
@@ -119,7 +122,8 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        // todo! verify spend_emitter dola_contract
+        let (_source_chain_id, _nonce, dola_contract, _call_type) = codec_pool::decode_receive_spender_payload(vaa);
+        assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_CONTRACT);
         single_pool::register_new_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
     }
 
@@ -261,7 +265,7 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (source_chain_id, nonce, pool_address, receiver, amount) =
+        let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
             codec_pool::decode_receive_withdraw_payload(vaa);
         single_pool::inner_withdraw(
             pool_approval,
@@ -295,7 +299,7 @@ module omnipool::wormhole_adapter_pool {
     }
 
     public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
-        let (_, _, pool_address, user, amount) =
+        let (_, _, pool_address, user, amount, _) =
             codec_pool::decode_receive_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {

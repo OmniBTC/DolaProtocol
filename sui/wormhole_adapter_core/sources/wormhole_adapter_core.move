@@ -212,6 +212,46 @@ module wormhole_adapter_core::wormhole_adapter_core {
         (pool, user, app_payload)
     }
 
+
+    public fun register_remote_new_spender(
+        _: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        source_chain_id: u16,
+        nonce: u64,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+    ) {
+        let msg = codec_pool::encode_register_spender_payload(
+            source_chain_id,
+            nonce,
+            dola_contract
+        );
+        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&core_state.cache_vaas) + 1;
+        table::add(&mut core_state.cache_vaas, index, msg);
+    }
+
+    public fun register_remote_new_owner(
+        _: &GovernanceCap,
+        wormhole_state: &mut WormholeState,
+        core_state: &mut CoreState,
+        source_chain_id: u16,
+        nonce: u64,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+    ) {
+        let msg = codec_pool::encode_register_owner_payload(
+            source_chain_id,
+            nonce,
+            dola_contract
+        );
+        wormhole::publish_message(&mut core_state.sender, wormhole_state, 0, msg, wormhole_message_fee);
+        let index = table::length(&core_state.cache_vaas) + 1;
+        table::add(&mut core_state.cache_vaas, index, msg);
+    }
+
+
     public fun send_withdraw(
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
