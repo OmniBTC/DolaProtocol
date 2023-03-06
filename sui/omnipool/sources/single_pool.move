@@ -9,9 +9,10 @@ module omnipool::single_pool {
     use std::type_name;
 
     use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_contract::{Self, DolaContract};
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
-    use sui::object::{Self, UID, ID};
+    use sui::object::{Self, UID};
     use sui::transfer::{Self, share_object};
     use sui::tx_context::{Self, TxContext};
 
@@ -31,6 +32,10 @@ module omnipool::single_pool {
 
     const EINVALID_TOKEN: u64 = 2;
 
+    const EINVALID_WITHDRAW: u64 = 2;
+
+    const EINVALID_OWNER: u64 = 2;
+
     const EINVALID_CHAIN: u64 = 3;
 
 
@@ -41,43 +46,49 @@ module omnipool::single_pool {
         decimal: u8
     }
 
-    /// Give permission to the bridge when Pool is in use
-    struct PoolCap has key, store {
-        id: UID
-    }
-
-    /// Record the existing `PoolCap` object.
-    struct PoolInfo has key {
+    /// Give permission to the bridge for pool
+    struct PoolApproval has key {
         id: UID,
-        cap_ids: vector<ID>
+        // Save the dola_contract address for administrative privileges
+        owners: vector<u256>,
+        // Save the address of the dola_contract that allows withdrawals
+        spenders: vector<u256>
     }
 
 
     fun init(ctx: &mut TxContext) {
-        transfer::share_object(PoolInfo {
+        transfer::share_object(PoolApproval {
             id: object::new(ctx),
-            cap_ids: vector::empty()
+            owners: vector::empty(),
+            spenders: vector::empty()
         });
     }
 
 
-    public(friend) fun register_cap(
-        pool_info: &mut PoolInfo,
-        ctx: &mut TxContext
-    ): PoolCap {
-        let pool_cap = PoolCap {
-            id: object::new(ctx)
-        };
-        vector::push_back(&mut pool_info.cap_ids, object::id(&pool_cap));
-        pool_cap
+    public(friend) fun register_basic_bridge(
+        pool_approval: &mut PoolApproval,
+        dola_contract: &DolaContract
+    ) {
+        vector::push_back(&mut pool_approval.owners, dola_contract::get_dola_contract(dola_contract));
+        vector::push_back(&mut pool_approval.spenders, dola_contract::get_dola_contract(dola_contract));
     }
 
-    public fun delete_cap(pool_info: &mut PoolInfo, pool_cap: PoolCap) {
-        let pool_id = object::id(&pool_cap);
-        let (_, index) = vector::index_of(&pool_info.cap_ids, &pool_id);
-        vector::remove(&mut pool_info.cap_ids, index);
-        let PoolCap { id } = pool_cap;
-        object::delete(id);
+    public fun register_new_owner(
+        pool_approval: &mut PoolApproval,
+        old_owner_emitter: &DolaContract,
+        new_owner_emitter: &DolaContract
+    ){
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(old_owner_emitter)), EINVALID_OWNER);
+        vector::push_back(&mut pool_approval.owners, dola_contract::get_dola_contract(new_owner_emitter));
+    }
+
+    public fun register_new_spender(
+        pool_approval: &mut PoolApproval,
+        owner_emitter: &DolaContract,
+        spend_emitter: &DolaContract
+    ){
+        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner_emitter)), EINVALID_OWNER);
+        vector::push_back(&mut pool_approval.spenders, dola_contract::get_dola_contract(spend_emitter));
     }
 
     /// todo! Realize cross create pool
@@ -154,18 +165,20 @@ module omnipool::single_pool {
 
     /// call by bridge
     public fun inner_withdraw<CoinType>(
-        _: &PoolCap,
+        pool_approval: &PoolApproval,
+        dola_contract: &DolaContract,
         pool: &mut Pool<CoinType>,
         user_addr: DolaAddress,
         amount: u64,
         pool_addr: DolaAddress,
         ctx: &mut TxContext
     ) {
+        assert!(vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)), EINVALID_WITHDRAW);
         let user_addr = types::convert_dola_to_address(user_addr);
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
-        assert!(types::get_native_dola_chain_id()==types::get_dola_chain_id(&pool_addr), EINVALID_CHAIN);
+        assert!(types::get_native_dola_chain_id() == types::get_dola_chain_id(&pool_addr), EINVALID_CHAIN);
         assert!(
             types::get_dola_address(&pool_addr) == ascii::into_bytes(
                 type_name::into_string(type_name::get<CoinType>())

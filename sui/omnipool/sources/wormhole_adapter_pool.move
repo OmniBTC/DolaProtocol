@@ -8,7 +8,7 @@
 module omnipool::wormhole_adapter_pool {
     use dola_types::types::{Self, DolaAddress};
     use omnipool::codec_pool;
-    use omnipool::single_pool::{Self, Pool, PoolCap, PoolInfo};
+    use omnipool::single_pool::{Self, Pool, PoolApproval};
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -23,6 +23,7 @@ module omnipool::wormhole_adapter_pool {
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
     use omnipool::wormhole_adapter_verify::Unit;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
 
     const EAMOUNT_NOT_ENOUGH: u64 = 0;
 
@@ -36,7 +37,7 @@ module omnipool::wormhole_adapter_pool {
 
     struct PoolState has key, store {
         id: UID,
-        pool_cap: PoolCap,
+        dola_contract: DolaContract,
         sender: EmitterCapability,
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         registered_emitters: VecMap<u16, ExternalAddress>,
@@ -65,13 +66,16 @@ module omnipool::wormhole_adapter_pool {
     }
 
     public fun initialize_wormhole_with_governance(
-        pool_info: &mut PoolInfo,
+        pool_approval: &mut PoolApproval,
+        dola_contract_registry: &mut DolaContractRegistry,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
     ) {
+        let dola_contract = dola_contract::new_dola_contract(dola_contract_registry, ctx);
+        single_pool::register_basic_bridge(pool_approval, &dola_contract);
         let pool_state = PoolState {
             id: object::new(ctx),
-            pool_cap: single_pool::register_cap(pool_info, ctx),
+            dola_contract,
             sender: wormhole::register_emitter(wormhole_state, ctx),
             consumed_vaas: object_table::new(ctx),
             registered_emitters: vec_map::empty(),
@@ -83,6 +87,40 @@ module omnipool::wormhole_adapter_pool {
             external_address::from_bytes(SUI_EMITTER_ADDRESS)
         );
         transfer::share_object(pool_state);
+    }
+
+    public fun register_new_owner(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        _vaa: vector<u8>,
+        new_owner_emitter: &DolaContract
+    ) {
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &pool_state.registered_emitters,
+        //     &mut pool_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // todo! verify spend_emitter dola_contract
+        single_pool::register_new_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
+    }
+
+    public fun register_new_spender(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        _vaa: vector<u8>,
+        spend_emitter: &DolaContract
+    ) {
+        // let vaa = parse_verify_and_replay_protect(
+        //     wormhole_state,
+        //     &pool_state.registered_emitters,
+        //     &mut pool_state.consumed_vaas,
+        //     vaa,
+        //     ctx
+        // );
+        // todo! verify spend_emitter dola_contract
+        single_pool::register_new_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
     }
 
     // public fun send_binding(
@@ -209,6 +247,7 @@ module omnipool::wormhole_adapter_pool {
 
     public entry fun receive_withdraw<CoinType>(
         _wormhole_state: &mut WormholeState,
+        pool_approval: &PoolApproval,
         pool_state: &mut PoolState,
         pool: &mut Pool<CoinType>,
         vaa: vector<u8>,
@@ -222,11 +261,17 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        // let (_pool_address, user, amount, dola_pool_id) =
-        //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
         let (source_chain_id, nonce, pool_address, receiver, amount) =
             codec_pool::decode_receive_withdraw_payload(vaa);
-        single_pool::inner_withdraw(&pool_state.pool_cap, pool, receiver, amount, pool_address, ctx);
+        single_pool::inner_withdraw(
+            pool_approval,
+            &pool_state.dola_contract,
+            pool,
+            receiver,
+            amount,
+            pool_address,
+            ctx
+        );
         // myvaa::destroy(vaa);
 
         emit(PoolWithdrawEvent {
