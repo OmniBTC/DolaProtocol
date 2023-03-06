@@ -31,7 +31,7 @@ module omnipool::single_pool {
 
     const EINVALID_TOKEN: u64 = 2;
 
-    const DOLA_CHAIN_ID: u16 = 0;
+    const EINVALID_CHAIN: u64 = 3;
 
 
     /// The user_addr's information is recorded in the protocol, and the pool only needs to record itself
@@ -165,6 +165,7 @@ module omnipool::single_pool {
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
+        assert!(types::get_native_dola_chain_id()==types::get_dola_chain_id(&pool_addr), EINVALID_CHAIN);
         assert!(
             types::get_dola_address(&pool_addr) == ascii::into_bytes(
                 type_name::into_string(type_name::get<CoinType>())

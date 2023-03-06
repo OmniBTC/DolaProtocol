@@ -1,3 +1,7 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+///
 module dola_types::types {
     use std::ascii;
     use std::type_name;
