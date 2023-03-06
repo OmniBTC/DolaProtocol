@@ -277,7 +277,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     ctx
         // );
 
-        let (pool_address, user_address, amount, app_id, app_payload) =
+        let (pool_address, user_address, amount, app_id, _, app_payload) =
             codec_pool::decode_send_deposit_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
@@ -315,7 +315,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     vaa,
         //     ctx
         // );
-        let (pool_address, user_address, app_id, app_payload) =
+        let (pool_address, user_address, app_id, _, app_payload) =
             codec_pool::decode_send_withdraw_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
@@ -350,6 +350,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             deposit_amount,
             withdraw_pool,
             app_id,
+            _,
             app_payload
         ) = codec_pool::decode_send_deposit_and_withdraw_payload(vaa);
 

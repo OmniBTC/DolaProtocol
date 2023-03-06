@@ -15,8 +15,14 @@ module wormhole_adapter_core::codec_pool {
     // Wrong call type
     const EINVALID_CALL_TYPE: u64 = 1;
 
-    /// Call type
+    /// Pool call type
+    const POOL_DEPOSIT: u8 = 0;
+
     const POOL_WITHDRAW: u8 = 0;
+
+    const POOL_DEPOSIT_AND_WITHDRAW: u8 = 0;
+
+    const POOL_WITHDRAW_BRNACH: u8 = 0;
 
     const POOL_REGISTER_OWNER: u8 = 1;
 
@@ -49,6 +55,8 @@ module wormhole_adapter_core::codec_pool {
 
         serde::serialize_u16(&mut pool_payload, app_id);
 
+        serde::serialize_u8(&mut pool_payload, POOL_DEPOSIT);
+
         if (vector::length(&app_payload) > 0) {
             serde::serialize_u16(&mut pool_payload, (vector::length(&app_payload) as u16));
             serde::serialize_vector(&mut pool_payload, app_payload);
@@ -59,7 +67,7 @@ module wormhole_adapter_core::codec_pool {
     /// Decode pool deposit msg from branch to sui
     public fun decode_send_deposit_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u64, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, u16, u8, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -89,6 +97,10 @@ module wormhole_adapter_core::codec_pool {
         let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 1;
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
             data_len = 2;
@@ -100,9 +112,10 @@ module wormhole_adapter_core::codec_pool {
             index = index + data_len;
         };
 
+        assert!(pool_call_type == POOL_DEPOSIT, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_address, user_address, amount, app_id, app_payload)
+        (pool_address, user_address, amount, app_id, pool_call_type, app_payload)
     }
 
     /// Encode pool whihdraw msg from branch to sui
@@ -124,6 +137,8 @@ module wormhole_adapter_core::codec_pool {
 
         serde::serialize_u16(&mut pool_payload, app_id);
 
+        serde::serialize_u8(&mut pool_payload, POOL_WITHDRAW);
+
         if (vector::length(&app_payload) > 0) {
             serde::serialize_u16(&mut pool_payload, (vector::length(&app_payload) as u16));
             serde::serialize_vector(&mut pool_payload, app_payload);
@@ -134,7 +149,7 @@ module wormhole_adapter_core::codec_pool {
     /// Decode pool withdraw msg from branch to sui
     public fun decode_send_withdraw_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u16, u8, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -159,6 +174,10 @@ module wormhole_adapter_core::codec_pool {
         let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 1;
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
             data_len = 2;
@@ -170,9 +189,10 @@ module wormhole_adapter_core::codec_pool {
             index = index + data_len;
         };
 
+        assert!(pool_call_type == POOL_WITHDRAW, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (pool_address, user_address, app_id, app_payload)
+        (pool_address, user_address, app_id, pool_call_type, app_payload)
     }
 
     /// Encode pool deposit and whihdraw msg from branch to sui
@@ -201,9 +221,12 @@ module wormhole_adapter_core::codec_pool {
         serde::serialize_vector(&mut pool_payload, withdraw_pool);
 
         serde::serialize_u16(&mut pool_payload, app_id);
+        serde::serialize_u8(&mut pool_payload, POOL_DEPOSIT_AND_WITHDRAW);
 
-        serde::serialize_u16(&mut pool_payload, (vector::length(&app_payload) as u16));
-        serde::serialize_vector(&mut pool_payload, app_payload);
+        if (vector::length(&app_payload) > 0) {
+            serde::serialize_u16(&mut pool_payload, (vector::length(&app_payload) as u16));
+            serde::serialize_vector(&mut pool_payload, app_payload);
+        };
 
         pool_payload
     }
@@ -211,7 +234,7 @@ module wormhole_adapter_core::codec_pool {
     /// Decode pool deposit and whihdraw msg from branch to sui
     public fun decode_send_deposit_and_withdraw_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, u8, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -249,6 +272,10 @@ module wormhole_adapter_core::codec_pool {
         let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 1;
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
             data_len = 2;
@@ -260,9 +287,10 @@ module wormhole_adapter_core::codec_pool {
             index = index + data_len;
         };
 
+        assert!(pool_call_type == POOL_DEPOSIT_AND_WITHDRAW, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, app_payload)
+        (deposit_pool, deposit_user, deposit_amount, withdraw_pool, app_id, pool_call_type, app_payload)
     }
 
     /// Encode pool withdraw msg from sui to branch
@@ -289,7 +317,7 @@ module wormhole_adapter_core::codec_pool {
 
         serde::serialize_u64(&mut pool_payload, amount);
 
-        serde::serialize_u8(&mut pool_payload, POOL_WITHDRAW);
+        serde::serialize_u8(&mut pool_payload, POOL_WITHDRAW_BRNACH);
 
         pool_payload
     }
@@ -332,14 +360,14 @@ module wormhole_adapter_core::codec_pool {
         index = index + data_len;
 
         data_len = 1;
-        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        assert!(call_type == POOL_WITHDRAW, EINVALID_CALL_TYPE);
+        assert!(pool_call_type == POOL_WITHDRAW_BRNACH, EINVALID_CALL_TYPE);
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (source_chain_id, nonce, pool_address, user_address, amount, call_type)
+        (source_chain_id, nonce, pool_address, user_address, amount, pool_call_type)
     }
 
     /// Encode pool register owner from sui to branch
@@ -373,14 +401,14 @@ module wormhole_adapter_core::codec_pool {
         index = index + data_len;
 
         data_len = 1;
-        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        assert!(call_type == POOL_REGISTER_OWNER, EINVALID_CALL_TYPE);
+        assert!(pool_call_type == POOL_REGISTER_OWNER, EINVALID_CALL_TYPE);
 
         assert!(length == index, EINVALID_LENGTH);
 
-        (dola_chain_id, dola_contract, call_type)
+        (dola_chain_id, dola_contract, pool_call_type)
     }
 
     /// Encode pool register spender from sui to branch
@@ -414,13 +442,13 @@ module wormhole_adapter_core::codec_pool {
         index = index + data_len;
 
         data_len = 1;
-        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        assert!(call_type == POOL_REGISTER_SPENDER, EINVALID_CALL_TYPE);
+        assert!(pool_call_type == POOL_REGISTER_SPENDER, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (dola_chain_id, dola_contract, call_type)
+        (dola_chain_id, dola_contract, pool_call_type)
     }
 
     /// Encode pool delete owner from sui to branch
@@ -454,13 +482,13 @@ module wormhole_adapter_core::codec_pool {
         index = index + data_len;
 
         data_len = 1;
-        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        assert!(call_type == POOL_DELETE_OWNER, EINVALID_CALL_TYPE);
+        assert!(pool_call_type == POOL_DELETE_OWNER, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (dola_chain_id, dola_contract, call_type)
+        (dola_chain_id, dola_contract, pool_call_type)
     }
 
     /// Encode pool delete spender from sui to branch
@@ -494,12 +522,12 @@ module wormhole_adapter_core::codec_pool {
         index = index + data_len;
 
         data_len = 1;
-        let call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
+        let pool_call_type = serde::deserialize_u8(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
-        assert!(call_type == POOL_DELETE_SPENDER, EINVALID_CALL_TYPE);
+        assert!(pool_call_type == POOL_DELETE_SPENDER, EINVALID_CALL_TYPE);
         assert!(length == index, EINVALID_LENGTH);
 
-        (dola_chain_id, dola_contract, call_type)
+        (dola_chain_id, dola_contract, pool_call_type)
     }
 }
