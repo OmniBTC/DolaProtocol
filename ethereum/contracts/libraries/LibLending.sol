@@ -33,7 +33,8 @@ library LibLending {
         );
         bytes memory encodeData = abi.encodePacked(
             uint16(dolaAddress.length),
-            dolaAddress
+            dolaAddress,
+            uint16(dolaPoolIds.length)
         );
         for (uint256 i = 0; i < dolaPoolIds.length; i++) {
             encodeData = encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
@@ -44,9 +45,9 @@ library LibLending {
     }
 
     function decodeAppHelperPayload(bytes memory payload)
-    internal
-    pure
-    returns (LendingAppHelperPayload memory)
+        internal
+        pure
+        returns (LendingAppHelperPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -59,7 +60,7 @@ library LibLending {
 
         dataLen = senderLength;
         decodeData.sender = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -67,12 +68,14 @@ library LibLending {
         uint16 poolIdsLength = payload.toUint16(index);
         index += dataLen;
 
+        uint16[] memory poolIds = new uint16[](poolIdsLength);
         for (uint256 i = 0; i < poolIdsLength; i++) {
             dataLen = 2;
             uint16 dolaPoolId = payload.toUint16(index);
             index += dataLen;
-            decodeData.dolaPoolIds[i] = dolaPoolId;
+            poolIds[i] = dolaPoolId;
         }
+        decodeData.dolaPoolIds = poolIds;
 
         dataLen = 1;
         decodeData.callType = payload.toUint8(index);
@@ -108,9 +111,9 @@ library LibLending {
     }
 
     function decodeLendingAppPayload(bytes memory payload)
-    internal
-    pure
-    returns (LendingAppPayload memory)
+        internal
+        pure
+        returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -135,7 +138,7 @@ library LibLending {
 
         dataLen = receiveLength;
         decodeData.receiver = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
