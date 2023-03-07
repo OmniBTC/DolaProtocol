@@ -30,7 +30,7 @@ omnipool = "0x9ff66a4abb97848131c18ae17e346334ea4e888f07f18b3f8eaf3c49da1c95ec"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
+rev = "cb4ba0a57c998c60cbab65af31a64875d2588ca5"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Wormhole]
