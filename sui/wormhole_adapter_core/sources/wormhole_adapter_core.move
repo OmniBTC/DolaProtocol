@@ -128,7 +128,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Register the remote wormhole adapter pool through governance
     /// Steps for registering a remote bridge:
     /// 1) By governing the call to `initialize_cap_with_governance` of wormhole adapter core
-    /// 2) Call to `initialize_cap_with_governance` of wormhole adapter pool
+    /// 2) Call to `initialize` of wormhole adapter pool
     /// 3) By governing the call to `register_remote_bridge`
     public fun register_remote_bridge(
         _: &GovernanceCap,
@@ -171,9 +171,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_register_owner_payload(
+        let msg = codec_pool::encode_manage_pool_payload(
             dola_chain_id,
-            dola_contract
+            dola_contract,
+            codec_pool::get_register_owner_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
@@ -191,9 +192,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_register_spender_payload(
+        let msg = codec_pool::encode_manage_pool_payload(
             dola_chain_id,
-            dola_contract
+            dola_contract,
+            codec_pool::get_register_spender_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
@@ -211,9 +213,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_delete_owner_payload(
+        let msg = codec_pool::encode_manage_pool_payload(
             dola_chain_id,
-            dola_contract
+            dola_contract,
+            codec_pool::get_delete_owner_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
@@ -231,9 +234,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_delete_spender_payload(
+        let msg = codec_pool::encode_manage_pool_payload(
             dola_chain_id,
-            dola_contract
+            dola_contract,
+            codec_pool::get_delete_spender_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
