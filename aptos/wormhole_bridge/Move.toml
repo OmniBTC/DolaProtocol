@@ -26,7 +26,7 @@ dola_types = "0x8b97658dd9f52ad00684467269e5dee7b3e6e7f763f9b1da68e7310a07794b39
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "a2a3bf79b68823287f962bded2abfaefc688e71c"
+rev = "cb4ba0a57c998c60cbab65af31a64875d2588ca5"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Wormhole]
