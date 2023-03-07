@@ -169,7 +169,7 @@ module wormhole_bridge::bridge_pool {
         app_id: U16,
         app_payload: vector<u8>,
     ) acquires PoolState {
-        let msg = pool::deposit_to<CoinType>(
+        let msg = pool::deposit<CoinType>(
             sender,
             deposit_coin,
             app_id,
@@ -240,12 +240,12 @@ module wormhole_bridge::bridge_pool {
         //     ctx
         // );
         // let (_pool_address, user, amount, token_name) =
-        //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
+        //     pool::decode_withdraw_payload(myvaa::get_payload(&vaa));
         let (source_chain_id, nonce, pool_address, receiver, amount) =
-            pool::decode_receive_withdraw_payload(vaa);
+            pool::decode_withdraw_payload(vaa);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
 
-        pool::inner_withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
+        pool::withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
         // myvaa::destroy(vaa);
         let event_handle = borrow_global_mut<PoolEventHandle>(@wormhole_bridge);
         event::emit_event(
@@ -273,12 +273,12 @@ module wormhole_bridge::bridge_pool {
     //     //     ctx
     //     // );
     //     // let (_pool_address, user, amount, token_name) =
-    //     //     pool::decode_receive_withdraw_payload(myvaa::get_payload(&vaa));
+    //     //     pool::decode_withdraw_payload(myvaa::get_payload(&vaa));
     //     let (source_chain_id, nonce, pool_address, receiver, amount) =
-    //         pool::decode_receive_withdraw_payload(vaa);
+    //         pool::decode_withdraw_payload(vaa);
     //     let pool_state = borrow_global_mut<PoolState>(get_resource_address());
     //
-    //     pool::inner_withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
+    //     pool::withdraw<CoinType>(&pool_state.pool_cap, receiver, amount, pool_address);
     //     // myvaa::destroy(vaa);
     //     let event_handle = borrow_global_mut<PoolEventHandle>(@wormhole_bridge);
     //     event::emit_event(
@@ -305,9 +305,9 @@ module wormhole_bridge::bridge_pool {
         });
     }
 
-    public entry fun decode_receive_withdraw_payload(sender: &signer, vaa: vector<u8>) {
+    public entry fun decode_withdraw_payload(sender: &signer, vaa: vector<u8>) {
         let (_, _, pool_address, user, amount) =
-            pool::decode_receive_withdraw_payload(vaa);
+            pool::decode_withdraw_payload(vaa);
         move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
             user,

@@ -127,7 +127,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Register the remote wormhole adapter pool through governance
     /// Steps for registering a remote bridge:
-    /// 1) By governing the call to `initialize_cap_with_governance` of wormhole adapter core 
+    /// 1) By governing the call to `initialize_cap_with_governance` of wormhole adapter core
     /// 2) Call to `initialize_cap_with_governance` of wormhole adapter pool
     /// 3) By governing the call to `register_remote_bridge`
     public fun register_remote_bridge(
@@ -280,7 +280,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         // );
 
         let (pool_address, user_address, amount, app_id, _, app_payload) =
-            codec_pool::decode_send_deposit_payload(vaa);
+            codec_pool::decode_deposit_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -308,7 +308,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         app_cap: &AppCap,
         vaa: vector<u8>,
         _ctx: &mut TxContext
-    ): (DolaAddress, DolaAddress, vector<u8>) {
+    ): (DolaAddress, vector<u8>) {
         // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
         // let vaa = parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -317,62 +317,14 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     vaa,
         //     ctx
         // );
-        let (pool_address, user_address, app_id, _, app_payload) =
-            codec_pool::decode_send_withdraw_payload(vaa);
+        let (user_address, app_id, _, app_payload) =
+            codec_pool::decode_send_message_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
 
         // myvaa::destroy(vaa);
-        (pool_address, user_address, app_payload)
-    }
-
-    /// Receive deposit and withdraw on sui network
-    public fun receive_deposit_and_withdraw(
-        _wormhole_state: &mut WormholeState,
-        core_state: &mut CoreState,
-        app_cap: &AppCap,
-        vaa: vector<u8>,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
-        _ctx: &mut TxContext
-    ): (DolaAddress, DolaAddress, u256, DolaAddress, u16, vector<u8>) {
-        // todo: wait for wormhole to go live on the sui testnet and use payload directly for now
-        // let vaa = parse_verify_and_replay_protect(
-        //     wormhole_state,
-        //     &core_state.registered_emitters,
-        //     &mut core_state.consumed_vaas,
-        //     vaa,
-        //     ctx
-        // );
-
-        let (
-            deposit_pool,
-            deposit_user,
-            deposit_amount,
-            withdraw_pool,
-            app_id,
-            _,
-            app_payload
-        ) = codec_pool::decode_send_deposit_and_withdraw_payload(vaa);
-
-        // Ensure that vaa is delivered to the correct application
-        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
-
-        let (actual_amount, _) = pool_manager::add_liquidity(
-            &core_state.pool_manager_cap,
-            pool_manager_info,
-            deposit_pool,
-            app_manager::get_app_id(app_cap),
-            (deposit_amount as u256),
-        );
-
-        if (!user_manager::is_dola_user(user_manager_info, deposit_user)) {
-            user_manager::register_dola_user_id(&core_state.user_manager_cap, user_manager_info, deposit_user);
-        };
-
-        // myvaa::destroy(vaa);
-        (deposit_pool, deposit_user, actual_amount, withdraw_pool, app_id, app_payload)
+        (user_address, app_payload)
     }
 
     /// Send withdraw on sui network
@@ -395,7 +347,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             app_manager::get_app_id(app_cap),
             amount
         );
-        let msg = codec_pool::encode_receive_withdraw_payload(
+        let msg = codec_pool::encode_withdraw_payload(
             source_chain_id,
             nonce,
             pool_address,

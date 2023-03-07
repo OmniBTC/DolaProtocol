@@ -140,7 +140,7 @@ def bridge_core():
         local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
-            decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
+            decode_payload = sui_wormhole_bridge.bridge_pool.decode_withdraw_payload.simulate(
                 vaa
             )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
             token_name = decode_payload["dola_address"]

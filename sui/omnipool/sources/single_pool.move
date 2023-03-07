@@ -67,13 +67,13 @@ module omnipool::single_pool {
     /// Events
 
     /// Deposit coin
-    struct DepositCoin<phantom CoinType> has copy, drop {
+    struct DepositPool<phantom CoinType> has copy, drop {
         sender: address,
         amount: u64
     }
 
     /// Withdraw coin
-    struct WithdrawCoin<phantom CoinType> has copy, drop {
+    struct WithdrawPool<phantom CoinType> has copy, drop {
         receiver: address,
         amount: u64
     }
@@ -199,8 +199,8 @@ module omnipool::single_pool {
         convert_amount(amount, cur_decimal, target_decimal)
     }
 
-    /// Deposit coin from portal to sui
-    public fun deposit_to<CoinType>(
+    /// Deposit to pool
+    public fun deposit<CoinType>(
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
         app_id: u16,
@@ -213,7 +213,7 @@ module omnipool::single_pool {
         let amount = normal_amount(pool, deposit_amount);
         let user_address = dola_address::convert_address_to_dola(sender);
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
-        let pool_payload = codec_pool::encode_send_deposit_payload(
+        let pool_payload = codec_pool::encode_deposit_payload(
             pool_address,
             user_address,
             amount,
@@ -221,7 +221,7 @@ module omnipool::single_pool {
             app_payload
         );
         balance::join(&mut pool.balance, coin::into_balance(deposit_coin));
-        event::emit(DepositCoin<CoinType> {
+        event::emit(DepositPool<CoinType> {
             sender,
             amount: deposit_amount
         });
@@ -229,56 +229,8 @@ module omnipool::single_pool {
         pool_payload
     }
 
-    /// Withdraw coin from portal to sui
-    public fun withdraw_to(
-        pool_chain_id: u16,
-        pool_address: vector<u8>,
-        app_id: u16,
-        app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ): vector<u8> {
-        let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
-        let withdraw_pool = dola_address::create_dola_address(pool_chain_id, pool_address);
-        let pool_payload = codec_pool::encode_send_withdraw_payload(withdraw_pool, sender, app_id, app_payload);
-        pool_payload
-    }
-
-    /// Deposit and withdraw coin from portal to sui
-    public fun deposit_and_withdraw<DepositCoinType>(
-        deposit_pool: &mut Pool<DepositCoinType>,
-        deposit_coin: Coin<DepositCoinType>,
-        withdraw_chain_id: u16,
-        withdraw_pool_address: vector<u8>,
-        app_id: u16,
-        app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ): vector<u8> {
-        let sender = tx_context::sender(ctx);
-        let deposit_amount = coin::value(&deposit_coin);
-
-        let amount = normal_amount(deposit_pool, deposit_amount);
-        let depoist_user = dola_address::convert_address_to_dola(sender);
-        let deposit_pool_address = dola_address::convert_pool_to_dola<DepositCoinType>();
-        let withdraw_pool_address = dola_address::create_dola_address(withdraw_chain_id, withdraw_pool_address);
-        let pool_payload = codec_pool::encode_send_deposit_and_withdraw_payload(
-            deposit_pool_address,
-            depoist_user,
-            amount,
-            withdraw_pool_address,
-            app_id,
-            app_payload
-        );
-        balance::join(&mut deposit_pool.balance, coin::into_balance(deposit_coin));
-        event::emit(DepositCoin<DepositCoinType> {
-            sender,
-            amount: deposit_amount
-        });
-
-        pool_payload
-    }
-
-    /// Withdraw from current pool and call by bridge
-    public fun inner_withdraw<CoinType>(
+    /// Withdraw from the pool. Only bridges that are registered spender are allowed to make calls
+    public fun withdraw<CoinType>(
         pool_approval: &PoolApproval,
         dola_contract: &DolaContract,
         pool: &mut Pool<CoinType>,
@@ -305,13 +257,25 @@ module omnipool::single_pool {
         amount = unnormal_amount(pool, amount);
         let balance = balance::split(&mut pool.balance, amount);
         let coin = coin::from_balance(balance, ctx);
-        event::emit(WithdrawCoin<CoinType> {
+        event::emit(WithdrawPool<CoinType> {
             receiver: user_address,
             amount
         });
 
         transfer::transfer(coin, user_address);
     }
+
+    /// Send pool message that do not involve incoming or outgoing funds
+    public fun send_message(
+        app_id: u16,
+        app_payload: vector<u8>,
+        ctx: &mut TxContext
+    ): vector<u8> {
+        let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let pool_payload = codec_pool::encode_send_message_payload(sender, app_id, app_payload);
+        pool_payload
+    }
+
 
     #[test]
     public fun test_encode_decode() {
@@ -321,14 +285,14 @@ module omnipool::single_pool {
         let app_id = 0;
         let app_payload = vector[0u8];
         // test encode and decode send_deposit_payload
-        let send_deposit_payload = codec_pool::encode_send_deposit_payload(
+        let send_deposit_payload = codec_pool::encode_deposit_payload(
             dola_address::convert_address_to_dola(pool),
             dola_address::convert_address_to_dola(user),
             amount,
             app_id,
             app_payload
         );
-        let (decoded_pool, decoded_user, decoded_amount, decoded_app_id, decoded_app_payload) = codec_pool::decode_send_deposit_payload(
+        let (decoded_pool, decoded_user, decoded_amount, decoded_app_id, decoded_app_payload) = codec_pool::decode_deposit_payload(
             send_deposit_payload
         );
         assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
@@ -370,14 +334,14 @@ module omnipool::single_pool {
         assert!(decoded_app_id == app_id, 0);
         assert!(decoded_app_payload == app_payload, 0);
         // test encode and decode receive_withdraw_payload
-        let receive_withdraw_payload = codec_pool::encode_receive_withdraw_payload(
+        let receive_withdraw_payload = codec_pool::encode_withdraw_payload(
             0,
             0,
             dola_address::convert_address_to_dola(pool),
             dola_address::convert_address_to_dola(user),
             amount
         );
-        let (_, _, decoded_pool, decoded_user, decoded_amount) = codec_pool::decode_receive_withdraw_payload(
+        let (_, _, decoded_pool, decoded_user, decoded_amount) = codec_pool::decode_withdraw_payload(
             receive_withdraw_payload
         );
         assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
@@ -402,7 +366,7 @@ module omnipool::single_pool {
             let ctx = test_scenario::ctx(scenario);
             let coin = coin::mint_for_testing<SUI>(100, ctx);
             let app_payload = vector::empty<u8>();
-            deposit_to<SUI>(&mut pool, coin, 0, app_payload, ctx);
+            deposit<SUI>(&mut pool, coin, 0, app_payload, ctx);
             assert!(balance::value(&pool.balance) == 100, 0);
             test_scenario::return_shared(pool);
         };
@@ -437,7 +401,7 @@ module omnipool::single_pool {
 
             assert!(balance::value(&pool.balance) == 100, 0);
 
-            inner_withdraw<SUI>(
+            withdraw<SUI>(
                 &manager_cap,
                 &mut pool,
                 dola_address::convert_address_to_dola(user_address),

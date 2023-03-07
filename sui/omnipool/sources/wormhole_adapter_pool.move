@@ -280,7 +280,7 @@ module omnipool::wormhole_adapter_pool {
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = single_pool::deposit_to<CoinType>(
+        let msg = single_pool::deposit<CoinType>(
             pool,
             deposit_coin,
             app_id,
@@ -292,47 +292,16 @@ module omnipool::wormhole_adapter_pool {
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
-    /// Send withdraw by application
-    public fun send_withdraw(
+    /// Send message that do not involve incoming or outgoing funds by application
+    public fun send_message(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
-        withdraw_chain_id: u16,
-        withdraw_pool_address: vector<u8>,
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
     ) {
-        let msg = single_pool::withdraw_to(
-            withdraw_chain_id,
-            withdraw_pool_address,
-            app_id,
-            app_payload,
-            ctx
-        );
-        wormhole::publish_message(&mut pool_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
-    }
-
-    /// Send deposit and withdraw by application
-    public fun send_deposit_and_withdraw<DepositCoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        deposit_pool: &mut Pool<DepositCoinType>,
-        deposit_coin: Coin<DepositCoinType>,
-        withdraw_chain_id: u16,
-        withdraw_pool_address: vector<u8>,
-        app_id: u16,
-        app_payload: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let msg = single_pool::deposit_and_withdraw<DepositCoinType>(
-            deposit_pool,
-            deposit_coin,
-            withdraw_chain_id,
-            withdraw_pool_address,
+        let msg = single_pool::send_message(
             app_id,
             app_payload,
             ctx
@@ -360,8 +329,8 @@ module omnipool::wormhole_adapter_pool {
         //     ctx
         // );
         let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
-            codec_pool::decode_receive_withdraw_payload(vaa);
-        single_pool::inner_withdraw(
+            codec_pool::decode_withdraw_payload(vaa);
+        single_pool::withdraw(
             pool_approval,
             &pool_state.dola_contract,
             pool,
@@ -394,9 +363,9 @@ module omnipool::wormhole_adapter_pool {
     }
 
     /// todo! Delete
-    public entry fun decode_receive_withdraw_payload(vaa: vector<u8>) {
+    public entry fun decode_withdraw_payload(vaa: vector<u8>) {
         let (_, _, pool_address, user_address, amount, _) =
-            codec_pool::decode_receive_withdraw_payload(vaa);
+            codec_pool::decode_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {
             pool_address,

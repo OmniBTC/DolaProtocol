@@ -323,7 +323,7 @@ module dola_portal::portal {
             0
         );
         // Deposit the token into the pool
-        omnipool::single_pool::deposit_to(
+        omnipool::single_pool::deposit(
             pool,
             deposit_coin,
             LENDING_APP_ID,
@@ -416,7 +416,7 @@ module dola_portal::portal {
         );
 
         // Local withdraw
-        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
+        single_pool::withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
@@ -549,7 +549,7 @@ module dola_portal::portal {
             (amount as u256)
         );
         // Local borrow
-        single_pool::inner_withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
+        single_pool::withdraw(option::borrow(&dola_portal.pool_cap), pool, user_address, amount, pool_address, ctx);
 
         emit(LocalLendingEvent {
             nonce: get_nonce(dola_portal),
@@ -659,7 +659,7 @@ module dola_portal::portal {
             0
         );
         // Deposit the token into the pool
-        omnipool::single_pool::deposit_to(
+        omnipool::single_pool::deposit(
             pool,
             repay_coin,
             LENDING_APP_ID,

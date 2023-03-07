@@ -128,7 +128,7 @@ module omnipool::pool {
     }
 
     /// call by user_address or application
-    public fun deposit_to<CoinType>(
+    public fun deposit<CoinType>(
         sender: &signer,
         deposit_coin: Coin<CoinType>,
         app_id: U16,
@@ -137,7 +137,7 @@ module omnipool::pool {
         let amount = normal_amount<CoinType>(coin::value(&deposit_coin));
         let user_address = types::convert_address_to_dola(signer::address_of(sender));
         let pool_address = types::convert_pool_to_dola<CoinType>();
-        let pool_payload = encode_send_deposit_payload(
+        let pool_payload = encode_deposit_payload(
             pool_address, user_address, amount, app_id, app_payload
         );
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
@@ -160,7 +160,7 @@ module omnipool::pool {
     }
 
     /// call by bridge
-    public fun inner_withdraw<CoinType>(
+    public fun withdraw<CoinType>(
         _: &PoolCap,
         user_address: DolaAddress,
         amount: u64,
@@ -204,7 +204,7 @@ module omnipool::pool {
 
 
     /// encode deposit msg
-    public fun encode_send_deposit_payload(
+    public fun encode_deposit_payload(
         pool_address: DolaAddress,
         user_address: DolaAddress,
         amount: u64,
@@ -233,7 +233,7 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_send_deposit_payload(
+    public fun decode_deposit_payload(
         pool_payload: vector<u8>
     ): (DolaAddress, DolaAddress, u64, U16, vector<u8>) {
         let length = vector::length(&pool_payload);
@@ -438,7 +438,7 @@ module omnipool::pool {
     }
 
     /// encode deposit msg
-    public fun encode_receive_withdraw_payload(
+    public fun encode_withdraw_payload(
         source_chain_id: U16,
         nonce: u64,
         pool_address: DolaAddress,
@@ -463,7 +463,7 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (U16, u64, DolaAddress, DolaAddress, u64) {
+    public fun decode_withdraw_payload(pool_payload: vector<u8>): (U16, u64, DolaAddress, DolaAddress, u64) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
