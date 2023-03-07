@@ -11,7 +11,7 @@ module dola_portal::portal {
     use dola_types::types::{Self, DolaAddress};
     use omnipool::pool;
     use serde::serde;
-    use serde::u16::{Self, U16};
+    use serde::u16::{Self, u16};
     use serde::u256;
     use wormhole::state;
     use wormhole_bridge::bridge_pool;
@@ -53,8 +53,8 @@ module dola_portal::portal {
     struct ProtocolPortalEvent has drop, store {
         nonce: u64,
         sender: address,
-        source_chain_id: U16,
-        user_chain_id: U16,
+        source_chain_id: u16,
+        user_chain_id: u16,
         user_address: vector<u8>,
         call_type: u8
     }
@@ -63,8 +63,8 @@ module dola_portal::portal {
         nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
-        source_chain_id: U16,
-        dst_chain_id: U16,
+        source_chain_id: u16,
+        dst_chain_id: u16,
         receiver: vector<u8>,
         amount: u64,
         call_type: u8
@@ -452,7 +452,7 @@ module dola_portal::portal {
     }
 
     public fun encode_lending_app_payload(
-        source_chain_id: U16,
+        source_chain_id: u16,
         nonce: u64,
         call_type: u8,
         amount: u64,
@@ -473,7 +473,7 @@ module dola_portal::portal {
         payload
     }
 
-    public fun decode_lending_app_payload(app_payload: vector<u8>): (U16, u64, u8, u64, DolaAddress, u64) {
+    public fun decode_lending_app_payload(app_payload: vector<u8>): (u16, u64, u8, u64, DolaAddress, u64) {
         let index = 0;
         let data_len;
 

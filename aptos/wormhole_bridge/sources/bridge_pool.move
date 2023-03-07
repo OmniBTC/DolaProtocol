@@ -11,7 +11,7 @@ module wormhole_bridge::bridge_pool {
     use dola_types::types::{Self, DolaAddress};
     use omnipool::pool::{Self, PoolCap};
     use serde::serde;
-    use serde::u16::{U16, Self};
+    use serde::u16::{u16, Self};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::set::{Self, Set};
@@ -35,7 +35,7 @@ module wormhole_bridge::bridge_pool {
         pool_cap: PoolCap,
         sender: EmitterCapability,
         consumed_vaas: Set<vector<u8>>,
-        registered_emitters: Table<U16, ExternalAddress>,
+        registered_emitters: Table<u16, ExternalAddress>,
         // todo! Delete after wormhole running
         cache_vaas: Table<u64, vector<u8>>,
         nonce: u64
@@ -58,8 +58,8 @@ module wormhole_bridge::bridge_pool {
 
     struct PoolWithdrawEvent has drop, store {
         nonce: u64,
-        source_chain_id: U16,
-        dst_chain_id: U16,
+        source_chain_id: u16,
+        dst_chain_id: u16,
         pool_address: vector<u8>,
         receiver: vector<u8>,
         amount: u64
@@ -100,7 +100,7 @@ module wormhole_bridge::bridge_pool {
 
     public fun register_remote_bridge(
         sender: &signer,
-        emitter_chain_id: U16,
+        emitter_chain_id: u16,
         emitter_address: vector<u8>,
     ) acquires PoolState {
         // todo! change into govern permission
@@ -164,7 +164,7 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<CoinType>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ) acquires PoolState {
         let msg = pool::deposit_to<CoinType>(
@@ -183,9 +183,9 @@ module wormhole_bridge::bridge_pool {
     public fun send_withdraw(
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
-        withdraw_chain_id: U16,
+        withdraw_chain_id: u16,
         withdraw_pool_address: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ) acquires PoolState {
         let msg = pool::withdraw_to(
@@ -206,9 +206,9 @@ module wormhole_bridge::bridge_pool {
         sender: &signer,
         wormhole_message_fee: Coin<AptosCoin>,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_chain_id: U16,
+        withdraw_chain_id: u16,
         withdraw_pool_address: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ) acquires PoolState {
         let msg = pool::deposit_and_withdraw<DepositCoinType>(
@@ -305,7 +305,7 @@ module wormhole_bridge::bridge_pool {
 
     public fun decode_lending_helper_payload(
         payload: vector<u8>
-    ): (DolaAddress, vector<U16>, u8) {
+    ): (DolaAddress, vector<u16>, u8) {
         let index = 0;
         let data_len;
 
@@ -322,7 +322,7 @@ module wormhole_bridge::bridge_pool {
         index = index + data_len;
 
         let i = 0;
-        let dola_pool_ids = vector::empty<U16>();
+        let dola_pool_ids = vector::empty<u16>();
         while (i < u16::to_u64(pool_ids_length)) {
             data_len = 2;
             let dola_pool_id = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
@@ -340,7 +340,7 @@ module wormhole_bridge::bridge_pool {
     }
 
     public fun encode_protocol_app_payload(
-        source_chain_id: U16,
+        source_chain_id: u16,
         nonce: u64,
         call_type: u8,
         user: DolaAddress,
@@ -365,7 +365,7 @@ module wormhole_bridge::bridge_pool {
         payload
     }
 
-    public fun decode_protocol_app_payload(payload: vector<u8>): (U16, U16, u64, DolaAddress, DolaAddress, u8) {
+    public fun decode_protocol_app_payload(payload: vector<u8>): (u16, u16, u64, DolaAddress, DolaAddress, u8) {
         let length = vector::length(&payload);
         let index = 0;
         let data_len;
@@ -418,7 +418,7 @@ module wormhole_bridge::bridge_pool {
         let (sender, pool_ids, call_type) = decode_lending_helper_payload(helper_payload);
         assert!(call_type == 7, 0);
         assert!(sender == types::convert_address_to_dola(user), 0);
-        assert!(pool_ids == vector::empty<U16>(), 0);
+        assert!(pool_ids == vector::empty<u16>(), 0);
 
         let dola_pool_ids = vector::empty<u64>();
         vector::push_back(&mut dola_pool_ids, 1);

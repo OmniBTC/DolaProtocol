@@ -11,7 +11,7 @@ module omnipool::pool {
 
     use dola_types::types::{Self, DolaAddress};
     use serde::serde;
-    use serde::u16::{Self, U16};
+    use serde::u16::{Self, u16};
 
     const SEED: vector<u8> = b"Dola omnipool";
 
@@ -131,7 +131,7 @@ module omnipool::pool {
     public fun deposit_to<CoinType>(
         sender: &signer,
         deposit_coin: Coin<CoinType>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
         let amount = normal_amount<CoinType>(coin::value(&deposit_coin));
@@ -148,9 +148,9 @@ module omnipool::pool {
     /// call by user_addr or application
     public fun withdraw_to(
         sender: &signer,
-        withdraw_chain_id: U16,
+        withdraw_chain_id: u16,
         withdraw_pool_address: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ): vector<u8> {
         let user_addr = types::convert_address_to_dola(signer::address_of(sender));
@@ -181,9 +181,9 @@ module omnipool::pool {
     public fun deposit_and_withdraw<DepositCoinType>(
         sender: &signer,
         deposit_coin: Coin<DepositCoinType>,
-        withdraw_chain_id: U16,
+        withdraw_chain_id: u16,
         withdraw_pool_address: vector<u8>,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>,
     ): vector<u8> acquires Pool {
         let amount = normal_amount<DepositCoinType>(coin::value(&deposit_coin));
@@ -211,7 +211,7 @@ module omnipool::pool {
         pool_addr: DolaAddress,
         user_addr: DolaAddress,
         amount: u64,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -238,7 +238,7 @@ module omnipool::pool {
     /// decode deposit msg
     public fun decode_send_deposit_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u64, U16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, u16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -287,7 +287,7 @@ module omnipool::pool {
     public fun encode_send_withdraw_payload(
         pool_addr: DolaAddress,
         user_addr: DolaAddress,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -312,7 +312,7 @@ module omnipool::pool {
     /// decode withdraw msg
     public fun decode_send_withdraw_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, U16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -358,7 +358,7 @@ module omnipool::pool {
         deposit_user: DolaAddress,
         deposit_amount: u64,
         withdraw_pool: DolaAddress,
-        app_id: U16,
+        app_id: u16,
         app_payload: vector<u8>
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
@@ -387,7 +387,7 @@ module omnipool::pool {
 
     public fun decode_send_deposit_and_withdraw_payload(
         pool_payload: vector<u8>
-    ): (DolaAddress, DolaAddress, u64, DolaAddress, U16, vector<u8>) {
+    ): (DolaAddress, DolaAddress, u64, DolaAddress, u16, vector<u8>) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
@@ -442,7 +442,7 @@ module omnipool::pool {
 
     /// encode deposit msg
     public fun encode_receive_withdraw_payload(
-        source_chain_id: U16,
+        source_chain_id: u16,
         nonce: u64,
         pool_addr: DolaAddress,
         user_addr: DolaAddress,
@@ -467,7 +467,7 @@ module omnipool::pool {
     }
 
     /// decode deposit msg
-    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (U16, u64, DolaAddress, DolaAddress, u64) {
+    public fun decode_receive_withdraw_payload(pool_payload: vector<u8>): (u16, u64, DolaAddress, DolaAddress, u64) {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
