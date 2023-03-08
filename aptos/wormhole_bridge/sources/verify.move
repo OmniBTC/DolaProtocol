@@ -1,20 +1,20 @@
 module wormhole_bridge::verify {
-    use wormhole::external_address::ExternalAddress;
     use std::option::{Self, Option};
-    use wormhole::vaa::{Self as vaa, VAA};
-    use wormhole::u16::{Self as wormhole_u16};
+
     use aptos_std::table::{Self, Table};
-    use serde::u16::{Self, U16};
+
+    use wormhole::external_address::ExternalAddress;
     use wormhole::set::{Self, Set};
+    use wormhole::u16::Self as wormhole_u16;
+    use wormhole::vaa::{Self as vaa, VAA};
 
     const EUNKNOWN_CHAIN: u64 = 1;
 
     const EUNKNOWN_EMITTER: u64 = 2;
 
-
     public fun get_registered_emitter(
-        registered_emitters: &Table<U16, ExternalAddress>,
-        chain_id: U16
+        registered_emitters: &Table<u16, ExternalAddress>,
+        chain_id: u16
     ): Option<ExternalAddress> {
         if (table::contains(registered_emitters, chain_id)) {
             option::some(*table::borrow(registered_emitters, chain_id))
@@ -23,8 +23,8 @@ module wormhole_bridge::verify {
         }
     }
 
-    public fun assert_known_emitter(registered_emitters: &Table<U16, ExternalAddress>, vm: &VAA) {
-        let chain_id = u16::from_u64(wormhole_u16::to_u64(vaa::get_emitter_chain(vm)));
+    public fun assert_known_emitter(registered_emitters: &Table<u16, ExternalAddress>, vm: &VAA) {
+        let chain_id = (wormhole_u16::to_u64(vaa::get_emitter_chain(vm)) as u16);
         let maybe_emitter = get_registered_emitter(registered_emitters, chain_id);
         assert!(option::is_some<ExternalAddress>(&maybe_emitter), EUNKNOWN_CHAIN);
 
@@ -33,7 +33,7 @@ module wormhole_bridge::verify {
     }
 
     public fun parse_and_verify(
-        registered_emitters: &Table<U16, ExternalAddress>,
+        registered_emitters: &Table<u16, ExternalAddress>,
         vaa: vector<u8>,
     ): VAA {
         let vaa = vaa::parse_and_verify(vaa);
@@ -46,7 +46,7 @@ module wormhole_bridge::verify {
     }
 
     public fun parse_verify_and_replay_protect(
-        registered_emitters: &Table<U16, ExternalAddress>,
+        registered_emitters: &Table<u16, ExternalAddress>,
         consumed_vaas: &mut Set<vector<u8>>,
         vaa: vector<u8>): VAA {
         let vaa = parse_and_verify(registered_emitters, vaa);

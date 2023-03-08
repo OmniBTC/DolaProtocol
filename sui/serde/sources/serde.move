@@ -10,10 +10,6 @@ module serde::serde {
 
     const OVERFLOW: u64 = 0x01;
 
-    const U64_MAX: u64 = 0xFFFFFFFFFFFFFFFF;
-
-    const U128_MAX: u128 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
-
     public fun serialize_u8(buf: &mut vector<u8>, v: u8) {
         vector::push_back(buf, v);
     }
