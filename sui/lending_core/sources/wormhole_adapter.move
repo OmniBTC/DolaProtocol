@@ -3,6 +3,7 @@ module lending_core::wormhole_adapter {
     use std::vector;
 
     use dola_types::dola_address;
+    use lending_core::lending_codec;
     use lending_core::logic;
     use lending_core::storage::{Self, StorageCap, Storage};
     use oracle::oracle::PriceOracle;
@@ -16,8 +17,6 @@ module lending_core::wormhole_adapter {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
-    use lending_core::codec_lending;
-
 
     /// Errors
     const EMUST_NONE: u64 = 0;
@@ -100,8 +99,8 @@ module lending_core::wormhole_adapter {
             amount
         );
         // emit event
-        let (source_chain_id, nonce, receiver, call_type) = codec_lending::decode_deposit_payload(app_payload);
-        assert!(call_type == codec_lending::get_supply_type(), EINVALID_CALL_TYPE);
+        let (source_chain_id, nonce, receiver, call_type) = lending_codec::decode_deposit_payload(app_payload);
+        assert!(call_type == lending_codec::get_supply_type(), EINVALID_CALL_TYPE);
         event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
@@ -135,10 +134,10 @@ module lending_core::wormhole_adapter {
             vaa,
             ctx
         );
-        let (source_chain_id, nonce, amount, pool, receiver, call_type) = codec_lending::decode_withdraw_payload(
+        let (source_chain_id, nonce, amount, pool, receiver, call_type) = lending_codec::decode_withdraw_payload(
             app_payload
         );
-        assert!(call_type == codec_lending::get_withdraw_type(), EINVALID_CALL_TYPE);
+        assert!(call_type == lending_codec::get_withdraw_type(), EINVALID_CALL_TYPE);
         let amount = (amount as u256);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
@@ -208,10 +207,10 @@ module lending_core::wormhole_adapter {
             vaa,
             ctx
         );
-        let (source_chain_id, nonce, amount, pool, receiver, call_type) = codec_lending::decode_withdraw_payload(
+        let (source_chain_id, nonce, amount, pool, receiver, call_type) = lending_codec::decode_withdraw_payload(
             app_payload
         );
-        assert!(call_type == codec_lending::get_borrow_type(), EINVALID_CALL_TYPE);
+        assert!(call_type == lending_codec::get_borrow_type(), EINVALID_CALL_TYPE);
         let amount = (amount as u256);
 
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
@@ -278,8 +277,8 @@ module lending_core::wormhole_adapter {
         logic::execute_repay(cap, pool_manager_info, storage, oracle, dola_user_id, dola_pool_id, amount);
 
         // emit event
-        let (source_chain_id, nonce, receiver, call_type) = codec_lending::decode_deposit_payload(app_payload);
-        assert!(call_type == codec_lending::get_repay_type(), EINVALID_CALL_TYPE);
+        let (source_chain_id, nonce, receiver, call_type) = lending_codec::decode_deposit_payload(app_payload);
+        assert!(call_type == lending_codec::get_repay_type(), EINVALID_CALL_TYPE);
         event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: dola_user_id,
@@ -314,7 +313,7 @@ module lending_core::wormhole_adapter {
             user_manager_info,
             ctx
         );
-        let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, call_type) = codec_lending::decode_liquidate_payload(
+        let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, call_type) = lending_codec::decode_liquidate_payload(
             app_payload
         );
 
@@ -373,8 +372,8 @@ module lending_core::wormhole_adapter {
             storage::get_app_cap(cap, storage),
             vaa
         );
-        let (dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
-        assert!(call_type == codec_lending::get_as_colleteral_type(), EINVALID_CALL_TYPE);
+        let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
+        assert!(call_type == lending_codec::get_as_colleteral_type(), EINVALID_CALL_TYPE);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
 
         let pool_ids_length = vector::length(&dola_pool_ids);
@@ -404,8 +403,8 @@ module lending_core::wormhole_adapter {
             storage::get_app_cap(cap, storage),
             vaa
         );
-        let (dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
-        assert!(call_type == codec_lending::get_cancel_as_colleteral_type(), EINVALID_CALL_TYPE);
+        let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
+        assert!(call_type == lending_codec::get_cancel_as_colleteral_type(), EINVALID_CALL_TYPE);
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
 

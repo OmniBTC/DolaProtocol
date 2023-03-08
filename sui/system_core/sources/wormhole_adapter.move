@@ -1,16 +1,17 @@
 module system_core::protocol_wormhole_adapter {
 
+    use governance::genesis::GovernanceCap;
+
     use dola_types::dola_address;
     use sui::event;
     use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::TxContext;
+    use system_core::storage::{Self, StorageCap, Storage};
+    use system_core::system_codec;
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
-    use system_core::storage::{Self, StorageCap, Storage};
-    use governance::genesis::GovernanceCap;
-    use system_core::codec_system;
 
     /// Errors
     const EINVALID_CALLTYPE: u64 = 0;
@@ -55,8 +56,8 @@ module system_core::protocol_wormhole_adapter {
             storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
             vaa
         );
-        let (source_chain_id, nonce, binded_address, call_type) = codec_system::decode_bind_payload(app_payload);
-        assert!(call_type == codec_system::get_binding_type(), EINVALID_CALLTYPE);
+        let (source_chain_id, nonce, binded_address, call_type) = system_codec::decode_bind_payload(app_payload);
+        assert!(call_type == system_codec::get_binding_type(), EINVALID_CALLTYPE);
 
         if (sender == binded_address) {
             user_manager::register_dola_user_id(
@@ -96,8 +97,8 @@ module system_core::protocol_wormhole_adapter {
             storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
             vaa
         );
-        let (source_chain_id, nonce, unbinded_address, call_type) = codec_system::decode_bind_payload(app_payload);
-        assert!(call_type == codec_system::get_unbinding_type(), EINVALID_CALLTYPE);
+        let (source_chain_id, nonce, unbinded_address, call_type) = system_codec::decode_bind_payload(app_payload);
+        assert!(call_type == system_codec::get_unbinding_type(), EINVALID_CALLTYPE);
 
         user_manager::unbind_user_address(
             storage::get_user_manager_cap(&wormhole_adapter.storage_cap, storage),

@@ -1,7 +1,8 @@
-module lending_core::codec_lending {
+module lending_core::lending_codec {
+
+    use std::vector;
 
     use dola_types::dola_address::{Self, DolaAddress};
-    use std::vector;
     use serde::serde;
 
     /// Errors

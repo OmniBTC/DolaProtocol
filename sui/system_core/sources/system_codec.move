@@ -1,7 +1,8 @@
-module system_core::codec_system {
+module system_core::system_codec {
+
+    use std::vector;
 
     use dola_types::dola_address::{Self, DolaAddress};
-    use std::vector;
     use serde::serde;
 
     /// Errors

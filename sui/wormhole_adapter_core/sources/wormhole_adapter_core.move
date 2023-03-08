@@ -8,7 +8,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::dola_address::DolaAddress;
     use governance::genesis::GovernanceCap;
-    use wormhole_adapter_core::codec_pool;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
@@ -24,6 +23,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
+    use wormhole_adapter_core::pool_codec;
     use wormhole_adapter_core::wormhole_adapter_verify::Unit;
 
     /// Errors
@@ -171,10 +171,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_manage_pool_payload(
+        let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
             dola_contract,
-            codec_pool::get_register_owner_type()
+            pool_codec::get_register_owner_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
@@ -192,10 +192,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_manage_pool_payload(
+        let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
             dola_contract,
-            codec_pool::get_register_spender_type()
+            pool_codec::get_register_spender_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
@@ -213,10 +213,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_manage_pool_payload(
+        let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
             dola_contract,
-            codec_pool::get_delete_owner_type()
+            pool_codec::get_delete_owner_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
@@ -234,10 +234,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
     ) {
-        let msg = codec_pool::encode_manage_pool_payload(
+        let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
             dola_contract,
-            codec_pool::get_delete_spender_type()
+            pool_codec::get_delete_spender_type()
         );
         wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
@@ -263,7 +263,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     ctx
         // );
         let (user_address, app_id, _, app_payload) =
-            codec_pool::decode_send_message_payload(vaa);
+            pool_codec::decode_send_message_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -290,7 +290,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         // );
 
         let (pool_address, user_address, amount, app_id, _, app_payload) =
-            codec_pool::decode_deposit_payload(vaa);
+            pool_codec::decode_deposit_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -328,7 +328,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     ctx
         // );
         let (user_address, app_id, _, app_payload) =
-            codec_pool::decode_send_message_payload(vaa);
+            pool_codec::decode_send_message_payload(vaa);
 
         // Ensure that vaa is delivered to the correct application
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
@@ -357,7 +357,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
             app_manager::get_app_id(app_cap),
             amount
         );
-        let msg = codec_pool::encode_withdraw_payload(
+        let msg = pool_codec::encode_withdraw_payload(
             source_chain_id,
             nonce,
             pool_address,

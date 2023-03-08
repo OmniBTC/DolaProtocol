@@ -7,8 +7,12 @@ module dola_portal::lending {
     use std::vector;
 
     use dola_types::dola_address;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::GovernanceCap;
+    use lending_core::lending_codec;
     use lending_core::storage::{Self, StorageCap, Storage};
     use omnipool::single_pool::{Self, Pool, PoolApproval};
+    use omnipool::wormhole_adapter_pool::{Self, PoolState};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use sui::coin::{Self, Coin};
@@ -20,10 +24,6 @@ module dola_portal::lending {
     use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use wormhole::state::State as WormholeState;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
-    use omnipool::wormhole_adapter_pool::{Self, PoolState};
-    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
-    use governance::genesis::GovernanceCap;
-    use lending_core::codec_lending;
 
     /// Errors
 
@@ -317,7 +317,15 @@ module dola_portal::lending {
         );
 
         // Local withdraw
-        single_pool::withdraw(pool_approval, &lending_portal.dola_contract, pool, user_address, amount, pool_address, ctx);
+        single_pool::withdraw(
+            pool_approval,
+            &lending_portal.dola_contract,
+            pool,
+            user_address,
+            amount,
+            pool_address,
+            ctx
+        );
 
         emit(LendingLocalEvent {
             nonce: get_nonce(lending_portal),
@@ -451,7 +459,15 @@ module dola_portal::lending {
             (amount as u256)
         );
         // Local borrow
-        single_pool::withdraw(pool_approval, &lending_portal.dola_contract, pool, user_address, amount, pool_address, ctx);
+        single_pool::withdraw(
+            pool_approval,
+            &lending_portal.dola_contract,
+            pool,
+            user_address,
+            amount,
+            pool_address,
+            ctx
+        );
 
         emit(LendingLocalEvent {
             nonce: get_nonce(lending_portal),
@@ -617,7 +633,7 @@ module dola_portal::lending {
         let withdraw_pool = dola_address::create_dola_address(liquidate_chain_id, liquidate_pool_address);
 
         let nonce = get_nonce(lending_portal);
-        let app_payload = codec_lending::encode_liquidate_payload(
+        let app_payload = lending_codec::encode_liquidate_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,
             withdraw_pool,

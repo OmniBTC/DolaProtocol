@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Codecing for pool contracts
-module wormhole_adapter_core::codec_pool {
-    use dola_types::dola_address::DolaAddress;
+module wormhole_adapter_core::pool_codec {
     use std::vector;
-    use dola_types::dola_address;
+
+    use dola_types::dola_address::{Self, DolaAddress};
     use serde::serde;
 
     /// Errors
