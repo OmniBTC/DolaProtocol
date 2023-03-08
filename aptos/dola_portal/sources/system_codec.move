@@ -79,4 +79,23 @@ module dola_portal::system_codec {
         assert!(length == index, EINVALID_LENGTH);
         (source_chain_id, nonce, bind_address, system_call_type)
     }
+
+    #[test]
+    public fun test_system_codec() {
+        let source_chain_id_1 = 1;
+        let nonce_1 = 1;
+        let system_call_type_1 = BINDING;
+        let bind_address_1 = dola_address::convert_address_to_dola(@0x1);
+        let bind_payload = encode_bind_payload(
+            source_chain_id_1,
+            nonce_1,
+            bind_address_1,
+            system_call_type_1
+        );
+        let (source_chain_id, nonce, bind_address, system_call_type) = decode_bind_payload(bind_payload);
+        assert!(source_chain_id == source_chain_id_1, 101);
+        assert!(nonce == nonce_1, 102);
+        assert!(bind_address == bind_address_1, 103);
+        assert!(system_call_type == system_call_type_1, 104);
+    }
 }

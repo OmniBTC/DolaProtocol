@@ -59,7 +59,6 @@ module dola_portal::lending_codec {
     }
 
 
-
     /// Encode and decode
 
     /// Encode supply or repay
@@ -287,5 +286,81 @@ module dola_portal::lending_codec {
 
         assert!(index == vector::length(&payload), EINVALID_LENGTH);
         (dola_pool_ids, lending_call_type)
+    }
+
+    #[test]
+    public fun test_lending_codec() {
+        // test encode deposit_payload
+        let source_chain_id_1 = 1;
+        let nonce_1 = 1;
+        let receiver_1 = dola_address::convert_address_to_dola(@0x101);
+        let lending_call_type_1 = SUPPLY;
+        let deposit_payload = encode_deposit_payload(
+            source_chain_id_1,
+            nonce_1,
+            receiver_1,
+            lending_call_type_1
+        );
+        let (source_chain_id, nonce, receiver, lending_call_type) = decode_deposit_payload(deposit_payload);
+        assert!(source_chain_id == source_chain_id_1, 101);
+        assert!(nonce == nonce_1, 102);
+        assert!(receiver == receiver_1, 103);
+        assert!(lending_call_type == lending_call_type_1, 104);
+
+        // test encode withdraw_payload
+        let source_chain_id_2 = 2;
+        let nonce_2 = 2;
+        let amount_2 = 200;
+        let pool_address_2 = dola_address::convert_address_to_dola(@0x201);
+        let receiver_2 = dola_address::convert_address_to_dola(@0x202);
+        let lending_call_type_2 = BORROW;
+        let withdraw_payload = encode_withdraw_payload(
+            source_chain_id_2,
+            nonce_2,
+            amount_2,
+            pool_address_2,
+            receiver_2,
+            lending_call_type_2
+        );
+        let (source_chain_id, nonce, amount, pool_address, receiver, lending_call_type) = decode_withdraw_payload(
+            withdraw_payload
+        );
+        assert!(source_chain_id == source_chain_id_2, 201);
+        assert!(nonce == nonce_2, 202);
+        assert!(amount == amount_2, 203);
+        assert!(pool_address == pool_address_2, 204);
+        assert!(receiver == receiver_2, 205);
+        assert!(lending_call_type == lending_call_type_2, 206);
+
+        // test liquidate_payload
+        let source_chain_id_3 = 3;
+        let nonce_3 = 3;
+        let withdraw_pool_3 = dola_address::convert_address_to_dola(@0x301);
+        let liquidate_user_id_3 = 3;
+        let liquidate_payload = encode_liquidate_payload(
+            source_chain_id_3,
+            nonce_3,
+            withdraw_pool_3,
+            liquidate_user_id_3
+        );
+        let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, lending_call_type) = decode_liquidate_payload(
+            liquidate_payload
+        );
+        assert!(source_chain_id == source_chain_id_3, 301);
+        assert!(nonce == nonce_3, 302);
+        assert!(withdraw_pool == withdraw_pool_3, 303);
+        assert!(liquidate_user_id == liquidate_user_id_3, 304);
+        assert!(lending_call_type == LIQUIDATE, 305);
+
+        // test manage_collateral_payload
+        let dola_pool_ids_4 = vector[0, 1];
+        let lending_call_type_4 = AS_COLLATERAL;
+        let manage_collateral_payload = encode_manage_collateral_payload(
+            dola_pool_ids_4,
+            lending_call_type_4
+        );
+        let (dola_pool_ids, lending_call_type) = decode_manage_collateral_payload(manage_collateral_payload);
+        assert!(dola_pool_ids == dola_pool_ids_4, 401);
+        assert!(lending_call_type == lending_call_type_4, 402);
     }
 }
