@@ -367,8 +367,13 @@ module lending_core::wormhole_adapter {
     ) {
         let cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
-        let app_payload = wormhole_adapter_core::receive_app_message(wormhole_state, core_state, vaa);
-        let (sender, dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
+        let (sender, app_payload) = wormhole_adapter_core::receive_message(
+            wormhole_state,
+            core_state,
+            storage::get_app_cap(cap, storage),
+            vaa
+        );
+        let (dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
         assert!(call_type == codec_lending::get_as_colleteral_type(), EINVALID_CALL_TYPE);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
 
@@ -393,8 +398,13 @@ module lending_core::wormhole_adapter {
     ) {
         let cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
-        let app_payload = wormhole_adapter_core::receive_app_message(wormhole_state, core_state, vaa);
-        let (sender, dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
+        let (sender, app_payload) = wormhole_adapter_core::receive_message(
+            wormhole_state,
+            core_state,
+            storage::get_app_cap(cap, storage),
+            vaa
+        );
+        let (dola_pool_ids, call_type) = codec_lending::decode_manage_collateral_payload(app_payload);
         assert!(call_type == codec_lending::get_cancel_as_colleteral_type(), EINVALID_CALL_TYPE);
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);

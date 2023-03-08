@@ -650,7 +650,7 @@ module dola_portal::lending {
     #[test]
     fun test_encode_decode() {
         let user = @0x11;
-        let payload = lending_core::wormhole_adapter::encode_app_payload(
+        let payload = lending_core::wormhole_adapter::encode_bind_payload(
             0,
             0,
             WITHDRAW,
@@ -658,7 +658,7 @@ module dola_portal::lending {
             dola_address::convert_address_to_dola(user),
             0
         );
-        let (_, _, call_type, amount, user_address, _) = lending_core::logic::decode_app_payload(payload);
+        let (_, _, call_type, amount, user_address, _) = lending_core::logic::decode_bind_payload(payload);
         assert!(call_type == WITHDRAW, 0);
         assert!(amount == 100000000, 0);
         assert!(user_address == dola_address::convert_address_to_dola(user), 0);

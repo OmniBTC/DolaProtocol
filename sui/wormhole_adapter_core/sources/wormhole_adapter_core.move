@@ -248,12 +248,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Call by application
 
-    /// Only verify that the message is valid, and the message is processed by the corresponding app
-    public fun receive_app_message(
+    /// Receive message without funding
+    public fun receive_message(
         _wormhole_state: &mut WormholeState,
         _core_state: &mut CoreState,
+        app_cap: &AppCap,
         vaa: vector<u8>,
-    ): vector<u8> {
+    ): (DolaAddress, vector<u8>) {
         // let msg = parse_verify_and_replay_protect(
         //     wormhole_state,
         //     &core_state.registered_emitters,
@@ -261,7 +262,12 @@ module wormhole_adapter_core::wormhole_adapter_core {
         //     vaa,
         //     ctx
         // );
-        vaa
+        let (user_address, app_id, _, app_payload) =
+            codec_pool::decode_send_message_payload(vaa);
+
+        // Ensure that vaa is delivered to the correct application
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
+        (user_address, app_payload)
     }
 
     /// Receive deposit on sui network

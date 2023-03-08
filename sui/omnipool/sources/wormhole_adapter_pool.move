@@ -239,7 +239,7 @@ module omnipool::wormhole_adapter_pool {
     //     let user_address = tx_context::wormhole_emitter(ctx);
     //     let user_address = convert_address_to_dola(user_address);
     //     let binded_address = create_dola_address(dola_chain_id, binded_address);
-    //     let payload = protocol_wormhole_adapter::encode_app_payload(
+    //     let payload = protocol_wormhole_adapter::encode_bind_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,
@@ -265,7 +265,7 @@ module omnipool::wormhole_adapter_pool {
     //     let user_address = tx_context::wormhole_emitter(ctx);
     //     let user_address = convert_address_to_dola(user_address);
     //     let unbinded_address = create_dola_address(dola_chain_id, unbinded_address);
-    //     let payload = protocol_wormhole_adapter::encode_app_payload(
+    //     let payload = protocol_wormhole_adapter::encode_bind_payload(
     //         source_chain_id,
     //         nonce,
     //         call_type,

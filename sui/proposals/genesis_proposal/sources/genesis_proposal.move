@@ -2,7 +2,7 @@ module genesis_proposal::genesis_proposal {
     use std::ascii;
     use std::option;
 
-    use protocol_core::protocol_wormhole_adapter;
+    use system_core::protocol_wormhole_adapter;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
     use dola_portal::portal::DolaPortal;
@@ -99,7 +99,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
-            protocol_core::protocol_wormhole_adapter::transfer_user_manager_cap(wormhole_adapater, user_manager_cap);
+            system_core::protocol_wormhole_adapter::transfer_user_manager_cap(wormhole_adapater, user_manager_cap);
             governance_v1::destory_governance_cap(governance_cap);
         };
 

@@ -237,15 +237,10 @@ module lending_core::codec_lending {
 
     /// Encode manage collateral payload
     public fun encode_manage_collateral_payload(
-        sender: DolaAddress,
         dola_pool_ids: vector<u16>,
         lending_call_type: u8
     ): vector<u8> {
         let payload = vector::empty<u8>();
-
-        let sender = dola_address::encode_dola_address(sender);
-        serde::serialize_u16(&mut payload, (vector::length(&sender) as u16));
-        serde::serialize_vector(&mut payload, sender);
 
         let pool_ids_length = vector::length(&dola_pool_ids);
         serde::serialize_u16(&mut payload, (pool_ids_length as u16));
@@ -262,17 +257,9 @@ module lending_core::codec_lending {
     /// Decode manage collateral payload
     public fun decode_manage_collateral_payload(
         payload: vector<u8>
-    ): (DolaAddress, vector<u16>, u8) {
+    ): (vector<u16>, u8) {
         let index = 0;
         let data_len;
-
-        data_len = 2;
-        let sender_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = (sender_length as u64);
-        let sender = dola_address::decode_dola_address(serde::vector_slice(&payload, index, index + data_len));
-        index = index + data_len;
 
         data_len = 2;
         let pool_ids_length = serde::deserialize_u16(&serde::vector_slice(&payload, index, index + data_len));
@@ -293,6 +280,6 @@ module lending_core::codec_lending {
         index = index + data_len;
 
         assert!(index == vector::length(&payload), EINVALID_LENGTH);
-        (sender, dola_pool_ids, lending_call_type)
+        (dola_pool_ids, lending_call_type)
     }
 }
