@@ -89,8 +89,8 @@ module system_core::system_codec {
         let bind_payload = encode_bind_payload(
             source_chain_id_1,
             nonce_1,
-            system_call_type_1,
-            bind_address_1
+            bind_address_1,
+            system_call_type_1
         );
         let (source_chain_id, nonce, bind_address, system_call_type) = decode_bind_payload(bind_payload);
         assert!(source_chain_id == source_chain_id_1, 101);
