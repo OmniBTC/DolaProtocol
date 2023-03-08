@@ -7,9 +7,8 @@ module dola_types::types {
     use aptos_framework::util::address_from_bytes;
 
     use serde::serde;
-    use serde::u16::{Self, u16};
 
-    const DOLACHAINID: u64 = 1;
+    const DOLACHAINID: u16 = 1;
 
     /// Used to represent user address and pool address
     struct DolaAddress has copy, drop, store {
@@ -17,7 +16,7 @@ module dola_types::types {
         dola_address: vector<u8>
     }
 
-    public fun get_native_dola_chain_id(): u64 {
+    public fun get_native_dola_chain_id(): u16 {
         DOLACHAINID
     }
 
@@ -45,7 +44,7 @@ module dola_types::types {
 
     public fun convert_address_to_dola(addr: address): DolaAddress {
         DolaAddress {
-            dola_chain_id: u16::from_u64(DOLACHAINID),
+            dola_chain_id: DOLACHAINID,
             dola_address: bcs::to_bytes(&addr)
         }
     }
@@ -57,7 +56,7 @@ module dola_types::types {
     public fun convert_pool_to_dola<CoinType>(): DolaAddress {
         let dola_address = *string::bytes(&type_info::type_name<CoinType>());
         DolaAddress {
-            dola_chain_id: u16::from_u64(DOLACHAINID),
+            dola_chain_id: DOLACHAINID,
             dola_address
         }
     }

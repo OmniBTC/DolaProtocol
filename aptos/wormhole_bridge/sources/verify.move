@@ -3,7 +3,6 @@ module wormhole_bridge::verify {
 
     use aptos_std::table::{Self, Table};
 
-    use serde::u16::{Self, u16};
     use wormhole::external_address::ExternalAddress;
     use wormhole::set::{Self, Set};
     use wormhole::u16::Self as wormhole_u16;
@@ -12,7 +11,6 @@ module wormhole_bridge::verify {
     const EUNKNOWN_CHAIN: u64 = 1;
 
     const EUNKNOWN_EMITTER: u64 = 2;
-
 
     public fun get_registered_emitter(
         registered_emitters: &Table<u16, ExternalAddress>,
@@ -26,7 +24,7 @@ module wormhole_bridge::verify {
     }
 
     public fun assert_known_emitter(registered_emitters: &Table<u16, ExternalAddress>, vm: &VAA) {
-        let chain_id = u16::from_u64(wormhole_u16::to_u64(vaa::get_emitter_chain(vm)));
+        let chain_id = (wormhole_u16::to_u64(vaa::get_emitter_chain(vm)) as u16);
         let maybe_emitter = get_registered_emitter(registered_emitters, chain_id);
         assert!(option::is_some<ExternalAddress>(&maybe_emitter), EUNKNOWN_CHAIN);
 
