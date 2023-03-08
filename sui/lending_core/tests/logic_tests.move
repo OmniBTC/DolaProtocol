@@ -6,10 +6,10 @@ module lending_core::logic_tests {
     use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis;
     use lending_core::logic;
-    use lending_core::math::{ray_mul, ray_div};
-    use lending_core::storage::{Self, Storage, is_isolation_mode};
+    use lending_core::storage::{Self, Storage};
     use oracle::oracle::{Self, PriceOracle, OracleCap};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use ray_math::math;
     use sui::test_scenario::{Self, Scenario};
     use sui::tx_context::TxContext;
 
@@ -492,7 +492,7 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
             logic::cancel_as_collateral(
                 &storage_cap,
                 &mut pool_manager_info,
@@ -502,7 +502,7 @@ module lending_core::logic_tests {
                 ISOLATE_POOL_ID
             );
             assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 203);
-            assert!(!is_isolation_mode(&mut storage, 0), 204);
+            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
             assert!(logic::user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 205);
 
             test_scenario::return_shared(pool_manager_info);
@@ -633,7 +633,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -663,7 +663,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -1014,7 +1014,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            assert!(is_isolation_mode(&mut storage, 0), 201);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 201);
 
             let repay_usdt_amount = 50 * ONE;
 
@@ -1043,7 +1043,7 @@ module lending_core::logic_tests {
             );
             // Check user total loan
             assert!(logic::user_total_loan_value(&mut storage, &mut oracle, 0) == 0, 203);
-            assert!(!is_isolation_mode(&mut storage, 0), 204);
+            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -1068,7 +1068,7 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         // User 0 supply 1 btc
@@ -1137,11 +1137,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1214,11 +1214,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1286,11 +1286,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1358,11 +1358,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
