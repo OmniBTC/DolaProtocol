@@ -6,11 +6,7 @@ version = "0.0.1"
 wormhole = "0x0"
 serde = "0x0"
 omnipool = "0x0"
-governance = "0x0"
 dola_types = "0x0"
-app_manager = "0x0"
-user_manager = "0x0"
-pool_manager = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
@@ -28,15 +24,3 @@ local = "../dola_types"
 
 [dependencies.Serde]
 local = "../serde"
-
-[dependencies.PoolManager]
-local = "../pool_manager"
-
-[dependencies.UserManager]
-local = "../user_manager"
-
-[dependencies.AppManager]
-local = "../app_manager"
-
-[dependencies.Governance]
-local = "../governance"
