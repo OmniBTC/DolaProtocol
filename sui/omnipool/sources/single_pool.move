@@ -7,25 +7,26 @@
 module omnipool::single_pool {
     use std::ascii;
     use std::type_name;
+    use std::vector;
 
     use dola_types::dola_address::{Self, DolaAddress};
     use dola_types::dola_contract::{Self, DolaContract};
+    use omnipool::pool_codec;
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use omnipool::codec_pool;
-
-    friend omnipool::wormhole_adapter_pool;
-
+    #[test_only]
+    use dola_types::dola_contract::DolaContractRegistry;
     #[test_only]
     use sui::sui::SUI;
     #[test_only]
-    use sui::test_scenario;
-    use std::vector;
-    use sui::event;
+    use sui::test_scenario::{Self, return_shared};
+
+    friend omnipool::wormhole_adapter_pool;
 
     /// Errors
 
@@ -213,7 +214,7 @@ module omnipool::single_pool {
         let amount = normal_amount(pool, deposit_amount);
         let user_address = dola_address::convert_address_to_dola(sender);
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
-        let pool_payload = codec_pool::encode_deposit_payload(
+        let pool_payload = pool_codec::encode_deposit_payload(
             pool_address,
             user_address,
             amount,
@@ -272,85 +273,12 @@ module omnipool::single_pool {
         ctx: &mut TxContext
     ): vector<u8> {
         let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
-        let pool_payload = codec_pool::encode_send_message_payload(sender, app_id, app_payload);
+        let pool_payload = pool_codec::encode_send_message_payload(sender, app_id, app_payload);
         pool_payload
     }
 
-
     #[test]
-    public fun test_encode_decode() {
-        let pool = @0x11;
-        let user = @0x22;
-        let amount = 100;
-        let app_id = 0;
-        let app_payload = vector[0u8];
-        // test encode and decode send_deposit_payload
-        let send_deposit_payload = codec_pool::encode_deposit_payload(
-            dola_address::convert_address_to_dola(pool),
-            dola_address::convert_address_to_dola(user),
-            amount,
-            app_id,
-            app_payload
-        );
-        let (decoded_pool, decoded_user, decoded_amount, decoded_app_id, decoded_app_payload) = codec_pool::decode_deposit_payload(
-            send_deposit_payload
-        );
-        assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
-        assert!(dola_address::convert_dola_to_address(decoded_user) == user, 0);
-        assert!(decoded_amount == amount, 0);
-        assert!(decoded_app_id == app_id, 0);
-        assert!(decoded_app_payload == app_payload, 0);
-        // test encode and decode send_withdraw_payload
-        let send_withdraw_payload = codec_pool::encode_send_withdraw_payload(
-            dola_address::convert_address_to_dola(pool),
-            dola_address::convert_address_to_dola(user),
-            app_id,
-            app_payload
-        );
-        let (decoded_pool, decoded_user, decoded_app_id, decoded_app_payload) = codec_pool::decode_send_withdraw_payload(
-            send_withdraw_payload
-        );
-        assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
-        assert!(dola_address::convert_dola_to_address(decoded_user) == user, 0);
-        assert!(decoded_app_id == app_id, 0);
-        assert!(decoded_app_payload == app_payload, 0);
-        // test encode and decode send_deposit_and_withdraw_payload
-        let withdraw_pool = @0x33;
-        let send_deposit_and_withdraw_payload = codec_pool::encode_send_deposit_and_withdraw_payload(
-            dola_address::convert_address_to_dola(pool),
-            dola_address::convert_address_to_dola(user),
-            amount,
-            dola_address::convert_address_to_dola(withdraw_pool),
-            app_id,
-            app_payload
-        );
-        let (decoded_pool, decoded_user, decoded_amount, decoded_withdraw_pool, decoded_app_id, decoded_app_payload) = codec_pool::decode_send_deposit_and_withdraw_payload(
-            send_deposit_and_withdraw_payload
-        );
-        assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
-        assert!(dola_address::convert_dola_to_address(decoded_user) == user, 0);
-        assert!(decoded_amount == amount, 0);
-        assert!(dola_address::convert_dola_to_address(decoded_withdraw_pool) == withdraw_pool, 0);
-        assert!(decoded_app_id == app_id, 0);
-        assert!(decoded_app_payload == app_payload, 0);
-        // test encode and decode receive_withdraw_payload
-        let receive_withdraw_payload = codec_pool::encode_withdraw_payload(
-            0,
-            0,
-            dola_address::convert_address_to_dola(pool),
-            dola_address::convert_address_to_dola(user),
-            amount
-        );
-        let (_, _, decoded_pool, decoded_user, decoded_amount) = codec_pool::decode_withdraw_payload(
-            receive_withdraw_payload
-        );
-        assert!(dola_address::convert_dola_to_address(decoded_pool) == pool, 0);
-        assert!(dola_address::convert_dola_to_address(decoded_user) == user, 0);
-        assert!(decoded_amount == amount, 0);
-    }
-
-    #[test]
-    public fun test_deposit_to() {
+    public fun test_deposit() {
         let manager = @0xA;
 
         let scenario_val = test_scenario::begin(manager);
@@ -374,47 +302,67 @@ module omnipool::single_pool {
     }
 
     #[test]
-    public fun test_withdraw_to() {
-        let manager = @0x0;
-        let user_address = @0xC;
+    public fun test_withdraw() {
+        let manager = @0xA;
 
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
             let ctx = test_scenario::ctx(scenario);
-            init(ctx);
-
-            create_pool<SUI>(9, ctx);
+            dola_contract::create_for_testing(ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
-            let pool_info = test_scenario::take_shared<PoolInfo>(scenario);
-
-            let manager_cap = register_cap(&mut pool_info, test_scenario::ctx(scenario));
+            let dola_contract_registry = test_scenario::take_shared<DolaContractRegistry>(scenario);
             let ctx = test_scenario::ctx(scenario);
-            let pool_address = dola_address::convert_pool_to_dola<SUI>();
+            let dola_contract = dola_contract::create_dola_contract(&mut dola_contract_registry, ctx);
+            let spenders = vector::empty();
+            vector::push_back(&mut spenders, dola_contract::get_dola_contract(&dola_contract));
 
-            let balance = balance::create_for_testing<SUI>(100);
+            transfer::share_object(PoolApproval {
+                id: object::new(ctx),
+                owners: vector::empty(),
+                spenders
+            });
+
+            transfer::transfer(dola_contract, manager);
+
+            create_pool<SUI>(9, ctx);
+            return_shared(dola_contract_registry);
+        };
+        test_scenario::next_tx(scenario, manager);
+        {
+            let pool_approval = test_scenario::take_shared<PoolApproval>(scenario);
+            let dola_contract = test_scenario::take_from_sender<DolaContract>(scenario);
+            let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
+
+            let user_address = dola_address::convert_address_to_dola(@0xB);
+            let amount = 1000;
+            let pool_address = dola_address::convert_pool_to_dola<SUI>();
+            let ctx = test_scenario::ctx(scenario);
+
+            let balance = balance::create_for_testing<SUI>(amount);
 
             balance::join(&mut pool.balance, balance);
 
-            assert!(balance::value(&pool.balance) == 100, 0);
+            assert!(balance::value(&pool.balance) == amount, 0);
 
+            let withdraw_amount = normal_amount(&pool, amount);
             withdraw<SUI>(
-                &manager_cap,
+                &pool_approval,
+                &dola_contract,
                 &mut pool,
-                dola_address::convert_address_to_dola(user_address),
-                10,
+                user_address,
+                withdraw_amount,
                 pool_address,
                 ctx
             );
 
             assert!(balance::value(&pool.balance) == 0, 0);
-            delete_cap(&mut pool_info, manager_cap);
 
+            test_scenario::return_shared(pool_approval);
+            test_scenario::return_to_sender(scenario, dola_contract);
             test_scenario::return_shared(pool);
-            test_scenario::return_shared(pool_info);
         };
         test_scenario::end(scenario_val);
     }

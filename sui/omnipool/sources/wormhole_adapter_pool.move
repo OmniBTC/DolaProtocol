@@ -7,8 +7,10 @@
 /// 2) Receive withdrawal messages from bridge core for withdrawal
 module omnipool::wormhole_adapter_pool {
     use dola_types::dola_address::{Self, DolaAddress};
-    use omnipool::codec_pool;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use omnipool::pool_codec;
     use omnipool::single_pool::{Self, Pool, PoolApproval};
+    use omnipool::wormhole_adapter_verify::Unit;
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -16,15 +18,12 @@ module omnipool::wormhole_adapter_pool {
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::state::State as WormholeState;
     use wormhole::wormhole;
-    use omnipool::wormhole_adapter_verify::Unit;
-    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
-    use sui::tx_context;
 
     /// Errors
 
@@ -157,8 +156,8 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_register_owner_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_DOLA_CONTRACT);
         single_pool::register_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
@@ -178,8 +177,8 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_register_spender_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_DOLA_CONTRACT);
         single_pool::register_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
@@ -198,8 +197,8 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_delete_owner_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_delete_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         single_pool::delete_owner(pool_approval, &pool_state.dola_contract, dola_contract);
     }
@@ -217,65 +216,13 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         //     ctx
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_delete_spender_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_delete_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         single_pool::delete_owner(pool_approval, &pool_state.dola_contract, dola_contract);
     }
 
     /// Call by application
-
-    // public fun send_binding(
-    //     pool_state: &mut PoolState,
-    //     wormhole_state: &mut WormholeState,
-    //     wormhole_message_fee: Coin<SUI>,
-    //     nonce: u64,
-    //     source_chain_id: u16,
-    //     dola_chain_id: u16,
-    //     binded_address: vector<u8>,
-    //     call_type: u8,
-    //     ctx: &mut TxContext
-    // ) {
-    //     let user_address = tx_context::wormhole_emitter(ctx);
-    //     let user_address = convert_address_to_dola(user_address);
-    //     let binded_address = create_dola_address(dola_chain_id, binded_address);
-    //     let payload = protocol_wormhole_adapter::encode_bind_payload(
-    //         source_chain_id,
-    //         nonce,
-    //         call_type,
-    //         user_address,
-    //         binded_address
-    //     );
-    //     wormhole::publish_message(&mut pool_state.wormhole_emitter, wormhole_state, 0, payload, wormhole_message_fee);
-    //     let index = table::length(&pool_state.cache_vaas) + 1;
-    //     table::add(&mut pool_state.cache_vaas, index, payload);
-    // }
-
-    // public fun send_unbinding(
-    //     pool_state: &mut PoolState,
-    //     wormhole_state: &mut WormholeState,
-    //     wormhole_message_fee: Coin<SUI>,
-    //     nonce: u64,
-    //     source_chain_id: u16,
-    //     dola_chain_id: u16,
-    //     unbinded_address: vector<u8>,
-    //     call_type: u8,
-    //     ctx: &mut TxContext
-    // ) {
-    //     let user_address = tx_context::wormhole_emitter(ctx);
-    //     let user_address = convert_address_to_dola(user_address);
-    //     let unbinded_address = create_dola_address(dola_chain_id, unbinded_address);
-    //     let payload = protocol_wormhole_adapter::encode_bind_payload(
-    //         source_chain_id,
-    //         nonce,
-    //         call_type,
-    //         user_address,
-    //         unbinded_address
-    //     );
-    //     wormhole::publish_message(&mut pool_state.wormhole_emitter, wormhole_state, 0, payload, wormhole_message_fee);
-    //     let index = table::length(&pool_state.cache_vaas) + 1;
-    //     table::add(&mut pool_state.cache_vaas, index, payload);
-    // }
 
     /// Send deposit by application
     public fun send_deposit<CoinType>(
@@ -337,7 +284,7 @@ module omnipool::wormhole_adapter_pool {
         //     ctx
         // );
         let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
-            codec_pool::decode_withdraw_payload(vaa);
+            pool_codec::decode_withdraw_payload(vaa);
         single_pool::withdraw(
             pool_approval,
             &pool_state.dola_contract,
@@ -373,7 +320,7 @@ module omnipool::wormhole_adapter_pool {
     /// todo! Delete
     public entry fun decode_withdraw_payload(vaa: vector<u8>) {
         let (_, _, pool_address, user_address, amount, _) =
-            codec_pool::decode_withdraw_payload(vaa);
+            pool_codec::decode_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {
             pool_address,

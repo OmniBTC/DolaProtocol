@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Codecing for pool contracts
-module omnipool::codec_pool {
-    use dola_types::dola_address::DolaAddress;
+module omnipool::pool_codec {
     use std::vector;
-    use dola_types::dola_address;
+
+    use dola_types::dola_address::{Self, DolaAddress};
     use serde::serde;
 
     /// Errors
@@ -337,5 +337,83 @@ module omnipool::codec_pool {
         assert!(length == index, EINVALID_LENGTH);
 
         (dola_chain_id, dola_contract, pool_call_type)
+    }
+
+    #[test]
+    public fun test_pool_codec() {
+        // test encode and decode deposit payload
+        let pool_1 = dola_address::convert_address_to_dola(@0x101);
+        let user_1 = dola_address::convert_address_to_dola(@0x102);
+        let amount_1 = 100;
+        let app_id_1 = 0;
+        let app_payload_1 = vector[0];
+        let deposit_payload = encode_deposit_payload(
+            pool_1,
+            user_1,
+            amount_1,
+            app_id_1,
+            app_payload_1
+        );
+        let (pool_address, user_address, amount, app_id, pool_call_type, app_payload) = decode_deposit_payload(
+            deposit_payload
+        );
+        assert!(pool_address == pool_1, 101);
+        assert!(user_address == user_1, 102);
+        assert!(amount == amount_1, 103);
+        assert!(app_id == app_id_1, 104);
+        assert!(pool_call_type == POOL_DEPOSIT, 105);
+        assert!(app_payload == app_payload_1, 106);
+
+        // test encode and decode withdraw payload
+        let pool_2 = dola_address::convert_address_to_dola(@0x201);
+        let user_2 = dola_address::convert_address_to_dola(@0x202);
+        let amount_2 = 100;
+        let source_chain_id_2 = 1;
+        let nonce_2 = 1;
+        let withdraw_payload = encode_withdraw_payload(
+            source_chain_id_2,
+            nonce_2,
+            pool_2,
+            user_2,
+            amount_2
+        );
+        let (source_chain_id, nonce, pool_address, user_address, amount, pool_call_type) = decode_withdraw_payload(
+            withdraw_payload
+        );
+        assert!(source_chain_id == source_chain_id_2, 201);
+        assert!(nonce == nonce_2, 202);
+        assert!(pool_address == pool_2, 203);
+        assert!(user_address == user_2, 204);
+        assert!(amount == amount_2, 205);
+        assert!(pool_call_type == POOL_WITHDRAW, 206);
+
+        // test encode and decode send_message_payload
+        let user_3 = dola_address::convert_address_to_dola(@0x301);
+        let app_id_3 = 2;
+        let app_payload_3 = vector[2];
+        let send_message_payload = encode_send_message_payload(
+            user_3,
+            app_id_3,
+            app_payload_3
+        );
+        let (user_address, app_id, pool_call_type, app_payload) = decode_send_message_payload(send_message_payload);
+        assert!(user_address == user_3, 301);
+        assert!(app_id == app_id_3, 302);
+        assert!(pool_call_type == POOL_SEND_MESSAGE, 303);
+        assert!(app_payload == app_payload_3, 304);
+
+        // test encode and decode manage_pool_payload
+        let dola_chain_id_4 = 4;
+        let dola_contract_4 = 4;
+        let pool_call_type_4 = POOL_REGISTER_OWNER;
+        let manager_pool_payload = encode_manage_pool_payload(
+            dola_chain_id_4,
+            dola_contract_4,
+            pool_call_type_4
+        );
+        let (dola_chain_id, dola_contract, pool_call_type) = decode_manage_pool_payload(manager_pool_payload);
+        assert!(dola_chain_id == dola_chain_id_4, 401);
+        assert!(dola_contract == dola_contract_4, 402);
+        assert!(pool_call_type == pool_call_type_4, 403);
     }
 }

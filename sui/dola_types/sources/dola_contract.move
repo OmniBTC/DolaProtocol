@@ -3,10 +3,10 @@
 
 /// Similar to the EVM contract address, using Emitter to represent the contract address in the Dola protocol
 module dola_types::dola_contract {
-    use sui::object::{Self, UID};
-    use sui::tx_context::{TxContext};
-    use sui::transfer;
     use sui::event;
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use sui::tx_context::TxContext;
 
     /// Manager for contract address
     struct DolaContractRegistry has key {
@@ -49,6 +49,14 @@ module dola_types::dola_contract {
     /// Get dola contract
     public fun get_dola_contract(emitter: &DolaContract): u256 {
         emitter.dola_contract
+    }
+
+    #[test_only]
+    public fun create_for_testing(ctx: &mut TxContext) {
+        transfer::share_object(DolaContractRegistry {
+            id: object::new(ctx),
+            next_id: 0
+        });
     }
 }
 
