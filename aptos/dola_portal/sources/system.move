@@ -9,7 +9,7 @@ module dola_portal::system {
     use wormhole::state;
     use omnipool::wormhole_adapter_pool;
     use aptos_framework::event;
-    use system_core::system_codec;
+    use dola_portal::system_codec;
 
 
     const SEED: vector<u8> = b"Dola System Portal";
@@ -76,7 +76,7 @@ module dola_portal::system {
     fun get_nonce(): u64 acquires SystemPortal {
         let lending_portal = borrow_global_mut<SystemPortal>(get_resource_address());
         let nonce = lending_portal.nonce;
-        event_handle.nonce = lending_portal.nonce + 1;
+        lending_portal.nonce = lending_portal.nonce + 1;
         nonce
     }
 

@@ -1,4 +1,4 @@
-module lending_core::lending_codec {
+module dola_portal::lending_codec {
 
     use std::vector;
 

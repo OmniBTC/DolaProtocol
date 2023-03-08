@@ -8,7 +8,7 @@ module dola_portal::lending {
     use aptos_framework::aptos_coin::AptosCoin;
     use wormhole::state;
     use omnipool::single_pool;
-    use lending_core::lending_codec;
+    use dola_portal::lending_codec;
     use omnipool::wormhole_adapter_pool;
     use aptos_framework::event;
     use std::bcs;
@@ -80,7 +80,7 @@ module dola_portal::lending {
     fun get_nonce(): u64 acquires LendingPortal {
         let lending_portal = borrow_global_mut<LendingPortal>(get_resource_address());
         let nonce = lending_portal.nonce;
-        event_handle.nonce = lending_portal.nonce + 1;
+        lending_portal.nonce = lending_portal.nonce + 1;
         nonce
     }
 

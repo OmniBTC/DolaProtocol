@@ -1,4 +1,4 @@
-module system_core::system_codec {
+module dola_portal::system_codec {
 
     use std::vector;
 
