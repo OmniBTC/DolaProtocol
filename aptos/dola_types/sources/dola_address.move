@@ -1,27 +1,35 @@
-module dola_types::types {
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+///
+module dola_types::dola_address {
     use std::bcs;
     use std::string;
     use std::vector;
 
-    use aptos_std::type_info;
-    use aptos_framework::util::address_from_bytes;
-
     use serde::serde;
-    use serde::u16::{Self, U16};
+    use aptos_std::type_info;
+    use aptos_framework::util;
 
-    const DOLACHAINID: u64 = 1;
+    /// Errors
+
+    const EINVALID_ADDRESS: u64 = 0;
+
+    /// Dola chain id
+
+    const DOLACHAINID: u16 = 1;
 
     /// Used to represent user address and pool address
     struct DolaAddress has copy, drop, store {
-        dola_chain_id: U16,
+        dola_chain_id: u16,
         dola_address: vector<u8>
     }
 
-    public fun get_native_dola_chain_id(): u64 {
+    public fun get_native_dola_chain_id(): u16 {
         DOLACHAINID
     }
 
-    public fun get_dola_chain_id(dola_address: &DolaAddress): U16 {
+    public fun get_dola_chain_id(dola_address: &DolaAddress): u16 {
         dola_address.dola_chain_id
     }
 
@@ -29,7 +37,7 @@ module dola_types::types {
         dola_address.dola_address
     }
 
-    public fun update_dola_chain_id(addr: DolaAddress, dola_chain_id: U16): DolaAddress {
+    public fun update_dola_chain_id(addr: DolaAddress, dola_chain_id: u16): DolaAddress {
         addr.dola_chain_id = dola_chain_id;
         addr
     }
@@ -39,25 +47,25 @@ module dola_types::types {
         addr
     }
 
-    public fun create_dola_address(dola_chain_id: U16, dola_address: vector<u8>): DolaAddress {
+    public fun create_dola_address(dola_chain_id: u16, dola_address: vector<u8>): DolaAddress {
         DolaAddress { dola_chain_id, dola_address }
     }
 
     public fun convert_address_to_dola(addr: address): DolaAddress {
         DolaAddress {
-            dola_chain_id: u16::from_u64(DOLACHAINID),
+            dola_chain_id: DOLACHAINID,
             dola_address: bcs::to_bytes(&addr)
         }
     }
 
     public fun convert_dola_to_address(addr: DolaAddress): address {
-        address_from_bytes(addr.dola_address)
+        util::address_from_bytes(addr.dola_address)
     }
 
     public fun convert_pool_to_dola<CoinType>(): DolaAddress {
         let dola_address = *string::bytes(&type_info::type_name<CoinType>());
         DolaAddress {
-            dola_chain_id: u16::from_u64(DOLACHAINID),
+            dola_chain_id: DOLACHAINID,
             dola_address
         }
     }
