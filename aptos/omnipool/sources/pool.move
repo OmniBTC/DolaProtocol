@@ -425,12 +425,12 @@ module omnipool::pool {
         let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
+        data_len = 2;
+        let app_payload_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
         let app_payload = vector::empty<u8>();
         if (length > index) {
-            data_len = 2;
-            let app_payload_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
-            index = index + data_len;
-
             data_len = (app_payload_len as u64);
             app_payload = serde::vector_slice(&pool_payload, index, index + data_len);
             index = index + data_len;
