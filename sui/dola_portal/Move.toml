@@ -5,7 +5,7 @@ version = "0.0.1"
 [addresses]
 dola_portal = "0x0"
 serde = "0x0"
-lending_core = "0x0"
+lending_core = "0x1"
 oracle = "0x0"
 dola_types = "0x0"
 app_manager = "0x0"

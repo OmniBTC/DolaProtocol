@@ -3,15 +3,16 @@ module user_manager::user_manager {
 
     use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::event;
-    #[test_only]
-    use sui::test_scenario;
+
     #[test_only]
     use governance::genesis;
+    #[test_only]
+    use sui::test_scenario;
 
     /// Errors
     const EALREADY_USER: u64 = 0;
@@ -95,7 +96,8 @@ module user_manager::user_manager {
     public fun unregister_dola_chain_id(
         _: &GovernanceCap,
         user_manager_info: &mut UserManagerInfo,
-        dola_chain_id: u16) {
+        dola_chain_id: u16
+    ) {
         let chain_id_to_group = &mut user_manager_info.chain_id_to_group;
         assert!(table::contains(chain_id_to_group, dola_chain_id), ENOT_GROUP);
         table::remove(chain_id_to_group, dola_chain_id);

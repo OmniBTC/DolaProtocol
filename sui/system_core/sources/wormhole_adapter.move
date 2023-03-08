@@ -1,4 +1,4 @@
-module system_core::protocol_wormhole_adapter {
+module system_core::wormhole_adapter {
 
     use governance::genesis::GovernanceCap;
 
