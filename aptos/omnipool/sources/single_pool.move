@@ -8,7 +8,7 @@ module omnipool::single_pool {
     use dola_types::dola_address::{Self, DolaAddress};
     use dola_types::dola_contract::{Self, DolaContract};
 
-    use omnipool::codec_pool;
+    use omnipool::pool_codec;
 
     friend omnipool::wormhole_adapter_pool;
 
@@ -262,7 +262,7 @@ module omnipool::single_pool {
         let amount = normal_amount<CoinType>(deposit_amount);
         let user_address = dola_address::convert_address_to_dola(sender);
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
-        let pool_payload = codec_pool::encode_deposit_payload(
+        let pool_payload = pool_codec::encode_deposit_payload(
             pool_address, user_address, amount, app_id, app_payload
         );
         let pool = borrow_global_mut<Pool<CoinType>>(get_resource_address());
@@ -321,7 +321,7 @@ module omnipool::single_pool {
         app_payload: vector<u8>,
     ): vector<u8> {
         let sender = dola_address::convert_address_to_dola(signer::address_of(sender));
-        let pool_payload = codec_pool::encode_send_message_payload(sender, app_id, app_payload);
+        let pool_payload = pool_codec::encode_send_message_payload(sender, app_id, app_payload);
         pool_payload
     }
 }

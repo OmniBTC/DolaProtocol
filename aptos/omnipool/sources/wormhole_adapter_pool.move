@@ -14,7 +14,7 @@ module omnipool::wormhole_adapter_pool {
     use aptos_framework::event::{Self, EventHandle};
 
     use dola_types::dola_address::{Self, DolaAddress};
-    use omnipool::codec_pool;
+    use omnipool::pool_codec;
     use omnipool::single_pool;
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
@@ -151,8 +151,8 @@ module omnipool::wormhole_adapter_pool {
         //     &mut pool_state.consumed_vaas,
         //     vaa,
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_register_owner_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_DOLA_CONTRACT);
         single_pool::register_owner(&pool_state.dola_contract, new_owner_emitter);
@@ -170,8 +170,8 @@ module omnipool::wormhole_adapter_pool {
         //     &mut pool_state.consumed_vaas,
         //     vaa,
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_register_spender_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_DOLA_CONTRACT);
         single_pool::register_spender(&pool_state.dola_contract, spend_emitter);
@@ -188,8 +188,8 @@ module omnipool::wormhole_adapter_pool {
         //     &mut pool_state.consumed_vaas,
         //     vaa,
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_delete_owner_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_delete_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         single_pool::delete_owner(&pool_state.dola_contract, dola_contract);
     }
@@ -205,8 +205,8 @@ module omnipool::wormhole_adapter_pool {
         //     &mut pool_state.consumed_vaas,
         //     vaa,
         // );
-        let (dola_chain_id, dola_contract, call_type) = codec_pool::decode_manage_pool_payload(vaa);
-        assert!(call_type == codec_pool::get_delete_spender_type(), EINVALID_CALL_TYPE);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
+        assert!(call_type == pool_codec::get_delete_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
         single_pool::delete_owner(&pool_state.dola_contract, dola_contract);
     }
@@ -266,7 +266,7 @@ module omnipool::wormhole_adapter_pool {
         //     vaa,
         // );
         let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
-            codec_pool::decode_withdraw_payload(vaa);
+            pool_codec::decode_withdraw_payload(vaa);
         single_pool::withdraw<CoinType>(
             &pool_state.dola_contract,
             receiver,
@@ -298,7 +298,7 @@ module omnipool::wormhole_adapter_pool {
 
     public entry fun decode_withdraw_payload(sender: &signer, vaa: vector<u8>) {
         let (_, _, pool_address, user_address, amount, _) =
-            codec_pool::decode_withdraw_payload(vaa);
+            pool_codec::decode_withdraw_payload(vaa);
         move_to(sender, VaaReciveWithdrawEvent {
             pool_address,
             user_address,

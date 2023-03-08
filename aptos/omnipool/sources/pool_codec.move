@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// Codecing for pool contracts
-module omnipool::codec_pool {
+module omnipool::pool_codec {
     use dola_types::dola_address::DolaAddress;
     use std::vector;
     use dola_types::dola_address;
