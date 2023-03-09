@@ -3,8 +3,8 @@ name = "LendingCore"
 version = "0.0.1"
 
 [addresses]
-lending_core = "0x1"
-wormhole_adapter_core = "0x1"
+lending_core = "0x0"
+wormhole_adapter_core = "0x0"
 user_manager = "0x0"
 pool_manager = "0x0"
 app_manager = "0x0"

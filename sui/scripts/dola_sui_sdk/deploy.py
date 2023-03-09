@@ -123,7 +123,7 @@ wormhole_adapter_core_package = sui_brownie.SuiPackage(
     network=net,
     is_compile=False,
     package_id=None,
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_bridge")
+    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_adapter_core")
 )
 
 wormhole_adapter_core_package.publish_package(replace_address=dict(
@@ -172,6 +172,7 @@ system_core_package.publish_package(replace_address=dict(
     user_manager=user_manager_package.package_id,
     wormhole=wormhole_package.package_id,
     wormhole_adapter_core=wormhole_adapter_core_package.package_id,
+    governance=governance_package.package_id
 ))
 
 dola_portal_package = sui_brownie.SuiPackage(
