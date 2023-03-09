@@ -4,7 +4,7 @@ module genesis_proposal::genesis_proposal {
     use std::vector;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
-    use dola_types::dola_address::create_dola_address;
+    use dola_types::dola_address;
     use dola_types::dola_contract::DolaContractRegistry;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::storage::Storage;
@@ -12,7 +12,8 @@ module genesis_proposal::genesis_proposal {
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::sui::SUI;
-    use sui::tx_context::TxContext;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
@@ -159,7 +160,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
+            let pool = dola_address::create_dola_address(pool_dola_chain_id, pool_dola_address);
 
             if (!pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
                 pool_manager::register_pool_id(
@@ -254,12 +255,14 @@ module genesis_proposal::genesis_proposal {
             );
 
             governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun remote_register_spender(
+    public entry fun vote_remote_register_spender(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         wormhole_state: &mut State,
@@ -284,12 +287,14 @@ module genesis_proposal::genesis_proposal {
             );
 
             governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun remote_delete_owner(
+    public entry fun vote_remote_delete_owner(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         wormhole_state: &mut State,
@@ -314,12 +319,14 @@ module genesis_proposal::genesis_proposal {
             );
 
             governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun remote_delete_spender(
+    public entry fun vote_remote_delete_spender(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         wormhole_state: &mut State,
@@ -344,6 +351,8 @@ module genesis_proposal::genesis_proposal {
             );
 
             governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);

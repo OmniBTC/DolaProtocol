@@ -225,7 +225,7 @@ def vote_init_chain_group_id(group_id, chain_ids):
 
 def vote_register_new_spender(dola_chain_id, dola_contract):
     """
-    public entry fun remote_register_spender(
+    public entry fun vote_remote_register_spender(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         wormhole_state: &mut State,
@@ -242,7 +242,7 @@ def vote_register_new_spender(dola_chain_id, dola_contract):
     wormhole = load.wormhole_package()
     wormhole_adapter_core = load.wormhole_adapter_core_package()
 
-    genesis_proposal.genesis_proposal.remote_register_spender(
+    genesis_proposal.genesis_proposal.vote_remote_register_spender(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
