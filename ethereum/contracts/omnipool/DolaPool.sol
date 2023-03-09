@@ -132,6 +132,7 @@ contract DolaPool {
     /// Send pool message that do not involve incoming or outgoing funds
     function sendMessage(uint16 appId, bytes memory appPayload)
         public
+        view
         returns (bytes memory)
     {
         return

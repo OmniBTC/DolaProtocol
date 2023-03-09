@@ -283,7 +283,7 @@ contract DolaPortal {
         );
     }
 
-    function generateNonce() internal returns (bytes32) {
+    function generateNonce() internal view returns (bytes32) {
         return keccak256(abi.encodePacked(block.timestamp, msg.sender));
     }
 }

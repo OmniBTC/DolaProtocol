@@ -6,6 +6,7 @@ import "../libraries/LibLending.sol";
 import "../libraries/LibProtocol.sol";
 import "./DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
+import "../libraries/LibWormholeAdapterVerify.sol";
 
 contract WormholeAdapterPool {
     /// Storage
@@ -63,42 +64,85 @@ contract WormholeAdapterPool {
 
     /// Call by governance
 
-    //    function registerOwner(
-    //        bytes memory encodedVm
-    //    )public{
-    //
-    //    }
-
-    function sendLendingHelperPayload(
-        uint16[] memory dolaPoolIds,
-        uint8 callType
-    ) external payable {
-        bytes memory payload = LibLending.encodeAppHelperPayload(
-            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            dolaPoolIds,
-            callType
-        );
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
+    function getDolaContract() public view returns (uint256) {
+        return uint256(uint160(address(this)));
     }
 
-    function sendProtocolPayload(
-        uint64 nonce,
-        uint8 callType,
-        uint16 bindDolaChainId,
-        bytes memory bindAddress
-    ) external payable {
-        bytes memory payload = LibProtocol.encodeProtocolAppPayload(
-            dolaChainId,
-            nonce,
-            callType,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, tx.origin),
-            LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress)
+    function registerOwner(bytes memory encodedVm) external {
+        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+        //            .parseVerifyAndReplayProtect(
+        //                wormhole,
+        //                registeredEmitters,
+        //                consumedVaas,
+        //                encodedVm
+        //            );
+        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
+            .decodeManagePoolPayload(encodedVm);
+        require(
+            payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
+            "INVALID CALL TYPE"
         );
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
+        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        dolaPool.registerOwner(address(uint160(payload.dolaContract)));
     }
 
+    function deleteOwner(bytes memory encodedVm) external {
+        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+        //            .parseVerifyAndReplayProtect(
+        //                wormhole,
+        //                registeredEmitters,
+        //                consumedVaas,
+        //                encodedVm
+        //            );
+        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
+            .decodeManagePoolPayload(encodedVm);
+        require(
+            payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
+            "INVALID CALL TYPE"
+        );
+        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        dolaPool.deleteOwner(address(uint160(payload.dolaContract)));
+    }
+
+    function registerSpender(bytes memory encodedVm) external {
+        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+        //            .parseVerifyAndReplayProtect(
+        //                wormhole,
+        //                registeredEmitters,
+        //                consumedVaas,
+        //                encodedVm
+        //            );
+        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
+            .decodeManagePoolPayload(encodedVm);
+        require(
+            payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
+            "INVALID CALL TYPE"
+        );
+        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        dolaPool.registerSpender(address(uint160(payload.dolaContract)));
+    }
+
+    function deleteSpender(bytes memory encodedVm) external {
+        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+        //            .parseVerifyAndReplayProtect(
+        //                wormhole,
+        //                registeredEmitters,
+        //                consumedVaas,
+        //                encodedVm
+        //            );
+        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
+            .decodeManagePoolPayload(encodedVm);
+        require(
+            payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
+            "INVALID CALL TYPE"
+        );
+        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        dolaPool.deleteSpender(address(uint160(payload.dolaContract)));
+    }
+
+    /// Call by application
+
+    /// Send deposit by application
     function sendDeposit(
         address token,
         uint256 amount,
@@ -125,24 +169,32 @@ contract WormholeAdapterPool {
         increaseNonce();
     }
 
-    //    function sendWithdraw(
-    //        bytes memory token,
-    //        uint16 appId,
-    //        bytes memory appPayload
-    //    ) external payable {
-    //        bytes memory payload = dolaPool.withdrawTo(
-    //            token,
-    //            appId,
-    //            appPayload
-    //        );
-    //        cachedVAA[getNonce()] = payload;
-    //        increaseNonce();
-    //    }
+    /// Send message that do not involve incoming or outgoing funds by application
+    function sendMessage(uint16 appId, bytes memory appPayload)
+        external
+        payable
+    {
+        uint256 wormholeFee = wormhole.messageFee();
+        require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
+        bytes memory payload = dolaPool.sendMessage(appId, appPayload);
+        wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
+        cachedVAA[getNonce()] = payload;
+        increaseNonce();
+    }
 
-    function receiveWithdraw(bytes memory vaa) public {
+    /// Receive withdraw
+    function receiveWithdraw(bytes memory encodedVm) public {
+        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+        //            .parseVerifyAndReplayProtect(
+        //                wormhole,
+        //                registeredEmitters,
+        //                consumedVaas,
+        //                encodedVm
+        //            );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
-            .decodeWithdrawPayload(vaa);
+            .decodeWithdrawPayload(encodedVm);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
+
         emit PoolWithdrawEvent(
             payload.nonce,
             payload.sourceChainId,
