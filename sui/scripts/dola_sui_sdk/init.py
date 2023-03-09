@@ -85,13 +85,14 @@ def vote_init_wormhole_adapter_core():
     )
 
 
-def vote_init_lending_storage():
+def vote_init_lending_core():
     """
-    public entry fun vote_init_lending_storage(
+    public entry fun vote_init_lending_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
+        wormhole_adapater: &mut lending_core::wormhole_adapter::WormholeAdapter,
         ctx: &mut TxContext
     )
     :return:
@@ -106,48 +107,28 @@ def vote_init_lending_storage():
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         lending_core.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
+        lending_core.wormhole_adapter.WormholeAdapter[-1]
     )
 
 
-def vote_init_lending_wormhole_adapter():
+def vote_init_system_core():
     """
-    public entry fun vote_init_lending_wormhole_adapter(
+    public entry fun vote_init_system_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        wormhole_adapater: &mut WormholeAdapter,
+        total_app_info: &mut TotalAppInfo,
         ctx: &mut TxContext
     )
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
+    app_manager = load.app_manager_package()
     governance = load.governance_package()
-    lending_core = load.lending_core_package()
-
-    genesis_proposal.genesis_proposal.vote_init_lending_wormhole_adapter(
-        governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
-        lending_core.lending_wormhole_adapter.WormholeAdapter[-1]
-    )
-
-
-def vote_init_protocol_wormhole_adapter():
-    """
-    public entry fun vote_init_protocol_wormhole_adapter(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        wormhole_adapater: &mut protocol_wormhole_adapter::WormholeAdapter,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
-    protocol_core = load.protocol_core_package()
 
     genesis_proposal.genesis_proposal.vote_init_protocol_wormhole_adapter(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
-        protocol_core.protocol_wormhole_adapter.WormholeAdapter[-1]
+        app_manager.app_manager.TotalAppInfo[-1],
     )
 
 
@@ -172,13 +153,14 @@ def vote_init_dola_portal():
     )
 
 
-def vote_register_evm_chain_id(evm_chain_id):
+def vote_init_chain_group_id(group_id, chain_ids):
     """
-    public entry fun vote_register_evm_chain_id(
+    public entry fun vote_init_chain_group_id(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         user_manager: &mut UserManagerInfo,
-        evm_chain_id: u16,
+        group_id: u16,
+        chain_ids: vector<u16>,
         ctx: &mut TxContext
     )
     :return:
@@ -190,7 +172,8 @@ def vote_register_evm_chain_id(evm_chain_id):
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         user_manager.user_manager.UserManagerInfo[-1],
-        evm_chain_id
+        group_id,
+        chain_ids
     )
 
 
@@ -417,34 +400,23 @@ def main():
     vote_register_new_pool(
         7, b"SUI", "0x0000000000000000000000000000000000000002::sui::SUI")
 
-    # 6. init lending_core storage
+    # 6. init lending_core
     create_proposal()
-    vote_init_lending_storage()
+    vote_init_lending_core()
 
+    # 7. init system core
     create_proposal()
-    vote_init_lending_wormhole_adapter()
-
-    # 7. init protocol_core wormhole adapter
-    create_proposal()
-    vote_init_protocol_wormhole_adapter()
+    vote_init_system_core()
 
     # 8. init dola portal
     create_proposal()
 
     vote_init_dola_portal()
 
-    # 9. register evm chain id for user manager
+    # 9. register evm chain group
     create_proposal()
 
-    vote_register_evm_chain_id(4)
-
-    create_proposal()
-
-    vote_register_evm_chain_id(5)
-
-    create_proposal()
-
-    vote_register_evm_chain_id(1422)
+    vote_init_chain_group_id(2, [4, 5, 1422])
 
     # 10. register reserves
 
