@@ -72,6 +72,8 @@ module wormhole_adapter_core::pool_codec {
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
+        serde::serialize_u16(&mut pool_payload, app_id);
+
         let pool_address = dola_address::encode_dola_address(pool_address);
         serde::serialize_u16(&mut pool_payload, (vector::length(&pool_address) as u16));
         serde::serialize_vector(&mut pool_payload, pool_address);
@@ -81,8 +83,6 @@ module wormhole_adapter_core::pool_codec {
         serde::serialize_vector(&mut pool_payload, user_address);
 
         serde::serialize_u64(&mut pool_payload, amount);
-
-        serde::serialize_u16(&mut pool_payload, app_id);
 
         serde::serialize_u8(&mut pool_payload, POOL_DEPOSIT);
 
@@ -100,6 +100,10 @@ module wormhole_adapter_core::pool_codec {
         let length = vector::length(&pool_payload);
         let index = 0;
         let data_len;
+
+        data_len = 2;
+        let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
 
         data_len = 2;
         let pool_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
@@ -124,10 +128,6 @@ module wormhole_adapter_core::pool_codec {
 
         data_len = 8;
         let amount = serde::deserialize_u64(&serde::vector_slice(&pool_payload, index, index + data_len));
-        index = index + data_len;
-
-        data_len = 2;
-        let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
@@ -240,11 +240,11 @@ module wormhole_adapter_core::pool_codec {
     ): vector<u8> {
         let pool_payload = vector::empty<u8>();
 
+        serde::serialize_u16(&mut pool_payload, app_id);
+
         let user_address = dola_address::encode_dola_address(user_address);
         serde::serialize_u16(&mut pool_payload, (vector::length(&user_address) as u16));
         serde::serialize_vector(&mut pool_payload, user_address);
-
-        serde::serialize_u16(&mut pool_payload, app_id);
 
         serde::serialize_u8(&mut pool_payload, POOL_SEND_MESSAGE);
 
@@ -264,6 +264,10 @@ module wormhole_adapter_core::pool_codec {
         let data_len;
 
         data_len = 2;
+        let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
         let user_len = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
@@ -271,10 +275,6 @@ module wormhole_adapter_core::pool_codec {
         let user_address = dola_address::decode_dola_address(
             serde::vector_slice(&pool_payload, index, index + data_len)
         );
-        index = index + data_len;
-
-        data_len = 2;
-        let app_id = serde::deserialize_u16(&serde::vector_slice(&pool_payload, index, index + data_len));
         index = index + data_len;
 
         data_len = 1;
