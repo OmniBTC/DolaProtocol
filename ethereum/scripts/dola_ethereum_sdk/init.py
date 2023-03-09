@@ -32,7 +32,7 @@ def eth():
 
 def get_pool_token(pool):
     omnipool = Contract.from_abi(
-        "OmniPool", pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].abi)
+        "SinglePool", pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["SinglePool"].abi)
     return omnipool.token()
 
 

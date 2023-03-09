@@ -1,4 +1,4 @@
-from brownie import MockBridgePool, OmniPool, MockToken, DolaPortal, EncodeDecode, accounts, config
+from brownie import MockWormholeAdapterPool, SinglePool, MockToken, DolaPortal, EncodeDecode, accounts, config
 from pytest import fixture
 
 wormhole_address = config["networks"]["development"]["wormhole"]
@@ -20,13 +20,13 @@ def encode_decode():
 
 @fixture
 def omnipool():
-    return OmniPool.deploy(wormhole_chainid,
+    return SinglePool.deploy(wormhole_chainid,
                            account(), {'from': account()})
 
 
 @fixture
 def bridge_pool(omnipool):
-    bridge = MockBridgePool.deploy(wormhole_address,
+    bridge = MockWormholeAdapterPool.deploy(wormhole_address,
                                    wormhole_chainid,
                                    wormhole_chainid,
                                    1,

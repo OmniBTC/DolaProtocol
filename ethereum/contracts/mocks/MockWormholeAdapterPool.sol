@@ -7,7 +7,7 @@ import "../libraries/LibProtocol.sol";
 import "../../interfaces/IOmniPool.sol";
 import "../../interfaces/IWormhole.sol";
 
-contract MockBridgePool {
+contract MockWormholeAdapterPool {
     address wormholeBridge;
     uint32 vaaNonce;
     uint16 dolaChainId;

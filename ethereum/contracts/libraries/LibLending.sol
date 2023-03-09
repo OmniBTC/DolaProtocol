@@ -44,9 +44,9 @@ library LibLending {
     }
 
     function decodeAppHelperPayload(bytes memory payload)
-    internal
-    pure
-    returns (LendingAppHelperPayload memory)
+        internal
+        pure
+        returns (LendingAppHelperPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
@@ -108,9 +108,9 @@ library LibLending {
     }
 
     function decodeLendingAppPayload(bytes memory payload)
-    internal
-    pure
-    returns (LendingAppPayload memory)
+        internal
+        pure
+        returns (LendingAppPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;

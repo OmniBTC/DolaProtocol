@@ -12,7 +12,7 @@ def deploy():
 
     print("deploy  omnipool...")
 
-    omnipool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["OmniPool"].deploy(wormhole_chainid,
+    omnipool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["SinglePool"].deploy(wormhole_chainid,
                                                                        account, {'from': account})
 
     print("deploy bridge pool...")

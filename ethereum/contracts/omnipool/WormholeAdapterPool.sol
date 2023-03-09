@@ -2,26 +2,30 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/LibPool.sol";
-import "../libraries/LibProtocol.sol";
 import "../libraries/LibLending.sol";
-import "../../interfaces/IOmniPool.sol";
+import "../libraries/LibProtocol.sol";
+import "./SinglePool.sol";
 import "../../interfaces/IWormhole.sol";
 
-contract BridgePool {
-    uint16 public constant SUI_WORMHOLE_EMITTER_CHAIN = 24;
+contract WormholeAdapterPool {
 
-    bytes32 public constant SUI_WORMHOLE_EMITTER_ADDRESS = 0x0000000000000000000000000000000000000000000000000000000000000004;
+    /// Storage
 
-    address wormholeBridge;
-    uint32 vaaNonce;
-    uint16 dolaChainId;
-    uint16 wormholeChainId;
-    uint8 finality;
-    address remoteBridge;
-    address omnipool;
-    mapping(bytes32 => bool) completeVAA;
-    // convenient for testing
+    // Wormhole address
+    IWormhole immutable wormhole;
+    // Dola chain id
+    uint16 immutable dolaChainId;
+    // Single pool
+    SinglePool immutable singlePool;
+
+    // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
+    mapping(uint16 => bytes32)  registeredEmitters;
+    // Used to verify that the VAA has been processed
+    mapping(bytes32 => bool) consumedVaas;
+
+    // todo! Delete after wormhole running
     mapping(uint32 => bytes) public cachedVAA;
+    uint32 vaaNonce;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -33,39 +37,22 @@ contract BridgePool {
     );
 
     constructor(
-        address _wormholeBridge,
-        uint16 _dolaChainId,
-        uint16 _wormholeChainId,
-        uint8 _finality,
-        address _remoteBridge,
-        address _omnipool
+        IWormhole _wormhole,
+        uint16 _dolaChainId
     ) {
-        wormholeBridge = _wormholeBridge;
+        wormhole = _wormhole;
         dolaChainId = _dolaChainId;
-        wormholeChainId = _wormholeChainId;
-        finality = _finality;
-        remoteBridge = _remoteBridge;
-        omnipool = _omnipool;
-    }
-
-    function wormhole() public view returns (IWormhole) {
-        return IWormhole(wormholeBridge);
+        singlePool = new SinglePool(_dolaChainId, address(this));
     }
 
     function getWormholeMessageFee() public view returns (uint256) {
-        return IWormhole(wormholeBridge).messageFee();
+        return wormhole.messageFee();
     }
 
-    function getWormholeBridge() public view returns (address) {
-        return wormholeBridge;
-    }
 
+    // todo! Delete after wormhole running
     function getNonce() public view returns (uint32) {
         return vaaNonce;
-    }
-
-    function getFinality() public view returns (uint8) {
-        return finality;
     }
 
     function getLatestVAA() public view returns (bytes memory) {
@@ -76,13 +63,13 @@ contract BridgePool {
         vaaNonce += 1;
     }
 
-    function setVAAComplete(bytes32 _hash) internal {
-        completeVAA[_hash] = true;
-    }
+    /// Call by governance
 
-    function isCompleteVAA(bytes32 _hash) internal view returns (bool) {
-        return completeVAA[_hash];
-    }
+    //    function registerOwner(
+    //        bytes memory encodedVm
+    //    )public{
+    //
+    //    }
 
     function sendLendingHelperPayload(
         uint16[] memory dolaPoolIds,
@@ -123,14 +110,14 @@ contract BridgePool {
         bytes memory payload;
         if (token == address(0)) {
             require(msg.value >= amount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositTo{value : amount}(
+            payload = singlePool.depositTo{value : amount}(
                 token,
                 amount,
                 appId,
                 appPayload
             );
         } else {
-            payload = IOmniPool(omnipool).depositTo(
+            payload = singlePool.depositTo(
                 token,
                 amount,
                 appId,
@@ -139,11 +126,6 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        wormhole().publishMessage{value : getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
@@ -152,17 +134,12 @@ contract BridgePool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload = IOmniPool(omnipool).withdrawTo(
+        bytes memory payload = singlePool.withdrawTo(
             token,
             appId,
             appPayload
         );
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value : getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
@@ -177,7 +154,7 @@ contract BridgePool {
         bytes memory payload;
         if (depositToken == address(0)) {
             require(msg.value >= depositAmount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositAndWithdraw{
+            payload = singlePool.depositAndWithdraw{
             value : depositAmount
             }(
                 depositToken,
@@ -188,7 +165,7 @@ contract BridgePool {
                 appPayload
             );
         } else {
-            payload = IOmniPool(omnipool).depositAndWithdraw(
+            payload = singlePool.depositAndWithdraw(
                 depositToken,
                 depositAmount,
                 withdrawChainId,
@@ -199,27 +176,15 @@ contract BridgePool {
         }
 
         cachedVAA[getNonce()] = payload;
-        IWormhole(wormhole()).publishMessage{value : getWormholeMessageFee()}(
-            getNonce(),
-            payload,
-            getFinality()
-        );
         increaseNonce();
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        // todo: use this when more formal
-        // (IWormhole.VM memory vm, , ) = wormhole().parseAndVerifyVM(vaa);
-        // require(!isCompleteVAA(vm.hash), "withdraw already completed");
-        // setVAAComplete(vm.hash);
-        // LibPool.ReceiveWithdrawPayload memory payload = LibPool
-        //     .decodeReceiveWithdrawPayload(vm.payload);
-
         LibPool.ReceiveWithdrawPayload memory payload = LibPool
         .decodeReceiveWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
-        IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);
+        singlePool.innerWithdraw(token, user, payload.amount);
         emit PoolWithdrawEvent(
             payload.nonce,
             payload.sourceChainId,

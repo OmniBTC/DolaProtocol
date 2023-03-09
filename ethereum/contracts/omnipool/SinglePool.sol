@@ -6,7 +6,7 @@ import "../libraries//LibPool.sol";
 import "../libraries//LibDecimals.sol";
 import "../libraries//LibDolaTypes.sol";
 
-contract OmniPool {
+contract SinglePool {
     uint16 public dolaChainId;
     mapping(address => bool) public allowances;
     mapping(address => uint256) public pools;
@@ -16,8 +16,8 @@ contract OmniPool {
         _;
     }
 
-    constructor(uint16 chainId, address bridge) {
-        dolaChainId = chainId;
+    constructor(uint16 _dolaChainId, address bridge) {
+        dolaChainId = _dolaChainId;
         allowances[bridge] = true;
     }
 
