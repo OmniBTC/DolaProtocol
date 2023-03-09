@@ -4,60 +4,50 @@ pragma solidity ^0.8.0;
 import "./LibBytes.sol";
 import "./LibDolaTypes.sol";
 
-library LibProtocol {
+library LibSystemCodec {
     using LibBytes for bytes;
-    uint16 internal constant APP_ID = 0;
 
-    struct ProtocolAppPayload {
-        uint16 appId;
+    uint8 internal constant BINDING = 0;
+    uint8 internal constant UNBINDING = 1;
+
+    struct SystemBindPayload {
         uint16 sourceChainId;
         uint64 nonce;
-        LibDolaTypes.DolaAddress sender;
         LibDolaTypes.DolaAddress userAddress;
         uint8 callType;
     }
 
-    function encodeProtocolAppPayload(
+    /// Encode binding or unbinding
+    function encodeBindPayload(
         uint16 sourceChainId,
         uint64 nonce,
-        uint8 callType,
-        LibDolaTypes.DolaAddress memory user,
-        LibDolaTypes.DolaAddress memory binding
+        LibDolaTypes.DolaAddress memory binding,
+        uint8 systemCallType
     ) internal pure returns (bytes memory) {
-        bytes memory userAddress = LibDolaTypes.encodeDolaAddress(
-            user.dolaChainId,
-            user.externalAddress
-        );
         bytes memory bindingAddress = LibDolaTypes.encodeDolaAddress(
             binding.dolaChainId,
             binding.externalAddress
         );
         bytes memory payload = abi.encodePacked(
-            APP_ID,
             sourceChainId,
             nonce,
-            uint16(userAddress.length),
-            userAddress,
             uint16(bindingAddress.length),
             bindingAddress,
-            callType
+            systemCallType
         );
         return payload;
     }
 
-    function decodeProtocolAppPayload(bytes memory payload)
+    /// Decode binding or unbinding
+    function decodeBindPayload(bytes memory payload)
         internal
         pure
-        returns (ProtocolAppPayload memory)
+        returns (SystemBindPayload memory)
     {
         uint256 length = payload.length;
         uint256 index;
         uint256 dataLen;
-        ProtocolAppPayload memory decodeData;
-
-        dataLen = 2;
-        decodeData.appId = payload.toUint16(index);
-        index += dataLen;
+        SystemBindPayload memory decodeData;
 
         dataLen = 2;
         decodeData.sourceChainId = payload.toUint16(index);
@@ -65,16 +55,6 @@ library LibProtocol {
 
         dataLen = 8;
         decodeData.nonce = payload.toUint64(index);
-        index += dataLen;
-
-        dataLen = 2;
-        uint16 senderLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = senderLength;
-        decodeData.sender = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, dataLen)
-        );
         index += dataLen;
 
         dataLen = 2;
@@ -91,7 +71,7 @@ library LibProtocol {
         decodeData.callType = payload.toUint8(index);
         index += dataLen;
 
-        require(index == length, "Decode unbinding payload error");
+        require(index == length, "INVALID LENGTH");
 
         return decodeData;
     }

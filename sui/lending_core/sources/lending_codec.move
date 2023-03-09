@@ -26,7 +26,7 @@ module lending_core::lending_codec {
 
     const AS_COLLATERAL: u8 = 5;
 
-    const CANCLE_AS_COLLATERAL: u8 = 6;
+    const CANCEL_AS_COLLATERAL: u8 = 6;
 
     /// Getter
 
@@ -55,7 +55,7 @@ module lending_core::lending_codec {
     }
 
     public fun get_cancel_as_colleteral_type(): u8 {
-        CANCLE_AS_COLLATERAL
+        CANCEL_AS_COLLATERAL
     }
 
 

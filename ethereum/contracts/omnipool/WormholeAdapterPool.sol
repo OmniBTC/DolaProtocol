@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/LibPoolCodec.sol";
-import "../libraries/LibLending.sol";
-import "../libraries/LibProtocol.sol";
+import "../libraries/LibLendingCodec.sol";
+import "../libraries/LibSystemCodec.sol";
 import "./DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
 import "../libraries/LibWormholeAdapterVerify.sol";

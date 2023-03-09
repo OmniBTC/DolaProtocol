@@ -2,36 +2,18 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../interfaces/IWormholeBridge.sol";
+import "../../interfaces/IWormholeAdapterPool.sol";
 import "../../interfaces/IOmniPool.sol";
-import "../libraries/LibLending.sol";
+import "../libraries/LibLendingCodec.sol";
 import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";
 import "../libraries/LibAsset.sol";
 
 contract DolaPortal {
     uint8 public constant LENDING_APP_ID = 1;
-    uint8 private constant SUPPLY = 0;
-    uint8 private constant WITHDRAW = 1;
-    uint8 private constant BORROW = 2;
-    uint8 private constant REPAY = 3;
-    uint8 private constant LIQUIDATE = 4;
-    uint8 private constant BINDING = 5;
-    uint8 private constant UNBINDING = 6;
-    uint8 private constant AS_COLLATERAL = 7;
-    uint8 private constant CANCEL_AS_COLLATERAL = 8;
-    address public bridgePool;
-    uint16 public dolaChainId;
+    IWormholeAdapterPool immutable wormholeAdapterPool;
     uint64 public dolaNonce;
 
-    event ProtocolPortalEvent(
-        uint64 nonce,
-        address sender,
-        uint16 sourceChainId,
-        uint16 userChainId,
-        bytes userAddress,
-        uint8 callType
-    );
     event LendingPortalEvent(
         uint64 nonce,
         address sender,
@@ -43,9 +25,8 @@ contract DolaPortal {
         uint8 callType
     );
 
-    constructor(address bridge, uint16 chainId) {
-        bridgePool = bridge;
-        dolaChainId = chainId;
+    constructor(IWormholeAdapterPool _wormholeAdapterPool) {
+        wormholeAdapterPool = _wormholeAdapterPool;
     }
 
     function getNonce() internal returns (uint64) {
@@ -54,80 +35,20 @@ contract DolaPortal {
         return nonce;
     }
 
-    function as_collateral(uint16[] memory dolaPoolIds) external payable {
-        IWormholeBridge(bridgePool).sendLendingHelperPayload(
-            dolaPoolIds,
-            AS_COLLATERAL
-        );
-    }
-
-    function cancel_as_collateral(uint16[] memory dolaPoolIds)
-        external
-        payable
-    {
-        IWormholeBridge(bridgePool).sendLendingHelperPayload(
-            dolaPoolIds,
-            CANCEL_AS_COLLATERAL
-        );
-    }
-
-    function binding(uint16 bindDolaChainId, bytes memory bindAddress)
-        external
-        payable
-    {
-        uint64 nonce = getNonce();
-        IWormholeBridge(bridgePool).sendProtocolPayload(
-            nonce,
-            BINDING,
-            bindDolaChainId,
-            bindAddress
-        );
-        emit ProtocolPortalEvent(
-            nonce,
-            msg.sender,
-            dolaChainId,
-            bindDolaChainId,
-            bindAddress,
-            BINDING
-        );
-    }
-
-    function unbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
-        external
-        payable
-    {
-        uint64 nonce = getNonce();
-        IWormholeBridge(bridgePool).sendProtocolPayload(
-            nonce,
-            UNBINDING,
-            unbindDolaChainId,
-            unbindAddress
-        );
-        emit ProtocolPortalEvent(
-            nonce,
-            msg.sender,
-            dolaChainId,
-            unbindDolaChainId,
-            unbindAddress,
-            UNBINDING
-        );
-    }
-
     function supply(address token, uint256 amount) external payable {
         uint64 nonce = getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
             LibAsset.queryDecimals(token)
         );
-        bytes memory appPayload = LibLending.encodeLendingAppPayload(
+        uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
+        bytes memory appPayload = LibLendingCodec.encodeDepositPayload(
             dolaChainId,
             nonce,
-            SUPPLY,
-            fixAmount,
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
-            0
+            LibLendingCodec.SUPPLY
         );
-        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
             amount,
             LENDING_APP_ID,
@@ -141,7 +62,7 @@ contract DolaPortal {
             0,
             abi.encodePacked(msg.sender),
             fixAmount,
-            SUPPLY
+            LibLendingCodec.SUPPLY
         );
     }
 
@@ -153,16 +74,17 @@ contract DolaPortal {
         uint64 amount
     ) external payable {
         uint64 nonce = getNonce();
-        bytes memory appPayload = LibLending.encodeLendingAppPayload(
+        uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
+
+        bytes memory appPayload = LibLendingCodec.encodeWithdrawPayload(
             dolaChainId,
             nonce,
-            WITHDRAW,
             amount,
+            LibDolaTypes.DolaAddress(dolaChainId, token),
             LibDolaTypes.DolaAddress(dstChainId, receiver),
-            0
+            LibLendingCodec.WITHDRAW
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
-            token,
+        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
         );
@@ -174,7 +96,7 @@ contract DolaPortal {
             dstChainId,
             receiver,
             amount,
-            WITHDRAW
+            LibLendingCodec.WITHDRAW
         );
     }
 
@@ -185,16 +107,18 @@ contract DolaPortal {
         uint64 amount
     ) external payable {
         uint64 nonce = getNonce();
-        bytes memory appPayload = LibLending.encodeLendingAppPayload(
+        uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
+
+        bytes memory appPayload = LibLendingCodec.encodeWithdrawPayload(
             dolaChainId,
             nonce,
-            BORROW,
             amount,
+            LibDolaTypes.DolaAddress(dolaChainId, token),
             LibDolaTypes.DolaAddress(dstChainId, receiver),
-            0
+            LibLendingCodec.BORROW
         );
-        IWormholeBridge(bridgePool).sendWithdraw{value: msg.value}(
-            token,
+
+        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
         );
@@ -206,7 +130,7 @@ contract DolaPortal {
             dstChainId,
             receiver,
             amount,
-            BORROW
+            LibLendingCodec.BORROW
         );
     }
 
@@ -216,15 +140,15 @@ contract DolaPortal {
             amount,
             LibAsset.queryDecimals(token)
         );
-        bytes memory appPayload = LibLending.encodeLendingAppPayload(
+        uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
+
+        bytes memory appPayload = LibLendingCodec.encodeDepositPayload(
             dolaChainId,
             nonce,
-            REPAY,
-            fixAmount,
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
-            0
+            LibLendingCodec.REPAY
         );
-        IWormholeBridge(bridgePool).sendDeposit{value: msg.value}(
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
             amount,
             LENDING_APP_ID,
@@ -238,7 +162,7 @@ contract DolaPortal {
             0,
             abi.encodePacked(msg.sender),
             fixAmount,
-            REPAY
+            LibLendingCodec.REPAY
         );
     }
 
@@ -250,23 +174,21 @@ contract DolaPortal {
         uint64 liquidateUserId
     ) external {
         uint64 nonce = getNonce();
+        uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
+
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
             LibAsset.queryDecimals(debtToken)
         );
-        bytes memory appPayload = LibLending.encodeLendingAppPayload(
+        bytes memory appPayload = LibLendingCodec.encodeLiquidatePayload(
             dolaChainId,
             nonce,
-            LIQUIDATE,
-            fixAmount,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
+            LibDolaTypes.DolaAddress(dolaChainId, liquidateTokenAddress),
             liquidateUserId
         );
-        IWormholeBridge(bridgePool).sendDepositAndWithdraw(
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit(
             debtToken,
             amount,
-            liquidateChainId,
-            liquidateTokenAddress,
             LENDING_APP_ID,
             appPayload
         );
@@ -279,7 +201,36 @@ contract DolaPortal {
             0,
             abi.encodePacked(msg.sender),
             fixAmount,
-            LIQUIDATE
+            LibLendingCodec.LIQUIDATE
+        );
+    }
+
+    function as_collateral(uint16[] memory dolaPoolIds) external payable {
+        uint64 nonce = getNonce();
+
+        bytes memory appPayload = LibLendingCodec.encodeManageCollateralPayload(
+            dolaPoolIds,
+            LibLendingCodec.AS_COLLATERAL
+        );
+        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
+            LENDING_APP_ID,
+            appPayload
+        );
+    }
+
+    function cancel_as_collateral(uint16[] memory dolaPoolIds)
+        external
+        payable
+    {
+        uint64 nonce = getNonce();
+
+        bytes memory appPayload = LibLendingCodec.encodeManageCollateralPayload(
+            dolaPoolIds,
+            LibLendingCodec.CANCEL_AS_COLLATERAL
+        );
+        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
+            LENDING_APP_ID,
+            appPayload
         );
     }
 
