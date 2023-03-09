@@ -109,14 +109,13 @@ module omnipool::dola_pool {
     public fun register_owner(
         pool_approval: &mut PoolApproval,
         old_owner: &DolaContract,
-        new_owner: &DolaContract
+        new_owner: u256
     ) {
         let old_dola_contract = dola_contract::get_dola_contract(old_owner);
-        let new_dola_contract = dola_contract::get_dola_contract(new_owner);
         assert!(vector::contains(&pool_approval.owners, &old_dola_contract), ENOT_REGISTER_OWNER);
-        assert!(!vector::contains(&pool_approval.owners, &new_dola_contract), EHAS_REGISTER_OWNER);
+        assert!(!vector::contains(&pool_approval.owners, &new_owner), EHAS_REGISTER_OWNER);
 
-        vector::push_back(&mut pool_approval.owners, dola_contract::get_dola_contract(new_owner));
+        vector::push_back(&mut pool_approval.owners, new_owner);
     }
 
     /// Delete owner by owner
@@ -135,14 +134,13 @@ module omnipool::dola_pool {
     public fun register_spender(
         pool_approval: &mut PoolApproval,
         owner: &DolaContract,
-        spender: &DolaContract
+        spender: u256
     ) {
         let owner_dola_contract = dola_contract::get_dola_contract(owner);
-        let spender_dola_contract = dola_contract::get_dola_contract(spender);
         assert!(vector::contains(&pool_approval.owners, &owner_dola_contract), ENOT_REGISTER_OWNER);
-        assert!(!vector::contains(&pool_approval.spenders, &spender_dola_contract), EHAS_REGISTER_SPENDER);
+        assert!(!vector::contains(&pool_approval.spenders, &spender), EHAS_REGISTER_SPENDER);
 
-        vector::push_back(&mut pool_approval.spenders, spender_dola_contract);
+        vector::push_back(&mut pool_approval.spenders, spender);
     }
 
     /// Delete spender by owner

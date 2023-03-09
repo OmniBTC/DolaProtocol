@@ -38,7 +38,7 @@ module omnipool::wormhole_adapter_pool {
     const EINVALID_CALL_TYPE: u64 = 4;
 
     /// Reocord genesis of this module
-    struct PoolGensis has key {
+    struct PoolGenesis has key {
         id: UID,
         // Record creator of this module
         creator: address,
@@ -92,7 +92,7 @@ module omnipool::wormhole_adapter_pool {
     }
 
     fun init(ctx: &mut TxContext) {
-        transfer::share_object(PoolGensis {
+        transfer::share_object(PoolGenesis {
             id: object::new(ctx),
             creator: tx_context::sender(ctx),
             is_init: false
@@ -102,7 +102,7 @@ module omnipool::wormhole_adapter_pool {
 
     /// Initialize for remote bridge and dola pool
     public entry fun initialize(
-        pool_genesis: &mut PoolGensis,
+        pool_genesis: &mut PoolGenesis,
         sui_wormhole_chain: u16, // Represents the wormhole chain id of the wormhole adpter core on Sui
         sui_wormhole_address: vector<u8>, // Represents the wormhole contract address of the wormhole adpter core on Sui
         pool_approval: &mut PoolApproval,
@@ -143,11 +143,10 @@ module omnipool::wormhole_adapter_pool {
     /// Call by governance
 
     /// Register pool owner by governance
-    public fun register_owner(
+    public entry fun register_owner(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
-        vaa: vector<u8>,
-        new_owner_emitter: &DolaContract
+        vaa: vector<u8>
     ) {
         // let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -159,16 +158,14 @@ module omnipool::wormhole_adapter_pool {
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
         assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
-        assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_DOLA_CONTRACT);
-        dola_pool::register_owner(pool_approval, &pool_state.dola_contract, new_owner_emitter);
+        dola_pool::register_owner(pool_approval, &pool_state.dola_contract, dola_contract);
     }
 
     /// Register pool spender by governance
-    public fun register_spender(
+    public entry fun register_spender(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
-        vaa: vector<u8>,
-        spend_emitter: &DolaContract
+        vaa: vector<u8>
     ) {
         // let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
         //     wormhole_state,
@@ -180,12 +177,11 @@ module omnipool::wormhole_adapter_pool {
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
         assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
-        assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_DOLA_CONTRACT);
-        dola_pool::register_spender(pool_approval, &pool_state.dola_contract, spend_emitter);
+        dola_pool::register_spender(pool_approval, &pool_state.dola_contract, dola_contract);
     }
 
     /// Delete pool owner by governance
-    public fun delete_owner(
+    public entry fun delete_owner(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
         vaa: vector<u8>
@@ -204,7 +200,7 @@ module omnipool::wormhole_adapter_pool {
     }
 
     /// Delete pool spender by governance
-    public fun delete_spender(
+    public entry fun delete_spender(
         pool_state: &PoolState,
         pool_approval: &mut PoolApproval,
         vaa: vector<u8>

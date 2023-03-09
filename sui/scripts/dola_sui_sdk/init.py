@@ -102,7 +102,7 @@ def vote_init_lending_core():
     governance = load.governance_package()
     lending_core = load.lending_core_package()
 
-    genesis_proposal.genesis_proposal.vote_init_lending_storage(
+    genesis_proposal.genesis_proposal.vote_init_lending_core(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         lending_core.storage.Storage[-1],
@@ -125,7 +125,7 @@ def vote_init_system_core():
     app_manager = load.app_manager_package()
     governance = load.governance_package()
 
-    genesis_proposal.genesis_proposal.vote_init_protocol_wormhole_adapter(
+    genesis_proposal.genesis_proposal.vote_init_system_core(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         app_manager.app_manager.TotalAppInfo[-1],
@@ -146,7 +146,7 @@ def vote_init_dola_portal():
     governance = load.governance_package()
     dola_types = load.dola_types_package()
 
-    genesis_proposal.genesis_proposal.vote_init_lending_portal(
+    genesis_proposal.genesis_proposal.vote_init_dola_portal(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         dola_types.dola_contract.DolaContractRegistry[-1]
@@ -168,7 +168,7 @@ def vote_init_chain_group_id(group_id, chain_ids):
     genesis_proposal = load.genesis_proposal_package()
     governance = load.governance_package()
     user_manager = load.user_manager_package()
-    genesis_proposal.genesis_proposal.vote_register_evm_chain_id(
+    genesis_proposal.genesis_proposal.vote_init_chain_group_id(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -339,7 +339,7 @@ def balance(coin_type):
 
 
 def pool(coin_type):
-    return f"{CacheObject.OmniPool[-1]}::pool::Pool<{coin_type}>"
+    return f"{CacheObject.OmniPool[-1]}::dola_pool::Pool<{coin_type}>"
 
 
 def proposal():
@@ -347,17 +347,17 @@ def proposal():
 
 
 def bridge_pool_read_vaa(index=0):
-    wormhole_bridge = load.wormhole_bridge_package()
-    result = wormhole_bridge.bridge_pool.read_vaa.simulate(
-        wormhole_bridge.bridge_pool.PoolState[-1], index
+    omnipool = load.omnipool_package()
+    result = omnipool.wormhole_adapter_pool.read_vaa.simulate(
+        omnipool.wormhole_adapter_pool.PoolState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
     return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def bridge_core_read_vaa(index=0):
-    wormhole_bridge = load.wormhole_bridge_package()
-    result = wormhole_bridge.bridge_core.read_vaa.simulate(
-        wormhole_bridge.bridge_core.CoreState[-1], index
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    result = wormhole_adapter_core.wormhole_adapter_core.read_vaa.simulate(
+        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1], index
     )["events"][-1]["moveEvent"]["fields"]
     return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 

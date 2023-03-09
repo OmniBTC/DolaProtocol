@@ -159,7 +159,7 @@ module genesis_proposal::genesis_proposal {
 
             let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
 
-            if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            if (!pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
                 pool_manager::register_pool_id(
                     &governance_cap,
                     pool_manager_info,
