@@ -223,7 +223,7 @@ def vote_init_chain_group_id(group_id, chain_ids):
     )
 
 
-def vote_register_new_spender(dola_chain_id, dola_contract):
+def vote_remote_register_spender(dola_chain_id, dola_contract):
     """
     public entry fun vote_remote_register_spender(
         governance_info: &mut GovernanceInfo,
@@ -503,8 +503,8 @@ def main():
     # set sui's dola portal as pool spender
     create_proposal()
     lending_contract_id = lending_portal_contract_id()
-    vote_register_new_spender(0, lending_contract_id)
-    vaa = bridge_pool_read_vaa()
+    vote_remote_register_spender(0, lending_contract_id)
+    (vaa, _) = bridge_core_read_vaa()
     register_spender(vaa)
 
     # 9. register evm chain group
