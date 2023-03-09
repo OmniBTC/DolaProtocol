@@ -1,11 +1,11 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/// The Sui single pool module is responsible for hosting Sui user assets. When the single currency pool starts,
+/// The Sui dola pool module is responsible for hosting Sui user assets. When the dola pool starts,
 /// Wormhole is used as the basic bridge. In the future, more bridges can be introduced through governance without
-/// changing the single currency pool module.
-module omnipool::single_pool {
-    use std::ascii;
+/// changing the dola pool module.
+module omnipool::dola_pool {
+    use std::ascii::{Self, String};
     use std::type_name;
     use std::vector;
 
@@ -25,7 +25,6 @@ module omnipool::single_pool {
     use sui::sui::SUI;
     #[test_only]
     use sui::test_scenario::{Self, return_shared};
-    use std::ascii::String;
 
     friend omnipool::wormhole_adapter_pool;
 

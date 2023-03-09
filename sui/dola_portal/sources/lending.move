@@ -11,7 +11,7 @@ module dola_portal::lending {
     use governance::genesis::GovernanceCap;
     use lending_core::lending_codec;
     use lending_core::storage::{Self, StorageCap, Storage};
-    use omnipool::single_pool::{Self, Pool, PoolApproval};
+    use omnipool::dola_pool::{Self, Pool, PoolApproval};
     use omnipool::wormhole_adapter_pool::{Self, PoolState};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
@@ -219,11 +219,11 @@ module dola_portal::lending {
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
-        let deposit_amount = single_pool::normal_amount(pool, coin::value(&deposit_coin));
+        let deposit_amount = dola_pool::normal_amount(pool, coin::value(&deposit_coin));
         let nonce = get_nonce(lending_portal);
 
         // Deposit the token into the pool
-        omnipool::single_pool::deposit(
+        omnipool::dola_pool::deposit(
             pool,
             deposit_coin,
             LENDING_APP_ID,
@@ -317,7 +317,7 @@ module dola_portal::lending {
         );
 
         // Local withdraw
-        single_pool::withdraw(
+        dola_pool::withdraw(
             pool_approval,
             &lending_portal.dola_contract,
             pool,
@@ -459,7 +459,7 @@ module dola_portal::lending {
             (amount as u256)
         );
         // Local borrow
-        single_pool::withdraw(
+        dola_pool::withdraw(
             pool_approval,
             &lending_portal.dola_contract,
             pool,
@@ -566,10 +566,10 @@ module dola_portal::lending {
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
-        let repay_amount = single_pool::normal_amount(pool, coin::value(&repay_coin));
+        let repay_amount = dola_pool::normal_amount(pool, coin::value(&repay_coin));
         let nonce = get_nonce(lending_portal);
         // Deposit the token into the pool
-        omnipool::single_pool::deposit(
+        omnipool::dola_pool::deposit(
             pool,
             repay_coin,
             LENDING_APP_ID,

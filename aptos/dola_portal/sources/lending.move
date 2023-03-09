@@ -1,18 +1,17 @@
 module dola_portal::lending {
-    use std::signer;
-    use aptos_framework::event::EventHandle;
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
-    use aptos_framework::coin;
-    use dola_types::dola_address;
-    use aptos_framework::aptos_coin::AptosCoin;
-    use wormhole::state;
-    use omnipool::single_pool;
-    use dola_portal::lending_codec;
-    use omnipool::wormhole_adapter_pool;
-    use aptos_framework::event;
     use std::bcs;
+    use std::signer;
 
+    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin;
+    use aptos_framework::event::{Self, EventHandle};
+
+    use dola_portal::lending_codec;
+    use dola_types::dola_address;
+    use omnipool::dola_pool;
+    use omnipool::wormhole_adapter_pool;
+    use wormhole::state;
 
     const SEED: vector<u8> = b"Dola Lending Portal";
 
@@ -91,7 +90,7 @@ module dola_portal::lending {
         let user = dola_address::convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
         let nonce = get_nonce();
-        let amount = single_pool::normal_amount<CoinType>(deposit_coin);
+        let amount = dola_pool::normal_amount<CoinType>(deposit_coin);
         let app_payload = lending_codec::encode_deposit_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,
@@ -133,7 +132,7 @@ module dola_portal::lending {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
 
         let nonce = get_nonce();
-        let amount = single_pool::normal_amount<CoinType>(amount);
+        let amount = dola_pool::normal_amount<CoinType>(amount);
         let withdraw_pool = dola_address::convert_pool_to_dola<CoinType>();
         let app_payload = lending_codec::encode_withdraw_payload(
             dola_address::get_native_dola_chain_id(),
@@ -223,7 +222,7 @@ module dola_portal::lending {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
 
         let nonce = get_nonce();
-        let amount = single_pool::normal_amount<CoinType>(amount);
+        let amount = dola_pool::normal_amount<CoinType>(amount);
         let withdraw_pool = dola_address::convert_pool_to_dola<CoinType>();
         let app_payload = lending_codec::encode_withdraw_payload(
             dola_address::get_native_dola_chain_id(),
@@ -311,7 +310,7 @@ module dola_portal::lending {
         let user_address = dola_address::convert_address_to_dola(signer::address_of(sender));
 
         let nonce = get_nonce();
-        let amount = single_pool::normal_amount<CoinType>(repay_coin);
+        let amount = dola_pool::normal_amount<CoinType>(repay_coin);
         let app_payload = lending_codec::encode_deposit_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,

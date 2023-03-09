@@ -1,32 +1,28 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/// The Sui single pool module is responsible for hosting Sui user assets. When the single currency pool starts,
+/// The Sui dola pool module is responsible for hosting Sui user assets. When the dola pool starts,
 /// Wormhole is used as the basic bridge. In the future, more bridges can be introduced through governance without
-/// changing the single currency pool module.
-module omnipool::single_pool {
+/// changing the dola pool module.
+module omnipool::dola_pool {
+    use std::signer;
+    use std::string::{Self, String};
+    use std::vector;
+
+    use aptos_std::type_info;
+    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::aptos_account;
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin::{Self, Coin};
+    use aptos_framework::event::{Self, EventHandle};
+
     use dola_types::dola_address::{Self, DolaAddress};
     use dola_types::dola_contract::{Self, DolaContract};
-
     use omnipool::pool_codec;
 
     friend omnipool::wormhole_adapter_pool;
 
-    use std::vector;
-    use aptos_framework::coin::Coin;
-    use aptos_framework::coin;
-    use aptos_framework::aptos_account;
-    use aptos_std::type_info;
-    use std::signer;
-    use aptos_framework::account::SignerCapability;
-    use aptos_framework::account;
-    use aptos_framework::aptos_coin::AptosCoin;
-    use aptos_framework::event::EventHandle;
-    use std::string::String;
-    use aptos_framework::event;
-    use std::string;
-
-    const SEED: vector<u8> = b"Dola Single Pool";
+    const SEED: vector<u8> = b"Dola Pool";
 
     /// Errors
 
