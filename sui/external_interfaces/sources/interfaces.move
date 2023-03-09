@@ -417,7 +417,7 @@ module external_interfaces::interfaces {
             total_debt_value - (total_liquid_value + total_collateral_value)
         };
 
-        let net_apy = if (net_value >= 0) { math::ray_div(net_apy_value, net_value) } else { 0 };
+        let net_apy = if (net_value > 0) { math::ray_div(net_apy_value, net_value) } else { 0 };
 
         net_apy = net_apy * 10000 / math::ray();
         total_supply_apy = total_supply_apy * 10000 / math::ray();

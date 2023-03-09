@@ -825,12 +825,12 @@ def lending_tests():
     portal_binding(zero)
     portal_unbinding(zero)
     # test as_collateral and cancel_as_collateral
+    portal_supply(usdt())
     portal_cancel_as_collateral([1])
     portal_as_collateral([1])
 
 
 if __name__ == "__main__":
-    lending_tests()
     # force_claim_test_coin(usdt(), 100000)
     # monitor_supply(usdt())
     # force_claim_test_coin(usdc(), 100000)
@@ -841,4 +841,4 @@ if __name__ == "__main__":
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()
-    # export_objects()
+    export_objects()

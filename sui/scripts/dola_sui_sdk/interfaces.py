@@ -234,13 +234,14 @@ def get_user_lending_info(user):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    lending = load.lending_package()
+    lending = load.lending_core_package()
     oracle = load.oracle_package()
     result = external_interfaces.interfaces.get_user_lending_info.simulate(
         lending.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
         user,
     )
+
     return result['events'][-1]['moveEvent']['fields']
 
 
@@ -305,5 +306,5 @@ if __name__ == "__main__":
     # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    pprint.pp(get_user_lending_info(4))
+    pprint.pp(get_user_lending_info(1))
     # pprint.pp(get_user_allowed_borrow(5, 4, 2))
