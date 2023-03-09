@@ -53,6 +53,52 @@ def active_governance_v1():
     )
 
 
+def init_wormhole_adapter_pool():
+    """
+    public entry fun initialize(
+        pool_genesis: &mut PoolGenesis,
+        sui_wormhole_chain: u16, // Represents the wormhole chain id of the wormhole adpter core on Sui
+        sui_wormhole_address: vector<u8>, // Represents the wormhole contract address of the wormhole adpter core on Sui
+        pool_approval: &mut PoolApproval,
+        dola_contract_registry: &mut DolaContractRegistry,
+        wormhole_state: &mut WormholeState,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    omnipool = load.omnipool_package()
+    wormhole = load.wormhole_package()
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    dola_types = load.dola_types_package()
+
+    omnipool.wormhole_adapter_pool.initialize(
+        omnipool.wormhole_adapter_pool.PoolGenesis[-1],
+        0,
+        wormhole_adapter_core.package_id,
+        omnipool.dola_pool.PoolApproval[-1],
+        dola_types.dola_contract.DolaContractRegistry[-1],
+        wormhole.state.State[-1]
+    )
+
+
+def register_spender(vaa):
+    """
+    public entry fun register_spender(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    )
+    :return:
+    """
+    omnipool = load.omnipool_package()
+
+    omnipool.wormhole_adapter_pool.register_spender(
+        omnipool.wormhole_adapter_pool.PoolState[-1],
+        omnipool.dola_pool.PoolApproval[-1],
+        vaa
+    )
+
+
 def create_proposal():
     """
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
@@ -174,6 +220,36 @@ def vote_init_chain_group_id(group_id, chain_ids):
         user_manager.user_manager.UserManagerInfo[-1],
         group_id,
         chain_ids
+    )
+
+
+def vote_register_new_spender(dola_chain_id, dola_contract):
+    """
+    public entry fun remote_register_spender(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    governance = load.governance_package()
+    wormhole = load.wormhole_package()
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+
+    genesis_proposal.genesis_proposal.remote_register_spender(
+        governance.governance_v1.GovernanceInfo[-1],
+        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        wormhole.state.State[-1],
+        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_chain_id,
+        dola_contract,
+        0
     )
 
 
@@ -362,8 +438,19 @@ def bridge_core_read_vaa(index=0):
     return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
+def lending_portal_contract_id():
+    dola_portal = load.dola_portal_package()
+    lending_portal_info = dola_portal.get_object_with_super_detail(
+        dola_portal.lending.LendingPortal[-1]
+    )
+
+    return int(lending_portal_info['dola_contract']['dola_contract'])
+
+
 def main():
     # 1. init omnipool
+    init_wormhole_adapter_pool()
+
     create_pool(btc())
     create_pool(usdt())
     create_pool(usdc())
@@ -412,6 +499,13 @@ def main():
     create_proposal()
 
     vote_init_dola_portal()
+
+    # set sui's dola portal as pool spender
+    create_proposal()
+    lending_contract_id = lending_portal_contract_id()
+    vote_register_new_spender(0, lending_contract_id)
+    vaa = bridge_pool_read_vaa()
+    register_spender(vaa)
 
     # 9. register evm chain group
     create_proposal()
