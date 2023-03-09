@@ -159,7 +159,9 @@ library LibAsset {
         if (token == address(0)) {
             return 18;
         } else {
-            (,bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+            (, bytes memory queriedDecimals) = token.staticcall(
+                abi.encodeWithSignature("decimals()")
+            );
             uint8 decimals = abi.decode(queriedDecimals, (uint8));
             return decimals;
         }

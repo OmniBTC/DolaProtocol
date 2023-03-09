@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../libraries//LibDolaTypes.sol";
 import "../libraries//LibLending.sol";
-import "../libraries//LibPool.sol";
+import "../libraries//LibPoolCodec.sol";
 
 contract EncodeDecode {
     function encodeDepositPayload(
@@ -14,7 +14,7 @@ contract EncodeDecode {
         bytes memory appPayload
     ) external pure returns (bytes memory) {
         return
-            LibPool.encodeDepositPayload(
+            LibPoolCodec.encodeDepositPayload(
                 pool,
                 user,
                 amount,
@@ -26,9 +26,9 @@ contract EncodeDecode {
     function decodeDepositPayload(bytes memory payload)
         external
         pure
-        returns (LibPool.DepositPayload memory)
+        returns (LibPoolCodec.DepositPayload memory)
     {
-        return LibPool.decodeDepositPayload(payload);
+        return LibPoolCodec.decodeDepositPayload(payload);
     }
 
     function encodeSendMessagePayload(
@@ -36,15 +36,15 @@ contract EncodeDecode {
         uint16 appId,
         bytes memory appPayload
     ) external pure returns (bytes memory) {
-        return LibPool.encodeSendMessagePayload(user, appId, appPayload);
+        return LibPoolCodec.encodeSendMessagePayload(user, appId, appPayload);
     }
 
     function decodeSendMessagePayload(bytes memory payload)
         external
         pure
-        returns (LibPool.SendMessagePayload memory)
+        returns (LibPoolCodec.SendMessagePayload memory)
     {
-        return LibPool.decodeSendMessagePayload(payload);
+        return LibPoolCodec.decodeSendMessagePayload(payload);
     }
 
     function encodeWithdrawPayload(
@@ -55,7 +55,7 @@ contract EncodeDecode {
         uint64 amount
     ) external pure returns (bytes memory) {
         return
-            LibPool.encodeWithdrawPayload(
+            LibPoolCodec.encodeWithdrawPayload(
                 sourceChainId,
                 nonce,
                 pool,
@@ -67,9 +67,9 @@ contract EncodeDecode {
     function decodeWithdrawPayload(bytes memory payload)
         external
         pure
-        returns (LibPool.WithdrawPayload memory)
+        returns (LibPoolCodec.WithdrawPayload memory)
     {
-        return LibPool.decodeWithdrawPayload(payload);
+        return LibPoolCodec.decodeWithdrawPayload(payload);
     }
 
     function encodeLendingAppPayload(

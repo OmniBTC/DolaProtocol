@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../libraries/LibPool.sol";
+import "../libraries/LibPoolCodec.sol";
 import "../libraries/LibLending.sol";
 import "../libraries/LibProtocol.sol";
 import "../../interfaces/IOmniPool.sol";
@@ -189,7 +189,7 @@ contract MockWormholeAdapterPool {
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        LibPool.WithdrawPayload memory payload = LibPool
+        LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
             .decodeWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);

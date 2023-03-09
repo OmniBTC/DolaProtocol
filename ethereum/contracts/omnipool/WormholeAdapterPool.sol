@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../libraries/LibPool.sol";
+import "../libraries/LibPoolCodec.sol";
 import "../libraries/LibLending.sol";
 import "../libraries/LibProtocol.sol";
 import "./DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
 
 contract WormholeAdapterPool {
-
     /// Storage
 
     // Wormhole address
@@ -21,7 +20,7 @@ contract WormholeAdapterPool {
     // Wormhole required number of block confirmations to assume finality
     uint8 wormholeFinality;
     // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
-    mapping(uint16 => bytes32)  registeredEmitters;
+    mapping(uint16 => bytes32) registeredEmitters;
     // Used to verify that the VAA has been processed
     mapping(bytes32 => bool) consumedVaas;
 
@@ -48,7 +47,6 @@ contract WormholeAdapterPool {
         dolaPool = new DolaPool(_dolaChainId, address(this));
         wormholeFinality = _wormholeFinality;
     }
-
 
     // todo! Delete after wormhole running
     function getNonce() public view returns (uint32) {
@@ -111,13 +109,17 @@ contract WormholeAdapterPool {
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
-        bytes memory payload = dolaPool.deposit{value : msg.value - wormholeFee}(
+        bytes memory payload = dolaPool.deposit{value: msg.value - wormholeFee}(
             token,
             amount,
             appId,
             appPayload
         );
-        wormhole.publishMessage{value : wormholeFee}(0, payload, wormholeFinality);
+        wormhole.publishMessage{value: wormholeFee}(
+            0,
+            payload,
+            wormholeFinality
+        );
 
         cachedVAA[getNonce()] = payload;
         increaseNonce();
@@ -138,8 +140,8 @@ contract WormholeAdapterPool {
     //    }
 
     function receiveWithdraw(bytes memory vaa) public {
-        LibPool.WithdrawPayload memory payload = LibPool
-        .decodeWithdrawPayload(vaa);
+        LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
+            .decodeWithdrawPayload(vaa);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
         emit PoolWithdrawEvent(
             payload.nonce,
