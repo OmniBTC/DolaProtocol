@@ -9,7 +9,7 @@ interface IOmniPool {
 
     function deny(address bridge) external;
 
-    function depositTo(
+    function deposit(
         address token,
         uint256 amount,
         uint16 appId,
@@ -22,7 +22,7 @@ interface IOmniPool {
         bytes memory appPayload
     ) external view returns (bytes memory);
 
-    function innerWithdraw(
+    function withdraw(
         address token,
         address to,
         uint64 amount

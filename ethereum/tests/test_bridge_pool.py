@@ -1,4 +1,4 @@
-from brownie import MockWormholeAdapterPool, SinglePool, MockToken, DolaPortal, EncodeDecode, accounts, config
+from brownie import MockWormholeAdapterPool, DolaPool, MockToken, DolaPortal, EncodeDecode, accounts, config
 from pytest import fixture
 
 wormhole_address = config["networks"]["development"]["wormhole"]
@@ -20,7 +20,7 @@ def encode_decode():
 
 @fixture
 def omnipool():
-    return SinglePool.deploy(wormhole_chainid,
+    return DolaPool.deploy(wormhole_chainid,
                            account(), {'from': account()})
 
 
@@ -66,7 +66,7 @@ def test_withdraw(lending_portal, usdt, omnipool, bridge_pool, encode_decode):
     usdt.approve(omnipool.address, amount, {'from': account()})
     lending_portal.supply(usdt.address, amount, {'from': account()})
     assert omnipool.pools(usdt.address) == amount
-    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+    receive_withdraw_payload = encode_decode.encodeWithdrawPayload(
         0, 0, [1, usdt.address], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
     assert omnipool.pools(usdt.address) == 0
@@ -79,7 +79,7 @@ def test_withdraw(lending_portal, usdt, omnipool, bridge_pool, encode_decode):
 
     account_balance = account().balance()
 
-    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+    receive_withdraw_payload = encode_decode.encodeWithdrawPayload(
         0, 0, [1, zero_address()], [1, account().address], 1e8, {'from': account()})
     bridge_pool.receiveWithdraw(receive_withdraw_payload, {'from': account()})
     assert omnipool.pools(zero_address()) == amount

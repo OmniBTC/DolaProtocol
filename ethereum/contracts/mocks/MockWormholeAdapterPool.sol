@@ -119,14 +119,14 @@ contract MockWormholeAdapterPool {
         bytes memory payload;
         if (token == address(0)) {
             require(msg.value >= amount, "Not enough msg value!");
-            payload = IOmniPool(omnipool).depositTo{value: amount}(
+            payload = IOmniPool(omnipool).deposit{value: amount}(
                 token,
                 amount,
                 appId,
                 appPayload
             );
         } else {
-            payload = IOmniPool(omnipool).depositTo(
+            payload = IOmniPool(omnipool).deposit(
                 token,
                 amount,
                 appId,
@@ -189,11 +189,11 @@ contract MockWormholeAdapterPool {
     }
 
     function receiveWithdraw(bytes memory vaa) public {
-        LibPool.ReceiveWithdrawPayload memory payload = LibPool
-            .decodeReceiveWithdrawPayload(vaa);
+        LibPool.WithdrawPayload memory payload = LibPool
+            .decodeWithdrawPayload(vaa);
         address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
         address user = LibDolaTypes.dolaAddressToAddress(payload.user);
-        IOmniPool(omnipool).innerWithdraw(token, user, payload.amount);
+        IOmniPool(omnipool).withdraw(token, user, payload.amount);
         emit PoolWithdrawEvent(
             payload.nonce,
             payload.sourceChainId,

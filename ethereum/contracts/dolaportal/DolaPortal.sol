@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../interfaces/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IWormholeBridge.sol";
 import "../../interfaces/IOmniPool.sol";
-import "../libraries//LibLending.sol";
-import "../libraries//LibDecimals.sol";
-import "../libraries//LibDolaTypes.sol";
+import "../libraries/LibLending.sol";
+import "../libraries/LibDecimals.sol";
+import "../libraries/LibDolaTypes.sol";
+import "../libraries/LibAsset.sol";
 
 contract DolaPortal {
     uint8 public constant LENDING_APP_ID = 1;
@@ -51,14 +52,6 @@ contract DolaPortal {
         uint64 nonce = dolaNonce;
         dolaNonce++;
         return nonce;
-    }
-
-    function tokenDecimals(address token) internal view returns (uint8) {
-        uint8 decimal = 18;
-        if (token != address(0)) {
-            decimal = IERC20(token).decimals();
-        }
-        return decimal;
     }
 
     function as_collateral(uint16[] memory dolaPoolIds) external payable {
@@ -124,7 +117,7 @@ contract DolaPortal {
         uint64 nonce = getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
-            tokenDecimals(token)
+            LibAsset.queryDecimals(token)
         );
         bytes memory appPayload = LibLending.encodeLendingAppPayload(
             dolaChainId,
@@ -221,7 +214,7 @@ contract DolaPortal {
         uint64 nonce = getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
-            tokenDecimals(token)
+            LibAsset.queryDecimals(token)
         );
         bytes memory appPayload = LibLending.encodeLendingAppPayload(
             dolaChainId,
@@ -259,7 +252,7 @@ contract DolaPortal {
         uint64 nonce = getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
-            tokenDecimals(debtToken)
+            LibAsset.queryDecimals(debtToken)
         );
         bytes memory appPayload = LibLending.encodeLendingAppPayload(
             dolaChainId,

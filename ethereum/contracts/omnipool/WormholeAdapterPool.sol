@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../libraries/LibPool.sol";
 import "../libraries/LibLending.sol";
 import "../libraries/LibProtocol.sol";
-import "./SinglePool.sol";
+import "./DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
 
 contract WormholeAdapterPool {
@@ -15,9 +15,11 @@ contract WormholeAdapterPool {
     IWormhole immutable wormhole;
     // Dola chain id
     uint16 immutable dolaChainId;
-    // Single pool
-    SinglePool immutable singlePool;
+    // Dola pool
+    DolaPool immutable dolaPool;
 
+    // Wormhole required number of block confirmations to assume finality
+    uint8 wormholeFinality;
     // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
     mapping(uint16 => bytes32)  registeredEmitters;
     // Used to verify that the VAA has been processed
@@ -38,15 +40,13 @@ contract WormholeAdapterPool {
 
     constructor(
         IWormhole _wormhole,
-        uint16 _dolaChainId
+        uint16 _dolaChainId,
+        uint8 _wormholeFinality
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
-        singlePool = new SinglePool(_dolaChainId, address(this));
-    }
-
-    function getWormholeMessageFee() public view returns (uint256) {
-        return wormhole.messageFee();
+        dolaPool = new DolaPool(_dolaChainId, address(this));
+        wormholeFinality = _wormholeFinality;
     }
 
 
@@ -107,84 +107,40 @@ contract WormholeAdapterPool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        bytes memory payload;
-        if (token == address(0)) {
-            require(msg.value >= amount, "Not enough msg value!");
-            payload = singlePool.depositTo{value : amount}(
-                token,
-                amount,
-                appId,
-                appPayload
-            );
-        } else {
-            payload = singlePool.depositTo(
-                token,
-                amount,
-                appId,
-                appPayload
-            );
-        }
-
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
-    }
-
-    function sendWithdraw(
-        bytes memory token,
-        uint16 appId,
-        bytes memory appPayload
-    ) external payable {
-        bytes memory payload = singlePool.withdrawTo(
+        uint256 wormholeFee = wormhole.messageFee();
+        require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
+        // Deposit assets to the pool and perform amount checks
+        LibAsset.depositAsset(token, amount);
+        bytes memory payload = dolaPool.deposit{value : msg.value - wormholeFee}(
             token,
+            amount,
             appId,
             appPayload
         );
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
-    }
-
-    function sendDepositAndWithdraw(
-        address depositToken,
-        uint256 depositAmount,
-        uint16 withdrawChainId,
-        bytes memory withdrawToken,
-        uint16 appId,
-        bytes memory appPayload
-    ) external payable {
-        bytes memory payload;
-        if (depositToken == address(0)) {
-            require(msg.value >= depositAmount, "Not enough msg value!");
-            payload = singlePool.depositAndWithdraw{
-            value : depositAmount
-            }(
-                depositToken,
-                depositAmount,
-                withdrawChainId,
-                withdrawToken,
-                appId,
-                appPayload
-            );
-        } else {
-            payload = singlePool.depositAndWithdraw(
-                depositToken,
-                depositAmount,
-                withdrawChainId,
-                withdrawToken,
-                appId,
-                appPayload
-            );
-        }
+        wormhole.publishMessage{value : wormholeFee}(0, payload, wormholeFinality);
 
         cachedVAA[getNonce()] = payload;
         increaseNonce();
     }
+
+    //    function sendWithdraw(
+    //        bytes memory token,
+    //        uint16 appId,
+    //        bytes memory appPayload
+    //    ) external payable {
+    //        bytes memory payload = dolaPool.withdrawTo(
+    //            token,
+    //            appId,
+    //            appPayload
+    //        );
+    //        cachedVAA[getNonce()] = payload;
+    //        increaseNonce();
+    //    }
 
     function receiveWithdraw(bytes memory vaa) public {
-        LibPool.ReceiveWithdrawPayload memory payload = LibPool
-        .decodeReceiveWithdrawPayload(vaa);
-        address token = LibDolaTypes.dolaAddressToAddress(payload.pool);
-        address user = LibDolaTypes.dolaAddressToAddress(payload.user);
-        singlePool.innerWithdraw(token, user, payload.amount);
+        LibPool.WithdrawPayload memory payload = LibPool
+        .decodeWithdrawPayload(vaa);
+        dolaPool.withdraw(payload.user, payload.amount, payload.pool);
         emit PoolWithdrawEvent(
             payload.nonce,
             payload.sourceChainId,

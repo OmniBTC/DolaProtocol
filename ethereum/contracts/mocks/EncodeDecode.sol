@@ -6,7 +6,7 @@ import "../libraries//LibLending.sol";
 import "../libraries//LibPool.sol";
 
 contract EncodeDecode {
-    function encodeSendDepositPayload(
+    function encodeDepositPayload(
         LibDolaTypes.DolaAddress memory pool,
         LibDolaTypes.DolaAddress memory user,
         uint64 amount,
@@ -14,7 +14,7 @@ contract EncodeDecode {
         bytes memory appPayload
     ) external pure returns (bytes memory) {
         return
-            LibPool.encodeSendDepositPayload(
+            LibPool.encodeDepositPayload(
                 pool,
                 user,
                 amount,
@@ -23,59 +23,31 @@ contract EncodeDecode {
             );
     }
 
-    function decodeSendDepositPayload(bytes memory payload)
+    function decodeDepositPayload(bytes memory payload)
         external
         pure
-        returns (LibPool.SendDepositPayload memory)
+        returns (LibPool.DepositPayload memory)
     {
-        return LibPool.decodeSendDepositPayload(payload);
+        return LibPool.decodeDepositPayload(payload);
     }
 
-    function encodeSendWithdrawPayload(
-        LibDolaTypes.DolaAddress memory pool,
+    function encodeSendMessagePayload(
         LibDolaTypes.DolaAddress memory user,
         uint16 appId,
         bytes memory appPayload
     ) external pure returns (bytes memory) {
-        return LibPool.encodeSendWithdrawPayload(pool, user, appId, appPayload);
+        return LibPool.encodeSendMessagePayload(user, appId, appPayload);
     }
 
-    function decodeSendWithdrawPayload(bytes memory payload)
+    function decodeSendMessagePayload(bytes memory payload)
         external
         pure
-        returns (LibPool.SendWithdrawPayload memory)
+        returns (LibPool.SendMessagePayload memory)
     {
-        return LibPool.decodeSendWithdrawPayload(payload);
+        return LibPool.decodeSendMessagePayload(payload);
     }
 
-    function encodeSendDepositAndWithdrawPayload(
-        LibDolaTypes.DolaAddress memory depositPool,
-        LibDolaTypes.DolaAddress memory depositUser,
-        uint64 depositAmount,
-        LibDolaTypes.DolaAddress memory withdrawPool,
-        uint16 appId,
-        bytes memory appPayload
-    ) external pure returns (bytes memory) {
-        return
-            LibPool.encodeSendDepositAndWithdrawPayload(
-                depositPool,
-                depositUser,
-                depositAmount,
-                withdrawPool,
-                appId,
-                appPayload
-            );
-    }
-
-    function decodeSendDepositAndWithdrawPayload(bytes memory payload)
-        external
-        pure
-        returns (LibPool.SendDepositAndWithdrawPayload memory)
-    {
-        return LibPool.decodeSendDepositAndWithdrawPayload(payload);
-    }
-
-    function encodeReceiveWithdrawPayload(
+    function encodeWithdrawPayload(
         uint16 sourceChainId,
         uint64 nonce,
         LibDolaTypes.DolaAddress memory pool,
@@ -83,7 +55,7 @@ contract EncodeDecode {
         uint64 amount
     ) external pure returns (bytes memory) {
         return
-            LibPool.encodeReceiveWithdrawPayload(
+            LibPool.encodeWithdrawPayload(
                 sourceChainId,
                 nonce,
                 pool,
@@ -92,12 +64,12 @@ contract EncodeDecode {
             );
     }
 
-    function decodeReceiveWithdrawPayload(bytes memory payload)
+    function decodeWithdrawPayload(bytes memory payload)
         external
         pure
-        returns (LibPool.ReceiveWithdrawPayload memory)
+        returns (LibPool.WithdrawPayload memory)
     {
-        return LibPool.decodeReceiveWithdrawPayload(payload);
+        return LibPool.decodeWithdrawPayload(payload);
     }
 
     function encodeLendingAppPayload(

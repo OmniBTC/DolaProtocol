@@ -21,7 +21,7 @@ def test_encode_decode(encode_decode):
     pool_address = encode_decode.encodeDolaAddress(dola_chain_id, pool)
     result = encode_decode.decodeDolaAddress(pool_address)
     assert result == (dola_chain_id, pool)
-    send_deposit_payload = encode_decode.encodeSendDepositPayload(
+    send_deposit_payload = encode_decode.encodeDepositPayload(
         [dola_chain_id, pool],
         [dola_chain_id, user],
         amount,
@@ -29,17 +29,17 @@ def test_encode_decode(encode_decode):
         app_payload
     )
 
-    result = encode_decode.decodeSendDepositPayload(send_deposit_payload)
+    result = encode_decode.decodeDepositPayload(send_deposit_payload)
     assert result == ((dola_chain_id, pool), (dola_chain_id,
                                               user), amount, app_id, f"0x{app_payload.hex()}")
 
-    send_withdraw_payload = encode_decode.encodeSendWithdrawPayload(
+    send_withdraw_payload = encode_decode.encodeSendMessagePayload(
         [dola_chain_id, pool],
         [dola_chain_id, user],
         app_id,
         app_payload
     )
-    result = encode_decode.decodeSendWithdrawPayload(send_withdraw_payload)
+    result = encode_decode.decodeSendMessagePayload(send_withdraw_payload)
     assert result == ((dola_chain_id, pool),
                       (dola_chain_id, user), app_id, f"0x{app_payload.hex()}")
 
@@ -57,13 +57,13 @@ def test_encode_decode(encode_decode):
     assert result == ((dola_chain_id, pool), (dola_chain_id, user),
                       amount, (dola_chain_id, withdraw_pool), app_id, f"0x{app_payload.hex()}")
 
-    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+    receive_withdraw_payload = encode_decode.encodeWithdrawPayload(
         0,
         0,
         [dola_chain_id, pool],
         [dola_chain_id, user],
         amount,
     )
-    result = encode_decode.decodeReceiveWithdrawPayload(
+    result = encode_decode.decodeWithdrawPayload(
         receive_withdraw_payload)
     assert result == (0, 0, (dola_chain_id, pool), (dola_chain_id, user), amount)
