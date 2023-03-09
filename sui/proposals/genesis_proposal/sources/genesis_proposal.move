@@ -149,6 +149,7 @@ module genesis_proposal::genesis_proposal {
         pool_dola_chain_id: u16,
         dola_pool_name: vector<u8>,
         dola_pool_id: u16,
+        weight: u256,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -168,6 +169,7 @@ module genesis_proposal::genesis_proposal {
                 );
             };
             pool_manager::register_pool(&governance_cap, pool_manager_info, pool, dola_pool_id);
+            pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, weight);
 
             governance_v1::destory_governance_cap(governance_cap);
         };

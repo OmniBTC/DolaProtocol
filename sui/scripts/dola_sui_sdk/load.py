@@ -25,6 +25,12 @@ def serde_package(package_id: str = None):
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde"))
 
 
+def dola_types_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = CacheObject.DolaTypes[-1]
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_types"))
+
+
 def omnipool_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.OmniPool[-1]
@@ -34,31 +40,31 @@ def omnipool_package(package_id: str = None):
 def app_manager_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.AppManager[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/app_manager"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("app_manager"))
 
 
 def governance_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.Governance[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/governance"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("governance"))
 
 
 def oracle_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.Oracle[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/oracle"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("oracle"))
 
 
 def pool_manager_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.PoolManager[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/pool_manager"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("pool_manager"))
 
 
 def user_manager_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.UserManager[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/user_manager"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("user_manager"))
 
 
 def wormhole_package(package_id: str = None):
@@ -69,22 +75,29 @@ def wormhole_package(package_id: str = None):
                            ".move/https___github_com_OmniBTC_wormhole_git_a6ed712489faf4a16856204465d6bad006cc7b97/sui/wormhole")))
 
 
-def wormhole_bridge_package(package_id: str = None):
+def wormhole_adapter_core_package(package_id: str = None):
     if package_id is None:
-        package_id: str = CacheObject.WormholeBridge[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_bridge"))
+        package_id: str = CacheObject.WormholeAdapterCore[-1]
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_adapter_core"))
 
 
-def lending_package(package_id: str = None):
+def lending_core_package(package_id: str = None):
     if package_id is None:
-        package_id: str = CacheObject.Lending[-1]
+        package_id: str = CacheObject.LendingCore[-1]
 
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/lending_core"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_core"))
 
 
-def lending_portal_package(package_id: str = None):
+def system_core_package(package_id: str = None):
     if package_id is None:
-        package_id: str = CacheObject.LendingPortal[-1]
+        package_id: str = CacheObject.SystemCore[-1]
+
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("system_core"))
+
+
+def dola_portal_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = CacheObject.DolaPortal[-1]
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal"))
 
 
@@ -97,7 +110,7 @@ def external_interfaces_package(package_id: str = None):
 def genesis_proposal_package(package_id: str = None):
     if package_id is None:
         package_id: str = CacheObject.GenesisProposal[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnicore/proposals/genesis_proposal"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/genesis_proposal"))
 
 
 def test_coins_package(package_id: str = None):
