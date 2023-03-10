@@ -117,9 +117,13 @@ module omnipool::wormhole_adapter_pool {
 
         let wormhole_emitter = wormhole::register_emitter();
         let (resource_signer, resource_signer_cap) = account::create_resource_account(sender, SEED);
+
+        let dola_contract = dola_contract::create_dola_contract();
+        dola_pool::register_basic_bridge(&dola_contract);
+
         let pool_state = PoolState {
             resource_signer_cap,
-            dola_contract: dola_contract::create_dola_contract(),
+            dola_contract,
             wormhole_emitter,
             consumed_vaas: set::new<vector<u8>>(),
             registered_emitters: table::new(),

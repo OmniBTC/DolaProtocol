@@ -132,9 +132,9 @@ module omnipool::dola_pool {
 
     /// Register owner and spender for basic bridge
     public(friend) fun register_basic_bridge(
-        pool_approval: &mut PoolApproval,
         dola_contract: &DolaContract
-    ) {
+    ) acquires PoolApproval {
+        let pool_approval = borrow_global_mut<PoolApproval>(get_resource_address());
         let dola_contract = dola_contract::get_dola_contract(dola_contract);
         assert!(!vector::contains(&pool_approval.owners, &dola_contract), EHAS_REGISTER_OWNER);
         assert!(!vector::contains(&pool_approval.spenders, &dola_contract), EHAS_REGISTER_SPENDER);

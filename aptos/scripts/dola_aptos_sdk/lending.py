@@ -34,7 +34,7 @@ def portal_supply(coin_type, amount):
 
 def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
     """
-    public entry fun withdraw<CoinType>(
+    public entry fun withdraw_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -48,7 +48,7 @@ def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
         assert dst_chain == 1
         receiver = account_address
 
-    _result = dola_portal.lending.withdraw(
+    _result = dola_portal.lending.withdraw_local(
         str(receiver),
         dst_chain,
         int(amount),
@@ -75,7 +75,7 @@ def pool_withdraw(vaa, coin_type):
 
 def portal_borrow(coin_type, amount, dst_chain=1, receiver=None):
     """
-    public entry fun borrow<CoinType>(
+    public entry fun borrow_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -89,7 +89,7 @@ def portal_borrow(coin_type, amount, dst_chain=1, receiver=None):
         assert dst_chain == 1
         receiver = account_address
 
-    _result = dola_portal.lending.borrow(
+    _result = dola_portal.lending.borrow_local(
         str(receiver),
         dst_chain,
         int(amount),
@@ -163,8 +163,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    claim_test_coin(usdt())
-    monitor_supply(usdt())
-    # monitor_withdraw(btc())
+    # claim_test_coin(usdt())
+    # monitor_supply(usdt())
+    monitor_withdraw(usdt())
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)

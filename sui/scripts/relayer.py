@@ -16,9 +16,6 @@ from sui_brownie.parallelism import ThreadExecutor
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
-import dola_ethereum_sdk
-import dola_ethereum_sdk.init as dola_ethereum_init
-import dola_ethereum_sdk.load as dola_ethereum_load
 import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
@@ -67,8 +64,8 @@ class BridgeDict(OrderedDict):
 def bridge_pool():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-test")
+    # dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    # dola_ethereum_sdk.set_ethereum_network("polygon-test")
 
     data = BridgeDict("sui_bridge_pool.json")
     local_logger = logger.getChild("[bridge_pool]")
@@ -84,11 +81,11 @@ def bridge_pool():
             # Read aptos
             vaa, nonce = dola_aptos_init.bridge_pool_read_vaa()
             pending_datas.append((vaa, nonce, "aptos"))
-        with contextlib.suppress(Exception):
-            # Read ethereum (todo! support multi ethereum)
-            vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
-            if len(vaa) > 0:
-                pending_datas.append((vaa, nonce, "ethereum"))
+        # with contextlib.suppress(Exception):
+        #     # Read ethereum (todo! support multi ethereum)
+        #     vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
+        #     if len(vaa) > 0:
+        #         pending_datas.append((vaa, nonce, "ethereum"))
 
         for vaa, nonce, source in pending_datas:
             dv = str(nonce) + vaa
@@ -102,7 +99,7 @@ def bridge_pool():
                 while i < 3:
                     try:
                         call_type = decode_vaa[-1]
-                        app_id = decode_vaa[0]
+                        app_id = decode_vaa[1]
                         if app_id == 0:
                             if call_type == 0:
                                 dola_sui_lending.core_binding(vaa)
@@ -135,13 +132,13 @@ def bridge_pool():
 def bridge_core():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-test")
+    # dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    # dola_ethereum_sdk.set_ethereum_network("polygon-test")
 
     sui_omnipool = dola_sui_load.omnipool_package()
     aptos_omnipool = dola_aptos_load.omnipool_package()
-    ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
-    ethereum_account = dola_ethereum_sdk.get_account()
+    # ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
+    # ethereum_account = dola_ethereum_sdk.get_account()
 
     data = BridgeDict("sui_bridge_core.json")
     local_logger = logger.getChild("[bridge_core]")
@@ -149,9 +146,10 @@ def bridge_core():
         local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
-            decode_payload = sui_omnipool.wormhole_adapter_pool.decode_receive_withdraw_payload.simulate(
-                vaa
-            )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
+            decode_payload = \
+                sui_omnipool.wormhole_adapter_pool.decode_withdraw_payload.simulate(
+                    vaa
+                )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
             token_name = decode_payload["dola_address"]
             dola_chain_id = decode_payload["dola_chain_id"]
             if dola_chain_id in [0, 1]:
@@ -186,9 +184,9 @@ def bridge_core():
                             vaa,
                             ty_args=[token_name]
                         )
-                    elif dola_chain_id == dola_ethereum_init.get_wormhole_chain_id():
-                        ethereum_wormhole_bridge.receiveWithdraw(
-                            vaa, {"from": ethereum_account})
+                    # elif dola_chain_id == dola_ethereum_init.get_wormhole_chain_id():
+                    #     ethereum_wormhole_bridge.receiveWithdraw(
+                    #         vaa, {"from": ethereum_account})
                     break
                 except Exception as e:
                     traceback.print_exc()

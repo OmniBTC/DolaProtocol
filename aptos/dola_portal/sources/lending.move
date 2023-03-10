@@ -106,7 +106,7 @@ module dola_portal::lending {
             LENDING_APP_ID,
             app_payload
         );
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -151,7 +151,7 @@ module dola_portal::lending {
             app_payload
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -196,7 +196,7 @@ module dola_portal::lending {
             app_payload
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -242,7 +242,7 @@ module dola_portal::lending {
             app_payload
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -286,7 +286,7 @@ module dola_portal::lending {
             app_payload
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -329,7 +329,7 @@ module dola_portal::lending {
             app_payload
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -375,7 +375,7 @@ module dola_portal::lending {
             app_payload,
         );
 
-        let event_handle = borrow_global_mut<LendingPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
         event::emit_event(
             &mut event_handle.lending_event_handle,

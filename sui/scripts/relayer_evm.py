@@ -86,7 +86,7 @@ def bridge_pool_evm(network):
                 while i < 3:
                     try:
                         call_type = decode_vaa[-1]
-                        app_id = decode_vaa[0]
+                        app_id = decode_vaa[1]
                         if app_id == 0:
                             if call_type == 0:
                                 dola_sui_lending.core_binding(vaa)
