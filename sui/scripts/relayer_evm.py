@@ -10,11 +10,11 @@ import traceback
 from collections import OrderedDict
 from pathlib import Path
 
+from sui_brownie.parallelism import ThreadExecutor
+
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
-from sui_brownie.parallelism import ThreadExecutor
-
 import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
@@ -41,7 +41,8 @@ def write_json(file, data: dict):
 
 class BridgeDict(OrderedDict):
     def __init__(self, file, *args, **kwargs):
-        pool_path = Path.home().joinpath(".cache").joinpath("evm").joinpath("bridge_records")
+        pool_path = Path.home().joinpath(".cache").joinpath(
+            "evm").joinpath("bridge_records")
         if not pool_path.exists():
             pool_path.mkdir()
         pool_file = pool_path.joinpath(file)
@@ -60,7 +61,7 @@ class BridgeDict(OrderedDict):
 
 
 def bridge_pool_evm(network):
-    data = BridgeDict("evm_bridge_pool.json")
+    data = BridgeDict(f"{network}_bridge_pool.json")
     local_logger = logger.getChild(f"[{network}][bridge_pool]")
 
     while True:
@@ -68,7 +69,8 @@ def bridge_pool_evm(network):
         pending_datas = []
         try:
             vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
-            pending_datas.append((vaa, nonce, "ethereum"))
+            if len(vaa) > 0:
+                pending_datas.append((vaa, nonce, "ethereum"))
         except:
             pass
 
@@ -76,25 +78,39 @@ def bridge_pool_evm(network):
             dv = str(nonce) + vaa
             dk = str(hashlib.sha3_256(dv.encode()).digest().hex())
             if dk not in data:
-                decode_vaa = list(bytes.fromhex(vaa.replace("0x", "") if "0x" in vaa else vaa))
-                local_logger.info(f"nonce:{nonce}, source:{source}, call type:{decode_vaa[-1]}")
+                decode_vaa = list(bytes.fromhex(
+                    vaa.replace("0x", "") if "0x" in vaa else vaa))
+                local_logger.info(
+                    f"nonce:{nonce}, source:{source}")
                 i = 0
                 while i < 3:
                     try:
-                        if decode_vaa[-1] == 0:
-                            dola_sui_lending.core_supply(vaa)
-                        elif decode_vaa[-1] == 1:
-                            dola_sui_lending.core_withdraw(vaa)
-                        elif decode_vaa[-1] == 2:
-                            dola_sui_lending.core_borrow(vaa)
-                        elif decode_vaa[-1] == 3:
-                            dola_sui_lending.core_repay(vaa)
-                        elif decode_vaa[-1] == 5:
-                            dola_sui_lending.core_binding(vaa)
+                        call_type = decode_vaa[-1]
+                        app_id = decode_vaa[0]
+                        if app_id == 0:
+                            if call_type == 0:
+                                dola_sui_lending.core_binding(vaa)
+                            elif call_type == 1:
+                                dola_sui_lending.core_unbinding(vaa)
+                        elif app_id == 1:
+                            if call_type == 0:
+                                dola_sui_lending.core_supply(vaa)
+                            elif call_type == 1:
+                                dola_sui_lending.core_withdraw(vaa)
+                            elif call_type == 2:
+                                dola_sui_lending.core_borrow(vaa)
+                            elif call_type == 3:
+                                dola_sui_lending.core_repay(vaa)
+                            elif call_type == 4:
+                                dola_sui_lending.core_liquidate(vaa)
+                            elif call_type == 5:
+                                dola_sui_lending.core_as_collateral(vaa)
+                            elif call_type == 6:
+                                dola_sui_lending.core_cancel_as_collateral(vaa)
                         break
-                    except:
+                    except Exception as e:
                         traceback.print_exc()
-                        i = i + 1
+                        i += 1
                         continue
                 data[dk] = dv
         time.sleep(1)
@@ -105,13 +121,13 @@ def bridge_core_evm(network):
     ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
-    data = BridgeDict("evm_bridge_core.json")
+    data = BridgeDict(f"{network}_bridge_core.json")
     local_logger = logger.getChild(f"[{network}][bridge_core]")
     while True:
         local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
-            decode_payload = sui_wormhole_bridge.bridge_pool.decode_withdraw_payload.simulate(
+            decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
                 vaa
             )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
             dola_chain_id = decode_payload["dola_chain_id"]
@@ -123,29 +139,31 @@ def bridge_core_evm(network):
             continue
 
         if dk not in data:
-            local_logger.info(f"Withdraw nonce:{nonce}, dola_chain_id:{dola_chain_id}")
+            local_logger.info(
+                f"Withdraw nonce:{nonce}, dola_chain_id:{dola_chain_id}")
             i = 0
             while i < 3:
                 try:
                     if dola_chain_id == dola_ethereum_init.get_wormhole_chain_id():
-                        ethereum_wormhole_bridge.receiveWithdraw(vaa, {"from": ethereum_account})
+                        ethereum_wormhole_bridge.receiveWithdraw(
+                            vaa, {"from": ethereum_account})
                     break
-                except:
+                except Exception as e:
                     traceback.print_exc()
-                    i = i + 1
+                    i += 1
                     continue
             data[dk] = dv
         time.sleep(1)
 
 
-def main():
+def main(network):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
+    dola_ethereum_sdk.set_ethereum_network(network)
     pt = ThreadExecutor(executor=2)
     pt.run(
-        [functools.partial(bridge_pool_evm, "polygon-zk-test"), functools.partial(bridge_core_evm, "polygon-zk-test")])
+        [functools.partial(bridge_pool_evm, network), functools.partial(bridge_core_evm, network)])
 
 
 if __name__ == "__main__":
-    main()
+    main("polygon-test")

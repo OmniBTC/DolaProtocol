@@ -66,6 +66,10 @@ def main():
     omnipool.dola_pool.create_pool(ty_args=[aptos()])
     omnipool.wormhole_adapter_pool.init(0, str(omnipool.account.account_address))
 
+    dola_portal = load.dola_portal_package()
+    dola_portal.lending.init()
+    dola_portal.system.init()
+
 
 if __name__ == "__main__":
     main()
