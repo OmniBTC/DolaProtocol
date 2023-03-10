@@ -40,7 +40,6 @@ library LibLendingCodec {
     }
 
     struct ManageCollateralPayload {
-        LibDolaTypes.DolaAddress sender;
         uint16[] dolaPoolIds;
         uint8 callType;
     }
@@ -89,7 +88,7 @@ library LibLendingCodec {
 
         dataLen = receiveLength;
         decodeData.receiver = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -159,7 +158,7 @@ library LibLendingCodec {
 
         dataLen = poolLength;
         decodeData.poolAddress = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -169,7 +168,7 @@ library LibLendingCodec {
 
         dataLen = receiveLength;
         decodeData.receiver = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -227,7 +226,7 @@ library LibLendingCodec {
 
         dataLen = poolLength;
         decodeData.withdrawPool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, index + dataLen)
+            payload.slice(index, dataLen)
         );
         index += dataLen;
 
@@ -249,7 +248,8 @@ library LibLendingCodec {
         uint16[] memory dolaPoolIds,
         uint8 callType
     ) internal pure returns (bytes memory) {
-        bytes memory encodeData = bytes("");
+        bytes memory encodeData = abi.encodePacked(uint16(dolaPoolIds.length));
+
         for (uint256 i = 0; i < dolaPoolIds.length; i++) {
             encodeData = encodeData.concat(abi.encodePacked(dolaPoolIds[i]));
         }
@@ -272,12 +272,14 @@ library LibLendingCodec {
         uint16 poolIdsLength = payload.toUint16(index);
         index += dataLen;
 
+        uint16[] memory dolaPoolIds = new uint16[](poolIdsLength);
         for (uint256 i = 0; i < poolIdsLength; i++) {
             dataLen = 2;
             uint16 dolaPoolId = payload.toUint16(index);
             index += dataLen;
-            decodeData.dolaPoolIds[i] = dolaPoolId;
+            dolaPoolIds[i] = dolaPoolId;
         }
+        decodeData.dolaPoolIds = dolaPoolIds;
 
         dataLen = 1;
         decodeData.callType = payload.toUint8(index);

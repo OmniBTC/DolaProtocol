@@ -229,9 +229,9 @@ library LibPoolCodec {
             user.externalAddress
         );
         bytes memory payload = abi.encodePacked(
+            appId,
             uint16(userAddress.length),
             userAddress,
-            appId,
             POOL_SEND_MESSAGE
         );
 
@@ -254,6 +254,10 @@ library LibPoolCodec {
         SendMessagePayload memory decodeData;
 
         dataLen = 2;
+        decodeData.appId = payload.toUint16(index);
+        index += dataLen;
+
+        dataLen = 2;
         uint16 userLength = payload.toUint16(index);
         index += dataLen;
 
@@ -261,10 +265,6 @@ library LibPoolCodec {
         decodeData.user = LibDolaTypes.decodeDolaAddress(
             payload.slice(index, dataLen)
         );
-        index += dataLen;
-
-        dataLen = 2;
-        decodeData.appId = payload.toUint16(index);
         index += dataLen;
 
         dataLen = 1;
