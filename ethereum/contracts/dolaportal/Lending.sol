@@ -48,6 +48,9 @@ contract DolaPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             LibLendingCodec.SUPPLY
         );
+        // Deposit assets to the pool and perform amount checks
+        LibAsset.depositAsset(token, amount);
+
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
             amount,
@@ -148,6 +151,10 @@ contract DolaPortal {
             LibDolaTypes.addressToDolaAddress(dolaChainId, msg.sender),
             LibLendingCodec.REPAY
         );
+
+        // Deposit assets to the pool and perform amount checks
+        LibAsset.depositAsset(token, amount);
+
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
             amount,
@@ -186,6 +193,10 @@ contract DolaPortal {
             LibDolaTypes.DolaAddress(dolaChainId, liquidateTokenAddress),
             liquidateUserId
         );
+
+        // Deposit assets to the pool and perform amount checks
+        LibAsset.depositAsset(debtToken, amount);
+
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit(
             debtToken,
             amount,
