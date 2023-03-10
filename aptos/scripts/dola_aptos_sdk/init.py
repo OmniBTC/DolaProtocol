@@ -44,8 +44,8 @@ def aptos():
 
 
 def bridge_pool_read_vaa(index=0):
-    wormhole_bridge = load.wormhole_bridge_package()
-    vaa_event = wormhole_bridge.bridge_pool.read_vaa.simulate(
+    omnipool = load.omnipool_package()
+    vaa_event = omnipool.wormhole_adapter_pool.read_vaa.simulate(
         index
     )[-2]["data"]["data"]
     return vaa_event["vaa"], vaa_event["nonce"]
@@ -55,15 +55,16 @@ def main():
     test_coins = load.test_coins_package()
     test_coins.coins.initialize()
 
-    omnipool = load.omnipool_package()
-    omnipool.pool.init_pool()
-    omnipool.pool.create_pool(ty_args=[usdt()])
-    omnipool.pool.create_pool(ty_args=[btc()])
-    omnipool.pool.create_pool(ty_args=[usdc()])
-    omnipool.pool.create_pool(ty_args=[aptos()])
+    dola_types = load.dola_types_package()
+    dola_types.dola_contract.init()
 
-    wormhole_bridge = load.wormhole_bridge_package()
-    wormhole_bridge.bridge_pool.initialize_wormhole()
+    omnipool = load.omnipool_package()
+    omnipool.dola_pool.init()
+    omnipool.dola_pool.create_pool(ty_args=[usdt()])
+    omnipool.dola_pool.create_pool(ty_args=[btc()])
+    omnipool.dola_pool.create_pool(ty_args=[usdc()])
+    omnipool.dola_pool.create_pool(ty_args=[aptos()])
+    omnipool.wormhole_adapter_pool.init(0, str(omnipool.account.account_address))
 
 
 if __name__ == "__main__":

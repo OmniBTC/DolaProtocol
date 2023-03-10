@@ -139,9 +139,8 @@ module omnipool::wormhole_adapter_pool {
     /// Call by governance
 
     /// Register pool owner by governance
-    public fun register_owner(
+    public entry fun register_owner(
         vaa: vector<u8>,
-        new_owner_emitter: &DolaContract
     ) acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -153,14 +152,12 @@ module omnipool::wormhole_adapter_pool {
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
         assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
-        assert!(dola_contract == dola_contract::get_dola_contract(new_owner_emitter), EINVALIE_DOLA_CONTRACT);
-        dola_pool::register_owner(&pool_state.dola_contract, new_owner_emitter);
+        dola_pool::register_owner(&pool_state.dola_contract, dola_contract);
     }
 
     /// Register pool spender by governance
-    public fun register_spender(
+    public entry fun register_spender(
         vaa: vector<u8>,
-        spend_emitter: &DolaContract
     ) acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
@@ -172,12 +169,11 @@ module omnipool::wormhole_adapter_pool {
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(vaa);
         assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
         assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
-        assert!(dola_contract == dola_contract::get_dola_contract(spend_emitter), EINVALIE_DOLA_CONTRACT);
-        dola_pool::register_spender(&pool_state.dola_contract, spend_emitter);
+        dola_pool::register_spender(&pool_state.dola_contract, dola_contract);
     }
 
     /// Delete pool owner by governance
-    public fun delete_owner(
+    public entry fun delete_owner(
         vaa: vector<u8>
     ) acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
@@ -194,7 +190,7 @@ module omnipool::wormhole_adapter_pool {
     }
 
     /// Delete pool spender by governance
-    public fun delete_spender(
+    public entry fun delete_spender(
         vaa: vector<u8>
     ) acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
