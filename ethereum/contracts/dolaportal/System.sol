@@ -9,7 +9,7 @@ import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";
 import "../libraries/LibAsset.sol";
 
-contract System {
+contract SystemPortal {
     uint8 public constant SYSTEM_APP_ID = 0;
 
     IWormholeAdapterPool immutable wormholeAdapterPool;

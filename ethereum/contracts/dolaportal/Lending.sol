@@ -9,7 +9,7 @@ import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";
 import "../libraries/LibAsset.sol";
 
-contract DolaPortal {
+contract LendingPortal {
     uint8 public constant LENDING_APP_ID = 1;
     IWormholeAdapterPool immutable wormholeAdapterPool;
     uint64 public dolaNonce;
@@ -243,9 +243,5 @@ contract DolaPortal {
             LENDING_APP_ID,
             appPayload
         );
-    }
-
-    function generateNonce() internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(block.timestamp, msg.sender));
     }
 }
