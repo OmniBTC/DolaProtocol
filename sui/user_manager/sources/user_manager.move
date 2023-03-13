@@ -1,17 +1,18 @@
 module user_manager::user_manager {
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::event;
-    #[test_only]
-    use sui::test_scenario;
+
     #[test_only]
     use governance::genesis;
+    #[test_only]
+    use sui::test_scenario;
 
     /// Errors
     const EALREADY_USER: u64 = 0;
@@ -95,7 +96,8 @@ module user_manager::user_manager {
     public fun unregister_dola_chain_id(
         _: &GovernanceCap,
         user_manager_info: &mut UserManagerInfo,
-        dola_chain_id: u16) {
+        dola_chain_id: u16
+    ) {
         let chain_id_to_group = &mut user_manager_info.chain_id_to_group;
         assert!(table::contains(chain_id_to_group, dola_chain_id), ENOT_GROUP);
         table::remove(chain_id_to_group, dola_chain_id);
@@ -103,10 +105,10 @@ module user_manager::user_manager {
 
     /// Convert DolaAddress to a new DolaAddress based on group_id
     public fun process_group_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): DolaAddress {
-        let dola_chain_id = types::get_dola_chain_id(&user_address);
+        let dola_chain_id = dola_address::get_dola_chain_id(&user_address);
         let chain_id_to_group = &user_manager_info.chain_id_to_group;
         if (table::contains(chain_id_to_group, dola_chain_id)) {
-            types::update_dola_chain_id(user_address, *table::borrow(chain_id_to_group, dola_chain_id))
+            dola_address::update_dola_chain_id(user_address, *table::borrow(chain_id_to_group, dola_chain_id))
         }else {
             user_address
         }
@@ -284,10 +286,10 @@ module user_manager::user_manager {
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
             let user_manager_cap = UserManagerCap {};
 
-            let user1 = types::convert_address_to_dola(@11);
-            let user2 = types::update_dola_chain_id(user1, 2);
-            let user3 = types::update_dola_chain_id(user1, 3);
-            let user4 = types::update_dola_chain_id(user1, 5);
+            let user1 = dola_address::convert_address_to_dola(@11);
+            let user2 = dola_address::update_dola_chain_id(user1, 2);
+            let user3 = dola_address::update_dola_chain_id(user1, 3);
+            let user4 = dola_address::update_dola_chain_id(user1, 5);
             register_dola_user_id(&user_manager_cap, &mut user_manager_info, user1);
             assert!(get_dola_user_id(&user_manager_info, user1) == 1, 0);
             assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);

@@ -1,5 +1,3 @@
-import base64
-
 from dola_aptos_sdk import load
 
 from dola_aptos_sdk.init import btc, usdt, bridge_pool_read_vaa
@@ -25,9 +23,9 @@ def portal_supply(coin_type, amount):
     :param coin_type:
     :return: payload
     """
-    lending_portal = load.lending_portal_package()
+    dola_portal = load.dola_portal_package()
 
-    lending_portal.lending.supply(
+    dola_portal.lending.supply(
         int(amount),
         ty_args=[coin_type]
     )
@@ -36,7 +34,7 @@ def portal_supply(coin_type, amount):
 
 def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
     """
-    public entry fun withdraw<CoinType>(
+    public entry fun withdraw_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -44,13 +42,13 @@ def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
     )
     :return:
     """
-    lending_portal = load.lending_portal_package()
-    account_address = lending_portal.account.account_address
+    dola_portal = load.dola_portal_package()
+    account_address = dola_portal.account.account_address
     if receiver is None:
         assert dst_chain == 1
         receiver = account_address
 
-    _result = lending_portal.lending.withdraw(
+    _result = dola_portal.lending.withdraw_local(
         str(receiver),
         dst_chain,
         int(amount),
@@ -68,8 +66,8 @@ def pool_withdraw(vaa, coin_type):
     :param vaa:
     :return:
     """
-    wormhole_bridge = load.wormhole_bridge_package()
-    wormhole_bridge.bridge_pool.receive_withdraw(
+    omnipool = load.omnipool_package()
+    omnipool.wormhole_adapter_pool.receive_withdraw(
         vaa,
         ty_args=[coin_type]
     )
@@ -77,7 +75,7 @@ def pool_withdraw(vaa, coin_type):
 
 def portal_borrow(coin_type, amount, dst_chain=1, receiver=None):
     """
-    public entry fun borrow<CoinType>(
+    public entry fun borrow_local<CoinType>(
         sender: &signer,
         receiver: vector<u8>,
         dst_chain: u64,
@@ -85,13 +83,13 @@ def portal_borrow(coin_type, amount, dst_chain=1, receiver=None):
     )
     :return:
     """
-    lending_portal = load.lending_portal_package()
-    account_address = lending_portal.account.account_address
+    dola_portal = load.dola_portal_package()
+    account_address = dola_portal.account.account_address
     if receiver is None:
         assert dst_chain == 1
         receiver = account_address
 
-    _result = lending_portal.lending.borrow(
+    _result = dola_portal.lending.borrow_local(
         str(receiver),
         dst_chain,
         int(amount),
@@ -108,9 +106,9 @@ def portal_repay(coin_type, amount):
     )
     :return:
     """
-    lending_portal = load.lending_portal_package()
+    dola_portal = load.dola_portal_package()
 
-    _result = lending_portal.lending.repay(
+    _result = dola_portal.lending.repay(
         int(amount),
         ty_args=[coin_type]
     )
@@ -129,13 +127,13 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, amount, dst_chain=1, 
     )
     :return:
     """
-    lending_portal = load.lending_portal_package()
-    account_address = lending_portal.account.account_address
+    dola_portal = load.dola_portal_package()
+    account_address = dola_portal.account.account_address
     if receiver is None:
         assert dst_chain == 1
         receiver = account_address
 
-    _result = lending_portal.lending.liquidate(
+    _result = dola_portal.lending.liquidate(
         str(receiver),
         dst_chain,
         int(amount),
@@ -167,6 +165,6 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 if __name__ == "__main__":
     # claim_test_coin(usdt())
     # monitor_supply(usdt())
-    # monitor_withdraw(btc())
+    monitor_withdraw(usdt())
     # monitor_borrow(usdt(), 100)
-    monitor_repay(usdt(), 100)
+    # monitor_repay(usdt(), 100)

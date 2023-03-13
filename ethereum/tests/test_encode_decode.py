@@ -1,6 +1,18 @@
 from brownie import EncodeDecode, accounts
 from pytest import fixture
 
+POOL_DEPOSIT = 0
+POOL_WITHDRAW = 1
+POOL_SEND_MESSAGE = 2
+
+SUPPLY = 0
+WITHDRAW = 1
+BORROW = 2
+REPAY = 3
+LIQUIDATE = 4
+AS_COLLATERAL = 5
+CANCEL_AS_COLLATERAL = 6
+
 
 def account():
     return accounts[0]
@@ -18,12 +30,10 @@ def test_encode_decode(encode_decode):
     app_id = 0
     app_payload = b"test"
     dola_chain_id = 1
-    pool_addr = encode_decode.encodeDolaAddress(dola_chain_id, pool)
-    result = encode_decode.decodeDolaAddress(pool_addr)
-    assert result == (dola_chain_id, pool)
 
-    # test encode SendDepositPayload
-    send_deposit_payload = encode_decode.encodeSendDepositPayload(
+    # test pool codec
+    # test encode and decode pool deposit payload
+    pool_deposit_payload = encode_decode.encodeDepositPayload(
         [dola_chain_id, pool],
         [dola_chain_id, user],
         amount,
@@ -31,75 +41,79 @@ def test_encode_decode(encode_decode):
         app_payload
     )
 
-    result = encode_decode.decodeSendDepositPayload(send_deposit_payload)
+    result = encode_decode.decodeDepositPayload(pool_deposit_payload)
     assert result == ((dola_chain_id, pool), (dola_chain_id,
-                                              user), amount, app_id, f"0x{app_payload.hex()}")
-    # test encode SendWithdrawPayload
-    send_withdraw_payload = encode_decode.encodeSendWithdrawPayload(
-        [dola_chain_id, pool],
-        [dola_chain_id, user],
-        app_id,
-        app_payload
-    )
-    result = encode_decode.decodeSendWithdrawPayload(send_withdraw_payload)
-    assert result == ((dola_chain_id, pool),
-                      (dola_chain_id, user), app_id, f"0x{app_payload.hex()}")
+                                              user), amount, app_id, POOL_DEPOSIT, f"0x{app_payload.hex()}")
 
-    # test encode SendDepositAndWithdrawPayload
-    withdraw_pool = "0x" + "3".zfill(39)
-    send_deposit_withdraw_payload = encode_decode.encodeSendDepositAndWithdrawPayload(
-        [dola_chain_id, pool],
-        [dola_chain_id, user],
-        amount,
-        [dola_chain_id, withdraw_pool],
-        app_id,
-        app_payload
-    )
-    result = encode_decode.decodeSendDepositAndWithdrawPayload(
-        send_deposit_withdraw_payload)
-    assert result == ((dola_chain_id, pool), (dola_chain_id, user),
-                      amount, (dola_chain_id, withdraw_pool), app_id, f"0x{app_payload.hex()}")
-
-    # test encode ReceiveWithdrawPayload
-    receive_withdraw_payload = encode_decode.encodeReceiveWithdrawPayload(
+    # test encode and decode pool withdraw payload
+    pool_withdraw_payload = encode_decode.encodeWithdrawPayload(
         0,
         0,
         [dola_chain_id, pool],
         [dola_chain_id, user],
         amount,
     )
-    result = encode_decode.decodeReceiveWithdrawPayload(
-        receive_withdraw_payload)
-    assert result == (0, 0, (dola_chain_id, pool), (dola_chain_id, user), amount)
+    result = encode_decode.decodeWithdrawPayload(
+        pool_withdraw_payload)
+    assert result == (0, 0, (dola_chain_id, pool), (dola_chain_id, user), amount, POOL_WITHDRAW)
 
-    # test encode LendingAppPayload
-    lending_app_payload = encode_decode.encodeLendingAppPayload(
-        dola_chain_id,
+    # test encode and decode pool send message payload
+    send_message_payload = encode_decode.encodeSendMessagePayload(
+        [dola_chain_id, user],
+        app_id,
+        app_payload
+    )
+    result = encode_decode.decodeSendMessagePayload(send_message_payload)
+    assert result == ((dola_chain_id, user), app_id, POOL_SEND_MESSAGE, f"0x{app_payload.hex()}")
+
+    # test lending codec
+    # test encode and decode lending deposit payload
+    lending_deposit_payload = encode_decode.encodeLendingDepositPayload(
         0,
-        1,
-        100,
+        0,
         [dola_chain_id, user],
         0
     )
-    result = encode_decode.decodeLendingAppPayload(lending_app_payload)
-    assert result == (dola_chain_id, 0, 1, 100, (dola_chain_id, user), 0)
+    result = encode_decode.decodeLendingDepositPayload(lending_deposit_payload)
+    assert result == (0, 0, (dola_chain_id, user), 0)
 
-    # test encode LendingHelperPayload
-    lending_helper_payload = encode_decode.encodeLendingHelperPayload(
-        [dola_chain_id, user],
-        [1, 2],
-        7
-    )
-    result = encode_decode.decodeLendingHelperPayload(lending_helper_payload)
-    assert result == ((dola_chain_id, user), (1, 2), 7)
-
-    # test encode encodeProtocolAppPayload
-    protocol_app_payload = encode_decode.encodeProtocolAppPayload(
+    # test encode and decode lending withdraw payload
+    lending_withdraw_payload = encode_decode.encodeLendingWithdrawPayload(
         dola_chain_id,
         0,
-        5,
-        [dola_chain_id, user],
+        amount,
         [dola_chain_id, pool],
+        [dola_chain_id, user],
+        1
     )
-    result = encode_decode.decodeProtocolAppPayload(protocol_app_payload)
-    assert result == (0, dola_chain_id, 0, (dola_chain_id, user), (dola_chain_id, pool), 5)
+    result = encode_decode.decodeLendingWithdrawPayload(lending_withdraw_payload)
+    assert result == (dola_chain_id, 0, amount, (dola_chain_id, pool), (dola_chain_id, user), 1)
+
+    # test encode and decode lending liquidate payload
+    lending_liquidate_payload = encode_decode.encodeLendingLiquidatePayload(
+        dola_chain_id,
+        0,
+        [dola_chain_id, pool],
+        0
+    )
+    result = encode_decode.decodeLendingLiquidatePayload(lending_liquidate_payload)
+    assert result == (dola_chain_id, 0, (dola_chain_id, pool), 0, LIQUIDATE)
+
+    # test encode and decode lending manage collateral payload
+    lending_manage_collateral_payload = encode_decode.encodeManageCollateralPayload(
+        [1, 2],
+        5
+    )
+    result = encode_decode.decodeManageCollateralPayload(lending_manage_collateral_payload)
+    assert result == ((1, 2), 5)
+
+    # test system codec
+    # test encode and decode system bind payload
+    system_bind_payload = encode_decode.encodeBindPayload(
+        dola_chain_id,
+        0,
+        [dola_chain_id, user],
+        0
+    )
+    result = encode_decode.decodeBindPayload(system_bind_payload)
+    assert result == (dola_chain_id, 0, (dola_chain_id, user), 0)

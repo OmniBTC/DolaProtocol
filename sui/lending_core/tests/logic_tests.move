@@ -3,13 +3,13 @@ module lending_core::logic_tests {
     use std::ascii;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
-    use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis;
     use lending_core::logic;
-    use lending_core::math::{ray_mul, ray_div};
-    use lending_core::storage::{Self, Storage, is_isolation_mode};
+    use lending_core::storage::{Self, Storage};
     use oracle::oracle::{Self, PriceOracle, OracleCap};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use ray_math::math;
     use sui::test_scenario::{Self, Scenario};
     use sui::tx_context::TxContext;
 
@@ -119,7 +119,7 @@ module lending_core::logic_tests {
 
 
         // register btc pool
-        let pool = types::create_dola_address(0, b"BTC");
+        let pool = dola_address::create_dola_address(0, b"BTC");
         let pool_name = ascii::string(b"BTC");
         pool_manager::register_pool_id(
             &governance_cap,
@@ -132,7 +132,7 @@ module lending_core::logic_tests {
         pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register usdt pool
-        let pool = types::create_dola_address(0, b"USDT");
+        let pool = dola_address::create_dola_address(0, b"USDT");
         let pool_name = ascii::string(b"USDT");
         pool_manager::register_pool_id(
             &governance_cap,
@@ -145,7 +145,7 @@ module lending_core::logic_tests {
         pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register usdc pool
-        let pool = types::create_dola_address(0, b"USDC");
+        let pool = dola_address::create_dola_address(0, b"USDC");
         let pool_name = ascii::string(b"USDC");
         pool_manager::register_pool_id(
             &governance_cap,
@@ -158,7 +158,7 @@ module lending_core::logic_tests {
         pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register eth pool
-        let pool = types::create_dola_address(0, b"ETH");
+        let pool = dola_address::create_dola_address(0, b"ETH");
         let pool_name = ascii::string(b"ETH");
         pool_manager::register_pool_id(
             &governance_cap,
@@ -171,7 +171,7 @@ module lending_core::logic_tests {
         pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register isolated pool
-        let pool = types::create_dola_address(0, b"ISOLATE");
+        let pool = dola_address::create_dola_address(0, b"ISOLATE");
         let pool_name = ascii::string(b"ISOLATE");
         pool_manager::register_pool_id(
             &governance_cap,
@@ -427,7 +427,7 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         let supply_pool = btc_pool;
         let supply_pool_id = BTC_POOL_ID;
         let supply_user_id = 0;
@@ -474,7 +474,7 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
         supply_scenario(
             scenario,
             creator,
@@ -492,7 +492,7 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
             logic::cancel_as_collateral(
                 &storage_cap,
                 &mut pool_manager_info,
@@ -502,7 +502,7 @@ module lending_core::logic_tests {
                 ISOLATE_POOL_ID
             );
             assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 203);
-            assert!(!is_isolation_mode(&mut storage, 0), 204);
+            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
             assert!(logic::user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 205);
 
             test_scenario::return_shared(pool_manager_info);
@@ -519,8 +519,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         supply_scenario(
             scenario,
             creator,
@@ -591,7 +591,7 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         let supply_pool = btc_pool;
         let supply_pool_id = BTC_POOL_ID;
         let supply_user_id = 0;
@@ -614,7 +614,7 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
         let supply_pool = isolate_pool;
         let supply_pool_id = ISOLATE_POOL_ID;
         let supply_user_id = 0;
@@ -633,7 +633,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -647,8 +647,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         supply_scenario(
             scenario,
             creator,
@@ -663,7 +663,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(is_isolation_mode(&mut storage, 0), 202);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -695,8 +695,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
 
         supply_scenario(
             scenario,
@@ -735,7 +735,7 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         let supply_amount = ONE;
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_amount);
 
@@ -787,8 +787,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 10000 * ONE;
         let borrow_usdt_amount = 5000 * ONE;
@@ -810,8 +810,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_usdt_amount = 1000 * ONE;
         let borrow_usdt_amount = 10 * ONE;
 
@@ -839,8 +839,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_usdt_amount = 5000 * ONE;
 
         // usdt borrow ceiling == 1000 * ONE
@@ -874,8 +874,8 @@ module lending_core::logic_tests {
 
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
 
         supply_scenario(
             scenario,
@@ -902,8 +902,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
 
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, ONE);
 
@@ -929,8 +929,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 10000 * ONE;
         let borrow_usdt_amount = 5000 * ONE;
@@ -992,8 +992,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let isolate_pool = types::create_dola_address(0, b"ISOLATE");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_isolate_amount = ONE;
         let supply_usdt_amount = 1000 * ONE;
         let borrow_usdt_amount = 50 * ONE;
@@ -1014,7 +1014,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            assert!(is_isolation_mode(&mut storage, 0), 201);
+            assert!(storage::is_isolation_mode(&mut storage, 0), 201);
 
             let repay_usdt_amount = 50 * ONE;
 
@@ -1043,7 +1043,7 @@ module lending_core::logic_tests {
             );
             // Check user total loan
             assert!(logic::user_total_loan_value(&mut storage, &mut oracle, 0) == 0, 203);
-            assert!(!is_isolation_mode(&mut storage, 0), 204);
+            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -1061,14 +1061,14 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         // User 0 supply 1 btc
@@ -1126,10 +1126,10 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let eth_pool = types::create_dola_address(0, b"ETH");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
-        let usdc_pool = types::create_dola_address(0, b"USDC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let eth_pool = dola_address::create_dola_address(0, b"ETH");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let usdc_pool = dola_address::create_dola_address(0, b"USDC");
         let supply_btc_amount = ONE;
         let supply_eth_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
@@ -1137,11 +1137,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1203,10 +1203,10 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let eth_pool = types::create_dola_address(0, b"ETH");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
-        let usdc_pool = types::create_dola_address(0, b"USDC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let eth_pool = dola_address::create_dola_address(0, b"ETH");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let usdc_pool = dola_address::create_dola_address(0, b"USDC");
         let supply_btc_amount = ONE;
         let supply_eth_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
@@ -1214,11 +1214,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1275,10 +1275,10 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let eth_pool = types::create_dola_address(0, b"ETH");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
-        let usdc_pool = types::create_dola_address(0, b"USDC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let eth_pool = dola_address::create_dola_address(0, b"ETH");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let usdc_pool = dola_address::create_dola_address(0, b"USDC");
         let supply_btc_amount = ONE;
         let supply_eth_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
@@ -1286,11 +1286,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1347,10 +1347,10 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let eth_pool = types::create_dola_address(0, b"ETH");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
-        let usdc_pool = types::create_dola_address(0, b"USDC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let eth_pool = dola_address::create_dola_address(0, b"ETH");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let usdc_pool = dola_address::create_dola_address(0, b"USDC");
         let supply_btc_amount = ONE;
         let supply_eth_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
@@ -1358,11 +1358,11 @@ module lending_core::logic_tests {
 
         let user_btc_value = 20000 * ONE;
         // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = ray_div(ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
         let borrow_usdt_amount = borrow_usdt_value;
 
         let user_eth_value = 1500 * ONE;
-        let borrow_usdc_value = ray_div(ray_mul(user_eth_value, ETH_CF), USDC_BF);
+        let borrow_usdc_value = math::ray_div(math::ray_mul(user_eth_value, ETH_CF), USDC_BF);
         let borrow_usdc_amount = borrow_usdc_value;
 
         // User 0 supply 1 btc
@@ -1419,7 +1419,7 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
         let supply_btc_amount = ONE;
 
         // User 0 supply 1 btc
@@ -1509,8 +1509,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 10000 * ONE;
         let borrow_usdt_amount = 3000 * ONE;
@@ -1569,8 +1569,8 @@ module lending_core::logic_tests {
         let scenario_val = init_test_scenario(creator);
         let scenario = &mut scenario_val;
 
-        let btc_pool = types::create_dola_address(0, b"BTC");
-        let usdt_pool = types::create_dola_address(0, b"USDT");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 10000 * ONE;
         let borrow_usdt_amount = 8000 * ONE;

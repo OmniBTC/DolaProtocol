@@ -5,7 +5,7 @@ module external_interfaces::interfaces {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::types::{Self, DolaAddress};
+    use dola_types::dola_address::{Self, DolaAddress};
     use lending_core::logic;
     use lending_core::rates;
     use lending_core::storage::{Self, Storage};
@@ -155,7 +155,7 @@ module external_interfaces::interfaces {
     }
 
     public entry fun get_dola_user_id(user_manager_info: &mut UserManagerInfo, dola_chain_id: u16, user: vector<u8>) {
-        let dola_address = types::create_dola_address(dola_chain_id, user);
+        let dola_address = dola_address::create_dola_address(dola_chain_id, user);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, dola_address);
         emit(DolaUserId {
             dola_user_id
@@ -190,7 +190,7 @@ module external_interfaces::interfaces {
         dola_chain_id: u16,
         pool_address: vector<u8>
     ) {
-        let pool_address = types::create_dola_address(dola_chain_id, pool_address);
+        let pool_address = dola_address::create_dola_address(dola_chain_id, pool_address);
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         let pool_equilibrium_fee = pool_manager::get_pool_equilibrium_fee(pool_manager_info, pool_address);
         let pool_weight = pool_manager::get_pool_weight(pool_manager_info, pool_address);
@@ -417,7 +417,7 @@ module external_interfaces::interfaces {
             total_debt_value - (total_liquid_value + total_collateral_value)
         };
 
-        let net_apy = if (net_value >= 0) { math::ray_div(net_apy_value, net_value) } else { 0 };
+        let net_apy = if (net_value > 0) { math::ray_div(net_apy_value, net_value) } else { 0 };
 
         net_apy = net_apy * 10000 / math::ray();
         total_supply_apy = total_supply_apy * 10000 / math::ray();
@@ -583,7 +583,7 @@ module external_interfaces::interfaces {
         pool_address: vector<u8>,
         deposit_amount: u256
     ) {
-        let dola_pool_address = types::create_dola_address(dola_chain_id, pool_address);
+        let dola_pool_address = dola_address::create_dola_address(dola_chain_id, pool_address);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
         let total_liquidity = pool_manager::get_token_liquidity(pool_manager_info, dola_pool_id);
         let current_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dola_pool_address);
@@ -609,7 +609,7 @@ module external_interfaces::interfaces {
         pool_address: vector<u8>,
         withdraw_amount: u256
     ) {
-        let dola_pool_address = types::create_dola_address(dola_chain_id, pool_address);
+        let dola_pool_address = dola_address::create_dola_address(dola_chain_id, pool_address);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, dola_pool_address);
         let total_liquidity = pool_manager::get_token_liquidity(pool_manager_info, dola_pool_id);
         let current_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dola_pool_address);

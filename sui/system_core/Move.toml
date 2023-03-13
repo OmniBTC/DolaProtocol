@@ -1,0 +1,42 @@
+[package]
+name = "SystemCore"
+version = "0.0.1"
+
+[addresses]
+system_core = "0x0"
+wormhole_adapter_core = "0x1"
+governance = "0x0"
+user_manager = "0x0"
+app_manager = "0x0"
+serde = "0x0"
+wormhole = "0x0"
+dola_types = "0x0"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework"
+rev = "598f106ef5fbdfbe1b644236f0caf46c94f4d1b7"
+
+[dependencies.Wormhole]
+git = "https://github.com/OmniBTC/wormhole.git"
+subdir = "sui/wormhole"
+rev = "a6ed712489faf4a16856204465d6bad006cc7b97"
+
+[dependencies.DolaTypes]
+local = "../dola_types"
+
+[dependencies.Serde]
+local = "../serde"
+
+[dependencies.Governance]
+local = "../governance"
+
+[dependencies.WormholeAdapterCore]
+local = "../wormhole_adapter_core"
+
+[dependencies.AppManager]
+local = "../app_manager"
+
+[dependencies.UserManager]
+local = "../user_manager"

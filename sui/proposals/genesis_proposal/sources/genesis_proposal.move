@@ -1,25 +1,22 @@
 module genesis_proposal::genesis_proposal {
     use std::ascii;
     use std::option;
-
-    use protocol_core::protocol_wormhole_adapter;
+    use std::vector;
 
     use app_manager::app_manager::{Self, TotalAppInfo};
-    use dola_portal::portal::DolaPortal;
-    use dola_types::types::create_dola_address;
+    use dola_types::dola_address;
+    use dola_types::dola_contract::DolaContractRegistry;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
-    use lending_core::lending_wormhole_adapter;
     use lending_core::storage::Storage;
-    use omnipool::pool;
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
-    use sui::tx_context::TxContext;
+    use sui::coin::Coin;
+    use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
-    use wormhole_bridge::bridge_core::{Self, CoreState};
-    use wormhole_bridge::bridge_pool::{Self, PoolState};
-
-    const EVM_GROUP_ID: u16 = 2;
+    use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
 
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
@@ -29,28 +26,36 @@ module genesis_proposal::genesis_proposal {
         governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
     }
 
-    public entry fun vote_init_bridge_cap(
+    public entry fun vote_init_lending_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        state: &mut State,
+        storage: &mut Storage,
+        total_app_info: &mut TotalAppInfo,
+        wormhole_adapater: &mut lending_core::wormhole_adapter::WormholeAdapter,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
-            bridge_core::initialize_wormhole_with_governance(&governance_cap, state, ctx);
-            bridge_pool::initialize_wormhole_with_governance(&governance_cap, state, ctx);
+
+            // init storage
+            let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
+            lending_core::storage::transfer_app_cap(storage, app_cap);
+
+            // init wormhole adapter
+            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
+            lending_core::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun vote_init_lending_storage(
+    public entry fun vote_init_system_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
         ctx: &mut TxContext
     ) {
@@ -59,19 +64,22 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
-            lending_core::storage::transfer_app_cap(storage, app_cap);
+            // init storage
+            system_core::storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
+
+            // init wormhole adapter
+            system_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
     }
 
-
-    public entry fun vote_init_lending_wormhole_adapter(
+    public entry fun vote_init_dola_portal(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        wormhole_adapater: &mut lending_wormhole_adapter::WormholeAdapter,
+        dola_contract_registry: &mut DolaContractRegistry,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -79,63 +87,24 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
-            lending_core::lending_wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+            // init lending portal
+            dola_portal::lending::initialize_cap_with_governance(&governance_cap, dola_contract_registry, ctx);
+
+            // init system portal
+            dola_portal::system::initialize_cap_with_governance(&governance_cap, ctx);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun vote_init_protocol_wormhole_adapter(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        wormhole_adapater: &mut protocol_wormhole_adapter::WormholeAdapter,
-        ctx: &mut TxContext
-    ) {
-        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-
-        if (option::is_some(&governance_cap)) {
-            let governance_cap = option::extract(&mut governance_cap);
-
-            let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
-            protocol_core::protocol_wormhole_adapter::transfer_user_manager_cap(wormhole_adapater, user_manager_cap);
-            governance_v1::destory_governance_cap(governance_cap);
-        };
-
-        option::destroy_none(governance_cap);
-    }
-
-    public entry fun vote_init_lending_portal(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        lending_portal: &mut DolaPortal,
-        ctx: &mut TxContext
-    ) {
-        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-
-        if (option::is_some(&governance_cap)) {
-            let governance_cap = option::extract(&mut governance_cap);
-
-            let pool_cap = pool::register_cap(&governance_cap, ctx);
-            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
-            let pool_manager_cap = pool_manager::pool_manager::register_cap_with_governance(&governance_cap);
-            let user_manager_cap = user_manager::user_manager::register_cap_with_governance(&governance_cap);
-            dola_portal::portal::transfer_pool_cap(lending_portal, pool_cap);
-            dola_portal::portal::transfer_storage_cap(lending_portal, storage_cap);
-            dola_portal::portal::transfer_pool_manager_cap(lending_portal, pool_manager_cap);
-            dola_portal::portal::transfer_user_manager_cap(lending_portal, user_manager_cap);
-            governance_v1::destory_governance_cap(governance_cap);
-        };
-
-        option::destroy_none(governance_cap);
-    }
-
-    public entry fun vote_register_evm_chain_id(
+    public entry fun vote_init_chain_group_id(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         user_manager: &mut UserManagerInfo,
-        evm_chain_id: u16,
+        group_id: u16,
+        chain_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -143,19 +112,23 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            user_manager::register_dola_chain_id(&governance_cap, user_manager, evm_chain_id, EVM_GROUP_ID);
+            let i = 0;
+            while (i < vector::length(&chain_ids)) {
+                let chain_id = *vector::borrow(&chain_ids, i);
+                user_manager::register_dola_chain_id(&governance_cap, user_manager, chain_id, group_id);
+                i = i + 1;
+            };
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
     }
 
-    public entry fun vote_register_core_remote_bridge(
+    public entry fun vote_init_wormhole_adapter_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        core_state: &mut CoreState,
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>,
+        wormhole_state: &mut State,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -163,33 +136,13 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            bridge_core::register_remote_bridge(&governance_cap, core_state, emitter_chain_id, emitter_address, ctx);
+            wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, wormhole_state, ctx);
+
             governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
     }
-
-    public entry fun vote_register_pool_remote_bridge(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        pool_state: &mut PoolState,
-        emitter_chain_id: u16,
-        emitter_address: vector<u8>,
-        ctx: &mut TxContext
-    ) {
-        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-
-        if (option::is_some(&governance_cap)) {
-            let governance_cap = option::extract(&mut governance_cap);
-
-            bridge_pool::register_remote_bridge(&governance_cap, pool_state, emitter_chain_id, emitter_address, ctx);
-            governance_v1::destory_governance_cap(governance_cap);
-        };
-
-        option::destroy_none(governance_cap);
-    }
-
 
     public entry fun vote_register_new_pool(
         governance_info: &mut GovernanceInfo,
@@ -199,6 +152,7 @@ module genesis_proposal::genesis_proposal {
         pool_dola_chain_id: u16,
         dola_pool_name: vector<u8>,
         dola_pool_id: u16,
+        weight: u256,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -206,9 +160,9 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            let pool = create_dola_address(pool_dola_chain_id, pool_dola_address);
+            let pool = dola_address::create_dola_address(pool_dola_chain_id, pool_dola_address);
 
-            if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            if (!pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
                 pool_manager::register_pool_id(
                     &governance_cap,
                     pool_manager_info,
@@ -218,8 +172,187 @@ module genesis_proposal::genesis_proposal {
                 );
             };
             pool_manager::register_pool(&governance_cap, pool_manager_info, pool, dola_pool_id);
+            pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, weight);
 
             governance_v1::destory_governance_cap(governance_cap);
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_register_remote_bridge(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        core_state: &mut CoreState,
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::register_remote_bridge(
+                &governance_cap,
+                core_state,
+                wormhole_emitter_chain,
+                wormhole_emitter_address
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_delete_remote_bridge(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        core_state: &mut CoreState,
+        wormhole_emitter_chain: u16,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::delete_remote_bridge(
+                &governance_cap,
+                core_state,
+                wormhole_emitter_chain
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_remote_register_owner(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::remote_register_owner(
+                &governance_cap,
+                wormhole_state,
+                core_state,
+                dola_chain_id,
+                dola_contract,
+                wormhole_message_fee
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_remote_register_spender(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::remote_register_spender(
+                &governance_cap,
+                wormhole_state,
+                core_state,
+                dola_chain_id,
+                dola_contract,
+                wormhole_message_fee
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_remote_delete_owner(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::remote_delete_owner(
+                &governance_cap,
+                wormhole_state,
+                core_state,
+                dola_chain_id,
+                dola_contract,
+                wormhole_message_fee
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_remote_delete_spender(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+
+            wormhole_adapter_core::remote_delete_spender(
+                &governance_cap,
+                wormhole_state,
+                core_state,
+                dola_chain_id,
+                dola_contract,
+                wormhole_message_fee
+            );
+
+            governance_v1::destory_governance_cap(governance_cap);
+        } else {
+            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);

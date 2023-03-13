@@ -30,7 +30,7 @@ module lending_core::logic {
 
     const AS_COLLATERAL: u8 = 7;
 
-    const CANCLE_AS_COLLATERAL: u8 = 8;
+    const CANCEL_AS_COLLATERAL: u8 = 8;
 
     /// Errors
     const ECOLLATERAL_AS_LOAN: u64 = 0;
@@ -411,7 +411,7 @@ module lending_core::logic {
             amount: 0,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: CANCLE_AS_COLLATERAL
+            call_type: CANCEL_AS_COLLATERAL
         });
     }
 
