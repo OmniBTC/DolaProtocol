@@ -117,8 +117,8 @@ def bridge_pool_evm(network):
 
 
 def bridge_core_evm(network):
-    sui_wormhole_bridge = dola_sui_load.wormhole_bridge_package()
-    ethereum_wormhole_bridge = dola_ethereum_load.wormhole_bridge_package()
+    sui_wormhole_bridge = dola_sui_load.omnipool_package()
+    ethereum_wormhole_bridge = dola_ethereum_load.wormhole_adapter_pool_package()
     ethereum_account = dola_ethereum_sdk.get_account()
 
     data = BridgeDict(f"{network}_bridge_core.json")
@@ -127,7 +127,7 @@ def bridge_core_evm(network):
         local_logger.info("running...")
         try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
-            decode_payload = sui_wormhole_bridge.bridge_pool.decode_receive_withdraw_payload.simulate(
+            decode_payload = sui_wormhole_bridge.wormhole_adapter_pool.decode_receive_withdraw_payload.simulate(
                 vaa
             )["events"][-1]["moveEvent"]["fields"]["pool_address"]["fields"]
             dola_chain_id = decode_payload["dola_chain_id"]

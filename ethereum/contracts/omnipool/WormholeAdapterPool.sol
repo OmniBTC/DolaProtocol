@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../libraries/LibAsset.sol";
 import "../libraries/LibPoolCodec.sol";
 import "../libraries/LibLendingCodec.sol";
 import "../libraries/LibSystemCodec.sol";
@@ -77,7 +78,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
             "INVALID CALL TYPE"
@@ -95,7 +96,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
             "INVALID CALL TYPE"
@@ -113,7 +114,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
             "INVALID CALL TYPE"
@@ -131,7 +132,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
             "INVALID CALL TYPE"
@@ -153,13 +154,13 @@ contract WormholeAdapterPool {
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
-        bytes memory payload = dolaPool.deposit{value: msg.value - wormholeFee}(
+        bytes memory payload = dolaPool.deposit{value : msg.value - wormholeFee}(
             token,
             amount,
             appId,
             appPayload
         );
-        wormhole.publishMessage{value: wormholeFee}(
+        wormhole.publishMessage{value : wormholeFee}(
             0,
             payload,
             wormholeFinality
@@ -171,13 +172,13 @@ contract WormholeAdapterPool {
 
     /// Send message that do not involve incoming or outgoing funds by application
     function sendMessage(uint16 appId, bytes memory appPayload)
-        external
-        payable
+    external
+    payable
     {
         uint256 wormholeFee = wormhole.messageFee();
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
-        wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
+        wormhole.publishMessage{value : msg.value}(0, payload, wormholeFinality);
         cachedVAA[getNonce()] = payload;
         increaseNonce();
     }
@@ -192,7 +193,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
-            .decodeWithdrawPayload(encodedVm);
+        .decodeWithdrawPayload(encodedVm);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
 
         emit PoolWithdrawEvent(

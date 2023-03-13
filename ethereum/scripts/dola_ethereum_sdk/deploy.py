@@ -10,19 +10,13 @@ def deploy():
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
 
+    DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
+
     print("deploy wormhole adapter pool...")
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
         0,
-        {'from': account}
-    )
-
-    print("deploy dola pool...")
-
-    dola_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["DolaPool"].deploy(
-        wormhole_chainid,
-        wormhole_adapter_pool.address,
         {'from': account}
     )
 
@@ -46,7 +40,6 @@ def deploy():
 
     print("----- deploy result -----")
     print(f"wormhole_adapter_pool:'{wormhole_adapter_pool}'")
-    print(f"dola_pool:'{dola_pool}'")
     print(f"btc:'{btc}'")
     print(f"usdt:'{usdt}'")
     print(f"usdc:'{usdc}'")

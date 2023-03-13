@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IWormholeAdapterPool.sol";
-import "../../interfaces/IOmniPool.sol";
 import "../libraries/LibSystemCodec.sol";
 import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";

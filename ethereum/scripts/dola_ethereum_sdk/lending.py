@@ -1,33 +1,66 @@
-from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from brownie import Contract
-from dola_ethereum_sdk.init import btc_pool, get_pool_token, usdt_pool
-from dola_ethereum_sdk.load import lending_portal_package, wormhole_bridge_package
+
+import dola_ethereum_sdk.load as load
+from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
+from dola_ethereum_sdk.init import usdt, btc
 
 
-def portal_supply(pool, amount):
+def portal_as_collateral(pool_ids=None):
     """
-    function supply(address pool, uint256 amount)
+    function as_collateral(uint16[] memory dolaPoolIds) external payable
+    :return:
+    """
+    account = get_account()
+    lending_portal = load.lending_portal_package()
+    if pool_ids is None:
+        pool_ids = []
 
+    lending_portal.as_collateral(
+        pool_ids,
+        {'from': account}
+    )
+
+
+def portal_cancel_as_collateral(pool_ids=None):
+    """
+    function cancel_as_collateral(uint16[] memory dolaPoolIds)
+    :return:
+    """
+    account = get_account()
+    lending_portal = load.lending_portal_package()
+    if pool_ids is None:
+        pool_ids = []
+
+    lending_portal.cancel_as_collateral(
+        pool_ids,
+        {'from': account}
+    )
+
+
+def portal_supply(token, amount):
+    """
+    function supply(address token, uint256 amount)
+
+    :param token:
     :param amount:
-    :param coin_type:
     :return: payload
     """
     account = get_account()
-    lending_portal = lending_portal_package()
-    token = Contract.from_abi("ERC20", get_pool_token(
-        pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
-    token.approve(pool, amount, {'from': account})
+    lending_portal = load.lending_portal_package()
+    token = Contract.from_abi("MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
+    token.mint(account.address, amount, {'from': account})
+    token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.supply(
-        pool,
+        token,
         int(amount),
         {'from': account}
     )
 
 
-def portal_withdraw(pool, amount, dst_chain=1, receiver=None):
+def portal_withdraw(token, amount, dst_chain=1, receiver=None):
     """
     function withdraw(
-        address pool,
+        bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount
@@ -35,9 +68,9 @@ def portal_withdraw(pool, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
-    lending_portal = lending_portal_package()
+    lending_portal = load.lending_portal_package()
     lending_portal.withdraw(
-        pool,
+        str(token),
         str(receiver),
         dst_chain,
         int(amount),
@@ -54,14 +87,14 @@ def pool_withdraw(vaa):
     :return:
     """
     account = get_account()
-    bridge_pool = wormhole_bridge_package()
-    bridge_pool.receive_withdraw(vaa, {'from': account})
+    wormhole_adapter_pool = load.wormhole_adapter_pool_package()
+    wormhole_adapter_pool.receive_withdraw(vaa, {'from': account})
 
 
-def portal_borrow(pool, amount, dst_chain=1, receiver=None):
+def portal_borrow(token, amount, dst_chain=1, receiver=None):
     """
     function borrow(
-        address pool,
+        bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
         uint64 amount
@@ -69,9 +102,9 @@ def portal_borrow(pool, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
-    lending_portal = lending_portal_package()
+    lending_portal = load.lending_portal_package()
     lending_portal.borrow(
-        pool,
+        str(token),
         str(receiver),
         dst_chain,
         int(amount),
@@ -79,20 +112,19 @@ def portal_borrow(pool, amount, dst_chain=1, receiver=None):
     )
 
 
-def portal_repay(pool, amount):
+def portal_repay(token, amount):
     """
-    function repay(address pool, uint256 amount)
+    function repay(address token, uint256 amount)
 
     :return:
     """
     account = get_account()
-    lending_portal = lending_portal_package()
+    lending_portal = load.lending_portal_package()
 
-    token = Contract.from_abi("ERC20", get_pool_token(
-        pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
-    token.approve(pool, amount, {'from': account})
+    token = Contract.from_abi("ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.repay(
-        pool,
+        token,
         int(amount),
         {'from': account}
     )
@@ -111,11 +143,10 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     :return:
     """
     account = get_account()
-    lending_portal = lending_portal_package()
+    lending_portal = load.lending_portal_package()
 
-    token = Contract.from_abi("ERC20", get_pool_token(
-        debt_pool), DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
-    token.approve(debt_pool, amount, {'from': account})
+    token = Contract.from_abi("ERC20", debt_pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.liquidate(
         str(receiver),
         dst_chain,
@@ -144,16 +175,18 @@ def monitor_repay(pool, amount=1):
 
 
 def monitor_liquidate(dst_chain=4, receiver=None):
-    print(portal_liquidate(usdt_pool(), btc_pool(), 1e18, dst_chain, receiver))
+    print(portal_liquidate(usdt(), btc(), 1e18, dst_chain, receiver))
 
 
 def main():
-    # monitor_supply(btc_pool(), 10)
-    # monitor_withdraw(btc_pool(), receiver=get_account().address)
+    monitor_supply(usdt(), 100000)
+    # monitor_supply(usdc(), 100000)
+    # portal_cancel_as_collateral([1, 2])
+    # monitor_withdraw(usdt(), 5, get_account().address)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
-    monitor_repay(usdt_pool())
+    # monitor_repay(usdt_pool())
 
 
 if __name__ == "__main__":
-    set_ethereum_network("bsc-test")
+    set_ethereum_network("polygon-test")
     main()
