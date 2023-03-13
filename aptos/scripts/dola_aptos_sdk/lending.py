@@ -142,6 +142,78 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, amount, dst_chain=1, 
     return bridge_pool_read_vaa()
 
 
+def portal_as_collateral(dola_pool_ids=None):
+    """
+    public entry fun as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u16>,
+    )
+    :return:
+    """
+    dola_portal = load.dola_portal_package()
+    if dola_pool_ids is None:
+        dola_pool_ids = []
+
+    _result = dola_portal.lending.as_collateral(
+        dola_pool_ids
+    )
+    return bridge_pool_read_vaa()
+
+
+def portal_cancel_as_collateral(dola_pool_ids=None):
+    """
+    public entry fun cancel_as_collateral(
+        sender: &signer,
+        dola_pool_ids: vector<u16>,
+    )
+    :return:
+    """
+    dola_portal = load.dola_portal_package()
+    if dola_pool_ids is None:
+        dola_pool_ids = []
+
+    _result = dola_portal.lending.cancel_as_collateral(
+        dola_pool_ids
+    )
+    return bridge_pool_read_vaa()
+
+
+def portal_binding(bind_address, dola_chain_id=5):
+    """
+    public entry fun binding(
+        sender: &signer,
+        dola_chain_id: u16,
+        binded_address: vector<u8>,
+    )
+    :return:
+    """
+    dola_portal = load.dola_portal_package()
+
+    _result = dola_portal.system.binding(
+        dola_chain_id,
+        bind_address
+    )
+    return bridge_pool_read_vaa()
+
+
+def portal_unbinding(bind_address, dola_chain_id=5):
+    """
+    public entry fun unbinding(
+        sender: &signer,
+        dola_chain_id: u16,
+        unbinded_address: vector<u8>
+    )
+    :return:
+    """
+    dola_portal = load.dola_portal_package()
+
+    _result = dola_portal.system.unbinding(
+        dola_chain_id,
+        bind_address
+    )
+    return bridge_pool_read_vaa()
+
+
 def monitor_supply(coin):
     print(portal_supply(coin, 1e8))
 

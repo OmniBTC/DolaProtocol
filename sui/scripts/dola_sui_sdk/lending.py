@@ -3,7 +3,7 @@ from pprint import pprint
 from sui_brownie import CacheObject, ObjectType
 
 from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt, usdc, sui, claim_test_coin
+from dola_sui_sdk.init import btc, usdt, usdc, sui
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
 
 U64_MAX = 18446744073709551615
@@ -813,21 +813,6 @@ def check_user_manager():
         user_manager.user_manager.UserManagerInfo[-1])
     print("\n --- user manager info ---")
     pprint(storage)
-
-
-def lending_tests():
-    # test supply and withdraw
-    claim_test_coin(usdt())
-    portal_supply(usdt())
-    portal_withdraw_local(usdt(), 1e8)
-    # test bind and unbind
-    zero = "0x" + "".zfill(40)
-    portal_binding(zero)
-    portal_unbinding(zero)
-    # test as_collateral and cancel_as_collateral
-    portal_supply(usdt())
-    portal_cancel_as_collateral([1])
-    portal_as_collateral([1])
 
 
 if __name__ == "__main__":
