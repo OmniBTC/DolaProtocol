@@ -40,23 +40,23 @@ def dola_portal_test():
     # test aptos portal
     # test aptos supply
     dola_aptos_portal.claim_test_coin(dola_aptos_init.usdt())
-    vaa = dola_aptos_portal.portal_supply(dola_aptos_init.usdt(), 1e8)
+    (vaa, _) = dola_aptos_portal.portal_supply(dola_aptos_init.usdt(), 1e8)
     dola_sui_portal.core_supply(vaa)
 
     # test aptos bind and unbind
-    vaa = dola_aptos_portal.portal_binding(zero_address())
+    (vaa, _) = dola_aptos_portal.portal_binding(zero_address())
     dola_sui_portal.core_binding(vaa)
-    vaa = dola_aptos_portal.portal_unbinding(zero_address())
+    (vaa, _) = dola_aptos_portal.portal_unbinding(zero_address())
     dola_sui_portal.core_unbinding(vaa)
 
     # test aptos manage collateral
-    vaa = dola_aptos_portal.portal_cancel_as_collateral([1])
+    (vaa, _) = dola_aptos_portal.portal_cancel_as_collateral([1])
     dola_sui_portal.core_cancel_as_collateral(vaa)
-    vaa = dola_aptos_portal.portal_as_collateral([1])
+    (vaa, _) = dola_aptos_portal.portal_as_collateral([1])
     dola_sui_portal.core_as_collateral(vaa)
 
     # test aptos withdraw
-    vaa = dola_aptos_portal.portal_withdraw(dola_aptos_init.usdt(), 1e8)
+    (vaa, _) = dola_aptos_portal.portal_withdraw(dola_aptos_init.usdt(), 1e8)
     dola_sui_portal.core_withdraw(vaa)
     (vaa, _) = dola_sui_init.bridge_core_read_vaa()
     dola_aptos_portal.pool_withdraw(vaa, dola_aptos_init.usdt())
@@ -64,28 +64,28 @@ def dola_portal_test():
     # test ethereum portal
     # test ethereum supply
     dola_ethereum_portal.portal_supply(dola_ethereum_init.usdc(), 1e18)
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_supply(vaa)
 
     # test ethereum bind and unbind
     dola_ethereum_portal.portal_binding(zero_address())
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_binding(vaa)
     dola_ethereum_portal.portal_unbinding(zero_address())
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_unbinding(vaa)
 
     # test ethereum manage collateral
     dola_ethereum_portal.portal_cancel_as_collateral([1])
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_cancel_as_collateral(vaa)
     dola_ethereum_portal.portal_as_collateral([1])
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_as_collateral(vaa)
 
     # test ethereum withdraw
     dola_ethereum_portal.portal_withdraw(dola_ethereum_init.usdc(), 1e8)
-    vaa = dola_ethereum_init.bridge_pool_read_vaa()
+    (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_withdraw(vaa)
     (vaa, _) = dola_sui_init.bridge_core_read_vaa()
     dola_ethereum_portal.pool_withdraw(vaa)
