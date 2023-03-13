@@ -1,16 +1,15 @@
 module dola_portal::system {
     use std::signer;
-    use aptos_framework::event::EventHandle;
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
-    use aptos_framework::coin;
-    use dola_types::dola_address;
-    use aptos_framework::aptos_coin::AptosCoin;
-    use wormhole::state;
-    use omnipool::wormhole_adapter_pool;
-    use aptos_framework::event;
-    use dola_portal::system_codec;
 
+    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::coin;
+    use aptos_framework::event::{Self, EventHandle};
+
+    use dola_portal::system_codec;
+    use dola_types::dola_address;
+    use omnipool::wormhole_adapter_pool;
+    use wormhole::state;
 
     const SEED: vector<u8> = b"Dola System Portal";
 
@@ -101,7 +100,7 @@ module dola_portal::system {
             SYSTEM_APP_ID,
             app_payload
         );
-        let event_handle = borrow_global_mut<SystemPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<SystemPortal>(get_resource_address());
         event::emit_event(
             &mut event_handle.system_event_handle,
             SystemPortalEvent {
@@ -136,7 +135,7 @@ module dola_portal::system {
             SYSTEM_APP_ID,
             app_payload
         );
-        let event_handle = borrow_global_mut<SystemPortal>(@dola_portal);
+        let event_handle = borrow_global_mut<SystemPortal>(get_resource_address());
         event::emit_event(
             &mut event_handle.system_event_handle,
             SystemPortalEvent {
