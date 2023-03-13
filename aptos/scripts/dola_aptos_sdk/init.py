@@ -19,28 +19,28 @@ def btc():
     return f"{test_coins.network_config['replace_address']['test_coins']}::coins::BTC"
 
 
-def eth():
-    test_coins = load.test_coins_package()
-    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::ETH"
-
-
-def dai():
-    test_coins = load.test_coins_package()
-    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::DAI"
-
-
-def matic():
-    test_coins = load.test_coins_package()
-    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::MATIC"
-
-
-def bnb():
-    test_coins = load.test_coins_package()
-    return f"{test_coins.network_config['replace_address']['test_coins']}::coins::BNB"
-
-
 def aptos():
     return "0x1::aptos_coin::AptosCoin"
+
+
+def register_owner(vaa):
+    omnipool = load.omnipool_package()
+    omnipool.wormhole_adapter_pool.register_owner(vaa)
+
+
+def register_spender(vaa):
+    omnipool = load.omnipool_package()
+    omnipool.wormhole_adapter_pool.register_spender(vaa)
+
+
+def delete_owner(vaa):
+    omnipool = load.omnipool_package()
+    omnipool.wormhole_adapter_pool.delete_owner(vaa)
+
+
+def delete_spender(vaa):
+    omnipool = load.omnipool_package()
+    omnipool.wormhole_adapter_pool.delete_spender(vaa)
 
 
 def bridge_pool_read_vaa(index=0):

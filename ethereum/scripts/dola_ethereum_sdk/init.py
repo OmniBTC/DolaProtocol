@@ -4,7 +4,7 @@ from brownie import (
     config,
 )
 
-from dola_ethereum_sdk import DOLA_CONFIG
+from dola_ethereum_sdk import DOLA_CONFIG, load, get_account
 
 
 def get_wormhole_chain_id():
@@ -29,6 +29,30 @@ def usdc():
 
 def eth():
     return "0x0000000000000000000000000000000000000000"
+
+
+def register_owner(vaa):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package()
+    omnipool.registerOwner(vaa, {'from': account})
+
+
+def delete_owner(vaa):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package()
+    omnipool.deleteOwner(vaa, {'from': account})
+
+
+def register_spender(vaa):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package()
+    omnipool.registerSpender(vaa, {'from': account})
+
+
+def delete_spender(vaa):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package()
+    omnipool.deleteSpender(vaa, {'from': account})
 
 
 def bridge_pool_read_vaa(nonce=None):
