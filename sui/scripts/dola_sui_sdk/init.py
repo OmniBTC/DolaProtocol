@@ -81,6 +81,42 @@ def init_wormhole_adapter_pool():
     )
 
 
+def register_owner(vaa):
+    """
+    public entry fun register_owner(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    )
+    :return:
+    """
+    omnipool = load.omnipool_package()
+
+    omnipool.wormhole_adapter_pool.register_owner(
+        omnipool.wormhole_adapter_pool.PoolState[-1],
+        omnipool.dola_pool.PoolApproval[-1],
+        vaa
+    )
+
+
+def delete_owner(vaa):
+    """
+    public entry fun delete_owner(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    )
+    :return:
+    """
+    omnipool = load.omnipool_package()
+
+    omnipool.wormhole_adapter_pool.delete_owner(
+        omnipool.wormhole_adapter_pool.PoolState[-1],
+        omnipool.dola_pool.PoolApproval[-1],
+        vaa
+    )
+
+
 def register_spender(vaa):
     """
     public entry fun register_spender(
@@ -93,6 +129,24 @@ def register_spender(vaa):
     omnipool = load.omnipool_package()
 
     omnipool.wormhole_adapter_pool.register_spender(
+        omnipool.wormhole_adapter_pool.PoolState[-1],
+        omnipool.dola_pool.PoolApproval[-1],
+        vaa
+    )
+
+
+def delete_spender(vaa):
+    """
+    public entry fun delete_spender(
+        pool_state: &PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>
+    )
+    :return:
+    """
+    omnipool = load.omnipool_package()
+
+    omnipool.wormhole_adapter_pool.delete_spender(
         omnipool.wormhole_adapter_pool.PoolState[-1],
         omnipool.dola_pool.PoolApproval[-1],
         vaa
@@ -223,6 +277,66 @@ def vote_init_chain_group_id(group_id, chain_ids):
     )
 
 
+def vote_remote_register_owner(dola_chain_id, dola_contract):
+    """
+    public entry fun vote_remote_register_owner(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    governance = load.governance_package()
+    wormhole = load.wormhole_package()
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+
+    genesis_proposal.genesis_proposal.vote_remote_register_owner(
+        governance.governance_v1.GovernanceInfo[-1],
+        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        wormhole.state.State[-1],
+        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_chain_id,
+        dola_contract,
+        0
+    )
+
+
+def vote_remote_delete_owner(dola_chain_id, dola_contract):
+    """
+    public entry fun vote_remote_delete_owner(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    governance = load.governance_package()
+    wormhole = load.wormhole_package()
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+
+    genesis_proposal.genesis_proposal.vote_remote_delete_owner(
+        governance.governance_v1.GovernanceInfo[-1],
+        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        wormhole.state.State[-1],
+        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_chain_id,
+        dola_contract,
+        0
+    )
+
+
 def vote_remote_register_spender(dola_chain_id, dola_contract):
     """
     public entry fun vote_remote_register_spender(
@@ -243,6 +357,36 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
 
     genesis_proposal.genesis_proposal.vote_remote_register_spender(
+        governance.governance_v1.GovernanceInfo[-1],
+        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        wormhole.state.State[-1],
+        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_chain_id,
+        dola_contract,
+        0
+    )
+
+
+def vote_remote_delete_spender(dola_chain_id, dola_contract):
+    """
+    public entry fun vote_remote_delete_spender(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    governance = load.governance_package()
+    wormhole = load.wormhole_package()
+    wormhole_adapter_core = load.wormhole_adapter_core_package()
+
+    genesis_proposal.genesis_proposal.vote_remote_delete_spender(
         governance.governance_v1.GovernanceInfo[-1],
         CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
