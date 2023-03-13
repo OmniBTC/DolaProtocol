@@ -631,13 +631,13 @@ def main():
     vote_register_new_pool(
         7, b"SUI", "0x0000000000000000000000000000000000000002::sui::SUI")
 
-    # 6. init lending_core
-    create_proposal()
-    vote_init_lending_core()
-
-    # 7. init system core
+    # 6. init system core
     create_proposal()
     vote_init_system_core()
+    
+    # 7. init lending_core
+    create_proposal()
+    vote_init_lending_core()
 
     # 8. init dola portal
     create_proposal()
