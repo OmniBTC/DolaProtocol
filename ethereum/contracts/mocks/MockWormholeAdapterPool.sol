@@ -5,11 +5,11 @@ import "../libraries/LibAsset.sol";
 import "../libraries/LibPoolCodec.sol";
 import "../libraries/LibLendingCodec.sol";
 import "../libraries/LibSystemCodec.sol";
-import "./DolaPool.sol";
+import "../omnipool/DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
 import "../libraries/LibWormholeAdapterVerify.sol";
 
-contract WormholeAdapterPool {
+contract MockWormholeAdapterPool {
     /// Storage
 
     // Wormhole address
@@ -150,24 +150,17 @@ contract WormholeAdapterPool {
         uint16 appId,
         bytes memory appPayload
     ) external payable {
-        uint256 wormholeFee = wormhole.messageFee();
-        require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
         if (!LibAsset.isNativeAsset(token)) {
             LibAsset.maxApproveERC20(IERC20(token), address(dolaPool), amount);
         }
 
-        bytes memory payload = dolaPool.deposit{value: msg.value - wormholeFee}(
+        bytes memory payload = dolaPool.deposit{value: msg.value}(
             token,
             amount,
             appId,
             appPayload
-        );
-        wormhole.publishMessage{value: wormholeFee}(
-            0,
-            payload,
-            wormholeFinality
         );
 
         cachedVAA[getNonce()] = payload;
@@ -179,10 +172,7 @@ contract WormholeAdapterPool {
         external
         payable
     {
-        uint256 wormholeFee = wormhole.messageFee();
-        require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
-        wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
         cachedVAA[getNonce()] = payload;
         increaseNonce();
     }

@@ -57,6 +57,24 @@ def portal_supply(token, amount):
     )
 
 
+def portal_supply_eth(amount):
+    """
+        function supply(address token, uint256 amount)
+
+        :param token:
+        :param amount:
+        :return: payload
+        """
+    account = get_account()
+    lending_portal = load.lending_portal_package()
+    eth = "0x0000000000000000000000000000000000000000"
+    lending_portal.supply(
+        eth,
+        int(amount),
+        {'from': account, 'value': amount}
+    )
+
+
 def portal_withdraw(token, amount, dst_chain=1, receiver=None):
     """
     function withdraw(
@@ -163,7 +181,7 @@ def monitor_supply(pool, amount=1):
 
 
 def monitor_withdraw(pool, dst_chain=4, receiver=None):
-    print(portal_withdraw(pool, 1e8, dst_chain, receiver))
+    print(portal_withdraw(pool, 1e16, dst_chain, receiver))
 
 
 def monitor_borrow(pool, amount=1, dst_chain=4, receiver=None):
@@ -179,10 +197,10 @@ def monitor_liquidate(dst_chain=4, receiver=None):
 
 
 def main():
-    monitor_supply(usdt(), 100000)
+    # monitor_supply(usdt(), 100000)
     # monitor_supply(usdc(), 100000)
     # portal_cancel_as_collateral([1, 2])
-    # monitor_withdraw(usdt(), 5, get_account().address)
+    monitor_withdraw("0x0000000000000000000000000000000000000000", 5, get_account().address)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())
 

@@ -142,4 +142,6 @@ contract DolaPool {
                 appPayload
             );
     }
+
+    receive() external payable {}
 }

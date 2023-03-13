@@ -49,6 +49,13 @@ contract LendingPortal {
         );
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
+        if (!LibAsset.isNativeAsset(token)) {
+            LibAsset.maxApproveERC20(
+                IERC20(token),
+                address(wormholeAdapterPool),
+                amount
+            );
+        }
 
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
@@ -153,6 +160,13 @@ contract LendingPortal {
 
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
+        if (!LibAsset.isNativeAsset(token)) {
+            LibAsset.maxApproveERC20(
+                IERC20(token),
+                address(wormholeAdapterPool),
+                amount
+            );
+        }
 
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
             token,
