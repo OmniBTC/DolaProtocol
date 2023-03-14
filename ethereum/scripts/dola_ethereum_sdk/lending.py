@@ -104,7 +104,7 @@ def portal_supply_eth(amount):
     )
 
 
-def portal_withdraw(token, amount, dst_chain=1, receiver=None):
+def portal_withdraw(token, amount, dst_chain=5, receiver=None):
     """
     function withdraw(
         bytes memory token,
@@ -115,6 +115,9 @@ def portal_withdraw(token, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
+    if receiver is None:
+        receiver = account.address
+
     lending_portal = load.lending_portal_package()
     lending_portal.withdraw(
         str(token),
@@ -135,7 +138,7 @@ def pool_withdraw(vaa):
     """
     account = get_account()
     wormhole_adapter_pool = load.wormhole_adapter_pool_package()
-    wormhole_adapter_pool.receive_withdraw(vaa, {'from': account})
+    wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
 def portal_borrow(token, amount, dst_chain=1, receiver=None):

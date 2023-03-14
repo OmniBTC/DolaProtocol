@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     dola_ethereum_sdk.set_ethereum_network("polygon-test")
     main(4, b"MATIC")
-    dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
-    main(3, b"ETH")
-    dola_ethereum_sdk.set_ethereum_network("bsc-test")
-    main(6, b"BNB")
+    # dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")
+    # main(3, b"ETH")
+    # dola_ethereum_sdk.set_ethereum_network("bsc-test")
+    # main(6, b"BNB")

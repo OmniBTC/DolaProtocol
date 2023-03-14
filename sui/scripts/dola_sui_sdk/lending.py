@@ -166,7 +166,6 @@ def portal_withdraw_local(coin_type, amount):
     omnipool = load.omnipool_package()
     account_address = dola_portal.account.account_address
 
-    print(int(amount))
     dola_portal.lending.withdraw_local(
         omnipool.dola_pool.PoolApproval[-1],
         lending_core.storage.Storage[-1],

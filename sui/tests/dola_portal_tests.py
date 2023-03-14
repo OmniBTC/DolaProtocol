@@ -76,10 +76,10 @@ def dola_portal_test():
     dola_sui_portal.core_unbinding(vaa)
 
     # test ethereum manage collateral
-    dola_ethereum_portal.portal_cancel_as_collateral([1])
+    dola_ethereum_portal.portal_cancel_as_collateral([2])
     (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_cancel_as_collateral(vaa)
-    dola_ethereum_portal.portal_as_collateral([1])
+    dola_ethereum_portal.portal_as_collateral([2])
     (vaa, _) = dola_ethereum_init.bridge_pool_read_vaa()
     dola_sui_portal.core_as_collateral(vaa)
 
