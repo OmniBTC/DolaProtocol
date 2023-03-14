@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # pprint.pp(get_user_all_collateral(1))
     # pprint.pp(get_user_health_factor(1))
     # pprint.pp(get_reserve_info(1))
-    # pprint.pp(get_app_token_liquidity(0, 1))
+    # pprint.pp(get_app_token_liquidity(1, 0))
     # pprint.pp(get_all_pool_liquidity(2))
     # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))

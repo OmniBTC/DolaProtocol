@@ -1,10 +1,6 @@
 from dola_ethereum_sdk import DOLA_CONFIG
 
 
-def dola_pool_package():
-    return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["DolaPool"][-1]
-
-
 def wormhole_adapter_pool_package():
     return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"][-1]
 

@@ -110,6 +110,10 @@ module lending_core::logic_tests {
     }
 
     public fun init_app(storage: &mut Storage, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
+        // app_id 0 for system core
+        let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
+        app_manager::destroy_app_cap(app_cap);
+        // app_id 1 for lending core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
         storage::transfer_app_cap(storage, app_cap);
     }

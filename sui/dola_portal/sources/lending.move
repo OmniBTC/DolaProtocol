@@ -322,7 +322,7 @@ module dola_portal::lending {
             &lending_portal.dola_contract,
             pool,
             user_address,
-            amount,
+            (actual_amount as u64),
             pool_address,
             ctx
         );

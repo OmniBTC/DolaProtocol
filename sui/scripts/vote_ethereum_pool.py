@@ -10,9 +10,6 @@ from dola_sui_sdk import init as dola_sui_init
 
 
 def main(pool_id, pool_name):
-    dola_sui_sdk.set_dola_project_path(Path("../.."))
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-
     dst_chain = dola_ethereum_init.get_wormhole_chain_id()
 
     dola_sui_init.create_proposal()
@@ -41,6 +38,9 @@ def main(pool_id, pool_name):
 
 
 if __name__ == "__main__":
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+
     dola_ethereum_sdk.set_ethereum_network("polygon-test")
     main(4, b"MATIC")
     # dola_ethereum_sdk.set_ethereum_network("polygon-zk-test")

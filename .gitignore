@@ -30,7 +30,6 @@ Hello/
 sui/contracts
 sui/interfaces
 sui/reports
-sui/tests
 
 aptos/contracts
 aptos/interfaces

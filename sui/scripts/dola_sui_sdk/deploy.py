@@ -127,7 +127,7 @@ wormhole_adapter_core_package = sui_brownie.SuiPackage(
 )
 
 wormhole_adapter_core_package.publish_package(replace_address=dict(
-    wormhole_adapter_core=0x0,
+    wormhole_adapter_core="0x0",
     serde=serde_package.package_id,
     dola_types=dola_types_package.package_id,
     wormhole=wormhole_package.package_id,
@@ -146,7 +146,7 @@ lending_core_package = sui_brownie.SuiPackage(
 )
 
 lending_core_package.publish_package(replace_address=dict(
-    lending_core=0x0,
+    lending_core="0x0",
     serde=serde_package.package_id,
     dola_types=dola_types_package.package_id,
     ray_math=ray_math_package.package_id,

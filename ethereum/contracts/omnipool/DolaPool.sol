@@ -9,7 +9,7 @@ import "../libraries/LibDolaTypes.sol";
 contract DolaPool {
     // Dola chain id
     uint16 immutable dolaChainId;
-    // Save the dola contract address that allowns to manage spender
+    // Save the dola contract address that allows to manage spender
     address[] allOwners;
     mapping(address => uint256) public owners;
     // Save the dola contract address that allows withdrawals

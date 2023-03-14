@@ -5,6 +5,35 @@ from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from dola_ethereum_sdk.init import usdt, btc
 
 
+def portal_binding(bind_address, dola_chain_id=5):
+    """
+    function binding(uint16 bindDolaChainId, bytes memory bindAddress)
+    :param bind_address:
+    :return:
+    """
+    account = get_account()
+    system_portal = load.system_portal_package()
+    system_portal.binding(
+        dola_chain_id,
+        bind_address,
+        {'from': account}
+    )
+
+
+def portal_unbinding(unbind_address, dola_chain_id=5):
+    """
+    function unbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
+    :return:
+    """
+    account = get_account()
+    system_portal = load.system_portal_package()
+    system_portal.unbinding(
+        dola_chain_id,
+        unbind_address,
+        {'from': account}
+    )
+
+
 def portal_as_collateral(pool_ids=None):
     """
     function as_collateral(uint16[] memory dolaPoolIds) external payable
@@ -75,7 +104,7 @@ def portal_supply_eth(amount):
     )
 
 
-def portal_withdraw(token, amount, dst_chain=1, receiver=None):
+def portal_withdraw(token, amount, dst_chain=5, receiver=None):
     """
     function withdraw(
         bytes memory token,
@@ -86,6 +115,9 @@ def portal_withdraw(token, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
+    if receiver is None:
+        receiver = account.address
+
     lending_portal = load.lending_portal_package()
     lending_portal.withdraw(
         str(token),
@@ -106,7 +138,7 @@ def pool_withdraw(vaa):
     """
     account = get_account()
     wormhole_adapter_pool = load.wormhole_adapter_pool_package()
-    wormhole_adapter_pool.receive_withdraw(vaa, {'from': account})
+    wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
 def portal_borrow(token, amount, dst_chain=1, receiver=None):
