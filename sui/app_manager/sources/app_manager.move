@@ -1,9 +1,10 @@
 module app_manager::app_manager {
+    use std::vector;
+
     use governance::genesis::GovernanceCap;
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use std::vector;
 
     /// Record all App information
     struct TotalAppInfo has key, store {
@@ -26,13 +27,15 @@ module app_manager::app_manager {
 
     /// Register app cap for application
     fun register_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext): AppCap {
-        let id = object::new(ctx);
-        vector::push_back(&mut total_app_info.app_caps, object::uid_to_inner(&id));
+        let uid = object::new(ctx);
+        let id = object::uid_to_inner(&uid);
 
         let app_id = AppCap {
-            id,
+            id: uid,
             app_id: (vector::length(&total_app_info.app_caps) as u16)
         };
+
+        vector::push_back(&mut total_app_info.app_caps, id);
 
         app_id
     }
