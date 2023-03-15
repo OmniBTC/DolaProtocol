@@ -35,8 +35,6 @@ module lending_core::storage {
         average_liquidity: u256,
         // Timestamp of last update
         last_update_timestamp: u256,
-        // Isolated mode, the user's collateral is isolated assets will go into isolated mode
-        isolated_mode: bool,
         // Tokens as liquid assets, they can still capture the yield but won't be able to use it as collateral
         liquid_assets: vector<u16>,
         // Tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
@@ -183,10 +181,6 @@ module lending_core::storage {
 
     public fun is_isolated_asset(storage: &mut Storage, dola_pool_id: u16): bool {
         table::borrow(&storage.reserves, dola_pool_id).is_isolated_asset
-    }
-
-    public fun is_isolation_mode(storage: &mut Storage, dola_user_id: u64): bool {
-        table::borrow(&storage.user_infos, dola_user_id).isolated_mode
     }
 
     public fun can_borrow_in_isolation(storage: &mut Storage, dola_pool_id: u16): bool {
@@ -439,7 +433,6 @@ module lending_core::storage {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
                 last_update_timestamp: oracle::get_timestamp(oracle),
-                isolated_mode: false,
                 liquid_assets: vector::empty(),
                 collaterals: vector::empty(),
                 loans: vector::empty()
@@ -524,16 +517,6 @@ module lending_core::storage {
         if (exist) {
             let _ = vector::remove(&mut user_info.loans, index);
         }
-    }
-
-    public fun set_user_isolated(
-        _: &StorageCap,
-        storage: &mut Storage,
-        dola_user_id: u64,
-        isolated: bool
-    ) {
-        let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.isolated_mode = isolated;
     }
 
     public fun set_reserve_isolated(

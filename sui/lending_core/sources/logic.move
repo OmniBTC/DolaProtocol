@@ -185,16 +185,13 @@ module lending_core::logic {
             dola_user_id,
             dola_pool_id
         )) {
-            if (storage::is_isolation_mode(storage, dola_user_id)) {
+            if (is_isolation_mode(storage, dola_user_id)) {
                 // Users cannot pledge other tokens as collateral in isolated mode.
                 storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
             } else {
                 if (!has_collateral(storage, dola_user_id)) {
                     // Isolated assets as collateral and the user enters isolation mode.
                     storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
-                    if (storage::is_isolated_asset(storage, dola_pool_id)) {
-                        storage::set_user_isolated(cap, storage, dola_user_id, true);
-                    }
                 } else {
                     if (storage::is_isolated_asset(storage, dola_pool_id)) {
                         // Isolated asset cannot be used as collateral when other collaterals are present.
@@ -276,7 +273,7 @@ module lending_core::logic {
         assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
 
         // In isolation mode, can only borrow the allowed assets
-        if (storage::is_isolation_mode(storage, dola_user_id)) {
+        if (is_isolation_mode(storage, dola_user_id)) {
             assert!(storage::can_borrow_in_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
             assert!(not_reach_borrow_ceiling(storage, dola_user_id, borrow_amount), EREACH_BORROW_CEILING);
             add_isolate_debt(cap, storage, dola_user_id, borrow_amount);
@@ -318,7 +315,7 @@ module lending_core::logic {
         let repay_debt = math::min(repay_amount, debt);
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
 
-        if (storage::is_isolation_mode(storage, dola_user_id)) {
+        if (is_isolation_mode(storage, dola_user_id)) {
             reduce_isolate_debt(cap, storage, dola_user_id, repay_amount);
         };
 
@@ -331,13 +328,6 @@ module lending_core::logic {
             if (excess_repay_amount > 0) {
                 mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
                 storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
-            };
-
-            // If the user pays off the debt in isolation mode, exit isolation mode
-            if (storage::is_isolation_mode(storage, dola_user_id) &&
-                user_total_loan_value(storage, oracle, dola_user_id) == 0
-            ) {
-                storage::set_user_isolated(cap, storage, dola_user_id, false);
             };
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
@@ -364,7 +354,7 @@ module lending_core::logic {
         update_state(cap, storage, oracle, dola_pool_id);
         assert!(is_liquid_asset(storage, dola_user_id, dola_pool_id), ENOT_LIQUID_ASSET);
         // No other assets can be added as collateral in isolation mode.
-        assert!(!storage::is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
+        assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
 
         storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
         storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
@@ -394,9 +384,8 @@ module lending_core::logic {
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
 
         // The isolation mode requires no debt to turn the isolated asset into liquid asset.
-        if (storage::is_isolation_mode(storage, dola_user_id)) {
+        if (is_isolation_mode(storage, dola_user_id)) {
             assert!(user_total_loan_value(storage, oracle, dola_user_id) == 0, EHAS_DEBT_ISOLATION);
-            storage::set_user_isolated(cap, storage, dola_user_id, false);
         };
 
         storage::remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
@@ -480,6 +469,16 @@ module lending_core::logic {
     public fun is_loan(storage: &mut Storage, dola_user_id: u64, dola_pool_id: u16): bool {
         let loans = storage::get_user_loans(storage, dola_user_id);
         vector::contains(&loans, &dola_pool_id)
+    }
+
+    public fun is_isolation_mode(storage: &mut Storage, dola_user_id: u64): bool {
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        if (vector::length(&collaterals) == 1) {
+            let collateral = *vector::borrow(&collaterals, 0);
+            storage::is_isolated_asset(storage, collateral)
+        } else {
+            false
+        }
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
