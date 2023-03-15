@@ -496,7 +496,7 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
+            assert!(logic::is_isolation_mode(&mut storage, 0), 202);
             logic::cancel_as_collateral(
                 &storage_cap,
                 &mut pool_manager_info,
@@ -506,7 +506,7 @@ module lending_core::logic_tests {
                 ISOLATE_POOL_ID
             );
             assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 203);
-            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
+            assert!(!logic::is_isolation_mode(&mut storage, 0), 204);
             assert!(logic::user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 205);
 
             test_scenario::return_shared(pool_manager_info);
@@ -637,7 +637,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
+            assert!(logic::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -667,7 +667,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
-            assert!(storage::is_isolation_mode(&mut storage, 0), 202);
+            assert!(logic::is_isolation_mode(&mut storage, 0), 202);
 
             test_scenario::return_shared(storage);
         };
@@ -1018,7 +1018,7 @@ module lending_core::logic_tests {
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            assert!(storage::is_isolation_mode(&mut storage, 0), 201);
+            assert!(logic::is_isolation_mode(&mut storage, 0), 201);
 
             let repay_usdt_amount = 50 * ONE;
 
@@ -1047,7 +1047,18 @@ module lending_core::logic_tests {
             );
             // Check user total loan
             assert!(logic::user_total_loan_value(&mut storage, &mut oracle, 0) == 0, 203);
-            assert!(!storage::is_isolation_mode(&mut storage, 0), 204);
+            // After all debts are paid, you can cancel the collateral and exit isolated mode.
+            assert!(logic::is_isolation_mode(&mut storage, 0), 204);
+
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                0,
+                ISOLATE_POOL_ID
+            );
+            assert!(!logic::is_isolation_mode(&mut storage, 0), 205);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);

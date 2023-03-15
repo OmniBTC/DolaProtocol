@@ -423,7 +423,7 @@ module external_interfaces::interfaces {
         total_supply_apy = total_supply_apy * 10000 / math::ray();
         total_borrow_apy = total_borrow_apy * 10000 / math::ray();
 
-        let isolation_mode = storage::is_isolation_mode(storage, dola_user_id);
+        let isolation_mode = logic::is_isolation_mode(storage, dola_user_id);
 
         emit(UserLendingInfo {
             health_factor,
