@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 /// Voting governance version 1. Using multi-person voting governance,
 /// the number of people over a certain threshold proposal passed.
 /// Note: when reviewing proposal, make sure that the `certificate` in the proposal will only flow to

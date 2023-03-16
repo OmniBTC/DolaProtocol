@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module app_manager::app_manager {
     use std::vector;
 

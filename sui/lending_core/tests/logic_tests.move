@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 #[test_only]
 module lending_core::logic_tests {
     use std::ascii;

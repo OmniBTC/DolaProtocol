@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module lending_core::storage {
     use std::option::{Self, Option};
     use std::vector;

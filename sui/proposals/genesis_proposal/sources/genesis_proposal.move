@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 module genesis_proposal::genesis_proposal {
     use std::ascii;
     use std::option;

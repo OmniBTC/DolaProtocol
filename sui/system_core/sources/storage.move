@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 module system_core::storage {
     use sui::object::UID;
     use app_manager::app_manager::{AppCap, TotalAppInfo};

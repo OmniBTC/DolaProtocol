@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 /// Manage the liquidity of all chains' pools
 module pool_manager::pool_manager {
     use std::ascii::String;
