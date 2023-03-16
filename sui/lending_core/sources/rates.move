@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module lending_core::rates {
     use lending_core::storage::{Self, Storage};
     use ray_math::math;

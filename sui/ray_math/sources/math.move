@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 module ray_math::math {
 
     /// Used to represent 27-bit precision

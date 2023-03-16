@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module system_core::wormhole_adapter {
 
     use governance::genesis::GovernanceCap;

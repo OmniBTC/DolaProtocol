@@ -1,5 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0
 
 /// Wormhole bridge adapter, this module is responsible for adapting wormhole to pass messages for settlement center
 /// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and

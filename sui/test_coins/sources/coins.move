@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module test_coins::coins {
     use std::type_name::{into_string, get};
 

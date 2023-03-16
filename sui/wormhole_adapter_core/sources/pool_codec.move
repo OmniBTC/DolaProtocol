@@ -1,5 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0
 
 /// Codecing for pool contracts
 module wormhole_adapter_core::pool_codec {

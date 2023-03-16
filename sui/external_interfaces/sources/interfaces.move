@@ -1,3 +1,6 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {

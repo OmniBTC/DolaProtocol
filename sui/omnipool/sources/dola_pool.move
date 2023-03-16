@@ -1,5 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0
 
 /// The Sui dola pool module is responsible for hosting Sui user assets. When the dola pool starts,
 /// Wormhole is used as the basic bridge. In the future, more bridges can be introduced through governance without

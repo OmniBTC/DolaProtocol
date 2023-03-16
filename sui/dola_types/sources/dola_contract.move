@@ -1,5 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: GPL-3.0
 
 /// Similar to the EVM contract address, using Emitter to represent the contract address in the Dola protocol
 module dola_types::dola_contract {

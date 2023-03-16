@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title LibAsset
-/// @author Connext <support@connext.network>
 /// @notice This library contains helpers for dealing with onchain transfers
 ///         of assets, including accounting for the native asset `assetId`
 ///         conventions and any noncompliant ERC20 transfers
@@ -155,7 +155,7 @@ library LibAsset {
     }
 
     /// @dev Query the decimals of the corresponding token
-    function queryDecimals(address token) public view returns (uint8) {
+    function queryDecimals(address token) internal view returns (uint8) {
         if (token == address(0)) {
             return 18;
         } else {
