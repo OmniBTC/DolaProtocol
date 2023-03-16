@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 interface IWormholeAdapterPool {
     function dolaChainId() external view returns (uint16);
 
+    function getNonce() external view returns (uint32);
+
     function sendDeposit(
         address pool,
         uint256 amount,

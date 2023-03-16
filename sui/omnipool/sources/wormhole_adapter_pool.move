@@ -302,6 +302,10 @@ module omnipool::wormhole_adapter_pool {
         })
     }
 
+    public fun next_vaa_nonce(pool_state: &PoolState): u64 {
+        table::length(&pool_state.cache_vaas) + 1
+    }
+
     /// todo! Delete
     public entry fun read_vaa(pool_state: &PoolState, index: u64) {
         if (index == 0) {

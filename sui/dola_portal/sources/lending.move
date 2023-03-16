@@ -37,6 +37,8 @@ module dola_portal::lending {
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 5;
 
+    const ENOT_RELAYER: u64 = 6;
+
     /// App ID
 
     const LENDING_APP_ID: u16 = 1;
@@ -64,11 +66,19 @@ module dola_portal::lending {
         pool_manager_cap: PoolManagerCap,
         // Allow modification of lending storage
         storage_cap: StorageCap,
+        // Relayer
+        relayer: address,
         // Next nonce
         next_nonce: u64
     }
 
     /// Events
+
+    /// Relay Event
+    struct RelayEvent has drop, copy {
+        nonce: u64,
+        amount: u64
+    }
 
     /// Lending portal event
     struct LendingPortalEvent has drop, copy {
@@ -103,6 +113,7 @@ module dola_portal::lending {
             user_manager_cap: user_manager::register_cap_with_governance(governance),
             pool_manager_cap: pool_manager::register_cap_with_governance(governance),
             storage_cap: storage::register_cap_with_governance(governance),
+            relayer: tx_context::sender(ctx),
             next_nonce: 0
         })
     }
@@ -112,6 +123,21 @@ module dola_portal::lending {
         let nonce = lending_portal.next_nonce;
         lending_portal.next_nonce = lending_portal.next_nonce + 1;
         nonce
+    }
+
+    public entry fun change_relayer(lending_portal: &mut LendingPortal, relayer: address, ctx: &mut TxContext) {
+        assert!(tx_context::sender(ctx) == lending_portal.relayer, ENOT_RELAYER);
+        lending_portal.relayer = relayer
+    }
+
+    fun transfer_to_relayer(lending_portal: &mut LendingPortal, pool_state: &mut PoolState, fee: Coin<SUI>) {
+        let amount = coin::value(&fee);
+        transfer::transfer(fee, lending_portal.relayer);
+
+        emit(RelayEvent {
+            nonce: wormhole_adapter_pool::next_vaa_nonce(pool_state),
+            amount
+        })
     }
 
     public fun merge_coin<CoinType>(
@@ -339,6 +365,7 @@ module dola_portal::lending {
     public entry fun withdraw_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        pool_state: &mut PoolState,
         core_state: &mut CoreState,
         lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -348,6 +375,8 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee_coins: vector<Coin<SUI>>,
+        relay_fee_amount: u64,
         ctx: &mut TxContext
     ) {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
@@ -399,6 +428,8 @@ module dola_portal::lending {
             actual_amount,
             coin::zero<SUI>(ctx)
         );
+
+        transfer_to_relayer(lending_portal, pool_state, merge_coin(relay_fee_coins, relay_fee_amount, ctx));
 
         emit(LendingPortalEvent {
             nonce,
@@ -481,6 +512,7 @@ module dola_portal::lending {
     public entry fun borrow_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        pool_state: &mut PoolState,
         core_state: &mut CoreState,
         lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -490,6 +522,8 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee_coins: vector<Coin<SUI>>,
+        relay_fee_amount: u64,
         ctx: &mut TxContext
     ) {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
@@ -539,6 +573,8 @@ module dola_portal::lending {
             (amount as u256),
             coin::zero<SUI>(ctx)
         );
+
+        transfer_to_relayer(lending_portal, pool_state, merge_coin(relay_fee_coins, relay_fee_amount, ctx));
 
         emit(LendingPortalEvent {
             nonce,

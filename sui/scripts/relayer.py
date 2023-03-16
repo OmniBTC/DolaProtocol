@@ -185,7 +185,7 @@ def read_aptos_pool_vaa(q: Queue):
             call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
             dk = f"aptos_pool_{call_name}_{str(nonce)}"
             if dk not in data:
-                q.put((vaa, nonce, "sui"))
+                q.put((vaa, nonce, "aptos"))
                 data[dk] = vaa
                 local_logger.info(f"Have a {call_name} transaction from aptos, nonce: {nonce}")
         time.sleep(1)
@@ -205,7 +205,7 @@ def read_eth_pool_vaa(q: Queue, network="polygon-test"):
             call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
             dk = f"{network}_pool_{call_name}_{str(nonce)}"
             if dk not in data:
-                q.put((vaa, nonce, "sui"))
+                q.put((vaa, nonce, network))
                 data[dk] = vaa
                 local_logger.info(f"Have a {call_name} transaction from {network}, nonce: {nonce}")
         time.sleep(1)

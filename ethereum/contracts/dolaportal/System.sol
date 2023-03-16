@@ -13,6 +13,9 @@ contract SystemPortal {
 
     IWormholeAdapterPool immutable wormholeAdapterPool;
     uint64 public dolaNonce;
+    address payable public relayer;
+
+    event RelayEvent(uint32 nonce, uint256 amount);
 
     event SystemPortalEvent(
         uint64 nonce,
@@ -25,6 +28,7 @@ contract SystemPortal {
 
     constructor(IWormholeAdapterPool _wormholeAdapterPool) {
         wormholeAdapterPool = _wormholeAdapterPool;
+        relayer = payable(msg.sender);
     }
 
     function getNonce() internal returns (uint64) {
@@ -33,10 +37,11 @@ contract SystemPortal {
         return nonce;
     }
 
-    function binding(uint16 bindDolaChainId, bytes memory bindAddress)
-        external
-        payable
-    {
+    function binding(
+        uint16 bindDolaChainId,
+        bytes memory bindAddress,
+        uint256 fee
+    ) external payable {
         uint64 nonce = getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
@@ -50,6 +55,14 @@ contract SystemPortal {
             SYSTEM_APP_ID,
             appPayload
         );
+
+        relayer.transfer(fee);
+
+        emit RelayEvent(
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            fee
+        );
+
         emit SystemPortalEvent(
             nonce,
             msg.sender,
@@ -60,10 +73,11 @@ contract SystemPortal {
         );
     }
 
-    function unbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
-        external
-        payable
-    {
+    function unbinding(
+        uint16 unbindDolaChainId,
+        bytes memory unbindAddress,
+        uint256 fee
+    ) external payable {
         uint64 nonce = getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
@@ -77,6 +91,14 @@ contract SystemPortal {
             SYSTEM_APP_ID,
             appPayload
         );
+
+        relayer.transfer(fee);
+
+        emit RelayEvent(
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            fee
+        );
+
         emit SystemPortalEvent(
             nonce,
             msg.sender,
