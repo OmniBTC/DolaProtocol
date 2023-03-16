@@ -634,7 +634,7 @@ def main():
     # 6. init system core
     create_proposal()
     vote_init_system_core()
-    
+
     # 7. init lending_core
     create_proposal()
     vote_init_lending_core()
