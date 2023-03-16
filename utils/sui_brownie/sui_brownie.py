@@ -1462,7 +1462,7 @@ class SuiPackage:
             gas: return gas
         """
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
-        print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
+        # print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
         return self.dry_run_transaction(result["txBytes"])
 
     @validator_retry
