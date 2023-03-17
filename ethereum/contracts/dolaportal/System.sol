@@ -59,7 +59,7 @@ contract SystemPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -95,7 +95,7 @@ contract SystemPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 

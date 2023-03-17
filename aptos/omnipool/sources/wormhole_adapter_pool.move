@@ -286,7 +286,7 @@ module omnipool::wormhole_adapter_pool {
 
     public fun next_vaa_nonce(): u64 acquires PoolState {
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        pool_state.nonce + 1
+        pool_state.nonce
     }
 
     public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {

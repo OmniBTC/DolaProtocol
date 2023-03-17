@@ -66,13 +66,13 @@ contract LendingPortal {
         }
 
         IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-            value: msg.value - fee
+        value : msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
 
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -115,7 +115,7 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -158,7 +158,7 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -203,7 +203,7 @@ contract LendingPortal {
             );
         }
 
-        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value : msg.value}(
             token,
             amount,
             LENDING_APP_ID,
@@ -213,7 +213,7 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -264,7 +264,7 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
 
@@ -281,8 +281,8 @@ contract LendingPortal {
     }
 
     function as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-        external
-        payable
+    external
+    payable
     {
         uint64 nonce = getNonce();
 
@@ -298,14 +298,14 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
     }
 
     function cancel_as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-        external
-        payable
+    external
+    payable
     {
         uint64 nonce = getNonce();
 
@@ -321,7 +321,7 @@ contract LendingPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce(),
+            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
             fee
         );
     }

@@ -51,6 +51,39 @@ def bridge_pool_read_vaa(index=0):
     return vaa_event["vaa"], vaa_event["nonce"]
 
 
+def calculate_resource_address():
+    dola_portal = load.dola_portal_package()
+    print(dola_portal.account.account_address)
+    resource_addr = dola_portal.get_resource_addr(str(dola_portal.account.account_address), "Dola Lending Portal")
+    print(resource_addr)
+
+
+def lending_portal_relay_event():
+    dola_portal = load.dola_portal_package()
+    resource_addr = dola_portal.get_resource_addr(str(dola_portal.account.account_address), "Dola Lending Portal")
+    events = dola_portal.get_events(
+        resource_addr,
+        f"{str(dola_portal.account.account_address)}::lending::LendingPortal",
+        "relay_event_handle",
+        1,
+    )
+    data = events[0]['data']
+    return data['nonce'], data['amount']
+
+
+def system_portal_relay_event():
+    dola_portal = load.dola_portal_package()
+    resource_addr = dola_portal.get_resource_addr(str(dola_portal.account.account_address), "Dola System Portal")
+    events = dola_portal.get_events(
+        resource_addr,
+        f"{str(dola_portal.account.account_address)}::system::SystemPortal",
+        "relay_event_handle",
+        1,
+    )
+    data = events[0]['data']
+    return data['nonce'], data['amount']
+
+
 def main():
     test_coins = load.test_coins_package()
     test_coins.coins.initialize()

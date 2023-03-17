@@ -12,13 +12,14 @@ def claim_test_coin(coin_type):
     )
 
 
-def portal_supply(coin_type, amount):
+def portal_supply(coin_type, amount, relay_fee=0):
     """
     public entry fun supply<CoinType>(
         sender: &signer,
         deposit_coin: u64,
     )
 
+    :param relay_fee:
     :param amount:
     :param coin_type:
     :return: payload
@@ -27,12 +28,13 @@ def portal_supply(coin_type, amount):
 
     dola_portal.lending.supply(
         int(amount),
+        int(relay_fee),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()
 
 
-def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
+def portal_withdraw(coin_type, amount, relay_fee=0, dst_chain=1, receiver=None):
     """
     public entry fun withdraw_local<CoinType>(
         sender: &signer,
@@ -52,6 +54,7 @@ def portal_withdraw(coin_type, amount, dst_chain=1, receiver=None):
         str(receiver),
         dst_chain,
         int(amount),
+        int(relay_fee),
         ty_args=[coin_type]
     )
     return bridge_pool_read_vaa()
@@ -235,8 +238,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    # claim_test_coin(usdt())
-    # monitor_supply(usdt())
-    monitor_withdraw(usdt())
+    claim_test_coin(usdt())
+    portal_supply(usdt(), 1e8, 1000)
+    # monitor_withdraw(usdt())
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)
