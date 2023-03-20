@@ -1017,6 +1017,41 @@ class SuiPackage:
         except:
             return result
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def get_transaction(self, digest: str):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_getTransaction",
+                "params": [
+                    digest,
+                    {
+                        "showInput": True,
+                        "showRawInput": False,
+                        "showEffects": True,
+                        "showEvents": True,
+                        "showObjectChanges": True,
+                        "showBalanceChanges": True
+                    }
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["details"]
+            if "status" in result:
+                assert result["status"] == "Exists"
+                data["status"] = result["status"]
+
+            return data
+        except:
+            return result
+
     def get_object_by_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
