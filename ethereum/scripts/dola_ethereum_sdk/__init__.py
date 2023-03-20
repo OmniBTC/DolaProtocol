@@ -12,6 +12,7 @@ from brownie import (
     web3
 )
 from brownie.network.web3 import Web3
+from dotenv import load_dotenv
 
 DOLA_CONFIG = {"DOLA_PROJECT_PATH": Path("../../..")}
 
@@ -21,6 +22,8 @@ if DOLA_CONFIG["DOLA_ETHEREUM_PATH"].exists() and DOLA_CONFIG["DOLA_ETHEREUM_PAT
     DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"].load_config()
 else:
     DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"] = None
+
+load_dotenv(DOLA_CONFIG["DOLA_ETHEREUM_PATH"].joinpath(".env"))
 
 
 def set_dola_project_path(path: Union[Path, str]):

@@ -66,10 +66,11 @@ def portal_cancel_as_collateral(pool_ids=None):
     )
 
 
-def portal_supply(token, amount):
+def portal_supply(token, amount, relay_fee=0):
     """
     function supply(address token, uint256 amount)
 
+    :param relay_fee:
     :param token:
     :param amount:
     :return: payload
@@ -82,7 +83,8 @@ def portal_supply(token, amount):
     lending_portal.supply(
         token,
         int(amount),
-        {'from': account}
+        relay_fee,
+        {'from': account, 'value': relay_fee}
     )
 
 
@@ -208,8 +210,8 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     )
 
 
-def monitor_supply(pool, amount=1):
-    print(portal_supply(pool, amount * 1e18))
+def monitor_supply(pool, amount=1, relay_fee=0):
+    print(portal_supply(pool, amount * 1e18, relay_fee))
 
 
 def monitor_withdraw(pool, dst_chain=4, receiver=None):
@@ -229,14 +231,13 @@ def monitor_liquidate(dst_chain=4, receiver=None):
 
 
 def main():
-    # monitor_supply(usdt(), 100000)
+    monitor_supply(usdt(), 100000)
     # monitor_supply(usdc(), 100000)
     # portal_cancel_as_collateral([1, 2])
-    monitor_withdraw("0x0000000000000000000000000000000000000000", 5, get_account().address)
+    # monitor_withdraw("0x0000000000000000000000000000000000000000", 5, get_account().address)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())
 
 
 if __name__ == "__main__":
     set_ethereum_network("polygon-test")
-    main()
