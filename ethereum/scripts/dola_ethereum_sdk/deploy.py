@@ -32,17 +32,17 @@ def deploy():
         {'from': account}
     )
 
-    btc = deploy_token("BTC")
-
-    usdt = deploy_token("USDT")
-
-    usdc = deploy_token("USDC")
+    # btc = deploy_token("BTC")
+    #
+    # usdt = deploy_token("USDT")
+    #
+    # usdc = deploy_token("USDC")
 
     print("----- deploy result -----")
     print(f"wormhole_adapter_pool:'{wormhole_adapter_pool}'")
-    print(f"btc:'{btc}'")
-    print(f"usdt:'{usdt}'")
-    print(f"usdc:'{usdc}'")
+    # print(f"btc:'{btc}'")
+    # print(f"usdt:'{usdt}'")
+    # print(f"usdc:'{usdc}'")
     print(f"lending_portal:'{lending_portal}'")
     print(f"system_portal:'{system_portal}'")
 
@@ -57,5 +57,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("bsc-test")
+    set_ethereum_network("polygon-test")
     deploy()

@@ -77,7 +77,7 @@ def bridge_pool_read_vaa(nonce=None):
 
 def lending_relay_event(net="polygon-test", start_block=0, end_block=99999999):
     lending_portal = load.lending_portal_package()
-    topic = brownie.web3.keccak(text="RelayEvent(uint32,uint256)").hex()
+    topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
     api_key = get_scan_api_key(net)
     params = {
         'module': 'logs',

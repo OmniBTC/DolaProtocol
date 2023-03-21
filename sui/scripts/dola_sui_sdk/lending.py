@@ -325,7 +325,7 @@ def core_withdraw(vaa, relay_fee=0):
             vaa,
         )
 
-    return relay_fee - gas, executed
+    return gas, executed
 
 
 def portal_borrow_local(coin_type, amount):
@@ -459,7 +459,7 @@ def core_borrow(vaa, relay_fee=0):
             0,
             vaa,
         )
-    return relay_fee - gas, executed
+    return gas, executed
 
 
 def portal_repay(coin_type):
