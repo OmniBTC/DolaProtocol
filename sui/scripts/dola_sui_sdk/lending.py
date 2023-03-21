@@ -4,9 +4,16 @@ from sui_brownie import CacheObject, ObjectType
 
 from dola_sui_sdk import load
 from dola_sui_sdk.init import btc, usdt, usdc, sui
-from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, bridge_core_read_vaa
+from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
 
 U64_MAX = 18446744073709551615
+
+
+def calculate_sui_gas(gas_used):
+    # todo: use sui gas price to calculate
+    # devnet gasprice == 1
+    return gas_used['computationCost'] + gas_used['computationCost'] - gas_used[
+        'storageRebate']
 
 
 def portal_as_collateral(pool_ids=None):
@@ -108,7 +115,7 @@ def portal_supply(coin_type):
     )
 
 
-def core_supply(vaa):
+def core_supply(vaa, relay_fee=0):
     """
     public entry fun supply(
         wormhole_adapter: &WormholeAdapter,
@@ -121,6 +128,7 @@ def core_supply(vaa):
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
+    :param relay_fee:
     :param vaa:
     :return:
     """
@@ -131,7 +139,7 @@ def core_supply(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    lending_core.wormhole_adapter.supply(
+    result = lending_core.wormhole_adapter.supply.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -141,6 +149,22 @@ def core_supply(vaa):
         lending_core.storage.Storage[-1],
         vaa,
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.supply(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            vaa,
+        )
+    return gas, executed
 
 
 def portal_withdraw_local(coin_type, amount):
@@ -251,7 +275,7 @@ def pool_withdraw(vaa, coin_type):
     )
 
 
-def core_withdraw(vaa):
+def core_withdraw(vaa, relay_fee=0):
     """
     public entry fun withdraw(
         wormhole_adapter: &WormholeAdapter,
@@ -274,7 +298,7 @@ def core_withdraw(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    result = lending_core.wormhole_adapter.withdraw(
+    result = lending_core.wormhole_adapter.withdraw.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -285,7 +309,23 @@ def core_withdraw(vaa):
         0,
         vaa,
     )
-    return bridge_core_read_vaa()[0]
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.withdraw(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            0,
+            vaa,
+        )
+
+    return relay_fee - gas, executed
 
 
 def portal_borrow_local(coin_type, amount):
@@ -370,7 +410,7 @@ def portal_borrow_remote(pool_addr, amount, dst_chain=0, receiver=None):
     )
 
 
-def core_borrow(vaa):
+def core_borrow(vaa, relay_fee=0):
     """
     public entry fun borrow(
         wormhole_adapter: &WormholeAdapter,
@@ -404,7 +444,22 @@ def core_borrow(vaa):
         0,
         vaa,
     )
-    return bridge_core_read_vaa()[0]
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.borrow(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            0,
+            vaa,
+        )
+    return relay_fee - gas, executed
 
 
 def portal_repay(coin_type):
@@ -443,7 +498,7 @@ def portal_repay(coin_type):
     )
 
 
-def core_repay(vaa):
+def core_repay(vaa, relay_fee=0):
     """
     public entry fun repay(
         wormhole_adapter: &WormholeAdapter,
@@ -465,7 +520,7 @@ def core_repay(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    lending_core.wormhole_adapter.repay(
+    result = lending_core.wormhole_adapter.repay.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -475,6 +530,21 @@ def core_repay(vaa):
         lending_core.storage.Storage[-1],
         vaa
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.repay(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            vaa
+        )
+    return gas, executed
 
 
 def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver=None):
@@ -520,7 +590,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver
     return bridge_pool_read_vaa()[0]
 
 
-def core_liquidate(vaa):
+def core_liquidate(vaa, relay_fee=0):
     """
     public entry fun liquidate(
         wormhole_adapter: &WormholeAdapter,
@@ -542,7 +612,7 @@ def core_liquidate(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    lending_core.wormhole_adapter.liquidate(
+    result = lending_core.wormhole_adapter.liquidate.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -552,6 +622,21 @@ def core_liquidate(vaa):
         lending_core.storage.Storage[-1],
         vaa,
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.liquidate(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            vaa,
+        )
+    return gas, executed
 
 
 def portal_binding(bind_address, dola_chain_id=0):
@@ -576,7 +661,7 @@ def portal_binding(bind_address, dola_chain_id=0):
     )
 
 
-def core_binding(vaa):
+def core_binding(vaa, relay_fee=0):
     """
     public entry fun bind_user_address(
         user_manager_info: &mut UserManagerInfo,
@@ -593,7 +678,7 @@ def core_binding(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     user_manager = load.user_manager_package()
 
-    system_core.wormhole_adapter.bind_user_address(
+    result = system_core.wormhole_adapter.bind_user_address.simulate(
         user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         system_core.wormhole_adapter.WormholeAdapter[-1],
@@ -601,6 +686,19 @@ def core_binding(vaa):
         system_core.storage.Storage[-1],
         vaa
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        system_core.wormhole_adapter.bind_user_address(
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            system_core.wormhole_adapter.WormholeAdapter[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            system_core.storage.Storage[-1],
+            vaa
+        )
+    return gas, executed
 
 
 def portal_unbinding(unbind_address, dola_chain_id=0):
@@ -625,7 +723,7 @@ def portal_unbinding(unbind_address, dola_chain_id=0):
     )
 
 
-def core_unbinding(vaa):
+def core_unbinding(vaa, relay_fee=0):
     """
     public entry fun unbind_user_address(
         user_manager_info: &mut UserManagerInfo,
@@ -642,7 +740,7 @@ def core_unbinding(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     user_manager = load.user_manager_package()
 
-    system_core.wormhole_adapter.unbind_user_address(
+    result = system_core.wormhole_adapter.unbind_user_address.simulate(
         user_manager.user_manager.UserManagerInfo[-1],
         wormhole.state.State[-1],
         system_core.wormhole_adapter.WormholeAdapter[-1],
@@ -650,9 +748,22 @@ def core_unbinding(vaa):
         system_core.storage.Storage[-1],
         vaa
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        system_core.wormhole_adapter.unbind_user_address(
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            system_core.wormhole_adapter.WormholeAdapter[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            system_core.storage.Storage[-1],
+            vaa
+        )
+    return gas, executed
 
 
-def core_as_collateral(vaa):
+def core_as_collateral(vaa, relay_fee=0):
     """
     public entry fun as_collateral(
         wormhole_adapter: &WormholeAdapter,
@@ -664,6 +775,7 @@ def core_as_collateral(vaa):
         storage: &mut Storage,
         vaa: vector<u8>
     )
+    :param relay_fee:
     :param vaa:
     :return:
     """
@@ -674,7 +786,7 @@ def core_as_collateral(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    lending_core.wormhole_adapter.as_collateral(
+    result = lending_core.wormhole_adapter.as_collateral.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -684,9 +796,24 @@ def core_as_collateral(vaa):
         lending_core.storage.Storage[-1],
         vaa
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.as_collateral(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            vaa
+        )
+    return gas, executed
 
 
-def core_cancel_as_collateral(vaa):
+def core_cancel_as_collateral(vaa, relay_fee=0):
     """
     public entry fun cancel_as_collateral(
         wormhole_adapter: &WormholeAdapter,
@@ -707,7 +834,7 @@ def core_cancel_as_collateral(vaa):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    lending_core.wormhole_adapter.cancel_as_collateral(
+    result = lending_core.wormhole_adapter.cancel_as_collateral.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -717,6 +844,21 @@ def core_cancel_as_collateral(vaa):
         lending_core.storage.Storage[-1],
         vaa
     )
+    gas = calculate_sui_gas(result['gasUsed'])
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        lending_core.wormhole_adapter.cancel_as_collateral(
+            lending_core.wormhole_adapter.WormholeAdapter[-1],
+            pool_manager.pool_manager.PoolManagerInfo[-1],
+            user_manager.user_manager.UserManagerInfo[-1],
+            wormhole.state.State[-1],
+            wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+            oracle.oracle.PriceOracle[-1],
+            lending_core.storage.Storage[-1],
+            vaa
+        )
+    return gas, executed
 
 
 def export_objects():

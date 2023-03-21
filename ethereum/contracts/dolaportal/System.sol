@@ -12,7 +12,6 @@ contract SystemPortal {
     uint8 public constant SYSTEM_APP_ID = 0;
 
     IWormholeAdapterPool immutable wormholeAdapterPool;
-    uint64 public dolaNonce;
     address payable public relayer;
 
     event RelayEvent(uint32 nonce, uint256 amount);
@@ -31,18 +30,12 @@ contract SystemPortal {
         relayer = payable(msg.sender);
     }
 
-    function getNonce() internal returns (uint64) {
-        uint64 nonce = dolaNonce;
-        dolaNonce++;
-        return nonce;
-    }
-
     function binding(
         uint16 bindDolaChainId,
         bytes memory bindAddress,
         uint256 fee
     ) external payable {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
@@ -59,7 +52,7 @@ contract SystemPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
+            nonce,
             fee
         );
 
@@ -78,7 +71,7 @@ contract SystemPortal {
         bytes memory unbindAddress,
         uint256 fee
     ) external payable {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
@@ -95,7 +88,7 @@ contract SystemPortal {
         relayer.transfer(fee);
 
         emit RelayEvent(
-            IWormholeAdapterPool(wormholeAdapterPool).getNonce() - 1,
+            nonce,
             fee
         );
 

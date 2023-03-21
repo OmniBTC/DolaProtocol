@@ -57,5 +57,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("bsc-test")
     deploy()

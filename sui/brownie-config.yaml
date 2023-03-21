@@ -3,8 +3,8 @@ dotenv: .env
 networks:
   default: bsc-test
   sui-devnet:
-    node_url: https://fullnode.devnet.sui.io:443
+    node_url: "https://devnet.suiet.app/?token=2FE2F886-4344-4F39-99B4-259BA6C61772"
   sui-testnet:
-    node_url: https://fullnode.testnet.sui.io:443
+    node_url: "https://fullnode.testnet.sui.io:443"
   sui-localnet:
-    node_url: http://127.0.0.1:9000
+    node_url: "http://127.0.0.1:9000"

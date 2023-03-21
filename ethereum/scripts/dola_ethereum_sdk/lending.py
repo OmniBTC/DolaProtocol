@@ -241,3 +241,4 @@ def main():
 
 if __name__ == "__main__":
     set_ethereum_network("polygon-test")
+    main()

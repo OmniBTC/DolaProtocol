@@ -5,11 +5,13 @@ import contextlib
 import functools
 import json
 import logging
+import threading
 import time
 from collections import OrderedDict
 from pathlib import Path
 from queue import Queue
 
+import ccxt
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ThreadExecutor
 
@@ -61,6 +63,44 @@ ch.setFormatter(ColorFormatter(FORMAT))
 
 logger.addHandler(ch)
 
+kucoin = ccxt.kucoin()
+kucoin.load_markets()
+
+lock = threading.Lock()
+
+
+def get_token_price(token):
+    if token == "eth":
+        return float(kucoin.fetch_ticker("ETH/USDT")['close'])
+    elif token == "bnb":
+        return float(kucoin.fetch_ticker("BNB/USDT")['close'])
+    elif token == "matic":
+        return float(kucoin.fetch_ticker("MATIC/USDT")['close'])
+    elif token == "apt":
+        return float(kucoin.fetch_ticker("APT/USDT")['close'])
+    elif token == "sui":
+        return float(100)
+
+
+def get_token_decimal(token):
+    if token in ['eth', 'matic', 'bnb']:
+        return 18
+    elif token == 'apt':
+        return 8
+    elif token == 'sui':
+        return 9
+
+
+def get_fee_value(amount, token='sui'):
+    price = get_token_price(token)
+    decimal = get_token_decimal(token)
+    return price * amount / decimal
+
+
+def get_fee_amount(value, token='sui'):
+    price = get_token_price(token)
+    return int(value / price)
+
 
 def get_call_name(app_id, call_type):
     if app_id == 0:
@@ -94,27 +134,43 @@ def get_eth_network(dola_chain_id):
         return "polygon-zk-test"
 
 
-def execute_sui_core(app_id, call_type, vaa):
+def get_gas_token(network='polygon-test'):
+    if network == "sui":
+        return "sui"
+    elif network == "aptos":
+        return "apt"
+    elif "polygon" in network:
+        return "matic"
+    elif "bsc" in network:
+        return "bnb"
+    else:
+        return "eth"
+
+
+def execute_sui_core(app_id, call_type, vaa, relay_fee):
+    gas = 0
+    executed = False
     if app_id == 0:
         if call_type == 0:
-            dola_sui_lending.core_binding(vaa)
+            gas, executed = dola_sui_lending.core_binding(vaa, relay_fee)
         elif call_type == 1:
-            dola_sui_lending.core_unbinding(vaa)
+            gas, executed = dola_sui_lending.core_unbinding(vaa, relay_fee)
     elif app_id == 1:
         if call_type == 0:
-            dola_sui_lending.core_supply(vaa)
+            gas, executed = dola_sui_lending.core_supply(vaa, relay_fee)
         elif call_type == 1:
-            dola_sui_lending.core_withdraw(vaa)
+            gas, executed = dola_sui_lending.core_withdraw(vaa, relay_fee)
         elif call_type == 2:
-            dola_sui_lending.core_borrow(vaa)
+            gas, executed = dola_sui_lending.core_borrow(vaa, relay_fee)
         elif call_type == 3:
-            dola_sui_lending.core_repay(vaa)
+            gas, executed = dola_sui_lending.core_repay(vaa, relay_fee)
         elif call_type == 4:
-            dola_sui_lending.core_liquidate(vaa)
+            gas, executed = dola_sui_lending.core_liquidate(vaa, relay_fee)
         elif call_type == 5:
-            dola_sui_lending.core_as_collateral(vaa)
+            gas, executed = dola_sui_lending.core_as_collateral(vaa, relay_fee)
         elif call_type == 6:
-            dola_sui_lending.core_cancel_as_collateral(vaa)
+            gas, executed = dola_sui_lending.core_cancel_as_collateral(vaa, relay_fee)
+    return gas, executed
 
 
 def read_json(file) -> dict:
@@ -150,6 +206,13 @@ class BridgeDict(OrderedDict):
         super(BridgeDict, self).__setitem__(key, value)
         write_json(self.file, self)
 
+    def __delitem__(self, key):
+        super(BridgeDict, self).__delitem__(key)
+        write_json(self.file, self)
+
+
+pending_vaa = BridgeDict("pending_vaa.json")
+
 
 def read_sui_pool_vaa(q: Queue):
     data = BridgeDict("sui_pool_vaa.json")
@@ -162,12 +225,17 @@ def read_sui_pool_vaa(q: Queue):
             vaa, nonce = dola_sui_init.bridge_pool_read_vaa()
             decode_vaa = list(bytes.fromhex(
                 vaa.replace("0x", "") if "0x" in vaa else vaa))
-            call_type = get_call_name(decode_vaa[1], decode_vaa[-1])
-            dk = f"sui_pool_{str(nonce)}"
+            call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
+            dk = f"sui_pool_{call_name}_{str(nonce)}"
+
             if dk not in data:
+                # Record pending vaa
+                # todo: get sui portal relay event
+                pending_vaa[dk] = get_fee_value(1e9)
+
                 q.put((vaa, nonce, "sui"))
                 data[dk] = vaa
-                local_logger.info(f"Have a {call_type} transaction from sui, nonce: {nonce}")
+                local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
         time.sleep(1)
 
 
@@ -184,7 +252,11 @@ def read_aptos_pool_vaa(q: Queue):
                 vaa.replace("0x", "") if "0x" in vaa else vaa))
             call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
             dk = f"aptos_pool_{call_name}_{str(nonce)}"
+
             if dk not in data:
+                # Record pending vaa
+                pending_vaa[dk] = get_fee_value(1e8, 'apt')
+
                 q.put((vaa, nonce, "aptos"))
                 data[dk] = vaa
                 local_logger.info(f"Have a {call_name} transaction from aptos, nonce: {nonce}")
@@ -196,18 +268,29 @@ def read_eth_pool_vaa(q: Queue, network="polygon-test"):
     data = BridgeDict(f"{network}_pool_vaa.json")
     local_logger = logger.getChild(f"[{network}_pool]")
     local_logger.info(f"Start to read {network} pool vaa ^-^")
+
+    start_block = 0
     while True:
         with contextlib.suppress(Exception):
             # Read sui
-            vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa()
-            decode_vaa = list(bytes.fromhex(
-                vaa.replace("0x", "") if "0x" in vaa else vaa))
-            call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-            dk = f"{network}_pool_{call_name}_{str(nonce)}"
-            if dk not in data:
-                q.put((vaa, nonce, network))
-                data[dk] = vaa
-                local_logger.info(f"Have a {call_name} transaction from {network}, nonce: {nonce}")
+            current_block_number = dola_ethereum_init.current_block_number()
+            relay_events = dola_ethereum_init.lending_relay_event(network, start_block, current_block_number)
+            start_block = current_block_number
+
+            for nonce in relay_events:
+                vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa(nonce)
+                decode_vaa = list(bytes.fromhex(
+                    vaa.replace("0x", "") if "0x" in vaa else vaa))
+                call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
+                dk = f"{network}_pool_{call_name}_{str(nonce)}"
+                if dk not in data:
+                    # Record pending vaa
+                    gas_token = get_gas_token(network)
+                    pending_vaa[dk] = get_fee_value(relay_events[nonce], gas_token)
+
+                    q.put((vaa, nonce, network))
+                    data[dk] = vaa
+                    local_logger.info(f"Have a {call_name} transaction from {network}, nonce: {nonce}")
         time.sleep(1)
 
 
@@ -216,7 +299,7 @@ def read_withdraw_vaa(sui_q: Queue, aptos_q: Queue, eth_q: Queue):
     data = BridgeDict("pool_withdraw_vaa.json")
     local_logger = logger.getChild("[pool_withdraw]")
     while True:
-        try:
+        with contextlib.suppress(Exception):
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
             result = sui_omnipool.wormhole_adapter_pool.decode_withdraw_payload.simulate(
                 vaa)
@@ -232,13 +315,14 @@ def read_withdraw_vaa(sui_q: Queue, aptos_q: Queue, eth_q: Queue):
             if dk not in data:
                 if dola_chain_id == 0:
                     sui_q.put((vaa, nonce, token_name))
+                    local_logger.info(f"Have a withdraw to sui, nonce: {nonce}, token: {token_name}")
                 elif dola_chain_id == 1:
                     aptos_q.put((vaa, nonce, token_name))
+                    local_logger.info(f"Have a withdraw to aptos, nonce: {nonce}, token: {token_name}")
                 else:
                     eth_q.put((vaa, nonce, dola_chain_id))
+                    local_logger.info(f"Have a withdraw to {get_eth_network(dola_chain_id)}, nonce: {nonce}")
                 data[dk] = vaa
-        except Exception as e:
-            local_logger.info(f"read withdraw vaa fail: {e}")
         time.sleep(1)
 
 
@@ -257,9 +341,18 @@ def sui_core_executor(q: Queue):
 
             dk = f"{chain}_pool_{call_name}_{nonce}"
             if dk not in data:
-                execute_sui_core(app_id, call_type, decode_vaa)
-                data[dk] = vaa
-                local_logger.info(f"Execute sui core success, call: {call_name} source: {chain}, nonce: {nonce}")
+                relay_fee = get_fee_amount(pending_vaa[dk], get_gas_token(chain))
+                gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
+                if executed:
+                    if call_type in ["withdraw", "borrow"]:
+                        pending_vaa[dk] = gas
+                    else:
+                        del pending_vaa[dk]
+                    data[dk] = vaa
+                    local_logger.info(f"Execute sui core success, call: {call_name} source: {chain}, nonce: {nonce}")
+                else:
+                    local_logger.warning("Execute sui core fail, not enough relay fee! ")
+                    local_logger.warning(f"call: {call_name} source: {chain}, nonce: {nonce}")
         except Exception as e:
             local_logger.error(f"Execute sui core fail\n {e}")
 
@@ -348,18 +441,20 @@ def main():
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
 
-    pt = ThreadExecutor(executor=8)
+    pt = ThreadExecutor(executor=9)
     pool_vaa_q = Queue()
     sui_withdraw_q = Queue()
     aptos_withdraw_q = Queue()
     eth_withdraw_q = Queue()
+
     pt.run([functools.partial(read_withdraw_vaa, sui_withdraw_q, aptos_withdraw_q, eth_withdraw_q),
             functools.partial(sui_pool_executor, sui_withdraw_q),
-            functools.partial(aptos_pool_executor, aptos_withdraw_q),
+            # functools.partial(aptos_pool_executor, aptos_withdraw_q),
             functools.partial(eth_pool_executor, eth_withdraw_q),
             functools.partial(read_sui_pool_vaa, pool_vaa_q),
-            functools.partial(read_aptos_pool_vaa, pool_vaa_q),
+            # functools.partial(read_aptos_pool_vaa, pool_vaa_q),
             functools.partial(read_eth_pool_vaa, pool_vaa_q, "polygon-test"),
+            # functools.partial(read_eth_pool_vaa, pool_vaa_q, "bsc-test"),
             functools.partial(sui_core_executor, pool_vaa_q)])
 
 

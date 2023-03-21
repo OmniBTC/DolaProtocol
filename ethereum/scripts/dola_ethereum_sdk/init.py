@@ -6,7 +6,7 @@ from brownie import (
     network,
     config, )
 
-from dola_ethereum_sdk import load, get_account
+from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
 def get_scan_api_key(net="polygon-test"):
@@ -89,7 +89,6 @@ def lending_relay_event(net="polygon-test", start_block=0, end_block=99999999):
         'apikey': api_key
     }
     result = requests.get("https://api-testnet.polygonscan.com/api", params)
-
     return decode_relay_events(result.json())
 
 
@@ -100,3 +99,8 @@ def decode_relay_events(data):
 
 def current_block_number():
     return brownie.web3.eth.block_number
+
+
+if __name__ == "__main__":
+    set_ethereum_network("polygon-test")
+    print(lending_relay_event(end_block=current_block_number()))

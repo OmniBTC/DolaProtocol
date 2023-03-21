@@ -28,7 +28,6 @@ module dola_portal::system {
 
     struct SystemPortal has key {
         resource_signer_cap: SignerCapability,
-        nonce: u64,
         system_event_handle: EventHandle<SystemPortalEvent>,
         relay_event_handle: EventHandle<RelayEvent>
     }
@@ -73,17 +72,9 @@ module dola_portal::system {
         let (resource_signer, resource_signer_cap) = account::create_resource_account(sender, SEED);
         move_to(&resource_signer, SystemPortal {
             resource_signer_cap,
-            nonce: 0,
             system_event_handle: account::new_event_handle(&resource_signer),
             relay_event_handle: account::new_event_handle(&resource_signer)
         });
-    }
-
-    fun get_nonce(): u64 acquires SystemPortal {
-        let lending_portal = borrow_global_mut<SystemPortal>(get_resource_address());
-        let nonce = lending_portal.nonce;
-        lending_portal.nonce = lending_portal.nonce + 1;
-        nonce
     }
 
     public entry fun binding(
@@ -92,7 +83,7 @@ module dola_portal::system {
         binded_address: vector<u8>,
         relay_fee: u64
     ) acquires SystemPortal {
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let bind_address = dola_address::create_dola_address(dola_chain_id, binded_address);
         let app_payload = system_codec::encode_bind_payload(
             dola_address::get_native_dola_chain_id(),
@@ -116,7 +107,7 @@ module dola_portal::system {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce: wormhole_adapter_pool::next_vaa_nonce(),
+                nonce,
                 amount: relay_fee
             }
         );
@@ -140,7 +131,7 @@ module dola_portal::system {
         unbinded_address: vector<u8>,
         relay_fee: u64
     ) acquires SystemPortal {
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let bind_address = dola_address::create_dola_address(dola_chain_id, unbinded_address);
         let app_payload = system_codec::encode_bind_payload(
             dola_address::get_native_dola_chain_id(),
@@ -164,7 +155,7 @@ module dola_portal::system {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce: wormhole_adapter_pool::next_vaa_nonce(),
+                nonce,
                 amount: relay_fee
             }
         );
