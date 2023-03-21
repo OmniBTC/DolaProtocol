@@ -13,7 +13,7 @@ contract LendingPortal {
     IWormholeAdapterPool immutable wormholeAdapterPool;
     address payable public relayer;
 
-    event RelayEvent(uint32 nonce, uint256 amount);
+    event RelayEvent(uint64 nonce, uint256 amount);
 
     event LendingPortalEvent(
         uint64 nonce,

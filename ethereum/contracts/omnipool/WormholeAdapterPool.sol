@@ -27,7 +27,7 @@ contract WormholeAdapterPool {
     mapping(bytes32 => bool) consumedVaas;
 
     // todo! Delete after wormhole running
-    mapping(uint32 => bytes) public cachedVAA;
+    mapping(uint64 => bytes) public cachedVAA;
     uint64 vaaNonce;
 
     event PoolWithdrawEvent(
@@ -51,7 +51,7 @@ contract WormholeAdapterPool {
     }
 
     // todo! Delete after wormhole running
-    function getNonce() public view returns (uint32) {
+    function getNonce() public view returns (uint64) {
         return vaaNonce;
     }
 
