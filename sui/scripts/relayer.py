@@ -94,13 +94,13 @@ def get_token_decimal(token):
 def get_fee_value(amount, token='sui'):
     price = get_token_price(token)
     decimal = get_token_decimal(token)
-    return price * amount / decimal
+    return price * amount / pow(10, decimal)
 
 
 def get_fee_amount(value, token='sui'):
     price = get_token_price(token)
     decimal = get_token_decimal(token)
-    return int(value / price * decimal)
+    return int(value / price * pow(10, decimal))
 
 
 def get_call_name(app_id, call_type):
