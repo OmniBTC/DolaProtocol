@@ -233,21 +233,25 @@ def sui_portal_watcher(q: Queue):
     while True:
         with contextlib.suppress(Exception):
             # get vaa nonce and relay fee from relay event emitted at portal
-            relay_events = dola_sui_init.query_relay_event()
+            relay_events = dola_sui_init.query_relay_event(5)
             for event in relay_events:
-                relay_fee_amount = event['amount']
-                nonce = event['nonce']
-                call_type = event['call_type']
+                data = event['event']['moveEvent']['fields']
+                relay_fee_amount = int(data['amount'])
+                nonce = int(data['nonce'])
+                call_type = int(data['call_type'])
                 call_name = get_call_name(1, call_type)
                 dk = f"sui_portal_{call_name}_{str(nonce)}"
-                if dk not in data:
+
+                if dk not in relay_fee_record:
                     relay_fee_record[dk] = get_fee_value(relay_fee_amount)
+                    local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
+
+                if dk not in data:
                     if call_name == 'liquidate':
                         vaa, nonce = dola_sui_init.bridge_pool_read_vaa(nonce)
                         q.put((vaa, nonce, "sui"))
-
-                    data[dk] = vaa
-                    local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
+                        data[dk] = vaa
+                        local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
         time.sleep(1)
 
 
@@ -392,6 +396,11 @@ def sui_pool_executor(q: Queue):
             chain = get_dola_network(source_chain_id)
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
+            if dk not in relay_fee_record:
+                q.put(vaa, source_chain_id, source_nonce, call_type, token_name)
+                time.sleep(1)
+                continue
+
             if dk not in data:
                 sui_account_address = sui_omnipool.account.account_address
                 relay_fee_value = relay_fee_record[dk]
@@ -399,7 +408,7 @@ def sui_pool_executor(q: Queue):
 
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
-                    sui_omnipool.bridge_pool.PoolState[-1],
+                    sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                     CacheObject[ObjectType.from_type(
                         dola_sui_init.pool(token_name))][sui_account_address][-1],
                     vaa,
@@ -413,7 +422,7 @@ def sui_pool_executor(q: Queue):
                 if avaliable_gas_amount > tx_gas_amount:
                     sui_omnipool.wormhole_adapter_pool.receive_withdraw(
                         sui_wormhole.state.State[-1],
-                        sui_omnipool.bridge_pool.PoolState[-1],
+                        sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                         CacheObject[ObjectType.from_type(
                             dola_sui_init.pool(token_name))][sui_account_address][-1],
                         vaa,
@@ -541,16 +550,16 @@ def main():
     aptos_withdraw_q = Queue()
     eth_withdraw_q = Queue()
 
-    pt.run([functools.partial(pool_withdraw_watcher, sui_withdraw_q, aptos_withdraw_q, eth_withdraw_q),
-            functools.partial(sui_pool_executor, sui_withdraw_q),
-            functools.partial(aptos_pool_executor, aptos_withdraw_q),
-            functools.partial(eth_pool_executor, eth_withdraw_q),
-            functools.partial(sui_portal_watcher, pool_vaa_q),
-            functools.partial(aptos_portal_watcher, pool_vaa_q),
-            functools.partial(eth_portal_watcher, pool_vaa_q, "polygon-test"),
-            # functools.partial(eth_portal_watcher, pool_vaa_q, "bsc-test"),
-            functools.partial(sui_core_executor, pool_vaa_q)
-            ])
+    pt.run([
+        functools.partial(sui_portal_watcher, pool_vaa_q),
+        functools.partial(aptos_portal_watcher, pool_vaa_q),
+        functools.partial(eth_portal_watcher, pool_vaa_q, "polygon-test"),
+        functools.partial(sui_core_executor, pool_vaa_q),
+        functools.partial(pool_withdraw_watcher, sui_withdraw_q, aptos_withdraw_q, eth_withdraw_q),
+        functools.partial(sui_pool_executor, sui_withdraw_q),
+        functools.partial(aptos_pool_executor, aptos_withdraw_q),
+        functools.partial(eth_pool_executor, eth_withdraw_q),
+    ])
 
 
 if __name__ == "__main__":

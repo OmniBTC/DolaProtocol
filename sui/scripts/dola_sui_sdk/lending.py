@@ -1,10 +1,9 @@
 from pprint import pprint
 
-from sui_brownie import CacheObject, ObjectType
-
 from dola_sui_sdk import load
 from dola_sui_sdk.init import btc, usdt, usdc, sui
-from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
+from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa, claim_test_coin
+from sui_brownie import CacheObject, ObjectType
 
 U64_MAX = 18446744073709551615
 
@@ -962,9 +961,9 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # claim_test_coin(usdt())
-    # monitor_supply(usdt())
-    # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7, 10000)
+    claim_test_coin(usdt())
+    monitor_supply(usdt())
+    portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)
     # force_claim_test_coin(usdc(), 100000)
     # monitor_supply(usdc())
     # monitor_supply(sui())
@@ -973,4 +972,4 @@ if __name__ == "__main__":
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()
-    export_objects()
+    # export_objects()
