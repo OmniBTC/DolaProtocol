@@ -370,6 +370,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
         table::add(&mut core_state.cache_vaas, index, msg);
     }
 
+    public fun vaa_nonce(core_state: &CoreState): u64 {
+        table::length(&core_state.cache_vaas)
+    }
+
     public entry fun read_vaa(core_state: &CoreState, index: u64) {
         if (index == 0) {
             index = table::length(&core_state.cache_vaas);
