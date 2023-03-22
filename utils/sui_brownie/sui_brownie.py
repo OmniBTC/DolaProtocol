@@ -1052,6 +1052,36 @@ class SuiPackage:
         except:
             return result
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def query_events(self, query: str, cursor=None, limit=None, descending_order=None):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_queryEvents",
+                "params": [
+                    query,
+                    cursor,
+                    limit,
+                    descending_order
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["details"]
+            if "status" in result:
+                assert result["status"] == "Exists"
+                data["status"] = result["status"]
+
+            return data
+        except:
+            return result
+
     def get_object_by_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
