@@ -7,33 +7,33 @@ networks:
     replace_address:
       wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
       deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
-      dola_portal: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      serde: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      dola_types: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      wormhole_bridge: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      omnipool: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      test_coins: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
+      dola_portal: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      serde: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      dola_types: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      wormhole_bridge: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      omnipool: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      test_coins: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
   aptos-devnet:
     node_url: https://fullnode.devnet.aptoslabs.com/v1
     faucet_url: https://tap.devnet.prod.gcp.aptosdev.com
     replace_address:
       wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
       deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
-      dola_portal: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      serde: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      dola_types: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      wormhole_bridge: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      omnipool: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      test_coins: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
+      dola_portal: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      serde: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      dola_types: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      wormhole_bridge: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      omnipool: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      test_coins: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
   aptos-testnet:
     node_url: https://rpc.ankr.com/http/aptos_testnet/v1
     faucet_url: https://faucet.testnet.aptoslabs.com
     replace_address:
       wormhole: "0x5bc11445584a763c1fa7ed39081f1b920954da14e04b32440cba863d03e19625"
       deployer: "0x0108bc32f7de18a5f6e1e7d6ee7aff9f5fc858d0d87ac0da94dd8d2a5d267d6b"
-      dola_portal: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      serde: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      dola_types: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      wormhole_bridge: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      omnipool: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
-      test_coins: "0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908"
+      dola_portal: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      serde: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      dola_types: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      wormhole_bridge: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      omnipool: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"
+      test_coins: "0xf12468c88a594d07ecbc88b7c041b6e321efde5fe0621df9f37ab767b1f6ca77"

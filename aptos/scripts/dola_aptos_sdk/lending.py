@@ -1,5 +1,4 @@
 from dola_aptos_sdk import load
-
 from dola_aptos_sdk.init import btc, usdt, bridge_pool_read_vaa
 
 U64_MAX = 18446744073709551615
@@ -17,6 +16,7 @@ def portal_supply(coin_type, amount, relay_fee=0):
     public entry fun supply<CoinType>(
         sender: &signer,
         deposit_coin: u64,
+        relay_fee: u64
     )
 
     :param relay_fee:
@@ -41,6 +41,7 @@ def portal_withdraw(coin_type, amount, relay_fee=0, dst_chain=1, receiver=None):
         receiver: vector<u8>,
         dst_chain: u64,
         amount: u64,
+        relay_fee: u64
     )
     :return:
     """
@@ -221,8 +222,8 @@ def monitor_supply(coin):
     print(portal_supply(coin, 1e8))
 
 
-def monitor_withdraw(coin, dst_chain=1, receiver=None):
-    print(portal_withdraw(coin, 1e7, dst_chain, receiver))
+def monitor_withdraw(coin, relay_fee=0, dst_chain=1, receiver=None):
+    print(portal_withdraw(coin, 1e7, relay_fee, dst_chain, receiver))
 
 
 def monitor_borrow(coin, amount=1e8, dst_chain=1, receiver=None):
@@ -238,8 +239,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    claim_test_coin(usdt())
-    portal_supply(usdt(), 1e8, 1000)
-    # monitor_withdraw(usdt())
+    # claim_test_coin(usdt())
+    # portal_supply(usdt(), 1e8, 10000)
+    monitor_withdraw(usdt(), 10000)
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)

@@ -68,7 +68,7 @@ def lending_portal_relay_event():
         1,
     )
     data = events[0]['data']
-    return data['nonce'], data['amount']
+    return int(data['nonce']), int(data['amount'])
 
 
 def system_portal_relay_event():
@@ -81,7 +81,7 @@ def system_portal_relay_event():
         1,
     )
     data = events[0]['data']
-    return data['nonce'], data['amount']
+    return int(data['nonce']), int(data['amount'])
 
 
 def main():
