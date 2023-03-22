@@ -226,21 +226,22 @@ def sui_portal_watcher(q: Queue):
 
     while True:
         with contextlib.suppress(Exception):
-            # Read sui
-            vaa, nonce = dola_sui_init.bridge_pool_read_vaa()
-            decode_vaa = list(bytes.fromhex(
-                vaa.replace("0x", "") if "0x" in vaa else vaa))
-            call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-            dk = f"sui_pool_{call_name}_{str(nonce)}"
+            # get vaa nonce and relay fee from relay event emitted at portal
+            relay_events = dola_sui_init.query_relay_event()
+            for event in relay_events:
+                relay_fee_amount = event['amount']
+                nonce = event['nonce']
+                call_type = event['call_type']
+                call_name = get_call_name(1, call_type)
+                dk = f"sui_portal_{call_name}_{str(nonce)}"
+                if dk not in data:
+                    relay_fee_record[dk] = get_fee_value(relay_fee_amount)
+                    if call_name == 'liquidate':
+                        vaa, nonce = dola_sui_init.bridge_pool_read_vaa(nonce)
+                        q.put((vaa, nonce, "sui"))
 
-            if dk not in data:
-                # Record pending vaa
-                # todo: get sui portal relay event
-                relay_fee_record[dk] = get_fee_value(1e9)
-
-                q.put((vaa, nonce, "sui"))
-                data[dk] = vaa
-                local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
+                    data[dk] = vaa
+                    local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
         time.sleep(1)
 
 
@@ -256,7 +257,7 @@ def aptos_portal_watcher(q: Queue):
             decode_vaa = list(bytes.fromhex(
                 vaa.replace("0x", "") if "0x" in vaa else vaa))
             call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-            dk = f"aptos_pool_{call_name}_{str(nonce)}"
+            dk = f"aptos_portal_{call_name}_{str(nonce)}"
 
             if dk not in data:
                 # Record pending vaa
@@ -287,7 +288,7 @@ def eth_portal_watcher(q: Queue, network="polygon-test"):
                 decode_vaa = list(bytes.fromhex(
                     vaa.replace("0x", "") if "0x" in vaa else vaa))
                 call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-                dk = f"{network}_pool_{call_name}_{str(nonce)}"
+                dk = f"{network}_portal_{call_name}_{str(nonce)}"
                 if dk not in data:
                     # Record pending vaa
                     gas_token = get_gas_token(network)
@@ -317,7 +318,7 @@ def pool_withdraw_watcher(sui_q: Queue, aptos_q: Queue, eth_q: Queue):
                 if token_name[:2] != "0x":
                     token_name = f"0x{token_name}"
 
-            dk = f"withdraw_pool_{dola_chain_id}_{str(nonce)}"
+            dk = f"pool_withdraw_{dola_chain_id}_{str(nonce)}"
             if dk not in data:
                 source_chain_id = decode_payload["source_chain_id"]
                 source_nonce = decode_payload["nonce"]
@@ -351,7 +352,7 @@ def sui_core_executor(q: Queue):
             call_type = decode_vaa[-1]
             call_name = get_call_name(app_id, call_type)
 
-            dk = f"{chain}_pool_{call_name}_{nonce}"
+            dk = f"{chain}_portal_{call_name}_{nonce}"
             if dk not in data:
                 relay_fee = get_fee_amount(relay_fee_record[dk])
                 gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
@@ -382,11 +383,15 @@ def sui_pool_executor(q: Queue):
     while True:
         try:
             (vaa, source_chain_id, source_nonce, call_type, token_name) = q.get()
-            dk = f"sui_pool_withdraw_{source_nonce}"
+            chain = get_dola_network(source_chain_id)
+            call_name = get_call_name(1, int(call_type))
+            dk = f"{chain}_portal_{call_name}_{source_nonce}"
             if dk not in data:
                 sui_account_address = sui_omnipool.account.account_address
+                relay_fee_value = relay_fee_record[dk]
+                gas_amount = get_fee_amount(relay_fee_value, 'sui')
 
-                sui_omnipool.wormhole_adapter_pool.receive_withdraw(
+                result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
                     sui_omnipool.bridge_pool.PoolState[-1],
                     CacheObject[ObjectType.from_type(
@@ -394,10 +399,31 @@ def sui_pool_executor(q: Queue):
                     vaa,
                     ty_args=[token_name]
                 )
+                gas_used = dola_sui_lending.calculate_sui_gas(result['gasUsed'])
+                # todo: use sui gas price
+                gas_price = 1
+                if gas_amount > int(gas_used) * gas_price:
+                    sui_omnipool.wormhole_adapter_pool.receive_withdraw(
+                        sui_wormhole.state.State[-1],
+                        sui_omnipool.bridge_pool.PoolState[-1],
+                        CacheObject[ObjectType.from_type(
+                            dola_sui_init.pool(token_name))][sui_account_address][-1],
+                        vaa,
+                        ty_args=[token_name]
+                    )
+                    del relay_fee_record[dk]
 
-                data[dk] = vaa
-
-                local_logger.info(f"Execute sui withdraw success, token: {token_name} nonce: {source_nonce}")
+                    data[dk] = vaa
+                    local_logger.info(f"Execute sui withdraw success, token: {token_name} nonce: {source_nonce}")
+                    local_logger.info(
+                        f"token: {token_name} source: {chain} nonce: {source_nonce}")
+                else:
+                    local_logger.warning("Execute withdraw fail on sui, not enough relay fee! ")
+                    local_logger.warning(
+                        f"Need gas fee: {int(gas_used) * gas_price}, but available gas fee: {gas_amount}"
+                    )
+                    local_logger.warning(
+                        f"call: {call_name} source: {chain}, nonce: {source_nonce}")
         except Exception as e:
             local_logger.error(f"Execute sui pool withdraw fail\n {e}")
 
@@ -412,9 +438,9 @@ def aptos_pool_executor(q: Queue):
     while True:
         try:
             (vaa, source_chain_id, source_nonce, call_type, token_name) = q.get()
-
+            chain = get_dola_network(source_chain_id)
             call_name = get_call_name(1, int(call_type))
-            dk = f"aptos_pool_{call_name}_{source_nonce}"
+            dk = f"{chain}_portal_{call_name}_{source_nonce}"
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 gas_amount = get_fee_amount(relay_fee_value, 'apt')
@@ -435,13 +461,13 @@ def aptos_pool_executor(q: Queue):
 
                     local_logger.info("Execute aptos withdraw success! ")
                     local_logger.info(
-                        f"token: {token_name} source: {get_dola_network(source_chain_id)} nonce: {source_nonce}")
+                        f"token: {token_name} source: {chain} nonce: {source_nonce}")
                 else:
                     local_logger.warning("Execute withdraw fail on aptos, not enough relay fee! ")
                     local_logger.warning(
                         f"Need gas fee: {int(gas_used) * int(gas_price)}, but available gas fee: {gas_amount}")
                     local_logger.warning(
-                        f"call: {call_name} source: {get_dola_network(source_chain_id)}, nonce: {source_nonce}")
+                        f"call: {call_name} source: {chain}, nonce: {source_nonce}")
         except Exception as e:
             local_logger.error(f"Execute aptos pool withdraw fail\n {e}")
 
@@ -460,7 +486,7 @@ def eth_pool_executor(q: Queue):
             ethereum_wormhole_bridge = dola_ethereum_load.wormhole_adapter_pool_package()
             ethereum_account = dola_ethereum_sdk.get_account()
             call_name = get_call_name(1, int(call_type))
-            dk = f"{network}_pool_{call_name}_{source_nonce}"
+            dk = f"{network}_portal_{call_name}_{source_nonce}"
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
@@ -491,21 +517,17 @@ def main():
     dola_aptos_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
 
-    pt = ThreadExecutor(executor=6)
+    pt = ThreadExecutor(executor=8)
     pool_vaa_q = Queue()
     sui_withdraw_q = Queue()
     aptos_withdraw_q = Queue()
     eth_withdraw_q = Queue()
 
-    # eth supply
-    # eth_portal_watcher -> sui_core_executor
-    # eth withdraw
-    # eth_portal_watcher -> sui_core_executor -> pool_withdraw_watcher -> eth_pool_executor
     pt.run([functools.partial(pool_withdraw_watcher, sui_withdraw_q, aptos_withdraw_q, eth_withdraw_q),
-            # functools.partial(sui_pool_executor, sui_withdraw_q),
+            functools.partial(sui_pool_executor, sui_withdraw_q),
             functools.partial(aptos_pool_executor, aptos_withdraw_q),
             functools.partial(eth_pool_executor, eth_withdraw_q),
-            # functools.partial(sui_portal_watcher, pool_vaa_q),
+            functools.partial(sui_portal_watcher, pool_vaa_q),
             functools.partial(aptos_portal_watcher, pool_vaa_q),
             functools.partial(eth_portal_watcher, pool_vaa_q, "polygon-test"),
             # functools.partial(eth_portal_watcher, pool_vaa_q, "bsc-test"),

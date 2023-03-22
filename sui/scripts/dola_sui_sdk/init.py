@@ -1,7 +1,8 @@
 import time
 
-from dola_sui_sdk import load
 from sui_brownie import CacheObject, ObjectType
+
+from dola_sui_sdk import load
 
 # 1e27
 RAY = 1000000000000000000000000000
@@ -588,6 +589,12 @@ def lending_portal_contract_id():
     )
 
     return int(lending_portal_info['dola_contract']['dola_contract'])
+
+
+def query_relay_event(limit=1):
+    dola_portal = load.dola_portal_package()
+    return dola_portal.query_events(
+        {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']
 
 
 def main():

@@ -204,7 +204,7 @@ def portal_withdraw_local(coin_type, amount):
     )
 
 
-def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
+def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver=None):
     """
     public entry fun withdraw_remote(
         storage: &mut Storage,
@@ -218,6 +218,8 @@ def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee_coins: vector<Coin<SUI>>,
+        relay_fee_amount: u64,
         ctx: &mut TxContext
     )
     :return:
@@ -245,7 +247,9 @@ def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
         list(pool_addr),
         receiver,
         dst_chain,
-        int(amount)
+        int(amount),
+        [],
+        0,
     )
 
 
@@ -958,8 +962,9 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
-    # force_claim_test_coin(usdt(), 100000)
+    # claim_test_coin(usdt())
     # monitor_supply(usdt())
+    # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7, 10000)
     # force_claim_test_coin(usdc(), 100000)
     # monitor_supply(usdc())
     # monitor_supply(sui())

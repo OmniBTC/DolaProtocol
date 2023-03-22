@@ -423,7 +423,7 @@ module dola_portal::lending {
         let fee_amount = coin::value(&relay_fee);
         transfer::transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce: wormhole_adapter_core::vaa_nonce(core_state),
+            nonce,
             amount: fee_amount,
             call_type: WITHDRAW
         });
@@ -574,7 +574,7 @@ module dola_portal::lending {
         let fee_amount = coin::value(&relay_fee);
         transfer::transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce: wormhole_adapter_core::vaa_nonce(core_state),
+            nonce,
             amount: fee_amount,
             call_type: BORROW
         });
