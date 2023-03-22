@@ -12,9 +12,6 @@ from pathlib import Path
 from queue import Queue
 
 import ccxt
-from sui_brownie import CacheObject, ObjectType
-from sui_brownie.parallelism import ThreadExecutor
-
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -25,6 +22,8 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+from sui_brownie import CacheObject, ObjectType
+from sui_brownie.parallelism import ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -191,6 +190,9 @@ def write_json(file, data: dict):
         return json.dump(data, f, indent=1, separators=(',', ':'))
 
 
+lock = threading.Lock()
+
+
 class BridgeDict(OrderedDict):
     def __init__(self, file, *args, **kwargs):
         pool_path = Path.home().joinpath(".cache").joinpath(
@@ -209,11 +211,15 @@ class BridgeDict(OrderedDict):
 
     def __setitem__(self, key, value):
         super(BridgeDict, self).__setitem__(key, value)
+        lock.acquire()
         write_json(self.file, self)
+        lock.release()
 
     def __delitem__(self, key):
         super(BridgeDict, self).__delitem__(key)
+        lock.acquire()
         write_json(self.file, self)
+        lock.release()
 
 
 relay_fee_record = BridgeDict("relay_fee_record.json")
@@ -358,13 +364,13 @@ def sui_core_executor(q: Queue):
                 gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
                 if executed:
                     if call_name in ["withdraw", "borrow"]:
-                        relay_fee_record[dk] = relay_fee - gas
+                        relay_fee_record[dk] = get_fee_value(relay_fee - gas)
                     else:
                         del relay_fee_record[dk]
                     data[dk] = vaa
                     local_logger.info("Execute sui core success! ")
                     local_logger.info(f"call: {call_name} source: {chain}, nonce: {nonce}")
-                    local_logger.info(f"relay fee: {relay_fee}, gas used: {gas}")
+                    local_logger.info(f"relay fee: {get_fee_value(relay_fee)}, gas used: {get_fee_value(gas)}")
                 else:
                     local_logger.warning("Execute sui core fail, not enough relay fee! ")
                     local_logger.warning(f"Need gas fee: {gas}, but available gas fee: {relay_fee}")
@@ -389,7 +395,7 @@ def sui_pool_executor(q: Queue):
             if dk not in data:
                 sui_account_address = sui_omnipool.account.account_address
                 relay_fee_value = relay_fee_record[dk]
-                gas_amount = get_fee_amount(relay_fee_value, 'sui')
+                avaliable_gas_amount = get_fee_amount(relay_fee_value, 'sui')
 
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
@@ -402,7 +408,9 @@ def sui_pool_executor(q: Queue):
                 gas_used = dola_sui_lending.calculate_sui_gas(result['gasUsed'])
                 # todo: use sui gas price
                 gas_price = 1
-                if gas_amount > int(gas_used) * gas_price:
+
+                tx_gas_amount = int(gas_used) * gas_price
+                if avaliable_gas_amount > tx_gas_amount:
                     sui_omnipool.wormhole_adapter_pool.receive_withdraw(
                         sui_wormhole.state.State[-1],
                         sui_omnipool.bridge_pool.PoolState[-1],
@@ -414,13 +422,14 @@ def sui_pool_executor(q: Queue):
                     del relay_fee_record[dk]
 
                     data[dk] = vaa
-                    local_logger.info(f"Execute sui withdraw success, token: {token_name} nonce: {source_nonce}")
+                    local_logger.info(f"Execute sui withdraw success! ")
                     local_logger.info(
                         f"token: {token_name} source: {chain} nonce: {source_nonce}")
+                    local_logger.info(f"relay fee: {relay_fee_value}, gas used: {get_fee_value(tx_gas_amount)}")
                 else:
                     local_logger.warning("Execute withdraw fail on sui, not enough relay fee! ")
                     local_logger.warning(
-                        f"Need gas fee: {int(gas_used) * gas_price}, but available gas fee: {gas_amount}"
+                        f"Need gas fee: {get_fee_value(tx_gas_amount)}, but available gas fee: {relay_fee_value}"
                     )
                     local_logger.warning(
                         f"call: {call_name} source: {chain}, nonce: {source_nonce}")
@@ -443,7 +452,7 @@ def aptos_pool_executor(q: Queue):
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
-                gas_amount = get_fee_amount(relay_fee_value, 'apt')
+                avaliable_gas_amount = get_fee_amount(relay_fee_value, 'apt')
 
                 gas_used = aptos_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     vaa,
@@ -451,7 +460,8 @@ def aptos_pool_executor(q: Queue):
                     return_types="gas"
                 )
                 gas_price = aptos_omnipool.estimate_gas_price()
-                if gas_amount > int(gas_used) * int(gas_price):
+                tx_gas_amount = int(gas_used) * int(gas_price)
+                if avaliable_gas_amount > tx_gas_amount:
                     aptos_omnipool.wormhole_adapter_pool.receive_withdraw(
                         vaa,
                         ty_args=[token_name]
@@ -462,10 +472,12 @@ def aptos_pool_executor(q: Queue):
                     local_logger.info("Execute aptos withdraw success! ")
                     local_logger.info(
                         f"token: {token_name} source: {chain} nonce: {source_nonce}")
+                    local_logger.info(
+                        f"relay fee: {relay_fee_value}, gas used: {get_fee_value(tx_gas_amount, 'apt')}")
                 else:
                     local_logger.warning("Execute withdraw fail on aptos, not enough relay fee! ")
                     local_logger.warning(
-                        f"Need gas fee: {int(gas_used) * int(gas_price)}, but available gas fee: {gas_amount}")
+                        f"Need gas fee: {get_fee_value(tx_gas_amount, 'apt')}, but available gas fee: {relay_fee_value}")
                     local_logger.warning(
                         f"call: {call_name} source: {chain}, nonce: {source_nonce}")
         except Exception as e:
@@ -486,28 +498,34 @@ def eth_pool_executor(q: Queue):
             ethereum_wormhole_bridge = dola_ethereum_load.wormhole_adapter_pool_package()
             ethereum_account = dola_ethereum_sdk.get_account()
             call_name = get_call_name(1, int(call_type))
-            dk = f"{network}_portal_{call_name}_{source_nonce}"
+            source_chain = get_dola_network(source_chain_id)
+            dk = f"{source_chain}_portal_{call_name}_{source_nonce}"
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
-                gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
-                # todo: use real-time gas price
+                avaliable_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+
+                # todo: get real-time gas price
                 gas_price = 1
-                gas = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
+                gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
-                if gas_amount > gas * gas_price:
+                tx_gas_amount = int(gas_used) * int(gas_price)
+                if avaliable_gas_amount > tx_gas_amount:
                     ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
                     del relay_fee_record[dk]
                     data[dk] = vaa
                     local_logger.info(f"Execute {network} withdraw success! ")
-                    local_logger.info(f"source: {get_dola_network(source_chain_id)} nonce: {source_nonce}")
+                    local_logger.info(f"source: {source_chain} nonce: {source_nonce}")
+                    local_logger.info(
+                        f"relay fee: {relay_fee_value}, gas used: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
                 else:
                     local_logger.warning(
                         f"Execute withdraw fail on {get_dola_network(dola_chain_id)}, not enough relay fee! ")
-                    local_logger.warning(f"Need gas fee: {gas * gas_price}, but available gas fee: {gas_amount}")
                     local_logger.warning(
-                        f"call: {call_name} source: {get_dola_network(source_chain_id)}, nonce: {source_nonce}")
+                        f"Need gas fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}, but available gas fee: {relay_fee_value}")
+                    local_logger.warning(
+                        f"call: {call_name} source: {source_chain}, nonce: {source_nonce}")
         except Exception as e:
             local_logger.error(f"Execute eth pool withdraw fail\n {e}")
 
