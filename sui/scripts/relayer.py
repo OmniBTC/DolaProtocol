@@ -397,7 +397,7 @@ def sui_pool_executor(q: Queue):
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
             if dk not in relay_fee_record:
-                q.put(vaa, source_chain_id, source_nonce, call_type, token_name)
+                q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
                 time.sleep(1)
                 continue
 
@@ -408,6 +408,7 @@ def sui_pool_executor(q: Queue):
 
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
+                    sui_omnipool.dola_pool.PoolApproval[-1],
                     sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                     CacheObject[ObjectType.from_type(
                         dola_sui_init.pool(token_name))][sui_account_address][-1],
@@ -422,6 +423,7 @@ def sui_pool_executor(q: Queue):
                 if avaliable_gas_amount > tx_gas_amount:
                     sui_omnipool.wormhole_adapter_pool.receive_withdraw(
                         sui_wormhole.state.State[-1],
+                        sui_omnipool.dola_pool.PoolApproval[-1],
                         sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                         CacheObject[ObjectType.from_type(
                             dola_sui_init.pool(token_name))][sui_account_address][-1],
@@ -459,6 +461,12 @@ def aptos_pool_executor(q: Queue):
             chain = get_dola_network(source_chain_id)
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
+
+            if dk not in relay_fee_record:
+                q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
+                time.sleep(1)
+                continue
+
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 avaliable_gas_amount = get_fee_amount(relay_fee_value, 'apt')
@@ -509,6 +517,12 @@ def eth_pool_executor(q: Queue):
             call_name = get_call_name(1, int(call_type))
             source_chain = get_dola_network(source_chain_id)
             dk = f"{source_chain}_portal_{call_name}_{source_nonce}"
+
+            if dk not in relay_fee_record:
+                q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
+                time.sleep(1)
+                continue
+
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 avaliable_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
