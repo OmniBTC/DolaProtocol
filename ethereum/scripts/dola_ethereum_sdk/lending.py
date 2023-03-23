@@ -1,6 +1,5 @@
-from brownie import Contract
-
 import dola_ethereum_sdk.load as load
+from brownie import Contract
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from dola_ethereum_sdk.init import usdt, btc
 
@@ -242,5 +241,5 @@ def main():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("bsc-test")
     main()
