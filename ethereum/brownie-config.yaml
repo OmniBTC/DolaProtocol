@@ -18,7 +18,7 @@ networks:
     wormhole_chainid: 2
     wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
   bsc-test:
-    scan_rpc_url: "https://api-testnet.bscscan.com/"
+    scan_rpc_url: "https://api-testnet.bscscan.com/api"
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
     btc: "0xf7d8f4727cE67Ec5d73C707f22E0c838870cF8df"

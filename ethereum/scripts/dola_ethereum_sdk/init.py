@@ -1,10 +1,12 @@
 import os
+import urllib.parse
 
 import brownie
 import requests
 from brownie import (
     network,
     config, )
+
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -112,15 +114,38 @@ def lending_relay_event(start_block=0, end_block=99999999, limit=5):
     net = network.show_active()
     api_key = get_scan_api_key(net)
 
+    base_url = scan_rpc_url()
+
     params = {}
+    headers = {}
     if "polygon" in net:
         params = build_polygon_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
     elif "bsc" in net:
         params = build_bsc_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
+        headers = {
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'accept-language': 'zh,en;q=0.9,zh-CN;q=0.8',
+            'cache-control': 'max-age=0',
+            'cookie': '__stripe_mid=f0d7920d-dcf7-4f6c-926b-4381d16e2de09c7c5b; _gid=GA1.2.1608275934.1679541907; cf_clearance=qa.p7TdsepyFo0KzvZ2lfIlu1inGNy6mBSMfljWlBVw-1679544250-0-150; __cuid=d0e32142731a4b6a836bd4170892451f; __cf_bm=Nqn43kjTCFGnJA8hkEREgEj2cl_vIaM3KjGccp8RAn0-1679556064-0-AWqNjZOldwrmf77Zm4B3Pw7iAH+TVo4TviCd8flOviO0aA5EHI4nPZo/XAUveVRHAioAl+zD/71Dstoz0g1e/537mW5XHOAAy/9If5a2+n4i/qNnacDo4GScVC0StWNmiw==; amp_fef1e8=509f1beb-3ca0-426c-8a74-daa262842771R...1gs6ler9e.1gs6lfq49.v.7.16; _ga=GA1.1.327633374.1670917759; __stripe_sid=7331455c-b4fb-4f57-9aad-6507bfb2ab5ca17e57; _ga_PQY6J2Q8EP=GS1.1.1679556080.19.0.1679556090.0.0.0',
+            'dnt': '1',
+            'referer': 'https://docs.bscscan.com/v/bscscan-testnet/api-endpoints/logs',
+            'sec-ch-ua': '"Not_A Brand";v="99", "Google Chrome";v="109", "Chromium";v="109"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Linux"',
+            'sec-fetch-dest': 'document',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-site': 'same-site',
+            'sec-fetch-user': '?1',
+            'upgrade-insecure-requests': '1',
+            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
+        }
 
-    rpc_url = scan_rpc_url()
+    request_url = f"{base_url}?{urllib.parse.urlencode(params)}"
 
-    result = requests.get(rpc_url, params=params)
+    result = requests.get(
+        request_url,
+        headers=headers
+    )
     return decode_relay_events(result.json())
 
 
@@ -134,5 +159,5 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("bsc-test")
+    set_ethereum_network("polygon-test")
     print(lending_relay_event(end_block=current_block_number()))
