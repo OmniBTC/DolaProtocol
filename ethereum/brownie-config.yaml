@@ -21,18 +21,20 @@ networks:
     scan_rpc_url: "https://api-testnet.bscscan.com/api"
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
-    btc: "0xf7d8f4727cE67Ec5d73C707f22E0c838870cF8df"
-    usdt: "0xa7Fc34853807d3701efC296D573E069180871D5E"
-    usdc: "0x479B270CB35894ad7F9DB43F577a75e927e4d6B8"
+    btc: "0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5"
+    usdt: "0xe6606196DfcE08E0B0945BDbfECDF5952F8C2cfC"
+    usdc: "0x1b619121e3918489C3214917f23AA18c5DC877fe"
   polygon-test:
     scan_rpc_url: "https://api-testnet.polygonscan.com/api"
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
-    btc: "0x100C0071AF596e62A47a7F1937B64a16a94a18Ee"
-    usdt: "0x5d04F82a4b5a95b723CeD88B794AF6c715C84185"
-    usdc: "0x8F1151e95A9325bd397B176d87aDF56e5641982b"
+    btc: "0x9d6b8FeCDe95C9E222a388BdAC04d4b57CcEc27F"
+    usdt: "0x896e955002262debAdB35f8a1F23B79284D0118F"
+    usdc: "0xcFD3A43F83E7A0d932c446A410be93fFf668FEc8"
   polygon-zk-test:
-    wormhole_chainid: 1442
+    # Maintenance in progress
+    scan_rpc_url: "https://api-testnet-zkevm.polygonscan.com/api"
+    wormhole_chainid: 7
     wormhole: "0x0000000000000000000000000000000000000000"
     btc: "0xDDEF8C897561010486B9af63A92974c8D9B6F854"
     usdt: "0x9bB8072dFf04a718f45Cc813E39c047C0792DB82"
