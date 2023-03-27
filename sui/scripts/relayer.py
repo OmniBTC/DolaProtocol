@@ -225,9 +225,9 @@ eth_withdraw_q = Queue()
 # Record the transactions that are not completed due to insufficient handling fees,
 # which will be used for subsequent compensation. If the handling fee is too low,
 # the vaa will be taken for manual processing.
-unfinished_fee_record = BridgeDict("unfinished_fee_record.json")
+unfinished_transactions = BridgeDict("unfinished_transactions.json")
 # Used to record completed transactions, maybe it can be used to analyze something.
-finished_fee_record = BridgeDict("finished_fee_record.json")
+finished_transactions = BridgeDict("finished_transactions.json")
 # Record the gas consumed by the relayer transaction, which is used to analyze the
 # general gas of the relayer_fee, so that the front end can use the gas to calculate
 # the service charge for the user.
@@ -384,8 +384,8 @@ def sui_core_executor():
                     if call_name in ["withdraw", "borrow"]:
                         relay_fee_record[dk] = get_fee_value(relay_fee - gas_amount)
                     else:
-                        finished_fee_record[dk] = {"relay_fee": relay_fee_record[dk],
-                                                   "consumed_fee": get_fee_value(gas_amount)}
+                        finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
+                                                     "consumed_fee": get_fee_value(gas_amount)}
                         del relay_fee_record[dk]
                         action_gas_record[f"sui_{call_name}"] = gas_amount
                     data[dk] = vaa
@@ -394,7 +394,9 @@ def sui_core_executor():
                     local_logger.info(
                         f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(gas_amount)}")
                 else:
-                    unfinished_fee_record[f"core_{dk}"] = relay_fee_record[dk]
+                    unfinished_transactions[f"core_{dk}"] = {"vaa": str(vaa), "nonce": nonce, "chain": chain,
+                                                             "relay_fee": relay_fee_record[dk]}
+
                     local_logger.warning("Execute sui core fail, not enough relay fee! ")
                     local_logger.warning(
                         f"Need gas fee: {get_fee_value(gas_amount)}, but available gas fee: {relay_fee_value}")
@@ -448,8 +450,8 @@ def sui_pool_executor():
                         vaa,
                         ty_args=[token_name]
                     )
-                    finished_fee_record[dk] = {"relay_fee": relay_fee_record[dk],
-                                               "consumed_fee": get_fee_value(tx_gas_amount)}
+                    finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
+                                                 "consumed_fee": get_fee_value(tx_gas_amount)}
                     del relay_fee_record[dk]
                     action_gas_record[f"sui_{call_name}"] = gas_used
 
@@ -459,7 +461,14 @@ def sui_pool_executor():
                         f"token: {token_name} source: {chain} nonce: {source_nonce}")
                     local_logger.info(f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount)}")
                 else:
-                    unfinished_fee_record[f"pool_{dk}"] = relay_fee_record[dk]
+                    unfinished_transactions[f"sui_pool_{dk}"] = {"vaa": vaa,
+                                                                 "source_chain_id": source_chain_id,
+                                                                 "source_nonce": source_nonce,
+                                                                 "call_type": call_type,
+                                                                 "token_name": token_name,
+                                                                 "relay_fee": relay_fee_record[dk]
+                                                                 }
+
                     local_logger.warning("Execute withdraw fail on sui, not enough relay fee! ")
                     local_logger.warning(
                         f"Need gas fee: {get_fee_value(tx_gas_amount)}, but available gas fee: {relay_fee_value}"
@@ -500,8 +509,8 @@ def aptos_pool_executor():
                         vaa,
                         ty_args=[token_name]
                     )
-                    finished_fee_record[dk] = {"relay_fee": relay_fee_record[dk],
-                                               "consumed_fee": get_fee_value(tx_gas_amount)}
+                    finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
+                                                 "consumed_fee": get_fee_value(tx_gas_amount)}
                     del relay_fee_record[dk]
                     action_gas_record[f"aptos_{call_name}"] = gas_used
                     data[dk] = vaa
@@ -512,7 +521,13 @@ def aptos_pool_executor():
                     local_logger.info(
                         f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, 'apt')}")
                 else:
-                    unfinished_fee_record[f"pool_{dk}"] = relay_fee_record[dk]
+                    unfinished_transactions[f"aptos_pool_{dk}"] = {"vaa": vaa,
+                                                                   "source_chain_id": source_chain_id,
+                                                                   "source_nonce": source_nonce,
+                                                                   "call_type": call_type,
+                                                                   "token_name": token_name,
+                                                                   "relay_fee": relay_fee_record[dk]
+                                                                   }
                     local_logger.warning("Execute withdraw fail on aptos, not enough relay fee! ")
                     local_logger.warning(
                         f"Need gas fee: {get_fee_value(tx_gas_amount, 'apt')}, but available gas fee: {relay_fee_value}")
@@ -554,8 +569,8 @@ def eth_pool_executor():
                     ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
 
-                    finished_fee_record[dk] = {"relay_fee": relay_fee_record[dk],
-                                               "consumed_fee": get_fee_value(tx_gas_amount)}
+                    finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
+                                                 "consumed_fee": get_fee_value(tx_gas_amount)}
                     del relay_fee_record[dk]
                     action_gas_record[f"{network}_{call_name}"] = gas_used
 
@@ -565,7 +580,13 @@ def eth_pool_executor():
                     local_logger.info(
                         f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
                 else:
-                    unfinished_fee_record[f"pool_{dk}"] = relay_fee_record[dk]
+                    unfinished_transactions[f"{network}_pool_{dk}"] = {"vaa": vaa,
+                                                                       "source_chain_id": source_chain_id,
+                                                                       "source_nonce": source_nonce,
+                                                                       "call_type": call_type,
+                                                                       "dola_chain_id": dola_chain_id,
+                                                                       "relay_fee": relay_fee_record[dk]
+                                                                       }
                     local_logger.warning(
                         f"Execute withdraw fail on {get_dola_network(dola_chain_id)}, not enough relay fee! ")
                     local_logger.warning(
@@ -574,6 +595,50 @@ def eth_pool_executor():
                         f"call: {call_name} source: {source_chain}, nonce: {source_nonce}")
         except Exception as e:
             local_logger.error(f"Execute eth pool withdraw fail\n {e}")
+
+
+def compensate_unfinished_transaction():
+    # todo: Monitor Wormhole vaa whether it has been executed for compensation.
+    while True:
+        unfinished_transactions.read_data()
+        # Priority compensation for more relayer fee
+        keys = sorted(unfinished_transactions, reverse=True, key=lambda i: unfinished_transactions[i]['relay_fee'])
+        # todo: Calculate relay_fee using Action Gas to ensure that the compensated
+        #       transaction relay_fee is enough to put in the queue.
+        for k in keys:
+            if "core" in k:
+                dk = str(k).removeprefix('core_')
+                portal_data = unfinished_transactions[k]
+                relay_fee_record[dk] = unfinished_transactions[k]['relay_fee']
+
+                portal_vaa_q.put((portal_data['vaa'], portal_data['nonce'], portal_data['chain']))
+            elif "sui_pool" in k:
+                dk = str(k).removeprefix('sui_pool_')
+                withdraw_data = unfinished_transactions[k]
+                relay_fee_record[dk] = unfinished_transactions[k]['relay_fee']
+                sui_withdraw_q.put((withdraw_data['vaa'],
+                                    withdraw_data['source_chain_id'],
+                                    withdraw_data['source_nonce'],
+                                    withdraw_data['call_type'],
+                                    withdraw_data['token_name']))
+            elif "aptos_pool" in k:
+                dk = str(k).removeprefix('aptos_pool_')
+                withdraw_data = unfinished_transactions[k]
+                relay_fee_record[dk] = unfinished_transactions[k]['relay_fee']
+                aptos_withdraw_q.put((withdraw_data['vaa'],
+                                      withdraw_data['source_chain_id'],
+                                      withdraw_data['source_nonce'],
+                                      withdraw_data['call_type'],
+                                      withdraw_data['token_name']))
+            else:
+                dk = str(k).split('_')[1]
+                withdraw_data = unfinished_transactions[k]
+                relay_fee_record[dk] = unfinished_transactions[k]['relay_fee']
+                eth_withdraw_q.put((withdraw_data['vaa'],
+                                    withdraw_data['source_chain_id'],
+                                    withdraw_data['source_nonce'],
+                                    withdraw_data['call_type'],
+                                    withdraw_data['dola_chain_id']))
 
 
 def run_aptos_relayer():
@@ -599,16 +664,16 @@ def run_sui_relayer():
 
 
 def main():
-    pt = ProcessExecutor(executor=5)
+    pt = ProcessExecutor(executor=4)
 
     pt.run([
         run_sui_relayer,
         run_aptos_relayer,
         functools.partial(eth_portal_watcher, "polygon-test"),
-        functools.partial(eth_portal_watcher, "bsc-test"),
+        # functools.partial(eth_portal_watcher, "bsc-test"),
         eth_pool_executor,
     ])
 
 
 if __name__ == "__main__":
-    main()
+    compensate_unfinished_transaction()

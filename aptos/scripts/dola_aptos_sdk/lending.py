@@ -239,8 +239,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    # claim_test_coin(usdt())
-    # portal_supply(usdt(), 1e8, 10000)
-    monitor_withdraw(usdt(), 10000)
+    claim_test_coin(usdt())
+    portal_supply(usdt(), 1e8, 0)
+    # monitor_withdraw(usdt(), 10000)
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)
