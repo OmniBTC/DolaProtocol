@@ -233,7 +233,7 @@ def monitor_liquidate(dst_chain=4, receiver=None):
 
 
 def main():
-    monitor_supply(usdt(), 100000, int(1e15))
+    monitor_supply(usdt(), 100000, int(1e14))
     # monitor_supply(usdc(), 100000)
     # portal_cancel_as_collateral([1, 2])
     # monitor_withdraw(usdt(), 5, get_account().address, int(1e14))

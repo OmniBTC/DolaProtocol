@@ -297,8 +297,9 @@ def eth_portal_watcher(network="polygon-test"):
     while True:
         with contextlib.suppress(Exception):
             current_block_number = dola_ethereum_init.current_block_number()
-            relay_events = dola_ethereum_init.lending_relay_event(start_block, current_block_number, limit=1)
-            start_block = current_block_number
+            relay_events = dola_ethereum_init.lending_relay_event(start_block=start_block,
+                                                                  end_block=current_block_number)
+            start_block = current_block_number - 10
 
             for nonce in relay_events:
                 vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa(nonce)

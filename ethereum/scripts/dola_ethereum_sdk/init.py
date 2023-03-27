@@ -80,27 +80,13 @@ def bridge_pool_read_vaa(nonce=None):
     return str(bridge_pool.cachedVAA(nonce)), nonce
 
 
-def build_bsc_rpc_params(address, topic, api_key, start_block=0, end_block=99999999, limit=5):
+def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999, limit=5):
     return {
         'module': 'logs',
         'action': 'getLogs',
         'address': str(address),
         'fromBlock': str(start_block),
         'toBlock': str(end_block),
-        'topic0': str(topic),
-        'page': '1',
-        'offset': str(limit),
-        'apikey': api_key
-    }
-
-
-def build_polygon_rpc_params(address, topic, api_key, start_block=0, end_block=99999999, limit=5):
-    return {
-        'module': 'logs',
-        'action': 'getLogs',
-        'address': str(address),
-        'startblock': str(start_block),
-        'endblock': str(end_block),
         'topic0': str(topic),
         'page': '1',
         'offset': str(limit),
@@ -116,12 +102,9 @@ def lending_relay_event(start_block=0, end_block=99999999, limit=5):
 
     base_url = scan_rpc_url()
 
-    params = {}
+    params = build_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
     headers = {}
-    if "polygon" in net:
-        params = build_polygon_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
-    elif "bsc" in net:
-        params = build_bsc_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
+    if "bsc" in net:
         headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
             'accept-language': 'zh,en;q=0.9,zh-CN;q=0.8',
@@ -160,4 +143,4 @@ def current_block_number():
 
 if __name__ == "__main__":
     set_ethereum_network("polygon-test")
-    print(lending_relay_event(end_block=current_block_number()))
+    print(lending_relay_event(start_block=33494168, end_block=33494169))
