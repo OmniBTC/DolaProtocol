@@ -664,7 +664,7 @@ def run_sui_relayer():
 
 
 def main():
-    pt = ProcessExecutor(executor=4)
+    pt = ProcessExecutor(executor=5)
 
     pt.run([
         run_sui_relayer,
