@@ -80,9 +80,12 @@ module omnipool::wormhole_adapter_pool {
 
     /// todo! Delete after wormhole running
     struct VaaReciveWithdrawEvent has copy, drop {
+        source_chain_id: u16,
+        nonce: u64,
         pool_address: DolaAddress,
         user_address: DolaAddress,
-        amount: u64
+        amount: u64,
+        call_type: u8
     }
 
     /// todo! Delete after wormhole running
@@ -302,6 +305,10 @@ module omnipool::wormhole_adapter_pool {
         })
     }
 
+    public fun vaa_nonce(pool_state: &PoolState): u64 {
+        table::length(&pool_state.cache_vaas)
+    }
+
     /// todo! Delete
     public entry fun read_vaa(pool_state: &PoolState, index: u64) {
         if (index == 0) {
@@ -315,13 +322,16 @@ module omnipool::wormhole_adapter_pool {
 
     /// todo! Delete
     public entry fun decode_withdraw_payload(vaa: vector<u8>) {
-        let (_, _, pool_address, user_address, amount, _) =
+        let (source_chain_id, nonce, pool_address, user_address, amount, call_type) =
             pool_codec::decode_withdraw_payload(vaa);
 
         event::emit(VaaReciveWithdrawEvent {
+            source_chain_id,
+            nonce,
             pool_address,
             user_address,
-            amount
+            amount,
+            call_type
         })
     }
 }

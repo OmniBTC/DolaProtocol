@@ -7,7 +7,7 @@ compiler:
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0"
 # automatically fetch contract sources from Etherscan
-autofetch_sources: True
+#autofetch_sources: True
 dotenv: .env
 networks:
   default: development
@@ -18,17 +18,19 @@ networks:
     wormhole_chainid: 2
     wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
   bsc-test:
+    scan_rpc_url: "https://api-testnet.bscscan.com/api"
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
-    btc: "0xFf504F5297C89B2C786381AF2436637b84f44435"
-    usdt: "0x5Da894e90671c570De0D7b22Ac773A42F4019d20"
-    usdc: "0x8724C82a5753C10532fdB4593752F909014242f6"
+    btc: "0xf7d8f4727cE67Ec5d73C707f22E0c838870cF8df"
+    usdt: "0xa7Fc34853807d3701efC296D573E069180871D5E"
+    usdc: "0x479B270CB35894ad7F9DB43F577a75e927e4d6B8"
   polygon-test:
+    scan_rpc_url: "https://api-testnet.polygonscan.com/api"
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
-    btc: "0x46538969BDFA6E6800Ec77150bCAb90B2A442F05"
-    usdt: "0x601ffbEBe35c4b952324088D1E518614d190C646"
-    usdc: "0x1F97BBb554ca5651dF152592B22Bd6A77A27C72c"
+    btc: "0x100C0071AF596e62A47a7F1937B64a16a94a18Ee"
+    usdt: "0x5d04F82a4b5a95b723CeD88B794AF6c715C84185"
+    usdc: "0x8F1151e95A9325bd397B176d87aDF56e5641982b"
   polygon-zk-test:
     wormhole_chainid: 1442
     wormhole: "0x0000000000000000000000000000000000000000"

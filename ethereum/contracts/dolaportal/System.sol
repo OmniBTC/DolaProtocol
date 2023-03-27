@@ -13,7 +13,9 @@ contract SystemPortal {
     uint8 public constant SYSTEM_APP_ID = 0;
 
     IWormholeAdapterPool immutable wormholeAdapterPool;
-    uint64 public dolaNonce;
+    address payable public relayer;
+
+    event RelayEvent(uint64 nonce, uint256 amount);
 
     event SystemPortalEvent(
         uint64 nonce,
@@ -26,19 +28,15 @@ contract SystemPortal {
 
     constructor(IWormholeAdapterPool _wormholeAdapterPool) {
         wormholeAdapterPool = _wormholeAdapterPool;
+        relayer = payable(msg.sender);
     }
 
-    function getNonce() internal returns (uint64) {
-        uint64 nonce = dolaNonce;
-        dolaNonce++;
-        return nonce;
-    }
-
-    function binding(uint16 bindDolaChainId, bytes memory bindAddress)
-        external
-        payable
-    {
-        uint64 nonce = getNonce();
+    function binding(
+        uint16 bindDolaChainId,
+        bytes memory bindAddress,
+        uint256 fee
+    ) external payable {
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
@@ -51,6 +49,14 @@ contract SystemPortal {
             SYSTEM_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit SystemPortalEvent(
             nonce,
             msg.sender,
@@ -61,11 +67,12 @@ contract SystemPortal {
         );
     }
 
-    function unbinding(uint16 unbindDolaChainId, bytes memory unbindAddress)
-        external
-        payable
-    {
-        uint64 nonce = getNonce();
+    function unbinding(
+        uint16 unbindDolaChainId,
+        bytes memory unbindAddress,
+        uint256 fee
+    ) external payable {
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
@@ -78,6 +85,14 @@ contract SystemPortal {
             SYSTEM_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit SystemPortalEvent(
             nonce,
             msg.sender,

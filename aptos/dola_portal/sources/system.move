@@ -30,11 +30,16 @@ module dola_portal::system {
 
     struct SystemPortal has key {
         resource_signer_cap: SignerCapability,
-        nonce: u64,
-        system_event_handle: EventHandle<SystemPortalEvent>
+        system_event_handle: EventHandle<SystemPortalEvent>,
+        relay_event_handle: EventHandle<RelayEvent>
     }
 
     /// Events
+
+    struct RelayEvent has drop, store {
+        nonce: u64,
+        amount: u64
+    }
 
     struct SystemPortalEvent has drop, store {
         nonce: u64,
@@ -69,24 +74,18 @@ module dola_portal::system {
         let (resource_signer, resource_signer_cap) = account::create_resource_account(sender, SEED);
         move_to(&resource_signer, SystemPortal {
             resource_signer_cap,
-            nonce: 0,
-            system_event_handle: account::new_event_handle(&resource_signer)
+            system_event_handle: account::new_event_handle(&resource_signer),
+            relay_event_handle: account::new_event_handle(&resource_signer)
         });
-    }
-
-    fun get_nonce(): u64 acquires SystemPortal {
-        let lending_portal = borrow_global_mut<SystemPortal>(get_resource_address());
-        let nonce = lending_portal.nonce;
-        lending_portal.nonce = lending_portal.nonce + 1;
-        nonce
     }
 
     public entry fun binding(
         sender: &signer,
         dola_chain_id: u16,
         binded_address: vector<u8>,
+        relay_fee: u64
     ) acquires SystemPortal {
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let bind_address = dola_address::create_dola_address(dola_chain_id, binded_address);
         let app_payload = system_codec::encode_bind_payload(
             dola_address::get_native_dola_chain_id(),
@@ -103,6 +102,18 @@ module dola_portal::system {
             app_payload
         );
         let event_handle = borrow_global_mut<SystemPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
+
         event::emit_event(
             &mut event_handle.system_event_handle,
             SystemPortalEvent {
@@ -119,9 +130,10 @@ module dola_portal::system {
     public entry fun unbinding(
         sender: &signer,
         dola_chain_id: u16,
-        unbinded_address: vector<u8>
+        unbinded_address: vector<u8>,
+        relay_fee: u64
     ) acquires SystemPortal {
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let bind_address = dola_address::create_dola_address(dola_chain_id, unbinded_address);
         let app_payload = system_codec::encode_bind_payload(
             dola_address::get_native_dola_chain_id(),
@@ -138,6 +150,18 @@ module dola_portal::system {
             app_payload
         );
         let event_handle = borrow_global_mut<SystemPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
+
         event::emit_event(
             &mut event_handle.system_event_handle,
             SystemPortalEvent {

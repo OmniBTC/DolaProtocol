@@ -28,8 +28,8 @@ contract WormholeAdapterPool {
     mapping(bytes32 => bool) consumedVaas;
 
     // todo! Delete after wormhole running
-    mapping(uint32 => bytes) public cachedVAA;
-    uint32 vaaNonce;
+    mapping(uint64 => bytes) public cachedVAA;
+    uint64 vaaNonce;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -52,7 +52,7 @@ contract WormholeAdapterPool {
     }
 
     // todo! Delete after wormhole running
-    function getNonce() public view returns (uint32) {
+    function getNonce() public view returns (uint64) {
         return vaaNonce;
     }
 
@@ -79,7 +79,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
             "INVALID CALL TYPE"
@@ -97,7 +97,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
             "INVALID CALL TYPE"
@@ -115,7 +115,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
             "INVALID CALL TYPE"
@@ -133,7 +133,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+        .decodeManagePoolPayload(encodedVm);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
             "INVALID CALL TYPE"
@@ -159,13 +159,13 @@ contract WormholeAdapterPool {
             LibAsset.maxApproveERC20(IERC20(token), address(dolaPool), amount);
         }
 
-        bytes memory payload = dolaPool.deposit{value: msg.value - wormholeFee}(
+        bytes memory payload = dolaPool.deposit{value : msg.value - wormholeFee}(
             token,
             amount,
             appId,
             appPayload
         );
-        wormhole.publishMessage{value: wormholeFee}(
+        wormhole.publishMessage{value : wormholeFee}(
             0,
             payload,
             wormholeFinality
@@ -177,13 +177,13 @@ contract WormholeAdapterPool {
 
     /// Send message that do not involve incoming or outgoing funds by application
     function sendMessage(uint16 appId, bytes memory appPayload)
-        external
-        payable
+    external
+    payable
     {
         uint256 wormholeFee = wormhole.messageFee();
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
-        wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
+        wormhole.publishMessage{value : msg.value}(0, payload, wormholeFinality);
         cachedVAA[getNonce()] = payload;
         increaseNonce();
     }
@@ -198,7 +198,7 @@ contract WormholeAdapterPool {
         //                encodedVm
         //            );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
-            .decodeWithdrawPayload(encodedVm);
+        .decodeWithdrawPayload(encodedVm);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
 
         emit PoolWithdrawEvent(

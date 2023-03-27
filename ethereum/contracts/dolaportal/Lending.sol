@@ -12,7 +12,9 @@ import "../libraries/LibAsset.sol";
 contract LendingPortal {
     uint8 public constant LENDING_APP_ID = 1;
     IWormholeAdapterPool immutable wormholeAdapterPool;
-    uint64 public dolaNonce;
+    address payable public relayer;
+
+    event RelayEvent(uint64 nonce, uint256 amount);
 
     event LendingPortalEvent(
         uint64 nonce,
@@ -27,16 +29,15 @@ contract LendingPortal {
 
     constructor(IWormholeAdapterPool _wormholeAdapterPool) {
         wormholeAdapterPool = _wormholeAdapterPool;
+        relayer = payable(msg.sender);
     }
 
-    function getNonce() internal returns (uint64) {
-        uint64 nonce = dolaNonce;
-        dolaNonce++;
-        return nonce;
-    }
-
-    function supply(address token, uint256 amount) external payable {
-        uint64 nonce = getNonce();
+    function supply(
+        address token,
+        uint256 amount,
+        uint256 fee
+    ) external payable {
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
             LibAsset.queryDecimals(token)
@@ -58,12 +59,17 @@ contract LendingPortal {
             );
         }
 
-        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
-            token,
-            amount,
-            LENDING_APP_ID,
-            appPayload
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
+        value : msg.value - fee
+        }(token, amount, LENDING_APP_ID, appPayload);
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
         );
+
         emit LendingPortalEvent(
             nonce,
             msg.sender,
@@ -81,9 +87,10 @@ contract LendingPortal {
         bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
-        uint64 amount
+        uint64 amount,
+        uint256 fee
     ) external payable {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibLendingCodec.encodeWithdrawPayload(
@@ -98,6 +105,14 @@ contract LendingPortal {
             LENDING_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit LendingPortalEvent(
             nonce,
             msg.sender,
@@ -114,9 +129,10 @@ contract LendingPortal {
         bytes memory token,
         bytes memory receiver,
         uint16 dstChainId,
-        uint64 amount
+        uint64 amount,
+        uint256 fee
     ) external payable {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         bytes memory appPayload = LibLendingCodec.encodeWithdrawPayload(
@@ -132,6 +148,14 @@ contract LendingPortal {
             LENDING_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit LendingPortalEvent(
             nonce,
             msg.sender,
@@ -144,8 +168,12 @@ contract LendingPortal {
         );
     }
 
-    function repay(address token, uint256 amount) external payable {
-        uint64 nonce = getNonce();
+    function repay(
+        address token,
+        uint256 amount,
+        uint256 fee
+    ) external payable {
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
             amount,
             LibAsset.queryDecimals(token)
@@ -169,12 +197,20 @@ contract LendingPortal {
             );
         }
 
-        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value: msg.value}(
+        IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{value : msg.value}(
             token,
             amount,
             LENDING_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit LendingPortalEvent(
             nonce,
             msg.sender,
@@ -192,9 +228,10 @@ contract LendingPortal {
         uint256 amount,
         uint16 liquidateChainId,
         bytes memory liquidateTokenAddress,
-        uint64 liquidateUserId
+        uint64 liquidateUserId,
+        uint256 fee
     ) external {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
         uint64 fixAmount = LibDecimals.fixAmountDecimals(
@@ -218,6 +255,13 @@ contract LendingPortal {
             appPayload
         );
 
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
+
         emit LendingPortalEvent(
             nonce,
             msg.sender,
@@ -230,8 +274,11 @@ contract LendingPortal {
         );
     }
 
-    function as_collateral(uint16[] memory dolaPoolIds) external payable {
-        uint64 nonce = getNonce();
+    function as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
+    external
+    payable
+    {
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
 
         bytes memory appPayload = LibLendingCodec.encodeManageCollateralPayload(
             dolaPoolIds,
@@ -241,13 +288,20 @@ contract LendingPortal {
             LENDING_APP_ID,
             appPayload
         );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
+        );
     }
 
-    function cancel_as_collateral(uint16[] memory dolaPoolIds)
-        external
-        payable
+    function cancel_as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
+    external
+    payable
     {
-        uint64 nonce = getNonce();
+        uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
 
         bytes memory appPayload = LibLendingCodec.encodeManageCollateralPayload(
             dolaPoolIds,
@@ -256,6 +310,13 @@ contract LendingPortal {
         IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
+        );
+
+        LibAsset.transferAsset(address(0), relayer, fee);
+
+        emit RelayEvent(
+            nonce,
+            fee
         );
     }
 }

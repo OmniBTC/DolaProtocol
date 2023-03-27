@@ -32,11 +32,16 @@ module dola_portal::lending {
 
     struct LendingPortal has key {
         resource_signer_cap: SignerCapability,
-        nonce: u64,
-        lending_event_handle: EventHandle<LendingPortalEvent>
+        lending_event_handle: EventHandle<LendingPortalEvent>,
+        relay_event_handle: EventHandle<RelayEvent>
     }
 
     /// Events
+
+    struct RelayEvent has drop, store {
+        nonce: u64,
+        amount: u64
+    }
 
     struct LendingPortalEvent has drop, store {
         nonce: u64,
@@ -73,25 +78,19 @@ module dola_portal::lending {
         let (resource_signer, resource_signer_cap) = account::create_resource_account(sender, SEED);
         move_to(&resource_signer, LendingPortal {
             resource_signer_cap,
-            nonce: 0,
-            lending_event_handle: account::new_event_handle(&resource_signer)
+            lending_event_handle: account::new_event_handle(&resource_signer),
+            relay_event_handle: account::new_event_handle(&resource_signer)
         });
-    }
-
-    fun get_nonce(): u64 acquires LendingPortal {
-        let lending_portal = borrow_global_mut<LendingPortal>(get_resource_address());
-        let nonce = lending_portal.nonce;
-        lending_portal.nonce = lending_portal.nonce + 1;
-        nonce
     }
 
     public entry fun supply<CoinType>(
         sender: &signer,
         deposit_coin: u64,
+        relay_fee: u64
     ) acquires LendingPortal {
         let user = dola_address::convert_address_to_dola(signer::address_of(sender));
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let amount = dola_pool::normal_amount<CoinType>(deposit_coin);
         let app_payload = lending_codec::encode_deposit_payload(
             dola_address::get_native_dola_chain_id(),
@@ -109,6 +108,17 @@ module dola_portal::lending {
             app_payload
         );
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -130,10 +140,11 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee: u64
     ) acquires LendingPortal {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let amount = dola_pool::normal_amount<CoinType>(amount);
         let withdraw_pool = dola_address::convert_pool_to_dola<CoinType>();
         let app_payload = lending_codec::encode_withdraw_payload(
@@ -154,6 +165,17 @@ module dola_portal::lending {
         );
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -176,11 +198,12 @@ module dola_portal::lending {
         pool: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee: u64,
     ) acquires LendingPortal {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let withdraw_pool = dola_address::create_dola_address(dst_chain, pool);
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let app_payload = lending_codec::encode_withdraw_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,
@@ -199,6 +222,17 @@ module dola_portal::lending {
         );
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -220,10 +254,11 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee: u64,
     ) acquires LendingPortal {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let amount = dola_pool::normal_amount<CoinType>(amount);
         let withdraw_pool = dola_address::convert_pool_to_dola<CoinType>();
         let app_payload = lending_codec::encode_withdraw_payload(
@@ -236,7 +271,6 @@ module dola_portal::lending {
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-
         wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
@@ -245,6 +279,17 @@ module dola_portal::lending {
         );
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -267,11 +312,12 @@ module dola_portal::lending {
         pool: vector<u8>,
         dst_chain: u16,
         amount: u64,
+        relay_fee: u64,
     ) acquires LendingPortal {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let borrow_pool = dola_address::create_dola_address(dst_chain, pool);
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let app_payload = lending_codec::encode_withdraw_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,
@@ -289,6 +335,17 @@ module dola_portal::lending {
         );
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -308,10 +365,11 @@ module dola_portal::lending {
     public entry fun repay<CoinType>(
         sender: &signer,
         repay_coin: u64,
+        relay_fee: u64,
     ) acquires LendingPortal {
         let user_address = dola_address::convert_address_to_dola(signer::address_of(sender));
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let amount = dola_pool::normal_amount<CoinType>(repay_coin);
         let app_payload = lending_codec::encode_deposit_payload(
             dola_address::get_native_dola_chain_id(),
@@ -332,6 +390,17 @@ module dola_portal::lending {
         );
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
 
         event::emit_event(
             &mut event_handle.lending_event_handle,
@@ -355,10 +424,11 @@ module dola_portal::lending {
         liquidate_pool_address: vector<u8>,
         // punished person
         liquidate_user_id: u64,
+        relay_fee: u64,
     ) acquires LendingPortal {
         let withdraw_pool = dola_address::create_dola_address(liquidate_chain_id, liquidate_pool_address);
 
-        let nonce = get_nonce();
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let app_payload = lending_codec::encode_liquidate_payload(
             dola_address::get_native_dola_chain_id(),
             nonce,
@@ -379,6 +449,17 @@ module dola_portal::lending {
 
         let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
 
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
+        );
+
         event::emit_event(
             &mut event_handle.lending_event_handle,
             LendingPortalEvent {
@@ -397,11 +478,13 @@ module dola_portal::lending {
     public entry fun as_collateral(
         sender: &signer,
         dola_pool_ids: vector<u16>,
-    ) {
+        relay_fee: u64,
+    ) acquires LendingPortal {
         let app_payload = lending_codec::encode_manage_collateral_payload(
             dola_pool_ids,
             lending_codec::get_as_colleteral_type()
         );
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         wormhole_adapter_pool::send_message(
@@ -409,17 +492,32 @@ module dola_portal::lending {
             wormhole_message_fee,
             LENDING_APP_ID,
             app_payload
+        );
+
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
         );
     }
 
     public entry fun cancel_as_collateral(
         sender: &signer,
         dola_pool_ids: vector<u16>,
-    ) {
+        relay_fee: u64,
+    ) acquires LendingPortal {
         let app_payload = lending_codec::encode_manage_collateral_payload(
             dola_pool_ids,
             lending_codec::get_cancel_as_colleteral_type()
         );
+        let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
         wormhole_adapter_pool::send_message(
@@ -427,6 +525,19 @@ module dola_portal::lending {
             wormhole_message_fee,
             LENDING_APP_ID,
             app_payload
+        );
+
+        let event_handle = borrow_global_mut<LendingPortal>(get_resource_address());
+
+        let fee = coin::withdraw<AptosCoin>(sender, relay_fee);
+        coin::deposit<AptosCoin>(@dola_portal, fee);
+
+        event::emit_event(
+            &mut event_handle.relay_event_handle,
+            RelayEvent {
+                nonce,
+                amount: relay_fee
+            }
         );
     }
 }

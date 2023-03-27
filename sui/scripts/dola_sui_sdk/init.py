@@ -591,6 +591,12 @@ def lending_portal_contract_id():
     return int(lending_portal_info['dola_contract']['dola_contract'])
 
 
+def query_relay_event(limit=1):
+    dola_portal = load.dola_portal_package()
+    return dola_portal.query_events(
+        {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']
+
+
 def main():
     # 1. init omnipool
     init_wormhole_adapter_pool()
@@ -634,7 +640,7 @@ def main():
     # 6. init system core
     create_proposal()
     vote_init_system_core()
-    
+
     # 7. init lending_core
     create_proposal()
     vote_init_lending_core()
