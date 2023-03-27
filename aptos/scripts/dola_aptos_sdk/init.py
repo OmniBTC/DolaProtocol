@@ -58,30 +58,34 @@ def calculate_resource_address():
     print(resource_addr)
 
 
-def lending_portal_relay_event():
+def lending_portal_relay_events(limit=5):
     dola_portal = load.dola_portal_package()
     resource_addr = dola_portal.get_resource_addr(str(dola_portal.account.account_address), "Dola Lending Portal")
     events = dola_portal.get_events(
         resource_addr,
         f"{str(dola_portal.account.account_address)}::lending::LendingPortal",
         "relay_event_handle",
-        1,
+        limit,
     )
-    data = events[0]['data']
-    return int(data['nonce']), int(data['amount'])
+    return [event['data'] for event in events]
 
 
-def system_portal_relay_event():
+def system_portal_relay_events(limit=5):
     dola_portal = load.dola_portal_package()
     resource_addr = dola_portal.get_resource_addr(str(dola_portal.account.account_address), "Dola System Portal")
     events = dola_portal.get_events(
         resource_addr,
         f"{str(dola_portal.account.account_address)}::system::SystemPortal",
         "relay_event_handle",
-        1,
+        limit,
     )
-    data = events[0]['data']
-    return int(data['nonce']), int(data['amount'])
+    return [event['data'] for event in events]
+
+
+def relay_events(limit=5):
+    lending_relay_events = lending_portal_relay_events(limit)
+    system_relay_events = system_portal_relay_events(limit)
+    return lending_relay_events + system_relay_events
 
 
 def main():
@@ -105,4 +109,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print(relay_events())

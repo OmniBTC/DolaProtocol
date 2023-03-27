@@ -94,15 +94,17 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
     }
 
 
-def lending_relay_event(start_block=0, end_block=99999999, limit=5):
+def relay_events(start_block=0, end_block=99999999, limit=5):
     lending_portal = load.lending_portal_package()
+    system_portal = load.system_portal_package()
     topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
     net = network.show_active()
     api_key = get_scan_api_key(net)
 
     base_url = scan_rpc_url()
 
-    params = build_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
+    system_rpc_params = build_rpc_params(system_portal.address, topic, api_key, start_block, end_block, limit)
+    lending_rpc_params = build_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
     headers = {}
     if "bsc" in net:
         headers = {
@@ -123,13 +125,23 @@ def lending_relay_event(start_block=0, end_block=99999999, limit=5):
             'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'
         }
 
-    request_url = f"{base_url}?{urllib.parse.urlencode(params)}"
+    system_request_url = f"{base_url}?{urllib.parse.urlencode(system_rpc_params)}"
 
-    result = requests.get(
-        request_url,
+    system_relay_result = requests.get(
+        system_request_url,
         headers=headers
     )
-    return decode_relay_events(result.json())
+
+    lending_request_url = f"{base_url}?{urllib.parse.urlencode(lending_rpc_params)}"
+
+    lending_relay_result = requests.get(
+        lending_request_url,
+        headers=headers
+    )
+
+    system_relay_events = decode_relay_events(system_relay_result.json())
+    lending_relay_events = decode_relay_events(lending_relay_result.json())
+    return lending_relay_events | system_relay_events
 
 
 def decode_relay_events(data):
@@ -143,4 +155,4 @@ def current_block_number():
 
 if __name__ == "__main__":
     set_ethereum_network("polygon-test")
-    print(lending_relay_event(start_block=33494168, end_block=33494169))
+    print(relay_events(start_block=33494168))

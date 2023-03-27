@@ -272,7 +272,7 @@ def aptos_portal_watcher():
 
     while True:
         with contextlib.suppress(Exception):
-            nonce, relay_fee_amount = dola_aptos_init.lending_portal_relay_event()
+            nonce, relay_fee_amount = dola_aptos_init.relay_events()
             vaa, nonce = dola_aptos_init.bridge_pool_read_vaa(nonce)
             decode_vaa = list(bytes.fromhex(
                 vaa.replace("0x", "") if "0x" in vaa else vaa))
@@ -299,8 +299,8 @@ def eth_portal_watcher(network="polygon-test"):
     while True:
         with contextlib.suppress(Exception):
             current_block_number = dola_ethereum_init.current_block_number()
-            relay_events = dola_ethereum_init.lending_relay_event(start_block=start_block,
-                                                                  end_block=current_block_number)
+            relay_events = dola_ethereum_init.relay_events(start_block=start_block,
+                                                           end_block=current_block_number)
             start_block = current_block_number - 10
 
             for nonce in relay_events:
