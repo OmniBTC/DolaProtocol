@@ -12,6 +12,7 @@ from multiprocessing import Queue
 from pathlib import Path
 
 import ccxt
+from retrying import retry
 from sui_brownie import CacheObject, ObjectType
 from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
@@ -67,6 +68,7 @@ kucoin = ccxt.kucoin()
 kucoin.load_markets()
 
 
+@retry(stop_max_attempt_number=5)
 def get_token_price(token):
     if token == "eth":
         return float(kucoin.fetch_ticker("ETH/USDT")['close'])
@@ -341,18 +343,21 @@ def pool_withdraw_watcher():
                 source_chain_id = decode_payload["source_chain_id"]
                 source_nonce = decode_payload["nonce"]
                 call_type = decode_payload["call_type"]
+                call_name = get_call_name(1, int(call_type))
+                network = get_dola_network(source_chain_id)
+
                 if dola_chain_id == 0:
                     sui_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
                     local_logger.info(
-                        f"Have a {get_call_name(1, int(call_type))} from {get_dola_network(source_chain_id)} to sui, nonce: {nonce}, token: {token_name}")
+                        f"Have a {call_name} from {network} to sui, nonce: {nonce}, token: {token_name}")
                 elif dola_chain_id == 1:
                     aptos_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
                     local_logger.info(
-                        f"Have a {get_call_name(1, int(call_type))} from {get_dola_network(dola_chain_id)} to aptos, nonce: {nonce}, token: {token_name}")
+                        f"Have a {call_name} from {network} to aptos, nonce: {nonce}, token: {token_name}")
                 else:
                     eth_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, dola_chain_id))
                     local_logger.info(
-                        f"Have a {get_call_name(1, int(call_type))} to {get_dola_network(dola_chain_id)}, nonce: {nonce}")
+                        f"Have a {call_name} from {network} to {get_dola_network(dola_chain_id)}, nonce: {nonce}")
                 data[dk] = vaa
         time.sleep(1)
 
@@ -583,9 +588,10 @@ def run_aptos_relayer():
 
 def run_sui_relayer():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
-    pt = ThreadExecutor(executor=3)
+    pt = ThreadExecutor(executor=4)
 
     pt.run([
+        pool_withdraw_watcher,
         sui_portal_watcher,
         sui_core_executor,
         sui_pool_executor
