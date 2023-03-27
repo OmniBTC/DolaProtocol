@@ -670,10 +670,10 @@ def main():
         run_sui_relayer,
         run_aptos_relayer,
         functools.partial(eth_portal_watcher, "polygon-test"),
-        # functools.partial(eth_portal_watcher, "bsc-test"),
+        functools.partial(eth_portal_watcher, "bsc-test"),
         eth_pool_executor,
     ])
 
 
 if __name__ == "__main__":
-    compensate_unfinished_transaction()
+    main()

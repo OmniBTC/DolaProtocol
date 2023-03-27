@@ -660,7 +660,7 @@ def main():
     # 9. register evm chain group
     create_proposal()
 
-    vote_init_chain_group_id(2, [4, 5, 1442])
+    vote_init_chain_group_id(2, [4, 5, 7])
 
     # 10. register reserves
 
