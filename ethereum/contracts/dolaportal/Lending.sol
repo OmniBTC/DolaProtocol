@@ -62,7 +62,7 @@ contract LendingPortal {
         value : msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -105,7 +105,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -148,7 +148,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -203,7 +203,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -254,7 +254,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -288,7 +288,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -311,7 +311,7 @@ contract LendingPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,

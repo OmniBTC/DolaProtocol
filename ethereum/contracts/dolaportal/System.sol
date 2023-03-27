@@ -49,7 +49,7 @@ contract SystemPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
@@ -85,7 +85,7 @@ contract SystemPortal {
             appPayload
         );
 
-        relayer.transfer(fee);
+        LibAsset.transferAsset(address(0), relayer, fee);
 
         emit RelayEvent(
             nonce,
