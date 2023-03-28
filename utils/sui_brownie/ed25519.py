@@ -126,9 +126,9 @@ class PublicKey:
 
     def address(self):
         data = bytes([0]) + get_bytes(str(self))
-        hasher = hashlib.sha3_256()
+        hasher = hashlib.blake2b()
         hasher.update(data)
-        return "0x" + hasher.digest()[:20].hex()
+        return "0x" + hasher.digest()[:32].hex()
 
 
 class Signature:
