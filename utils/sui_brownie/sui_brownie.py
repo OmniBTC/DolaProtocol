@@ -921,10 +921,18 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_executeTransactionSerializedSig",
+                "method": "sui_executeTransactionBlock",
                 "params": [
                     tx_bytes,
-                    serialized_sig_base64,
+                    [serialized_sig_base64],
+                    {
+                        "showInput": True,
+                        "showRawInput": True,
+                        "showEffects": True,
+                        "showEvents": True,
+                        "showObjectChanges": True,
+                        "showBalanceChanges": True
+                    },
                     request_type
                 ]
             },
@@ -942,10 +950,10 @@ class SuiPackage:
             module = None
             function = None
         try:
-            if result["effects"]["effects"]["status"]["status"] != "success":
+            if result["effects"]["status"]["status"] != "success":
                 pprint(result)
-            assert result["effects"]["effects"]["status"]["status"] == "success"
-            result = result["effects"]["effects"]
+            assert result["effects"]["status"]["status"] == "success"
+            result = result["effects"]
             if index_object:
                 self.add_details(result)
             if module is None:
