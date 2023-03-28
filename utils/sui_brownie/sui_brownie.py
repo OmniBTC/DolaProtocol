@@ -763,7 +763,8 @@ class SuiPackage:
         try:
             with self.cli_config as cof:
                 compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                              f"--gas-budget {gas_budget} --abi --json {self.package_path.absolute()}"
+                              f"--skip-dependency-verification --gas-budget {gas_budget} " \
+                              f"--abi --json {self.package_path.absolute()}"
                 with os.popen(compile_cmd) as f:
                     result = f.read()
                 try:
@@ -934,17 +935,17 @@ class SuiPackage:
         result = result["result"]
         result = self.format_result(result)
         try:
-            transactions = result["EffectsCert"]["certificate"]["data"]["transactions"][0]["Call"]
+            transactions = result["certificate"]["data"]["transactions"][0]["Call"]
             module = transactions["module"]
             function = transactions["function"]
         except:
             module = None
             function = None
         try:
-            if result["EffectsCert"]["effects"]["effects"]["status"]["status"] != "success":
+            if result["effects"]["effects"]["status"]["status"] != "success":
                 pprint(result)
-            assert result["EffectsCert"]["effects"]["effects"]["status"]["status"] == "success"
-            result = result["EffectsCert"]["effects"]["effects"]
+            assert result["effects"]["effects"]["status"]["status"] == "success"
+            result = result["effects"]["effects"]
             if index_object:
                 self.add_details(result)
             if module is None:
@@ -972,7 +973,10 @@ class SuiPackage:
 
         def worker(d: List[str]):
             for v in d:
-                detail = self.get_object(v)
+                try:
+                    detail = self.get_object(v)
+                except:
+                    traceback.print_exc()
                 if "data" in detail and "disassembled" in detail["data"]:
                     del detail["data"]["disassembled"]
                 result[v] = detail
@@ -986,6 +990,7 @@ class SuiPackage:
         engine.run(workers)
         return result
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def get_object(self, object_id: str):
         response = self.client.post(
             f"{self.base_url}",
@@ -1005,20 +1010,31 @@ class SuiPackage:
         try:
             data = result["details"]
             if "status" in result:
+                assert result["status"] == "Exists"
                 data["status"] = result["status"]
+
             return data
         except:
             return result
 
-    def get_object_by_object(self, object_id: str):
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def get_transaction(self, digest: str):
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_getObjectsOwnedByObject",
+                "method": "sui_getTransaction",
                 "params": [
-                    object_id
+                    digest,
+                    {
+                        "showInput": True,
+                        "showRawInput": False,
+                        "showEffects": True,
+                        "showEvents": True,
+                        "showObjectChanges": True,
+                        "showBalanceChanges": True
+                    }
                 ]
             },
         )
@@ -1029,7 +1045,61 @@ class SuiPackage:
         try:
             data = result["details"]
             if "status" in result:
+                assert result["status"] == "Exists"
                 data["status"] = result["status"]
+
+            return data
+        except:
+            return result
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def query_events(self, query: str, cursor=None, limit=None, descending_order=None):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_queryEvents",
+                "params": [
+                    query,
+                    cursor,
+                    limit,
+                    descending_order
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["details"]
+            if "status" in result:
+                assert result["status"] == "Exists"
+                data["status"] = result["status"]
+
+            return data
+        except:
+            return result
+
+    def get_object_by_object(self, object_id: str):
+        response = self.client.post(
+            f"{self.base_url}",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "sui_getDynamicFields",
+                "params": [
+                    object_id
+                ]
+            },
+        )
+        result = response.json()
+        if "error" in result:
+            assert False, result["error"]
+        result = result["result"]
+        try:
+            data = result["data"]
             return data
         except:
             return result
@@ -1313,7 +1383,9 @@ class SuiPackage:
                 continue
             if not isinstance(param_args[k], int):
                 continue
-            assert len(CacheObject[is_coin][self.account.account_address]), f"Not found coin"
+            object_ids = list(self.get_coins(self.account.account_address, str(is_coin)[16:-1]).keys())
+            assert len(object_ids), f"Not found coin"
+            CacheObject[is_coin][self.account.account_address] = object_ids
 
             normal_coin.append(is_coin)
 
@@ -1455,7 +1527,7 @@ class SuiPackage:
             gas: return gas
         """
         result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
-        print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
+        # print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
         return self.dry_run_transaction(result["txBytes"])
 
     @validator_retry
