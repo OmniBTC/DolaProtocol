@@ -828,7 +828,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_dryRunTransaction",
+                "method": "sui_dryRunTransactionBlock",
                 "params": [
                     tx_bytes
                 ]
@@ -1007,7 +1007,16 @@ class SuiPackage:
                 "id": 1,
                 "method": "sui_getObject",
                 "params": [
-                    object_id
+                    object_id,
+                    {
+                        "showType": True,
+                        "showOwner": True,
+                        "showPreviousTransaction": True,
+                        "showDisplay": False,
+                        "showContent": True,
+                        "showBcs": False,
+                        "showStorageRebate": True
+                    }
                 ]
             },
         )
@@ -1016,7 +1025,7 @@ class SuiPackage:
             assert False, result["error"]
         result = result["result"]
         try:
-            data = result["details"]
+            data = result["data"]
             if "status" in result:
                 assert result["status"] == "Exists"
                 data["status"] = result["status"]
@@ -1032,7 +1041,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_getTransaction",
+                "method": "sui_getTransactionBlock",
                 "params": [
                     digest,
                     {
@@ -1050,15 +1059,7 @@ class SuiPackage:
         if "error" in result:
             assert False, result["error"]
         result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                assert result["status"] == "Exists"
-                data["status"] = result["status"]
-
-            return data
-        except:
-            return result
+        return result
 
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def query_events(self, query: str, cursor=None, limit=None, descending_order=None):
@@ -1080,15 +1081,7 @@ class SuiPackage:
         if "error" in result:
             assert False, result["error"]
         result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                assert result["status"] == "Exists"
-                data["status"] = result["status"]
-
-            return data
-        except:
-            return result
+        return result
 
     def get_object_by_object(self, object_id: str):
         response = self.client.post(
@@ -1096,7 +1089,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_getDynamicFields",
+                "method": "suix_getDynamicFields",
                 "params": [
                     object_id
                 ]
@@ -1106,35 +1099,7 @@ class SuiPackage:
         if "error" in result:
             assert False, result["error"]
         result = result["result"]
-        try:
-            data = result["data"]
-            return data
-        except:
-            return result
-
-    def get_object_by_address(self, addr: str):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getObjectsOwnedByAddress",
-                "params": [
-                    addr
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                data["status"] = result["status"]
-            return data
-        except:
-            return result
+        return result
 
     def get_abis(self):
         if self.package_id is None:
@@ -1344,8 +1309,10 @@ class SuiPackage:
             self,
             abi: dict,
             *param_args,
-            ty_args: List[str] = None
+            ty_args: List[str] = None,
+            gas_budget=10000,
     ):
+        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
         param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
         for k in range(len(param_args)):
@@ -1357,14 +1324,12 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_devInspectMoveCall",
+                "method": "sui_devInspectTransactionBlock",
                 "params": [
                     self.account.account_address,
-                    self.package_id,
-                    abi["module_name"],
-                    abi["func_name"],
-                    ty_args,
-                    param_args,
+                    result["tx_bytes"],
+                    None,
+                    None
                 ]
             },
         )
@@ -1450,7 +1415,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_moveCall",
+                "method": "unsafe_moveCall",
                 "params": [
                     self.account.account_address,
                     self.package_id,
@@ -1546,13 +1511,13 @@ class SuiPackage:
             recipient = self.account.account_address
         if len(input_coins) < 2 and recipient == self.account.account_address:
             return
-        print(f'\nExecute sui_payAllSui...')
+        print(f'\nExecute unsafe_payAllSui...')
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_payAllSui",
+                "method": "unsafe_payAllSui",
                 "params": [
                     self.account.account_address,
                     input_coins,
@@ -1571,13 +1536,13 @@ class SuiPackage:
     def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
-        print(f'\nExecute sui_paySui...')
+        print(f'\nExecute unsafe_paySui...')
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_paySui",
+                "method": "unsafe_paySui",
                 "params": [
                     self.account.account_address,
                     input_coins,
@@ -1597,13 +1562,13 @@ class SuiPackage:
     def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
         if recipients is None:
             recipients = self.account.account_address
-        print(f'\nExecute sui_pay...')
+        print(f'\nExecute unsafe_pay...')
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_pay",
+                "method": "unsafe_pay",
                 "params": [
                     self.account.account_address,
                     input_coins,
@@ -1623,13 +1588,13 @@ class SuiPackage:
     @validator_retry
     def merge_coins(self, input_coins: list, gas_budget=10000):
         assert len(input_coins) >= 2
-        print(f'\nExecute sui_mergeCoins...')
+        print(f'\nExecute unsafe_mergeCoins...')
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_mergeCoins",
+                "method": "unsafe_mergeCoins",
                 "params": [
                     self.account.account_address,
                     input_coins[0],
@@ -1647,13 +1612,13 @@ class SuiPackage:
 
     @validator_retry
     def split_coin(self, input_coin: str, split_amounts: list, gas_budget=10000):
-        print(f'\nExecute sui_splitCoin...')
+        print(f'\nExecute unsafe_splitCoin...')
         response = self.client.post(
             f"{self.base_url}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_splitCoin",
+                "method": "unsafe_splitCoin",
                 "params": [
                     self.account.account_address,
                     input_coin,
@@ -1675,7 +1640,7 @@ class SuiPackage:
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
-                "method": "sui_getCoins",
+                "method": "suix_getCoins",
                 "params": [
                     addr,
                     coin_type
