@@ -153,7 +153,7 @@ module dola_portal::lending {
             assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::transfer(base_coin, tx_context::sender(ctx));
+                transfer::public_transfer(base_coin, tx_context::sender(ctx));
                 split_coin
             }else {
                 base_coin
@@ -421,7 +421,7 @@ module dola_portal::lending {
         );
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
@@ -572,7 +572,7 @@ module dola_portal::lending {
 
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
@@ -694,7 +694,7 @@ module dola_portal::lending {
 
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce: wormhole_adapter_pool::vaa_nonce(pool_state),
             amount: fee_amount,

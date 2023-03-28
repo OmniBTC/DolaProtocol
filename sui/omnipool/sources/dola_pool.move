@@ -265,7 +265,7 @@ module omnipool::dola_pool {
             amount
         });
 
-        transfer::transfer(coin, user_address);
+        transfer::public_transfer(coin, user_address);
     }
 
     /// Send pool message that do not involve incoming or outgoing funds

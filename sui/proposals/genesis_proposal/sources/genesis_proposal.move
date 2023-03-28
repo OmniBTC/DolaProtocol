@@ -259,7 +259,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -291,7 +291,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -323,7 +323,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -355,7 +355,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);

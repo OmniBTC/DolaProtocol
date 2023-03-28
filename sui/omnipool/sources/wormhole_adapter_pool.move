@@ -20,10 +20,10 @@ module omnipool::wormhole_adapter_pool {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
-    use wormhole::emitter::EmitterCapability;
+    use wormhole::emitter::EmitterCap;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::state::State as WormholeState;
-    use wormhole::wormhole;
+    use wormhole::publish_message;
+    use wormhole::state::{Self, State as WormholeState};
 
     /// Errors
 
@@ -57,7 +57,7 @@ module omnipool::wormhole_adapter_pool {
         dola_contract: DolaContract,
         // Move does not have a contract address, Wormhole uses the emitter
         // in EmitterCapability to represent the send address of this contract
-        wormhole_emitter: EmitterCapability,
+        wormhole_emitter: EmitterCap,
         // Used to verify that the VAA has been processed
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
@@ -117,7 +117,7 @@ module omnipool::wormhole_adapter_pool {
         assert!(!pool_genesis.is_init, EHAS_INIT);
 
         // Register wormhole emitter for this module
-        let wormhole_emitter = wormhole::register_emitter(wormhole_state, ctx);
+        let wormhole_emitter = state::new_emitter(wormhole_state, ctx);
 
         // Register for wormhole adpter core emitter
         let registered_emitters = vec_map::empty();
@@ -241,7 +241,13 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
             ctx
         );
-        wormhole::publish_message(&mut pool_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut pool_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
@@ -260,7 +266,13 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
             ctx
         );
-        wormhole::publish_message(&mut pool_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut pool_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
     }
