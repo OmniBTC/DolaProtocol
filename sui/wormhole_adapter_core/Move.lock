@@ -95,7 +95,7 @@ dependencies = [
 
 [[move.package]]
 name = "Wormhole"
-source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "dcceff545df0d9dd7ce537f51373d3cc6d20d00d", subdir = "sui/wormhole" }
+source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "1d5ae0e9ca885e86ab9161befd812875d2f6f00e", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },

@@ -141,7 +141,7 @@ module serde::serde {
 
     public fun serialize_address(buf: &mut vector<u8>, v: address) {
         let data = bcs::to_bytes(&v);
-        assert!(vector::length(&data) == 20, EINVALID_LENGTH);
+        assert!(vector::length(&data) == 32, EINVALID_LENGTH);
         vector::append(buf, data);
     }
 
@@ -260,7 +260,7 @@ module serde::serde {
     }
 
     public fun deserialize_address(buf: &vector<u8>): address {
-        assert!(vector::length(buf) == 20, EINVALID_LENGTH);
+        assert!(vector::length(buf) == 32, EINVALID_LENGTH);
         address::from_bytes(*buf)
     }
 

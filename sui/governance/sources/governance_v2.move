@@ -519,16 +519,14 @@ module governance::governance_v2 {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let supply = balance::create_supply(DOLA {});
         let i = 0;
         while (i < vector::length(&members)) {
-            transfer::transfer(
-                coin::from_balance(balance::increase_supply(&mut supply, amount), ctx),
+            transfer::public_transfer(
+                coin::from_balance(balance::create_for_testing<DOLA>(amount), ctx),
                 *vector::borrow(&members, i)
             );
             i = i + 1;
         };
-        balance::destroy_supply_for_testing(supply);
     }
 
     #[test_only]
@@ -634,7 +632,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 9900, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::next_tx(scenario, governance);
@@ -698,7 +696,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 1000, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::end(scenario_val);
@@ -743,7 +741,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 9900, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::next_tx(scenario, governance);

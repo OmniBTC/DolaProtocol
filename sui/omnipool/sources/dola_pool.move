@@ -327,7 +327,7 @@ module omnipool::dola_pool {
                 spenders
             });
 
-            transfer::transfer(dola_contract, manager);
+            transfer::public_transfer(dola_contract, manager);
 
             create_pool<SUI>(9, ctx);
             return_shared(dola_contract_registry);
