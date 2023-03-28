@@ -17,7 +17,7 @@ rev = "d79f1f6dec84971a95c7df663fefa13bf7fda336"
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "dcceff545df0d9dd7ce537f51373d3cc6d20d00d"
+rev = "1d5ae0e9ca885e86ab9161befd812875d2f6f00e"
 
 [dependencies.DolaTypes]
 local = "../dola_types"
