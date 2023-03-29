@@ -5,6 +5,7 @@ import json
 import multiprocessing
 import os
 import time
+import traceback
 from pathlib import Path
 from typing import Union, List, Dict
 from pprint import pprint
@@ -177,11 +178,58 @@ class MoveToml:
         with open(self.file, "w") as f:
             toml.dump(self.origin_data, f)
 
-    def get(self, param, param1):
-        return self.data.get(param, param1)
-
     def keys(self):
         return self.data.keys()
+
+
+class SuiCliConfig:
+
+    def __init__(self,
+                 file,
+                 rpc: str,
+                 network: str,
+                 account: Account):
+        if isinstance(file, Path):
+            self.file = file
+        else:
+            self.file = Path(file)
+        self.rpc = rpc
+
+        self.network = network.split("-")[-1].lower()
+        self.account = account
+        self.tmp_keystore = self.file.parent.joinpath(".env.keystore")
+
+    def __enter__(self):
+        self.active_config()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file.exists():
+            self.file.unlink()
+
+        if self.tmp_keystore.exists():
+            self.tmp_keystore.unlink()
+
+    def active_config(self):
+        template_config_file = Path(__file__).parent.joinpath("sui_config.template.yaml")
+        with open(template_config_file, "r") as f:
+            config_data = f.read()
+
+        template_keystore_file = Path(__file__).parent.joinpath("sui_keystore.template.keystore")
+        with open(template_keystore_file, "r") as f:
+            keystore_data = f.read()
+        keystore_data = keystore_data.replace("{keystore}", self.account.keystore())
+
+        with open(self.tmp_keystore, "w") as f:
+            f.write(keystore_data)
+
+        config_data = config_data \
+            .replace("{file}", str(self.tmp_keystore.absolute())) \
+            .replace("{network}", self.network) \
+            .replace("{rpc}", self.rpc) \
+            .replace("{active_address}", self.account.account_address)
+        with open(self.file, "w") as f:
+            f.write(config_data)
 
 
 class SuiPackage:
@@ -194,15 +242,17 @@ class SuiPackage:
         assert len(_load_project) > 0, "Project not init"
         self.project: SuiProject = _load_project[0]
         assert package_id is not None or package_path is not None
-        assert package_path is None and package_name is not None, f"Package path is none, set package name"
+        if package_path is None:
+            assert package_name is not None, f"Package path is none, set package name"
         self.package_id = package_id
         self.package_name = package_name
 
         self.package_path = package_path
         # package_path is not none
-        self.move_toml: MoveToml = MoveToml(str(self.package_path)) if self.package_path is not None else None
+        self.move_toml: MoveToml = MoveToml(str(self.package_path.joinpath("Move.toml"))) \
+            if self.package_path.joinpath("Move.toml") is not None else None
         if self.package_name is None and self.move_toml is not None:
-            self.package_name = self.move_toml.get("package", "name")
+            self.package_name = self.move_toml["package"]["name"]
 
         # module name -> struct -> SuiObjectType
         #             -> func  -> () : call transaction
@@ -213,6 +263,9 @@ class SuiPackage:
 
         if self.package_id is not None:
             self.update_abi()
+
+        # # # # # # filter result
+        self.filter_result_key = ["disassembled", "signers_map"]
 
     def __getattribute__(self, item):
         try:
@@ -235,7 +288,14 @@ class SuiPackage:
         if self.package_id is None:
             return
 
-        result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+        result = None
+        for i in range(10):
+            try:
+                result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+                break
+            except Exception as e:
+                print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+                time.sleep(3)
 
         for module_name in result:
             # Update
@@ -303,6 +363,32 @@ class SuiPackage:
                         dep_move_toml = SuiPackage(package_path=remote_path)
                         dep_move_toml.replace_addresses(replace_address, output)
 
+    def format_dict(self, data):
+        for k in list(data.keys()):
+            if k in self.filter_result_key:
+                del data[k]
+                continue
+            if isinstance(data[k], list):
+                self.format_list(data[k])
+            elif isinstance(data[k], dict):
+                self.format_dict(data[k])
+
+    def format_list(self, data):
+        for v in data:
+            if isinstance(v, list):
+                self.format_list(v)
+            elif isinstance(v, dict):
+                self.format_dict(v)
+
+    def format_result(self, data):
+        if data is None:
+            return
+        if isinstance(data, list):
+            self.format_list(data)
+        if isinstance(data, dict):
+            self.format_dict(data)
+        return data
+
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
@@ -313,7 +399,7 @@ class SuiPackage:
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
-            with self.cli_config as cof:
+            with self.project.cli_config as cof:
                 cmd = f"sui client --client.config {cof.file.absolute()} publish " \
                       f"--skip-dependency-verification --gas-budget {gas_budget} " \
                       f"--abi --json {self.package_path.absolute()}"
@@ -330,16 +416,18 @@ class SuiPackage:
                         self.package_id = d["packageId"]
                         self.project.add_package(self)
                         self.update_abi()
+            result = self.format_result(result)
             pprint(result)
             assert self.package_id is not None, f"Package id not found"
             print("-" * (100 + len(view)))
             print("\n")
             for k in replace_tomls:
                 replace_tomls[k].restore()
-        except Exception as e:
+        except:
             for k in replace_tomls:
                 replace_tomls[k].restore()
-            assert False, e
+            traceback.print_exc()
+            raise
         return result
 
     # ###### Call
@@ -564,14 +652,23 @@ class SuiProject:
         self.__active_account = None
         self.packages: Dict[str, SuiPackage] = {}
 
-        self.cache_file = Path(os.environ.get('HOME')).joinpath(".sui-brownie").joinpath("objects.json")
-        self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList))
+        self.cache_dir = Path(os.environ.get('HOME')).joinpath(".sui-brownie")
+        if not self.cache_dir.exists():
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_file = self.cache_dir.joinpath("objects.json")
+        self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList()))
+        self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
+        self.cli_config: SuiCliConfig = None
 
         self.load_config()
 
+        _load_project.append(self)
+
     def active_account(self, account_name):
         assert account_name in self.accounts, f"{account_name} not found in {list(self.accounts.keys())}"
-        self.__active_account = Account
+        self.__active_account = self.accounts[account_name]
+        print(f"\nActive account {account_name}, address:{self.__active_account.account_address}")
+        self.cli_config = SuiCliConfig(self.cli_config_file, str(self.client.endpoint), self.network, self.account)
 
     @property
     def account(self) -> Account:
@@ -602,7 +699,7 @@ class SuiProject:
         for account_name, env_name in self.config["sui_wallets"]["from_mnemonic"].items():
             env_name = env_name.replace("$", "").replace("{", "").replace("}", "")
             assert env_name in env, f"{env_name} env not exist"
-            self.accounts[account_name] = env[env_name]
+            self.accounts[account_name] = Account(mnemonic=env[env_name])
 
         # Create client
         assert "node_url" in self.network_config, "Endpoint not config"
@@ -634,9 +731,6 @@ class SuiProject:
         return data
 
     def write_cache(self):
-        if not self.cache_file.parent.exists():
-            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-
         def write_cache_worker():
             output = DefaultDict({})
             for k1 in self.cache_objects:
