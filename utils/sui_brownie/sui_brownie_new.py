@@ -1,21 +1,15 @@
 from __future__ import annotations
 
-import base64
 import copy
-import functools
 import json
 import multiprocessing
 import os
-import threading
 import time
-import traceback
-from collections import OrderedDict
 from pathlib import Path
 from typing import Union, List, Dict
-from pprint import pprint, pformat
+from pprint import pprint
 from retrying import retry
 
-import httpx
 from dotenv import dotenv_values
 
 from account import Account
@@ -61,37 +55,6 @@ class NonDupList(list):
     def append(self, __object) -> None:
         if __object not in self:
             super(NonDupList, self).append(__object)
-
-
-class MoveToml:
-    """Easy recovery after package replacement address"""
-
-    def __init__(self, file: str):
-        self.file = file
-        with open(file, "r") as f:
-            data = toml.load(f)
-        self.origin_data = data
-        self.data = copy.deepcopy(data)
-
-    def __getitem__(self, item):
-        return self.data[item]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def store(self):
-        with open(self.file, "w") as f:
-            toml.dump(self.data, f)
-
-    def restore(self):
-        with open(self.file, "w") as f:
-            toml.dump(self.origin_data, f)
-
-    def get(self, k1, k2):
-        return self.data.get(k1, k2)
-
-    def keys(self):
-        return self.data.keys()
 
 
 class SuiObject:
@@ -358,18 +321,17 @@ class SuiPackage:
                     result = f.read()
                 try:
                     result = json.loads(result[result.find("{"):])
-                    result = self.format_result(result)
                 except:
                     pprint(f"Publish error:\n{result}")
                     return
                 self.update_object_index(result.get("effects", dict()))
-                for d in result.get("effects").get("created", []):
-                    if "data" in d and "dataType" in d["data"]:
-                        if d["data"]["dataType"] == "package":
-                            self.package_id = d["reference"]["objectId"]
-                            self.project.add_package(self)
-                            self.update_abi()
+                for d in result.get("objectChanges", []):
+                    if d["type"] == "published":
+                        self.package_id = d["packageId"]
+                        self.project.add_package(self)
+                        self.update_abi()
             pprint(result)
+            assert self.package_id is not None, f"Package id not found"
             print("-" * (100 + len(view)))
             print("\n")
             for k in replace_tomls:
@@ -406,6 +368,7 @@ class SuiPackage:
         :return:
         """
         sui_object_ids = []
+        assert result["status"]["status"] == "success", result["status"]["status"]
         for k in ["created", "mutated"]:
             for d in result.get(k, dict()):
                 if "reference" in d and "objectId" in d["reference"]:
@@ -434,6 +397,156 @@ class SuiPackage:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.project.add_object_to_cache(sui_object, owner, sui_object_id)
 
+    def check_args(
+            self,
+            abi: dict,
+            arguments: list,
+            type_arguments: List[str] = None
+    ):
+        arguments = list(arguments)
+        self.normal_float_list(arguments)
+
+        if type_arguments is None:
+            type_arguments = []
+        assert isinstance(list(type_arguments), list) and len(
+            abi["type_parameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+        if len(abi["parameters"]) and self.judge_ctx(abi["parameters"][-1]):
+            assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
+        else:
+            assert len(arguments) == len(abi["parameters"]), f'arguments error: {abi["parameters"]}'
+
+        return arguments, type_arguments
+
+    def get_account_sui(self):
+        result = self.project.client.suix_getCoins(self.project.account.account_address, "0x2::sui::SUI", None, None)
+        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
+
+    def construct_transaction(
+            self,
+            abi: dict,
+            arguments: list,
+            type_arguments: List[str] = None,
+            gas_budget=10000,
+    ):
+        arguments, type_arguments = self.check_args(abi, arguments, type_arguments)
+
+        for k in range(len(arguments)):
+            # Process U64, U128, U256
+            if abi["parameters"][k] in ["U64", "U128", "U256"]:
+                arguments[k] = str(arguments[k])
+
+        sui_object_ids = self.get_account_sui()
+        gas_object = max(list(sui_object_ids.keys()), key=lambda x: sui_object_ids[x])
+        result = self.project.client.unsafe_moveCall(
+            self.account.account_address,
+            self.package_id,
+            abi["module_name"],
+            abi["func_name"],
+            type_arguments,
+            arguments,
+            gas_object,
+            gas_budget,
+            None
+        )
+        return result
+
+    def simulate(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.project.client.sui_dryRunTransactionBlock(result["txBytes"])
+
+    def inspect(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.project.client.sui_devInspectTransactionBlock(
+            self.project.account.account_address,
+            result["txBytes"],
+            None,
+            None
+        )
+
+    def _execute(
+            self,
+            tx_bytes,
+            sig_scheme="ED25519",
+            request_type="WaitForLocalExecution",
+            module=None,
+            function=None,
+    ):
+        """
+        :param tx_bytes:
+        :param sig_scheme:
+        :param request_type:
+            Execute the transaction and wait for results if desired. Request types:
+            1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
+            Note the transaction may fail without being noticed by client in this mode. After getting the response,
+            the client may poll the node to check the result of the transaction.
+            2. WaitForTxCert: waits for TransactionCertificate and then return to client.
+            3. WaitForEffectsCert: waits for TransactionEffectsCert and then return to client.
+            This mode is a proxy for transaction finality.
+            4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
+            locally before returning the client. The local execution makes sure this node is aware of this transaction
+            when client fires subsequent queries. However if the node fails to execute the transaction locally in a
+            timely manner, a bool type in the response is set to false to indicated the case
+        :return:
+        """
+        assert sig_scheme == "ED25519", "Only support ED25519"
+        SIGNATURE_SCHEME_TO_FLAG = {
+            "ED25519": 0,
+            "Secp256k1": 1
+        }
+        serialized_sig = [SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]
+        serialized_sig.extend(list(self.account.sign(tx_bytes).get_bytes()))
+        serialized_sig.extend(list(self.account.public_key().get_bytes()))
+        serialized_sig_base64 = self.list_base64(serialized_sig)
+
+        result = self.project.client.sui_executeTransactionBlock(
+            tx_bytes,
+            [serialized_sig_base64],
+            {
+                "showInput": True,
+                "showRawInput": True,
+                "showEffects": True,
+                "showEvents": True,
+                "showObjectChanges": True,
+                "showBalanceChanges": True
+            },
+            request_type
+        )
+
+        if result["effects"]["status"]["status"] != "success":
+            pprint(result)
+        assert result["effects"]["status"]["status"] == "success"
+        result = result["effects"]
+
+        self.update_object_index(result["effects"])
+        print(f"Execute {module}::{function} success, transactionDigest: {result['transactionDigest']}")
+        return result
+
+    def execute(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        # Simulate before execute
+        self.dry_run_transaction(result["txBytes"])
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(result["txBytes"], module=abi["module_name"], function=abi["func_name"])
+
 
 class SuiProject:
     def __init__(
@@ -448,12 +561,23 @@ class SuiProject:
         self.network_config = {}
         self.client: SuiClient = None
         self.accounts: Dict[str, Account] = {}
+        self.__active_account = None
         self.packages: Dict[str, SuiPackage] = {}
 
         self.cache_file = Path(os.environ.get('HOME')).joinpath(".sui-brownie").joinpath("objects.json")
         self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList))
 
         self.load_config()
+
+    def active_account(self, account_name):
+        assert account_name in self.accounts, f"{account_name} not found in {list(self.accounts.keys())}"
+        self.__active_account = Account
+
+    @property
+    def account(self) -> Account:
+        if self.__active_account is None:
+            print("account not active")
+        return self.__active_account
 
     def load_config(self):
         # Check path
