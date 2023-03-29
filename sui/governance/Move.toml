@@ -4,6 +4,7 @@ version = "0.0.1"
 
 [addresses]
 governance = "0x0"
+dola_types = "0x0"
 serde = "0x0"
 sui = "0x2"
 
@@ -14,3 +15,6 @@ rev = "82c9c80c11488858f1d3930f47ec9f335a566683"
 
 [dependencies.Serde]
 local = "../serde"
+
+[dependencies.DolaTypes]
+local = "../dola_types"

@@ -4,6 +4,16 @@
 version = 0
 
 dependencies = [
+  { name = "DolaTypes" },
+  { name = "Serde" },
+  { name = "Sui" },
+]
+
+[[move.package]]
+name = "DolaTypes"
+source = { local = "../dola_types" }
+
+dependencies = [
   { name = "Serde" },
   { name = "Sui" },
 ]

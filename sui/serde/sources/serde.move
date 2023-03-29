@@ -9,9 +9,9 @@ module serde::serde {
 
     use sui::address;
 
-    const EINVALID_LENGTH: u64 = 0x00;
+    const EINVALID_LENGTH: u64 = 0;
 
-    const OVERFLOW: u64 = 0x01;
+    const OVERFLOW: u64 = 1;
 
     public fun serialize_u8(buf: &mut vector<u8>, v: u8) {
         vector::push_back(buf, v);
