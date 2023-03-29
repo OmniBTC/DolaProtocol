@@ -4,6 +4,7 @@ import base64
 import copy
 import functools
 import json
+import multiprocessing
 import os
 import threading
 import time
@@ -18,6 +19,7 @@ import httpx
 from dotenv import dotenv_values
 
 from account import Account
+from atomicwrites import atomic_write
 
 import yaml
 import toml
@@ -26,6 +28,8 @@ from parallelism import ThreadExecutor
 from sui_brownie.sui_client import SuiClient
 
 _load_project = []
+
+_cache_file_lock = multiprocessing.Lock()
 
 
 class AttributeDict(dict):
@@ -51,6 +55,43 @@ class DefaultDict(dict):
         if "default" in data:
             del data["default"]
         return data
+
+
+class NonDupList(list):
+    def append(self, __object) -> None:
+        if __object not in self:
+            super(NonDupList, self).append(__object)
+
+
+class MoveToml:
+    """Easy recovery after package replacement address"""
+
+    def __init__(self, file: str):
+        self.file = file
+        with open(file, "r") as f:
+            data = toml.load(f)
+        self.origin_data = data
+        self.data = copy.deepcopy(data)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def store(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.data, f)
+
+    def restore(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.origin_data, f)
+
+    def get(self, k1, k2):
+        return self.data.get(k1, k2)
+
+    def keys(self):
+        return self.data.keys()
 
 
 class SuiObject:
@@ -184,14 +225,40 @@ class SuiPackage:
     def __init__(
             self,
             package_id: str = None,
+            package_name: str = None,
             package_path: Union[Path, str] = None,
     ):
         assert len(_load_project) > 0, "Project not init"
         self.project: SuiProject = _load_project[0]
+        assert package_id is not None or package_path is not None
+        assert package_path is None and package_name is not None, f"Package path is none, set package name"
         self.package_id = package_id
-        self.package_path = package_path
+        self.package_name = package_name
 
-        self.abi = {}
+        self.package_path = package_path
+        # package_path is not none
+        self.move_toml: MoveToml = MoveToml(str(self.package_path)) if self.package_path is not None else None
+        if self.package_name is None and self.move_toml is not None:
+            self.package_name = self.move_toml.get("package", "name")
+
+        # module name -> struct -> SuiObjectType
+        #             -> func  -> () : call transaction
+        #                      -> simulate : simulate transaction
+        #                      -> inspect : inspect value
+        # Record package struct and func abi
+        self.modules = DefaultDict({})
+
+        if self.package_id is not None:
+            self.update_abi()
+
+    def __getattribute__(self, item):
+        try:
+            return object.__getattribute__(self, item)
+        except Exception as e:
+            if item in self.modules:
+                return self.modules[item]
+            else:
+                raise e
 
     def load_package(self):
         if self.package_path is None:
@@ -204,6 +271,168 @@ class SuiPackage:
     def update_abi(self):
         if self.package_id is None:
             return
+
+        result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+
+        for module_name in result:
+            # Update
+            for struct_name in result[module_name].get("structs", dict()):
+                # refuse process include type param object
+                if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
+                    continue
+                object_type = SuiObject.from_type(f"{self.package_id}::{module_name}::{struct_name}")
+                object_type.package_name = self.package_name
+                self.modules[module_name][struct_name] = object_type
+            for func_name in result[module_name].get("exposed_functions", dict()):
+                abi = result[module_name]["exposed_functions"][func_name]
+                abi["module_name"] = module_name
+                abi["func_name"] = func_name
+                self.modules[module_name][func_name] = abi
+                self.abi[f"{module_name}::{func_name}"] = abi
+
+    # ####### Publish
+
+    def replace_addresses(
+            self,
+            replace_address: dict = None,
+            output: dict = None
+    ) -> dict:
+        if replace_address is None:
+            return output
+        if output is None:
+            output = dict()
+        current_move_toml = MoveToml(self.move_path)
+        if current_move_toml["package"]["name"] in output:
+            return output
+        output[current_move_toml["package"]["name"]] = current_move_toml
+
+        # process current move toml
+        self.replace_toml(current_move_toml, replace_address)
+
+        # process dependencies move toml
+        for k in list(current_move_toml.keys()):
+            if "dependencies" == k:
+                for d in list(current_move_toml[k].keys()):
+                    # process local
+                    if "local" in current_move_toml[k][d]:
+                        local_path = self.package_path \
+                            .joinpath(current_move_toml[k][d]["local"])
+                        assert local_path.exists(), f"{local_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(package_path=local_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+                    # process remote
+                    else:
+                        git_index = current_move_toml[k][d]["git"].rfind("/")
+                        git_path = current_move_toml[k][d]["git"][:git_index + 1]
+                        git_file = current_move_toml[k][d]["git"][git_index + 1:]
+                        if "subdir" not in current_move_toml[k][d]:
+                            git_file = f"{d}.git"
+                            sub_dir = ""
+                        else:
+                            sub_dir = current_move_toml[k][d]["subdir"]
+                        git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
+                            .replace("://", "___") \
+                            .replace("/", "_").replace(".", "_")
+                        remote_path = Path(f"{os.environ.get('HOME')}/.move") \
+                            .joinpath(git_file) \
+                            .joinpath(sub_dir)
+                        assert remote_path.exists(), f"{remote_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(package_path=remote_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def publish_package(
+            self,
+            gas_budget=10000,
+            replace_address: dict = None
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        view = f"Publish {self.package_name}"
+        print("\n" + "-" * 50 + view + "-" * 50)
+        try:
+            with self.cli_config as cof:
+                cmd = f"sui client --client.config {cof.file.absolute()} publish " \
+                      f"--skip-dependency-verification --gas-budget {gas_budget} " \
+                      f"--abi --json {self.package_path.absolute()}"
+                with os.popen(cmd) as f:
+                    result = f.read()
+                try:
+                    result = json.loads(result[result.find("{"):])
+                    result = self.format_result(result)
+                except:
+                    pprint(f"Publish error:\n{result}")
+                    return
+                self.update_object_index(result.get("effects", dict()))
+                for d in result.get("effects").get("created", []):
+                    if "data" in d and "dataType" in d["data"]:
+                        if d["data"]["dataType"] == "package":
+                            self.package_id = d["reference"]["objectId"]
+                            self.project.add_package(self)
+                            self.update_abi()
+            pprint(result)
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except Exception as e:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            assert False, e
+        return result
+
+    # ###### Call
+    def update_object_index(self, result):
+        """
+        Update Object cache after contract deployment and transaction execution
+        :param result: effects
+            {
+              "messageVersion": "v1",
+              "status": {
+                "status": "success"
+              },
+              "mutated": [
+                {
+                  "owner": {
+                    "AddressOwner": "0x61fbb5b4f342a40bdbf87fe4a946b9e38d18cf8ffc7b0000b975175c7b6a9576"
+                  },
+                  "reference": {
+                    "objectId": "0xe8d8c7ce863f313da3dbd92a83ef26d128b88fe66bf26e0e0d09cdaf727d1d84",
+                    "version": 2,
+                    "digest": "EnRQXe1hDGAJCFyF2ds2GmPHdvf9V6yxf24LisEsDkYt"
+                  }
+                }
+              ]
+            }
+        :return:
+        """
+        sui_object_ids = []
+        for k in ["created", "mutated"]:
+            for d in result.get(k, dict()):
+                if "reference" in d and "objectId" in d["reference"]:
+                    sui_object_ids.append(d["reference"]["objectId"])
+        if len(sui_object_ids):
+            sui_object_infos = self.project.client.sui_multiGetObjects(sui_object_ids, {
+                "showType": True,
+                "showOwner": True,
+                "showPreviousTransaction": False,
+                "showDisplay": False,
+                "showContent": False,
+                "showBcs": False,
+                "showStorageRebate": False
+            })
+            for sui_object_info in sui_object_infos:
+                if "error" in sui_object_info:
+                    continue
+                sui_object_id = sui_object_info["data"]["objectId"]
+                if sui_object_info["data"]["type"] == "package":
+                    continue
+                else:
+                    sui_object = SuiObject.from_type(sui_object_info["data"]["type"])
+                    if "Shared" in sui_object_info["data"]["owner"]:
+                        self.project.add_object_to_cache(sui_object, "Shared", sui_object_id)
+                    elif "AddressOwner" in sui_object_info["data"]["owner"]:
+                        owner = sui_object_info["data"]["owner"]["AddressOwner"]
+                        self.project.add_object_to_cache(sui_object, owner, sui_object_id)
 
 
 class SuiProject:
@@ -222,7 +451,7 @@ class SuiProject:
         self.packages: Dict[str, SuiPackage] = {}
 
         self.cache_file = Path(os.environ.get('HOME')).joinpath(".sui-brownie").joinpath("objects.json")
-        self.cache_objects = DefaultDict(DefaultDict([]))
+        self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList))
 
         self.load_config()
 
@@ -256,31 +485,64 @@ class SuiProject:
         self.client = SuiClient(base_url=self.network_config["node_url"], timeout=30)
 
     def reload_cache(self):
-        if not self.cache_file.parent.exists():
-            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        data = self.read_cache()
+        for k1 in data:
+            try:
+                sui_object = SuiObject.from_type(k1)
+                for k2 in data[k1]:
+                    for object_id in data[k1][k2]:
+                        self.add_object_to_cache(sui_object, k2, object_id, persist=False)
+            except:
+                for k2 in data[k1]:
+                    for package_id in data[k1][k2]:
+                        self.add_package_to_cache(k1, package_id, persist=False)
 
+    def read_cache(self):
         if not self.cache_file.exists():
-            return
+            return {}
 
         with open(str(self.cache_file), "r") as f:
             try:
                 data = json.load(f)
             except Exception as e:
                 print(f"Warning: read cache occurs {e}")
-                return
+                return {}
+        return data
 
-        for sui_object_type in data:
-            try:
-                object_type = SuiObject.from_type(sui_object_type)
-                for v in data[sui_object_type]:
-                    for v1 in data[sui_object_type][v]:
-                        pass
-                        # insert_cache(object_type, v1, v)
-            except:
-                for v in data[sui_object_type]:
-                    for v1 in data[sui_object_type][v]:
-                        pass
-                        # insert_package(sui_object_type, v1)
+    def write_cache(self):
+        if not self.cache_file.parent.exists():
+            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+        def write_cache_worker():
+            output = DefaultDict({})
+            for k1 in self.cache_objects:
+                for k2 in self.cache_objects[k1]:
+                    output[str(k1)][str(k2)] = self.cache_objects[k1][k2]
+            while True:
+                try:
+                    _cache_file_lock.acquire(timeout=10)
+                    with atomic_write(str(self.cache_file), overwrite=True) as f:
+                        json.dump(output, f, indent=1, sort_keys=True)
+                    _cache_file_lock.release()
+                    break
+                except Exception as e:
+                    print(f"Write cache fail, err:{e}")
+                    time.sleep(1)
+
+        pt = ThreadExecutor(executor=1, mode="all")
+        pt.run([write_cache_worker])
+
+    def add_object_to_cache(self, sui_object: SuiObject, owner, sui_object_id, persist=True):
+        self.cache_objects[sui_object][owner].append(sui_object_id)
+        if persist:
+            self.write_cache()
+
+    def add_package_to_cache(self, package_name, package_id, persist=True):
+        assert package_name is not None, f"{package_id} name is none"
+        self.cache_objects[package_name]["Shared"].append(package_id)
+        if persist:
+            self.write_cache()
 
     def add_package(self, package: SuiPackage):
         self.packages[package.package_id] = package
+        self.add_package_to_cache(package.package_name, package.package_id)
