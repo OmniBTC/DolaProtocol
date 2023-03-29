@@ -1,0 +1,14 @@
+# automatically fetch contract sources from Etherscan
+dotenv: .env
+networks:
+  default: bsc-test
+  sui-devnet:
+    node_url: "https://fullnode.devnet.sui.io:443"
+  sui-testnet:
+    node_url: "https://fullnode.testnet.sui.io:443"
+  sui-localnet:
+    node_url: "http://127.0.0.1:9000"
+sui_wallets:
+  from_mnemonic:
+    Relayer: ${MNEMONIC}
+
