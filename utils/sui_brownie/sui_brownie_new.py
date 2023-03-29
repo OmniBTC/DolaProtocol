@@ -178,6 +178,9 @@ class MoveToml:
         with open(self.file, "w") as f:
             toml.dump(self.origin_data, f)
 
+    def get(self, item, default):
+        return self.data.get(item, default)
+
     def keys(self):
         return self.data.keys()
 
@@ -249,8 +252,8 @@ class SuiPackage:
 
         self.package_path = package_path
         # package_path is not none
-        self.move_toml: MoveToml = MoveToml(str(self.package_path.joinpath("Move.toml"))) \
-            if self.package_path.joinpath("Move.toml") is not None else None
+        self.move_toml_file = self.package_path.joinpath("Move.toml") if self.package_path is not None else None
+        self.move_toml: MoveToml = MoveToml(str(self.move_toml_file)) if self.move_toml_file is not None else None
         if self.package_name is None and self.move_toml is not None:
             self.package_name = self.move_toml["package"]["name"]
 
@@ -290,12 +293,12 @@ class SuiPackage:
 
         result = None
         for i in range(10):
+            time.sleep(3)
             try:
                 result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
                 break
             except Exception as e:
                 print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
-                time.sleep(3)
 
         for module_name in result:
             # Update
@@ -315,6 +318,23 @@ class SuiPackage:
 
     # ####### Publish
 
+    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None):
+        package_name = move_toml["package"]["name"]
+        if package_name in replace_address:
+            if replace_address[package_name] is not None:
+                move_toml["package"]["published-at"] = replace_address[package_name]
+            elif self.project.search_package(package_name) is not None:
+                move_toml["package"]["published-at"] = self.project.search_package(package_name)
+            else:
+                assert False, "Replace address not found for published-at"
+        for k in list(move_toml.get("addresses", dict()).keys()):
+            if k in replace_address:
+                if replace_address[k] is not None:
+                    move_toml["addresses"][k] = replace_address[k]
+                else:
+                    assert False, "Replace address is None for addresses"
+        return move_toml
+
     def replace_addresses(
             self,
             replace_address: dict = None,
@@ -324,7 +344,7 @@ class SuiPackage:
             return output
         if output is None:
             output = dict()
-        current_move_toml = MoveToml(self.move_path)
+        current_move_toml = MoveToml(str(self.move_toml_file))
         if current_move_toml["package"]["name"] in output:
             return output
         output[current_move_toml["package"]["name"]] = current_move_toml
@@ -362,6 +382,10 @@ class SuiPackage:
                         assert remote_path.exists(), f"{remote_path.absolute()} not found"
                         dep_move_toml = SuiPackage(package_path=remote_path)
                         dep_move_toml.replace_addresses(replace_address, output)
+
+        for k in output:
+            output[k].store()
+        return output
 
     def format_dict(self, data):
         for k in list(data.keys()):
@@ -409,7 +433,7 @@ class SuiPackage:
                     result = json.loads(result[result.find("{"):])
                 except:
                     pprint(f"Publish error:\n{result}")
-                    return
+                    raise
                 self.update_object_index(result.get("effects", dict()))
                 for d in result.get("objectChanges", []):
                     if d["type"] == "published":
@@ -661,6 +685,7 @@ class SuiProject:
         self.cli_config: SuiCliConfig = None
 
         self.load_config()
+        self.reload_cache()
 
         _load_project.append(self)
 
@@ -764,3 +789,11 @@ class SuiProject:
     def add_package(self, package: SuiPackage):
         self.packages[package.package_id] = package
         self.add_package_to_cache(package.package_name, package.package_id)
+
+    def search_package(self, package_name):
+        package_names = {k: True for k in list(self.cache_objects.keys()) if isinstance(k, str)}
+        if package_name in package_names:
+            data = self.cache_objects[package_name].get("Shared", [])
+            if len(data):
+                return data[-1]
+        return None

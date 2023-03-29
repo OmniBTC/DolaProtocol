@@ -4,15 +4,6 @@
 version = 0
 
 dependencies = [
-  { name = "Math" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "Math"
-source = { local = "../math" }
-
-dependencies = [
   { name = "Sui" },
 ]
 

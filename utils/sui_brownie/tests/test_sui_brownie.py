@@ -1,6 +1,7 @@
 # @Time    : 2023/3/29 13:07
 # @Author  : WeiDai
 # @FileName: test_sui_brownie.py
+import time
 import unittest
 from pathlib import Path
 
@@ -21,5 +22,11 @@ class TestSuiBrownie(unittest.TestCase):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
+        math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
+        math.publish_package(replace_address=dict(math="0x0"))
+
         basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
-        basics.publish_package()
+        basics.publish_package(replace_address=dict(Math=math.package_id))
+
+        basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
+        basics.publish_package(replace_address=dict(Math=None))
