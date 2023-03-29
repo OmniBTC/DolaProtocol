@@ -15,6 +15,10 @@ class ApiError(Exception):
 
 
 class SuiClient(httpx.Client):
+    def __init__(self, base_url, timeout):
+        super(SuiClient, self).__init__(base_url=base_url, timeout=timeout)
+        self.endpoint = base_url
+
     @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def get(self, *args, **kwargs):
         return super().get(*args, **kwargs)
@@ -34,7 +38,7 @@ class SuiClient(httpx.Client):
             epoch,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -47,14 +51,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_dryRunTransactionBlock(
             self,
             tx_bytes,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -64,7 +70,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_executeTransactionBlock(
             self,
@@ -74,7 +82,7 @@ class SuiClient(httpx.Client):
             request_type,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -87,14 +95,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getCheckpoint(
             self,
             cid
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -104,7 +114,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getCheckpoints(
             self,
@@ -113,7 +125,7 @@ class SuiClient(httpx.Client):
             descending_order,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -125,14 +137,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getEvents(
             self,
             transaction_digest,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -142,13 +156,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getLatestCheckpointSequenceNumber(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -157,7 +173,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getMoveFunctionArgTypes(
             self,
@@ -166,7 +184,7 @@ class SuiClient(httpx.Client):
             function,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -178,7 +196,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getNormalizedMoveFunction(
             self,
@@ -187,7 +207,7 @@ class SuiClient(httpx.Client):
             function_name,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -199,7 +219,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getNormalizedMoveModule(
             self,
@@ -207,7 +229,7 @@ class SuiClient(httpx.Client):
             module_name,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -218,14 +240,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getNormalizedMoveModulesByPackage(
             self,
             package
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -235,7 +259,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getNormalizedMoveStruct(
             self,
@@ -244,7 +270,7 @@ class SuiClient(httpx.Client):
             struct_name,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -256,7 +282,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getObject(
             self,
@@ -264,7 +292,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -275,13 +303,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getTotalTransactionBlocks(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -290,7 +320,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_getTransactionBlock(
             self,
@@ -298,7 +330,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -309,7 +341,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_multiGetObjects(
             self,
@@ -317,7 +351,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -328,7 +362,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_multiGetTransactionBlocks(
             self,
@@ -336,7 +372,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -347,7 +383,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_tryGetPastObject(
             self,
@@ -356,7 +394,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -368,7 +406,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def sui_tryMultiGetPastObjects(
             self,
@@ -376,7 +416,7 @@ class SuiClient(httpx.Client):
             options,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -387,14 +427,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getAllBalances(
             self,
             owner,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -404,7 +446,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getAllCoins(
             self,
@@ -413,7 +457,7 @@ class SuiClient(httpx.Client):
             limit,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -425,7 +469,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getBalance(
             self,
@@ -433,7 +479,7 @@ class SuiClient(httpx.Client):
             coin_type,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -444,14 +490,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getCoinMetadata(
             self,
             coin_type,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -461,7 +509,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getCoins(
             self,
@@ -471,7 +521,7 @@ class SuiClient(httpx.Client):
             limit,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -484,14 +534,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getCommitteeInfo(
             self,
             epoch
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -501,13 +553,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getCurrentEpoch(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -516,7 +570,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getDynamicFieldObject(
             self,
@@ -524,7 +580,7 @@ class SuiClient(httpx.Client):
             name,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -535,7 +591,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getDynamicFields(
             self,
@@ -544,7 +602,7 @@ class SuiClient(httpx.Client):
             limit
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -556,7 +614,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getEpochs(
             self,
@@ -565,7 +625,7 @@ class SuiClient(httpx.Client):
             descending_order,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -577,13 +637,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getLatestSuiSystemState(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -592,13 +654,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getMoveCallMetrics(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -607,13 +671,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getNetworkMetrics(
             self,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -622,7 +688,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getOwnedObjects(
             self,
@@ -632,7 +700,7 @@ class SuiClient(httpx.Client):
             limit,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -645,13 +713,15 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getReferenceGasPrice(
             self
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -660,14 +730,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getStakes(
             self,
             owner
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -677,14 +749,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getStakesByIds(
             self,
             staked_sui_ids,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -694,14 +768,16 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_getTotalSupply(
             self,
             coin_type,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -711,7 +787,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_queryEvents(
             self,
@@ -721,7 +799,7 @@ class SuiClient(httpx.Client):
             descending_order,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -734,7 +812,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_queryObjects(
             self,
@@ -743,7 +823,7 @@ class SuiClient(httpx.Client):
             limit,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -755,7 +835,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_queryTransactionBlocks(
             self,
@@ -765,7 +847,7 @@ class SuiClient(httpx.Client):
             descending_order,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -778,7 +860,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def suix_subscribeEvent(
             self,
@@ -788,7 +872,7 @@ class SuiClient(httpx.Client):
             epoch,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -801,7 +885,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_batchTransaction(
             self,
@@ -812,7 +898,7 @@ class SuiClient(httpx.Client):
             txn_builder_mode,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -826,7 +912,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_mergeCoins(
             self,
@@ -837,7 +925,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -851,7 +939,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_moveCall(
             self,
@@ -866,7 +956,7 @@ class SuiClient(httpx.Client):
             execution_mode
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -884,7 +974,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_pay(
             self,
@@ -896,7 +988,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -911,7 +1003,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_payAllSui(
             self,
@@ -921,7 +1015,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -934,7 +1028,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_paySui(
             self,
@@ -945,7 +1041,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -959,7 +1055,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_publish(
             self,
@@ -970,7 +1068,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -984,7 +1082,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_requestAddStake(
             self,
@@ -996,7 +1096,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1011,7 +1111,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_requestWithdrawStake(
             self,
@@ -1021,7 +1123,7 @@ class SuiClient(httpx.Client):
             gas_budget,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1034,7 +1136,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_splitCoin(
             self,
@@ -1045,7 +1149,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1059,7 +1163,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_splitCoinEqual(
             self,
@@ -1070,7 +1176,7 @@ class SuiClient(httpx.Client):
             gas_budget
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1084,7 +1190,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_transferObject(
             self,
@@ -1095,7 +1203,7 @@ class SuiClient(httpx.Client):
             recipient,
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1109,7 +1217,9 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
 
     def unsafe_transferSui(
             self,
@@ -1120,7 +1230,7 @@ class SuiClient(httpx.Client):
             amount
     ):
         response = self.post(
-            f"{self.base_url}",
+            f"{self.endpoint}",
             json={
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -1134,4 +1244,6 @@ class SuiClient(httpx.Client):
                 ]
             },
         )
-        return response.json()["result"]
+        response = response.json()
+        assert "error" not in response, response
+        return response["result"]
