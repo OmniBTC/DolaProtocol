@@ -279,6 +279,9 @@ class SuiPackage:
             else:
                 raise e
 
+    def __repr__(self):
+        return self.package_id
+
     def load_package(self):
         if self.package_path is None:
             self.package_path = self.project.project_path
@@ -674,7 +677,7 @@ class SuiProject:
         self.client: SuiClient = None
         self.accounts: Dict[str, Account] = {}
         self.__active_account = None
-        self.packages: Dict[str, SuiPackage] = {}
+        self.packages: Dict[str, List[SuiPackage]] = DefaultDict([])
 
         self.cache_dir = Path(os.environ.get('HOME')).joinpath(".sui-brownie")
         if not self.cache_dir.exists():
@@ -688,6 +691,35 @@ class SuiProject:
         self.reload_cache()
 
         _load_project.append(self)
+
+    def read_item_from_cache(self, item: Union[str, SuiObject]):
+        if item in self.cache_objects:
+            if self.account.account_address in self.cache_objects[item]:
+                return self.cache_objects[item][self.account.account_address]
+            elif "Shared" in self.cache_objects[item]:
+                return self.cache_objects[item]["Shared"]
+            else:
+                raise ValueError(f"item not found for {self.account.account_address}")
+        elif isinstance(item, str):
+            try:
+                sui_object = SuiObject.from_type(item)
+                if sui_object in self.cache_objects:
+                    return self.read_item_from_cache(sui_object)
+                else:
+                    raise ValueError(f"{item} not found")
+            except:
+                raise ValueError(f"{item} not found")
+        else:
+            raise ValueError(f"{item} not found")
+
+    def __getitem__(self, item):
+        return self.read_item_from_cache(item)
+
+    def __getattribute__(self, item):
+        try:
+            return object.__getattribute__(self, item)
+        except:
+            return self.read_item_from_cache(item)
 
     def active_account(self, account_name):
         assert account_name in self.accounts, f"{account_name} not found in {list(self.accounts.keys())}"
@@ -787,7 +819,7 @@ class SuiProject:
             self.write_cache()
 
     def add_package(self, package: SuiPackage):
-        self.packages[package.package_id] = package
+        self.packages[package.package_id].append(package)
         self.add_package_to_cache(package.package_name, package.package_id)
 
     def search_package(self, package_name):

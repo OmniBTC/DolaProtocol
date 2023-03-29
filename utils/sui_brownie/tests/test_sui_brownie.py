@@ -30,3 +30,14 @@ class TestSuiBrownie(unittest.TestCase):
 
         basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
         basics.publish_package(replace_address=dict(Math=None))
+
+    def test_index(self):
+        sui_project = self.load_project()
+        sui_project.active_account("Relayer")
+
+        print(sui_project.Math[-1])
+        print(sui_project["Math"][-1])
+
+        print(sui)
+
+
