@@ -6,6 +6,7 @@
 ///
 /// Note: This module is currently only used for testing
 module oracle::oracle {
+    use sui::clock::{Self, Clock};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -21,8 +22,6 @@ module oracle::oracle {
 
     struct PriceOracle has key {
         id: UID,
-        // todo: use sui timestamp
-        timestamp: u256,
         // dola_pool_id => price
         price_oracles: Table<u16, Price>
     }
@@ -36,7 +35,6 @@ module oracle::oracle {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
-            timestamp: 0,
             price_oracles: table::new(ctx)
         });
         transfer::transfer(OracleCap {
@@ -47,12 +45,10 @@ module oracle::oracle {
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
-        timestamp: u256,
         dola_pool_id: u16,
         token_price: u256,
         price_decimal: u8
     ) {
-        price_oracle.timestamp = timestamp;
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, dola_pool_id), EALREADY_EXIST_ORACLE);
         table::add(price_oracles, dola_pool_id, Price {
@@ -80,19 +76,14 @@ module oracle::oracle {
         (price.value, price.decimal)
     }
 
-    public entry fun update_timestamp(_: &OracleCap, oracle: &mut PriceOracle, timestamp: u256) {
-        oracle.timestamp = timestamp;
-    }
-
-    public fun get_timestamp(oracle: &mut PriceOracle): u256 {
-        oracle.timestamp
+    public fun get_timestamp(sui_clock: &Clock): u256 {
+        ((clock::timestamp_ms(sui_clock) / 1000) as u256)
     }
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
-            timestamp: 0,
             price_oracles: table::new(ctx)
         });
         transfer::transfer(OracleCap {

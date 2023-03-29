@@ -55,7 +55,7 @@ module dola_types::dola_address {
     }
 
     public fun convert_dola_to_address(addr: DolaAddress): address {
-        assert!(vector::length(&addr.dola_address) == 20, EINVALID_ADDRESS);
+        assert!(vector::length(&addr.dola_address) == 32, EINVALID_ADDRESS);
         from_bytes(addr.dola_address)
     }
 

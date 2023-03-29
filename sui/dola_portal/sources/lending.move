@@ -15,6 +15,7 @@ module dola_portal::lending {
     use omnipool::wormhole_adapter_pool::{Self, PoolState};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
+    use sui::clock::Clock;
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::object::{Self, UID};
@@ -153,7 +154,7 @@ module dola_portal::lending {
             assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::transfer(base_coin, tx_context::sender(ctx));
+                transfer::public_transfer(base_coin, tx_context::sender(ctx));
                 split_coin
             }else {
                 base_coin
@@ -168,6 +169,7 @@ module dola_portal::lending {
     public entry fun as_collateral(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -187,6 +189,7 @@ module dola_portal::lending {
                 pool_manager_info,
                 storage,
                 oracle,
+                clock,
                 dola_user_id,
                 *dola_pool_id
             );
@@ -197,6 +200,7 @@ module dola_portal::lending {
     public entry fun cancel_as_collateral(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -216,6 +220,7 @@ module dola_portal::lending {
                 pool_manager_info,
                 storage,
                 oracle,
+                clock,
                 dola_user_id,
                 *dola_pool_id
             );
@@ -226,6 +231,7 @@ module dola_portal::lending {
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
@@ -273,6 +279,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             actual_amount
@@ -292,6 +299,7 @@ module dola_portal::lending {
         pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -316,6 +324,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             (amount as u256),
@@ -357,6 +366,7 @@ module dola_portal::lending {
     public entry fun withdraw_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         core_state: &mut CoreState,
         lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -387,6 +397,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             (amount as u256),
@@ -421,7 +432,7 @@ module dola_portal::lending {
         );
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
@@ -445,6 +456,7 @@ module dola_portal::lending {
         pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -473,6 +485,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             (amount as u256)
@@ -509,6 +522,7 @@ module dola_portal::lending {
     public entry fun borrow_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         core_state: &mut CoreState,
         lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -542,6 +556,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             (amount as u256)
@@ -572,7 +587,7 @@ module dola_portal::lending {
 
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
@@ -594,6 +609,7 @@ module dola_portal::lending {
     public entry fun repay<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
@@ -638,6 +654,7 @@ module dola_portal::lending {
             pool_manager_info,
             storage,
             oracle,
+            clock,
             dola_user_id,
             dola_pool_id,
             actual_amount
@@ -694,7 +711,7 @@ module dola_portal::lending {
 
         let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
         let fee_amount = coin::value(&relay_fee);
-        transfer::transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(relay_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce: wormhole_adapter_pool::vaa_nonce(pool_state),
             amount: fee_amount,

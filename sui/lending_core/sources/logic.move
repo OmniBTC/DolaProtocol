@@ -10,6 +10,7 @@ module lending_core::logic {
     use oracle::oracle::{Self, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
+    use sui::clock::Clock;
     use sui::event;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
@@ -79,6 +80,7 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         liquidator: u64,
         violator: u64,
         collateral: u16,
@@ -88,10 +90,10 @@ module lending_core::logic {
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
         assert!(is_collateral(storage, liquidator, loan), ENOT_COLLATERAL);
 
-        update_state(cap, storage, oracle, loan);
-        update_state(cap, storage, oracle, collateral);
+        update_state(cap, storage, clock, loan);
+        update_state(cap, storage, clock, collateral);
         // The most recent user contribution is required to calculate the liquidation discount.
-        update_average_liquidity(cap, storage, oracle, liquidator);
+        update_average_liquidity(cap, storage, oracle, clock, liquidator);
 
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
 
@@ -154,7 +156,7 @@ module lending_core::logic {
 
         update_interest_rate(cap, pool_manager_info, storage, collateral, 0);
         update_interest_rate(cap, pool_manager_info, storage, loan, 0);
-        update_average_liquidity(cap, storage, oracle, violator);
+        update_average_liquidity(cap, storage, oracle, clock, violator);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: liquidator,
@@ -170,15 +172,16 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         dola_pool_id: u16,
         supply_amount: u256,
     ) {
-        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
 
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
 
         // Add asset type for the new asset
@@ -205,7 +208,7 @@ module lending_core::logic {
             }
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -221,14 +224,15 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         dola_pool_id: u16,
         withdraw_amount: u256,
     ): u256 {
-        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let actual_amount = math::min(withdraw_amount, otoken_amount);
 
@@ -244,7 +248,7 @@ module lending_core::logic {
             }
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, actual_amount);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -262,14 +266,15 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         borrow_pool_id: u16,
         borrow_amount: u256,
     ) {
-        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, oracle, borrow_pool_id);
+        update_state(cap, storage, clock, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
         assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
@@ -289,7 +294,7 @@ module lending_core::logic {
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id, borrow_amount);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -305,14 +310,15 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         dola_pool_id: u16,
         repay_amount: u256,
     ) {
-        storage::ensure_user_info_exist(storage, oracle, dola_user_id);
+        storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
         let repay_debt = math::min(repay_amount, debt);
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
@@ -333,7 +339,7 @@ module lending_core::logic {
             };
         };
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -350,10 +356,11 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         dola_pool_id: u16,
     ) {
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         assert!(is_liquid_asset(storage, dola_user_id, dola_pool_id), ENOT_LIQUID_ASSET);
         // No other assets can be added as collateral in isolation mode.
         assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
@@ -362,7 +369,7 @@ module lending_core::logic {
         storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
 
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -379,10 +386,11 @@ module lending_core::logic {
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         dola_pool_id: u16,
     ) {
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
 
         // The isolation mode requires no debt to turn the isolated asset into liquid asset.
@@ -395,7 +403,7 @@ module lending_core::logic {
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, dola_user_id);
+        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -412,12 +420,12 @@ module lending_core::logic {
         cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_pool_id: u16,
         receiver_id: u64,
         withdraw_amount: u256
     ) {
-        update_state(cap, storage, oracle, dola_pool_id);
+        update_state(cap, storage, clock, dola_pool_id);
         let treasury_id = storage::get_reserve_treasury(storage, dola_pool_id);
         let treasury_amount = user_collateral_balance(storage, treasury_id, dola_pool_id);
         let deficit = user_loan_balance(storage, treasury_id, dola_pool_id);
@@ -899,10 +907,11 @@ module lending_core::logic {
         cap: &StorageCap,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64
     ) {
         if (storage::exist_user_info(storage, dola_user_id)) {
-            let current_timestamp = oracle::get_timestamp(oracle);
+            let current_timestamp = oracle::get_timestamp(clock);
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
@@ -915,9 +924,9 @@ module lending_core::logic {
                     average_liquidity,
                     health_value
                 );
-                storage::update_user_average_liquidity(cap, storage, oracle, dola_user_id, new_average_liquidity);
+                storage::update_user_average_liquidity(cap, storage, clock, dola_user_id, new_average_liquidity);
             } else {
-                storage::update_user_average_liquidity(cap, storage, oracle, dola_user_id, 0);
+                storage::update_user_average_liquidity(cap, storage, clock, dola_user_id, 0);
             }
         }
     }
@@ -929,11 +938,10 @@ module lending_core::logic {
     public fun update_state(
         cap: &StorageCap,
         storage: &mut Storage,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_pool_id: u16,
     ) {
-        // todo: use sui timestamp
-        let current_timestamp = oracle::get_timestamp(oracle);
+        let current_timestamp = oracle::get_timestamp(clock);
 
         let last_update_timestamp = storage::get_last_update_timestamp(storage, dola_pool_id);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);

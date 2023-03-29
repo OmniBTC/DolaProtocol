@@ -3,9 +3,8 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
-from sui_brownie import CacheObject
-
 from dola_sui_sdk import DOLA_CONFIG
+from sui_brownie import CacheObject
 
 
 @functools.lru_cache()
@@ -72,7 +71,7 @@ def wormhole_package(package_id: str = None):
         package_id: str = CacheObject.Wormhole[-1]
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_a6ed712489faf4a16856204465d6bad006cc7b97/sui/wormhole")))
+                           ".move/https___github_com_OmniBTC_wormhole_git_1d5ae0e9ca885e86ab9161befd812875d2f6f00e/sui/wormhole")))
 
 
 def wormhole_adapter_core_package(package_id: str = None):

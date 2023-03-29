@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import sui_brownie
-
 from dola_sui_sdk import DOLA_CONFIG
 
 net = "sui-devnet"
@@ -99,7 +98,7 @@ wormhole_package = sui_brownie.SuiPackage(
     is_compile=False,
     package_id=None,
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_a6ed712489faf4a16856204465d6bad006cc7b97/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_1d5ae0e9ca885e86ab9161befd812875d2f6f00e/sui/wormhole")),
 )
 
 wormhole_package.publish_package()
