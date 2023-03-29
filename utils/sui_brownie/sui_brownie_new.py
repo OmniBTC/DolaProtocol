@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import multiprocessing
 import os
@@ -27,9 +28,27 @@ _load_project = []
 _cache_file_lock = multiprocessing.Lock()
 
 
-class AttributeDict(dict):
+class AttributeDict:
+    """Dictionaries that can be indexed by  '.' to index the dictionary"""
+
+    def __init__(self, data=None):
+        if isinstance(data, dict):
+            self.data = data
+        else:
+            self.data = {}
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
     def __getattr__(self, item):
-        return self[item]
+        return self.data[item]
+
+    def __deepcopy__(self, memodict={}):
+
+        return AttributeDict(copy.deepcopy(self.data))
 
 
 class DefaultDict(dict):
@@ -235,6 +254,39 @@ class SuiCliConfig:
             f.write(config_data)
 
 
+class ModuleFunction:
+    def __init__(self, package: SuiPackage, abi: dict):
+        self.package = package
+        self.abi = abi
+
+    def __repr__(self):
+        return str(self.abi)
+
+    def __call__(self, *args, **kwargs):
+        return self.package.execute(self.abi, *args, **kwargs)
+
+    def __getattr__(self, item):
+        assert item in ["simulate", "inspect"], f"{item} attribute not found"
+        return functools.partial(getattr(self.package, item), self.abi)
+
+
+class ModuleAttributeDict(AttributeDict):
+    def __getattr__(self, item):
+        if len(_load_project) == 0:
+            return []
+        project: SuiProject = _load_project[0]
+        value = super().__getattr__(item)
+        if isinstance(value, SuiObject):
+            return project.read_item_from_cache(value)
+        elif isinstance(value, ModuleFunction):
+            return value
+        else:
+            return []
+
+    def __deepcopy__(self, memodict={}):
+        return ModuleAttributeDict(copy.deepcopy(self.data))
+
+
 class SuiPackage:
     def __init__(
             self,
@@ -262,7 +314,8 @@ class SuiPackage:
         #                      -> simulate : simulate transaction
         #                      -> inspect : inspect value
         # Record package struct and func abi
-        self.modules = DefaultDict({})
+        self.modules = DefaultDict(ModuleAttributeDict())
+        self.abi = None
 
         if self.package_id is not None:
             self.update_abi()
@@ -270,14 +323,11 @@ class SuiPackage:
         # # # # # # filter result
         self.filter_result_key = ["disassembled", "signers_map"]
 
-    def __getattribute__(self, item):
-        try:
-            return object.__getattribute__(self, item)
-        except Exception as e:
-            if item in self.modules:
-                return self.modules[item]
-            else:
-                raise e
+    def __getattr__(self, item):
+        if item in self.modules:
+            return self.modules[item]
+        else:
+            raise ValueError(f"{item} not found")
 
     def __repr__(self):
         return self.package_id
@@ -303,6 +353,7 @@ class SuiPackage:
             except Exception as e:
                 print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
 
+        self.abi = result
         for module_name in result:
             # Update
             for struct_name in result[module_name].get("structs", dict()):
@@ -312,12 +363,11 @@ class SuiPackage:
                 object_type = SuiObject.from_type(f"{self.package_id}::{module_name}::{struct_name}")
                 object_type.package_name = self.package_name
                 self.modules[module_name][struct_name] = object_type
-            for func_name in result[module_name].get("exposed_functions", dict()):
-                abi = result[module_name]["exposed_functions"][func_name]
+            for func_name in result[module_name].get("exposedFunctions", dict()):
+                abi = result[module_name]["exposedFunctions"][func_name]
                 abi["module_name"] = module_name
                 abi["func_name"] = func_name
-                self.modules[module_name][func_name] = abi
-                self.abi[f"{module_name}::{func_name}"] = abi
+                self.modules[module_name][func_name] = ModuleFunction(self, abi)
 
     # ####### Publish
 
@@ -715,11 +765,8 @@ class SuiProject:
     def __getitem__(self, item):
         return self.read_item_from_cache(item)
 
-    def __getattribute__(self, item):
-        try:
-            return object.__getattribute__(self, item)
-        except:
-            return self.read_item_from_cache(item)
+    def __getattr__(self, item):
+        return self.read_item_from_cache(item)
 
     def active_account(self, account_name):
         assert account_name in self.accounts, f"{account_name} not found in {list(self.accounts.keys())}"
