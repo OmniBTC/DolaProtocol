@@ -1,5 +1,5 @@
-# Copyright (c) Aptos
-# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) OmniBTC
+# SPDX-License-Identifier: GPL-3.0
 
 from __future__ import annotations
 

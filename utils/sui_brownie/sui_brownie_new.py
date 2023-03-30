@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import copy
 import functools
+import hashlib
 import json
 import multiprocessing
 import os
@@ -287,6 +288,12 @@ class ModuleAttributeDict(AttributeDict):
 
     def __deepcopy__(self, memodict={}):
         return ModuleAttributeDict(copy.deepcopy(self.data))
+
+
+SIGNATURE_SCHEME_TO_FLAG = {
+    "ED25519": 0,
+    "Secp256k1": 1
+}
 
 
 @unique
@@ -716,8 +723,14 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
-        serialized_sig = [IntentScope.TransactionData.value, IntentVersion.V0.value, AppId.Sui.value]
-        serialized_sig.extend(list(self.project.account.sign(tx_bytes).get_bytes()))
+        data = bytes([IntentScope.TransactionData.value, IntentVersion.V0.value, AppId.Sui.value]
+                     + list(base64.b64decode(tx_bytes)))
+        hasher = hashlib.blake2b(digest_size=32)
+        hasher.update(data)
+        msg = hasher.digest()
+        serialized_sig = []
+        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
+        serialized_sig.extend(list(self.project.account.sign(msg).get_bytes()))
         serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
         serialized_sig_base64 = self.encode_signature(serialized_sig)
 
@@ -738,10 +751,8 @@ class SuiPackage:
         if result["effects"]["status"]["status"] != "success":
             pprint(result)
         assert result["effects"]["status"]["status"] == "success"
-        result = result["effects"]
-
         self.update_object_index(result["effects"])
-        print(f"Execute {module}::{function} success, transactionDigest: {result['transactionDigest']}")
+        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
         return result
 
     def execute(
