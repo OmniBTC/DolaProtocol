@@ -1,4 +1,4 @@
-module 0x1::remote {
+module general_proposal::remote {
     use std::option::{Self, Option};
 
     use wormhole::state::State;
