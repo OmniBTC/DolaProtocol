@@ -1,11 +1,17 @@
 import time
 
-from sui_brownie import CacheObject, ObjectType
-
-from dola_sui_sdk import load
+import sui_brownie
+from dola_sui_sdk import load, DOLA_CONFIG
 
 # 1e27
+from sui_brownie import SuiObject
+
 RAY = 1000000000000000000000000000
+
+net = "devnet"
+
+sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=net)
+sui_project.active_account("Relayer")
 
 
 def create_pool(coin_type):
@@ -180,7 +186,7 @@ def vote_init_wormhole_adapter_core():
 
     genesis_proposal.genesis_proposal.vote_init_wormhole_adapter_core(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1]
     )
 
@@ -204,7 +210,7 @@ def vote_init_lending_core():
 
     genesis_proposal.genesis_proposal.vote_init_lending_core(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         lending_core.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
         lending_core.wormhole_adapter.WormholeAdapter[-1]
@@ -227,7 +233,7 @@ def vote_init_system_core():
 
     genesis_proposal.genesis_proposal.vote_init_system_core(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         app_manager.app_manager.TotalAppInfo[-1],
     )
 
@@ -248,7 +254,7 @@ def vote_init_dola_portal():
 
     genesis_proposal.genesis_proposal.vote_init_dola_portal(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         dola_types.dola_contract.DolaContractRegistry[-1]
     )
 
@@ -270,7 +276,7 @@ def vote_init_chain_group_id(group_id, chain_ids):
     user_manager = load.user_manager_package()
     genesis_proposal.genesis_proposal.vote_init_chain_group_id(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         user_manager.user_manager.UserManagerInfo[-1],
         group_id,
         chain_ids
@@ -298,7 +304,7 @@ def vote_remote_register_owner(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_register_owner(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -328,7 +334,7 @@ def vote_remote_delete_owner(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_delete_owner(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -358,7 +364,7 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_register_spender(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -388,7 +394,7 @@ def vote_remote_delete_spender(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_delete_spender(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -429,7 +435,7 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     pool_manager = load.pool_manager_package()
     genesis_proposal.genesis_proposal.vote_register_new_pool(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         coin_type,
         dst_chain,
@@ -471,7 +477,7 @@ def vote_register_new_reserve(dola_pool_id):
     borrowable_in_isolation = dola_pool_id in [1, 2]
     genesis_proposal.genesis_proposal.vote_register_new_reserve(
         governance.governance_v1.GovernanceInfo[-1],
-        CacheObject[ObjectType.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
         oracle.oracle.PriceOracle[-1],
         dola_pool_id,
         is_isolated_asset,
@@ -515,35 +521,35 @@ def add_test_coins_admin(address):
 
 
 def usdt():
-    return f"{CacheObject.TestCoins[-1]}::coins::USDT"
+    return f"{sui_project.TestCoins[-1]}::coins::USDT"
 
 
 def usdc():
-    return f"{CacheObject.TestCoins[-1]}::coins::USDC"
+    return f"{sui_project.TestCoins[-1]}::coins::USDC"
 
 
 def dai():
-    return f"{CacheObject.TestCoins[-1]}::coins::DAI"
+    return f"{sui_project.TestCoins[-1]}::coins::DAI"
 
 
 def matic():
-    return f"{CacheObject.TestCoins[-1]}::coins::MATIC"
+    return f"{sui_project.TestCoins[-1]}::coins::MATIC"
 
 
 def apt():
-    return f"{CacheObject.TestCoins[-1]}::coins::APT"
+    return f"{sui_project.TestCoins[-1]}::coins::APT"
 
 
 def eth():
-    return f"{CacheObject.TestCoins[-1]}::coins::ETH"
+    return f"{sui_project.TestCoins[-1]}::coins::ETH"
 
 
 def btc():
-    return f"{CacheObject.TestCoins[-1]}::coins::BTC"
+    return f"{sui_project.TestCoins[-1]}::coins::BTC"
 
 
 def bnb():
-    return f"{CacheObject.TestCoins[-1]}::coins::BNB"
+    return f"{sui_project.TestCoins[-1]}::coins::BNB"
 
 
 def sui():
@@ -559,11 +565,11 @@ def balance(coin_type):
 
 
 def pool(coin_type):
-    return f"{CacheObject.OmniPool[-1]}::dola_pool::Pool<{coin_type}>"
+    return f"{sui_project.OmniPool[-1]}::dola_pool::Pool<{coin_type}>"
 
 
 def proposal():
-    return f"{CacheObject.Governance[-1]}::governance_v1::Proposal<{CacheObject.GenesisProposal[-1]}::genesis_proposal::Certificate>"
+    return f"{sui_project.Governance[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}::genesis_proposal::Certificate>"
 
 
 def bridge_pool_read_vaa(index=0):

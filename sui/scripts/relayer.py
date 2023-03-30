@@ -13,7 +13,7 @@ from pathlib import Path
 
 import ccxt
 from retrying import retry
-from sui_brownie import CacheObject, ObjectType
+from sui_brownie import SuiObject
 from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 import dola_aptos_sdk
@@ -26,6 +26,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+from dola_sui_sdk.load import sui_project
 
 
 class ColorFormatter(logging.Formatter):
@@ -430,7 +431,7 @@ def sui_pool_executor():
                     sui_wormhole.state.State[-1],
                     sui_omnipool.dola_pool.PoolApproval[-1],
                     sui_omnipool.wormhole_adapter_pool.PoolState[-1],
-                    CacheObject[ObjectType.from_type(
+                    sui_project[SuiObject.from_type(
                         dola_sui_init.pool(token_name))][sui_account_address][-1],
                     vaa,
                     ty_args=[token_name]
@@ -445,7 +446,7 @@ def sui_pool_executor():
                         sui_wormhole.state.State[-1],
                         sui_omnipool.dola_pool.PoolApproval[-1],
                         sui_omnipool.wormhole_adapter_pool.PoolState[-1],
-                        CacheObject[ObjectType.from_type(
+                        sui_project[SuiObject.from_type(
                             dola_sui_init.pool(token_name))][sui_account_address][-1],
                         vaa,
                         ty_args=[token_name]
