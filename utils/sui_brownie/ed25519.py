@@ -13,7 +13,7 @@ from typing import List
 
 from nacl.signing import SigningKey, VerifyKey
 
-from utils import get_bytes, padding_to_bytes
+from .utils import get_bytes, padding_to_bytes
 
 DEFAULT_ED25519_DERIVATION_PATH = "m/44'/784'/0'/0'/0'"
 ED25519_SEED = b"ed25519 seed"

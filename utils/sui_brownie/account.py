@@ -7,9 +7,7 @@ import base64
 import json
 from typing import Union
 
-import ed25519
-
-INTENT_BYTES = [0, 0, 0]
+from . import ed25519
 
 
 class Account:
