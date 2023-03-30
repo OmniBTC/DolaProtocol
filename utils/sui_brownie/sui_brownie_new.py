@@ -24,6 +24,11 @@ import yaml
 import toml
 
 from parallelism import ThreadExecutor
+from sui_brownie import bcs
+from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
+    SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
+    ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
+    ObjectArg, SharedObject, Bool, encode_list, Pure
 from sui_brownie.sui_client import SuiClient
 
 _load_project = []
@@ -314,6 +319,244 @@ class IntentScope(Enum):
     PersonalMessage = 3
 
 
+class TransactionBuild:
+    @staticmethod
+    def is_tx_context(param) -> bool:
+        if not isinstance(param, dict):
+            return False
+        if "MutableReference" in param:
+            final_arg = param["MutableReference"].get("Struct", dict())
+        elif "Reference" in param:
+            final_arg = param["Reference"].get("Struct", dict())
+        else:
+            final_arg = {}
+        if final_arg.get("address", None) == "0x2" \
+                and final_arg.get("module", None) == "tx_context" \
+                and final_arg.get("name", None) == "TxContext":
+            return True
+        else:
+            return False
+
+    @classmethod
+    def normal_float(cls, data: list):
+        for k in range(len(data)):
+            if isinstance(data[k], float):
+                assert float(int(data[k])) == data[k], f"{data[k]} must int"
+                data[k] = int(data[k])
+            elif isinstance(data[k], list):
+                cls.normal_float(data[k])
+
+    @classmethod
+    def check_args(
+            cls,
+            abi: dict,
+            arguments: list,
+            type_arguments: List[str] = None
+    ):
+        arguments = list(arguments)
+        cls.normal_float(arguments)
+
+        if type_arguments is None:
+            type_arguments = []
+        assert isinstance(list(type_arguments), list) and len(
+            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+        if len(abi["parameters"]) and TransactionBuild.is_tx_context(abi["parameters"][-1]):
+            assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
+        else:
+            assert len(arguments) == len(abi["parameters"]), f'arguments error: {abi["parameters"]}'
+
+        return arguments, type_arguments
+
+    @classmethod
+    def fromat_type_arg(cls, data: str) -> TypeTag:
+        if data in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return TypeTag(data, NONE())
+        elif data.startswith("Vector"):
+            child_type_arg = cls.fromat_type_arg(data[7:-1])
+            return TypeTag("Vector", child_type_arg)
+        elif SuiObject.is_sui_object(data):
+            sui_object_type = SuiObject.from_type(data)
+            address = SuiAddress(sui_object_type.package_id)
+            module = Identifier(sui_object_type.module_name)
+            struct_name = sui_object_type.struct_name
+            type_arg_index = struct_name.index("<")
+            if type_arg_index == -1:
+                name = Identifier(struct_name)
+                type_params = []
+            else:
+                name = Identifier(struct_name[:type_arg_index])
+                type_arg_list = struct_name[type_arg_index + 1:-1].split(",")
+                type_arg_list = [v.replace(" ", "") for v in type_arg_list]
+                type_params = []
+                for v in type_arg_list:
+                    type_params.append(v)
+            return TypeTag("Struct", StructTag(address, module, name, type_params))
+
+    @classmethod
+    def format_pure_value(cls, param_type, data):
+        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return getattr(bcs, abi[index])(data)
+        elif param_type.startswith("Vector"):
+            child_param_type = param_type[7:-1]
+            output = []
+            for i in range(len(data)):
+                output[i] = cls.format_pure_value(child_param_type, data[i])
+            return output
+
+    @classmethod
+    def format_call_arg(cls, param_type, data):
+        if isinstance(param_type, dict) and ("MutableReference" in param_type or "Reference" in param_type):
+            if "Shared" in data["owner"]:
+                mutable = Bool(True) if "MutableReference" in param_type else Bool(False)
+                return CallArg("Object", ObjectArg("SharedObject",
+                                                   SharedObject(
+                                                       ObjectID(data["objectId"]),
+                                                       SequenceNumber(data["version"]),
+                                                       mutable
+                                                   )))
+            else:
+                return CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                                   ObjectRef(
+                                                       ObjectID(data["objectId"]),
+                                                       SequenceNumber(data["version"]),
+                                                       ObjectDigest(data["digest"])
+                                                   )))
+        else:
+            pure_value = cls.format_pure_value(param, data)
+            if isinstance(pure_value, list):
+                data = list(encode_list(pure_value))
+            else:
+                data = list(pure_value.encode)
+            return CallArg("Pure", Pure(data))
+
+    @classmethod
+    def move_call(
+            cls,
+            sender,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+            gas_object: dict,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        """
+        example:
+        1.
+            function:
+            public entry fun create<T: store + key>(obj: T, ctx: &mut TxContext)
+            abi:
+            {'visibility': 'Public', 'isEntry': True, 'typeParameters': [{'abilities': ['Store', 'Key']}], 'parameters':
+            [{'TypeParameter': 0}, {'MutableReference': {'Struct': {'address': '0x2', 'module': 'tx_context', 'name':
+            'TxContext', 'typeArguments': []}}}], 'return': [], 'module_name': 'lock', 'func_name': 'create'}
+        2.
+            function:
+            public fun key_for<T: store + key>(key: &Key<T>): ID
+            abi:
+            {'visibility': 'Public', 'isEntry': False, 'typeParameters': [{'abilities': ['Store', 'Key']}], 'parameters'
+            : [{'Reference': {'Struct': {'address':
+            '0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49',
+            'module': 'lock', 'name': 'Key', 'typeArguments': [{'TypeParameter': 0}]}}}], 'return':
+            [{'Struct': {'address': '0x2', 'module': 'object', 'name': 'ID', 'typeArguments': []}}],
+            'module_name': lock', 'func_name': 'key_for'}
+        3.
+            function:
+            public entry fun set_value(counter: &mut Counter, value: u64, ctx: &TxContext)
+            abi
+            {'visibility': 'Public', 'isEntry': True, 'typeParameters': [], 'parameters': [{'MutableReference':
+            {'Struct': {'address': '0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49', 'module':
+            'counter', 'name': 'Counter', 'typeArguments': []}}}, 'U64', {'Reference': {'Struct': {'address': '0x2',
+            'module': 'tx_context', 'name': 'TxContext', 'typeArguments': []}}}], 'return': [], 'module_name':
+            'counter', 'func_name': 'set_value'}
+        """
+        type_arguments = [
+            cls.fromat_type_arg(v) for v in type_args
+        ]
+        inputs = []
+        for i in range(len(call_args)):
+            # todo! process nest generic type
+            if "TypeParameter" in abi["parameters"][i]:
+                param_type = type_args[i]
+            else:
+                param_type = abi["parameters"][i]
+            inputs.append(cls.format_call_arg(param_type, call_args[i]))
+        arguments = [Argument("Input", U16(i)) for i in range(len(call_args))]
+        commands = [
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(package_id),
+                Identifier(abi["module_name"]),
+                Identifier(abi["func_name"]),
+                type_arguments,
+                arguments
+            ))
+        ]
+        programmable_transaction = ProgrammableTransaction(inputs, commands)
+
+        payment = [ObjectRef(
+            ObjectID(gas_object["objectId"]),
+            SequenceNumber(gas_object["version"]),
+            ObjectDigest(gas_object["digest"])
+        )]
+        owner = SuiAddress(sender)
+        price = U64(gas_price)
+        budget = U64(gas_budget)
+        expiration = TransactionExpiration("NONE", NONE())
+        transaction_data_v1 = TransactionDataV1(TransactionKind("ProgrammableTransaction", programmable_transaction),
+                                                SuiAddress(sender),
+                                                GasData(
+                                                    payment,
+                                                    owner,
+                                                    price,
+                                                    budget
+                                                ),
+                                                expiration
+                                                )
+        transaction_data = TransactionData("V1", transaction_data_v1)
+
+        msg = IntentMessage(
+            Intent(IntentScope("TransactionData", NONE()),
+                   IntentVersion("V0", NONE()),
+                   AppId("Sui", NONE())),
+            transaction_data
+        )
+
+    @staticmethod
+    def transfer_objects(
+
+    ):
+        pass
+
+    @staticmethod
+    def split_coins(
+
+    ):
+        pass
+
+    @staticmethod
+    def merge_coins(
+
+    ):
+        pass
+
+    @staticmethod
+    def publish(
+
+    ):
+        pass
+
+    @staticmethod
+    def make_move_vec(
+
+    ):
+        pass
+
+    @staticmethod
+    def upgrade(
+    ):
+        pass
+
+
 class SuiPackage:
     def __init__(
             self,
@@ -589,52 +832,6 @@ class SuiPackage:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.project.add_object_to_cache(sui_object, owner, sui_object_id)
 
-    @classmethod
-    def normal_float(cls, data: list):
-        for k in range(len(data)):
-            if isinstance(data[k], float):
-                assert float(int(data[k])) == data[k], f"{data[k]} must int"
-                data[k] = int(data[k])
-            elif isinstance(data[k], list):
-                cls.normal_float(data[k])
-
-    @staticmethod
-    def is_tx_context(param) -> bool:
-        if not isinstance(param, dict):
-            return False
-        if "MutableReference" in param:
-            final_arg = param["MutableReference"].get("Struct", dict())
-        elif "Reference" in param:
-            final_arg = param["Reference"].get("Struct", dict())
-        else:
-            final_arg = {}
-        if final_arg.get("address", None) == "0x2" \
-                and final_arg.get("module", None) == "tx_context" \
-                and final_arg.get("name", None) == "TxContext":
-            return True
-        else:
-            return False
-
-    def check_args(
-            self,
-            abi: dict,
-            arguments: list,
-            type_arguments: List[str] = None
-    ):
-        arguments = list(arguments)
-        self.normal_float(arguments)
-
-        if type_arguments is None:
-            type_arguments = []
-        assert isinstance(list(type_arguments), list) and len(
-            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
-        if len(abi["parameters"]) and self.is_tx_context(abi["parameters"][-1]):
-            assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
-        else:
-            assert len(arguments) == len(abi["parameters"]), f'arguments error: {abi["parameters"]}'
-
-        return arguments, type_arguments
-
     def get_account_sui(self):
         result = self.project.client.suix_getCoins(self.project.account.account_address, "0x2::sui::SUI", None, None)
         return {v["coinObjectId"]: v["balance"] for v in result["data"]}
@@ -646,7 +843,7 @@ class SuiPackage:
             type_arguments: List[str] = None,
             gas_budget=10000,
     ):
-        arguments, type_arguments = self.check_args(abi, arguments, type_arguments)
+        arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
         for k in range(len(arguments)):
             # Process U64, U128, U256

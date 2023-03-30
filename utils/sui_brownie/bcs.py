@@ -194,6 +194,8 @@ class SuiAddress:
 SequenceNumber = U64
 EpochId = U64
 ObjectID = SuiAddress
+Address = SuiAddress
+Signer = SuiAddress
 
 
 class SharedObject:

@@ -46,8 +46,9 @@ class TestSuiBrownie(unittest.TestCase):
                           package_name="Math"
                           )
         print(math.sandwich.Grocery)
-        print(math.counter.create)
-        print(math.counter.owner)
+        print(math.lock.create)
+        print(math.lock.key_for)
+        print(math.counter.set_value)
 
     def test_package_call(self):
         sui_project = self.load_project()
