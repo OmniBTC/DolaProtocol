@@ -1,12 +1,12 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 module system_core::wormhole_adapter {
-
-    use governance::genesis::GovernanceCap;
-
     use dola_types::dola_address;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use sui::event;
     use sui::object::{Self, UID};
+    use sui::package::UpgradeCap;
     use sui::transfer;
     use sui::tx_context::TxContext;
     use system_core::storage::{Self, StorageCap, Storage};
@@ -20,6 +20,7 @@ module system_core::wormhole_adapter {
 
     struct WormholeAdapter has key {
         id: UID,
+        dola_contract: DolaContract,
         storage_cap: StorageCap
     }
 
@@ -36,10 +37,17 @@ module system_core::wormhole_adapter {
 
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
+        gov_contracts: &mut GovernanceContracts,
+        dola_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
+        let dola_contract = dola_contract::create_dola_contract();
+        dola_contract::register_dola_contract(dola_registry, &mut dola_contract);
+        genesis::join_dola_contract(gov_contracts, &dola_contract, upgrade_cap);
         transfer::share_object(WormholeAdapter {
             id: object::new(ctx),
+            dola_contract,
             storage_cap: storage::register_cap_with_governance(governance),
         })
     }

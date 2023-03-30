@@ -8,9 +8,12 @@ module pool_manager::pool_manager {
     use std::vector;
 
     use dola_types::dola_address::{Self, DolaAddress};
-    use governance::genesis::GovernanceCap;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use pool_manager::equilibrium_fee;
+    use sui::event;
     use sui::object::{Self, UID};
+    use sui::package::UpgradeCap;
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
@@ -19,9 +22,6 @@ module pool_manager::pool_manager {
     use std::ascii::string;
     #[test_only]
     use sui::test_scenario;
-    #[test_only]
-    use governance::genesis;
-    use sui::event;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
@@ -51,6 +51,7 @@ module pool_manager::pool_manager {
     /// Responsible for maintaining the global state of different chain pools
     struct PoolManagerInfo has key, store {
         id: UID,
+        dola_contract: DolaContract,
         // dola_pool_id => AppInfo
         app_infos: Table<u16, AppInfo>,
         // dola_pool_id => PoolInfo
@@ -122,6 +123,7 @@ module pool_manager::pool_manager {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PoolManagerInfo {
             id: object::new(ctx),
+            dola_contract: dola_contract::create_dola_contract(),
             app_infos: table::new(ctx),
             pool_infos: table::new(ctx),
             pool_catalog: PoolCatalog {
@@ -129,6 +131,17 @@ module pool_manager::pool_manager {
                 id_to_pools: table::new(ctx)
             }
         })
+    }
+
+    public fun register_dola_contract(
+        _: &GovernanceCap,
+        gov_contracts: &mut GovernanceContracts,
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap
+    ) {
+        dola_contract::register_dola_contract(dola_registry, &mut pool_manager_info.dola_contract);
+        genesis::join_dola_contract(gov_contracts, &pool_manager_info.dola_contract, upgrade_cap)
     }
 
     /// Determine if the dola pool id is registered
@@ -511,6 +524,7 @@ module pool_manager::pool_manager {
     public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(PoolManagerInfo {
             id: object::new(ctx),
+            dola_contract: dola_contract::create_dola_contract(),
             app_infos: table::new(ctx),
             pool_infos: table::new(ctx),
             pool_catalog: PoolCatalog {

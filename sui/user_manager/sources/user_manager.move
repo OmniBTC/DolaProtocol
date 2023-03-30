@@ -4,15 +4,15 @@ module user_manager::user_manager {
     use std::vector;
 
     use dola_types::dola_address::{Self, DolaAddress};
-    use governance::genesis::GovernanceCap;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use sui::event;
     use sui::object::{Self, UID};
+    use sui::package::UpgradeCap;
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    #[test_only]
-    use governance::genesis;
     #[test_only]
     use sui::test_scenario;
 
@@ -39,6 +39,7 @@ module user_manager::user_manager {
     /// Note that the association of group ids requires caution.
     struct UserManagerInfo has key, store {
         id: UID,
+        dola_contract: DolaContract,
         // user catalogs
         user_address_catalog: UserAddressCatalog,
         // dola_chain_id => group id
@@ -66,15 +67,27 @@ module user_manager::user_manager {
         dola_user_id: u64
     }
 
-    fun init(ctx: &mut TxContext) {
+    public fun initialize(ctx: &mut TxContext) {
         transfer::share_object(UserManagerInfo {
             id: object::new(ctx),
+            dola_contract: dola_contract::create_dola_contract(),
             user_address_catalog: UserAddressCatalog {
                 user_address_to_user_id: table::new(ctx),
                 user_id_to_addresses: table::new(ctx)
             },
             chain_id_to_group: table::new(ctx)
         })
+    }
+
+    public fun register_dola_contract(
+        _: &GovernanceCap,
+        gov_contracts: &mut GovernanceContracts,
+        user_manager_info: &mut UserManagerInfo,
+        dola_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap
+    ) {
+        dola_contract::register_dola_contract(dola_registry, &mut user_manager_info.dola_contract);
+        genesis::join_dola_contract(gov_contracts, &user_manager_info.dola_contract, upgrade_cap)
     }
 
     /// Giving the bridge adapter the right to make changes to the `user_manager` module through governance

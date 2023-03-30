@@ -7,12 +7,14 @@
 module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::dola_address::DolaAddress;
-    use governance::genesis::GovernanceCap;
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};
     use sui::object_table;
+    use sui::package::UpgradeCap;
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -44,6 +46,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// application by app_id from pool payload.
     struct CoreState has key, store {
         id: UID,
+        dola_contract: DolaContract,
         // Allow modification of user_manager storage through UserManagerCap
         user_manager_cap: UserManagerCap,
         // Allow modification of pool_manager storage via PoolManagerCap
@@ -108,11 +111,18 @@ module wormhole_adapter_core::wormhole_adapter_core {
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut State,
+        gov_contracts: &mut GovernanceContracts,
+        dola_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
+        let dola_contract = dola_contract::create_dola_contract();
+        dola_contract::register_dola_contract(dola_registry, &mut dola_contract);
+        genesis::join_dola_contract(gov_contracts, &dola_contract, upgrade_cap);
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
+                dola_contract,
                 user_manager_cap: user_manager::register_cap_with_governance(governance),
                 pool_manager_cap: pool_manager::register_cap_with_governance(governance),
                 wormhole_emitter: state::new_emitter(wormhole_state, ctx),

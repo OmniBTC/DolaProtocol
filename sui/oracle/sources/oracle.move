@@ -6,8 +6,11 @@
 ///
 /// Note: This module is currently only used for testing
 module oracle::oracle {
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use governance::genesis::{Self, GovernanceContracts, GovernanceCap};
     use sui::clock::{Self, Clock};
     use sui::object::{Self, UID};
+    use sui::package::UpgradeCap;
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -22,6 +25,7 @@ module oracle::oracle {
 
     struct PriceOracle has key {
         id: UID,
+        dola_contract: DolaContract,
         // dola_pool_id => price
         price_oracles: Table<u16, Price>
     }
@@ -35,11 +39,23 @@ module oracle::oracle {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
-            price_oracles: table::new(ctx)
+            price_oracles: table::new(ctx),
+            dola_contract: dola_contract::create_dola_contract()
         });
         transfer::transfer(OracleCap {
             id: object::new(ctx),
         }, tx_context::sender(ctx))
+    }
+
+    public fun register_dola_contract(
+        _: &GovernanceCap,
+        gov_contracts: &mut GovernanceContracts,
+        price_oracle: &mut PriceOracle,
+        dola_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap
+    ) {
+        dola_contract::register_dola_contract(dola_registry, &mut price_oracle.dola_contract);
+        genesis::join_dola_contract(gov_contracts, &price_oracle.dola_contract, upgrade_cap)
     }
 
     public entry fun register_token_price(
@@ -84,7 +100,8 @@ module oracle::oracle {
     public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
-            price_oracles: table::new(ctx)
+            price_oracles: table::new(ctx),
+            dola_contract: dola_contract::create_dola_contract()
         });
         transfer::transfer(OracleCap {
             id: object::new(ctx),

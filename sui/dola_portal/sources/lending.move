@@ -8,7 +8,7 @@ module dola_portal::lending {
 
     use dola_types::dola_address;
     use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
-    use governance::genesis::GovernanceCap;
+    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use lending_core::lending_codec;
     use lending_core::storage::{Self, StorageCap, Storage};
     use omnipool::dola_pool::{Self, Pool, PoolApproval};
@@ -19,6 +19,7 @@ module dola_portal::lending {
     use sui::coin::{Self, Coin};
     use sui::event::emit;
     use sui::object::{Self, UID};
+    use sui::package::UpgradeCap;
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -107,12 +108,17 @@ module dola_portal::lending {
 
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
+        gov_contracts: &mut GovernanceContracts,
         dola_contract_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
+        let dola_contract = dola_contract::create_dola_contract();
+        dola_contract::register_dola_contract(dola_contract_registry, &mut dola_contract);
+        genesis::join_dola_contract(gov_contracts, &dola_contract, upgrade_cap);
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
-            dola_contract: dola_contract::create_dola_contract(dola_contract_registry, ctx),
+            dola_contract,
             user_manager_cap: user_manager::register_cap_with_governance(governance),
             pool_manager_cap: pool_manager::register_cap_with_governance(governance),
             storage_cap: storage::register_cap_with_governance(governance),

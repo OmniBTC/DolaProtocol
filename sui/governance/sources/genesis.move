@@ -3,7 +3,7 @@
 module governance::genesis {
     use std::vector;
 
-    use dola_types::dola_contract::{DolaContract, get_dola_contract};
+    use dola_types::dola_contract::{Self, DolaContract};
     use sui::object::{Self, UID, ID};
     use sui::package::{Self, UpgradeCap, UpgradeTicket, UpgradeReceipt};
     use sui::table::{Self, Table};
@@ -76,12 +76,13 @@ module governance::genesis {
         object::delete(id);
     }
 
+    /// Add the upgrade capability of the contract to governance.
     public fun join_dola_contract(
         gov_contracts: &mut GovernanceContracts,
         dola_contract: &DolaContract,
         upgrade_cap: UpgradeCap
     ) {
-        let dola_contract_id = get_dola_contract(dola_contract);
+        let dola_contract_id = dola_contract::get_dola_contract_id(dola_contract);
         assert!(table::contains(&gov_contracts.dola_contracts, dola_contract_id), E_EXIST_PACKAGE);
         table::add(&mut gov_contracts.dola_contracts, dola_contract_id, upgrade_cap);
     }

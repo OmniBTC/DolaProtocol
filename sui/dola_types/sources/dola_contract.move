@@ -8,6 +8,9 @@ module dola_types::dola_contract {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
+    const E_ALREADY_REGISTER: u64 = 0;
+    const E_NOT_REGITERED: u64 = 1;
+
     /// Manager for contract address
     struct DolaContractRegistry has key {
         id: UID,
@@ -15,40 +18,46 @@ module dola_types::dola_contract {
     }
 
     /// Used to represent the contract address in the Dola protocol
-    struct DolaContract has key, store {
-        id: UID,
-        dola_contract: u256,
+    struct DolaContract has store {
+        dola_contract_id: u256,
     }
 
     /// Events
 
-    struct CreateDolaContract has copy, drop {
-        dola_contract: u256
+    struct RegisterDolaContract has copy, drop {
+        dola_contract_id: u256
     }
 
     fun init(ctx: &mut TxContext) {
         transfer::share_object(DolaContractRegistry {
             id: object::new(ctx),
-            next_id: 0
+            next_id: 1
         });
     }
 
-    /// New dola contract address
-    public fun create_dola_contract(
-        dola_contract_registry: &mut DolaContractRegistry,
-        ctx: &mut TxContext
-    ): DolaContract {
-        let dola_contract = dola_contract_registry.next_id;
-        dola_contract_registry.next_id = dola_contract + 1;
-
-        event::emit(CreateDolaContract { dola_contract });
-
-        DolaContract { id: object::new(ctx), dola_contract }
+    public fun create_dola_contract(): DolaContract {
+        DolaContract {
+            dola_contract_id: 0
+        }
     }
 
-    /// Get dola contract
-    public fun get_dola_contract(emitter: &DolaContract): u256 {
-        emitter.dola_contract
+    /// New dola contract address
+    public fun register_dola_contract(
+        dola_contract_registry: &mut DolaContractRegistry,
+        dola_contract: &mut DolaContract
+    ) {
+        assert!(dola_contract.dola_contract_id == 0, E_ALREADY_REGISTER);
+        let dola_contract_id = dola_contract_registry.next_id;
+        dola_contract.dola_contract_id = dola_contract_id;
+        dola_contract_registry.next_id = dola_contract_id + 1;
+
+        event::emit(RegisterDolaContract { dola_contract_id });
+    }
+
+    /// Get dola contract id
+    public fun get_dola_contract_id(emitter: &DolaContract): u256 {
+        assert!(emitter.dola_contract_id != 0, E_NOT_REGITERED);
+        emitter.dola_contract_id
     }
 
     #[test_only]

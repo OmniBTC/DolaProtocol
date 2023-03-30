@@ -41,6 +41,7 @@ name = "Governance"
 source = { local = "../governance" }
 
 dependencies = [
+  { name = "DolaTypes" },
   { name = "Serde" },
   { name = "Sui" },
 ]
@@ -54,6 +55,8 @@ name = "Oracle"
 source = { local = "../oracle" }
 
 dependencies = [
+  { name = "DolaTypes" },
+  { name = "Governance" },
   { name = "Sui" },
 ]
 

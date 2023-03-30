@@ -95,7 +95,7 @@ module omnipool::dola_pool {
         pool_approval: &mut PoolApproval,
         dola_contract: &DolaContract
     ) {
-        let dola_contract = dola_contract::get_dola_contract(dola_contract);
+        let dola_contract = dola_contract::get_dola_contract_id(dola_contract);
         assert!(!vector::contains(&pool_approval.owners, &dola_contract), EHAS_REGISTER_OWNER);
         assert!(!vector::contains(&pool_approval.spenders, &dola_contract), EHAS_REGISTER_SPENDER);
 
@@ -111,7 +111,7 @@ module omnipool::dola_pool {
         old_owner: &DolaContract,
         new_owner: u256
     ) {
-        let old_dola_contract = dola_contract::get_dola_contract(old_owner);
+        let old_dola_contract = dola_contract::get_dola_contract_id(old_owner);
         assert!(vector::contains(&pool_approval.owners, &old_dola_contract), ENOT_REGISTER_OWNER);
         assert!(!vector::contains(&pool_approval.owners, &new_owner), EHAS_REGISTER_OWNER);
 
@@ -124,7 +124,10 @@ module omnipool::dola_pool {
         owner: &DolaContract,
         deleted_dola_contract: u256
     ) {
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), ENOT_REGISTER_OWNER);
+        assert!(
+            vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract_id(owner)),
+            ENOT_REGISTER_OWNER
+        );
         let (flag, index) = vector::index_of(&mut pool_approval.owners, &deleted_dola_contract);
         assert!(flag, ENOT_REGISTER_OWNER);
         vector::remove(&mut pool_approval.owners, index);
@@ -136,7 +139,7 @@ module omnipool::dola_pool {
         owner: &DolaContract,
         spender: u256
     ) {
-        let owner_dola_contract = dola_contract::get_dola_contract(owner);
+        let owner_dola_contract = dola_contract::get_dola_contract_id(owner);
         assert!(vector::contains(&pool_approval.owners, &owner_dola_contract), ENOT_REGISTER_OWNER);
         assert!(!vector::contains(&pool_approval.spenders, &spender), EHAS_REGISTER_SPENDER);
 
@@ -149,7 +152,10 @@ module omnipool::dola_pool {
         owner: &DolaContract,
         deleted_dola_contract: u256
     ) {
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), ENOT_REGISTER_OWNER);
+        assert!(
+            vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract_id(owner)),
+            ENOT_REGISTER_OWNER
+        );
         let (flag, index) = vector::index_of(&mut pool_approval.spenders, &deleted_dola_contract);
         assert!(flag, ENOT_REGISTER_SPENDER);
         vector::remove(&mut pool_approval.spenders, index);
@@ -242,7 +248,7 @@ module omnipool::dola_pool {
         ctx: &mut TxContext
     ) {
         assert!(
-            vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)),
+            vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract_id(dola_contract)),
             ENOT_REGISTER_SPENDER
         );
         assert!(
@@ -319,7 +325,7 @@ module omnipool::dola_pool {
             let ctx = test_scenario::ctx(scenario);
             let dola_contract = dola_contract::create_dola_contract(&mut dola_contract_registry, ctx);
             let spenders = vector::empty();
-            vector::push_back(&mut spenders, dola_contract::get_dola_contract(&dola_contract));
+            vector::push_back(&mut spenders, dola_contract::get_dola_contract_id(&dola_contract));
 
             transfer::share_object(PoolApproval {
                 id: object::new(ctx),
