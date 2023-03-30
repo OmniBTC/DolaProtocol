@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import io
-import typing
-import unittest
-from typing import Dict, List
+from typing import List
+
+import base58
 
 MAX_U8 = 2 ** 8 - 1
 MAX_U16 = 2 ** 16 - 1
@@ -16,8 +16,31 @@ MAX_U128 = 2 ** 128 - 1
 MAX_U256 = 2 ** 256 - 1
 
 
+def uleb128(value: int) -> bytes:
+    output = b""
+    while value >= 0x80:
+        # Write 7 (lowest) bits of data and set the 8th bit to 1.
+        byte = value & 0x7F
+        output += U8(byte | 0x80).encode
+        value >>= 7
+
+    # Write the remaining bits of data and set the highest bit to 0.
+    output += U8(value & 0x7F).encode
+    return output
+
+
 def encode_list(data: list):
-    return b"".join([v.encode for v in data])
+    output = uleb128(len(data))
+    for v in data:
+        if isinstance(v, list):
+            output += encode_list(v)
+        else:
+            output += v.encode
+    return output
+
+
+def from_list(data: list, sui_type):
+    return [v if isinstance(v, sui_type) else sui_type(v) for v in data]
 
 
 class U8:
@@ -31,6 +54,14 @@ class U8:
         stream = io.BytesIO()
         stream.write(self.v0.to_bytes(1, "little", signed=False))
         return stream.getvalue()
+
+    @staticmethod
+    def from_hex(data: str) -> List[U8]:
+        assert data.startswith("0x")
+        data = data[2:]
+        if len(data) % 2 == 1:
+            data = "0" + data
+        return from_list(list(bytes.fromhex(data)), U8)
 
 
 class U16:
@@ -122,31 +153,47 @@ class RustEnum:
 
     @property
     def encode(self) -> bytes:
-        (ty, index) = getattr(TransactionData, self.key)
-        return bytes(index) + self.value.encode
-
-
-class ObjectID:
-    def __init__(self, v0):
-        self.v0: SuiAddress = v0
-
-    @property
-    def encode(self) -> bytes:
-        return self.v0.encode
+        (ty, index) = getattr(type(self), self.key)
+        return bytes([index]) + self.value.encode
 
 
 class ObjectDigest:
     def __init__(self, v0):
+        if isinstance(v0, list):
+            v0 = from_list(v0, U8)
+        elif isinstance(v0, str):
+            v0 = from_list(list(base58.b58decode(v0)), U8)
+        else:
+            raise ValueError(v0)
         assert len(v0) == 32
         self.v0: List[U8] = v0
 
     @property
     def encode(self) -> bytes:
-        return bytes([32]) + encode_list(self.v0)
+        return encode_list(self.v0)
+
+
+class SuiAddress:
+    def __init__(self, v0):
+        if isinstance(v0, list):
+            v0 = from_list(v0, U8)
+        elif isinstance(v0, str) and v0.startswith("0x"):
+            v0 = U8.from_hex(v0)
+            if len(v0) < 32:
+                v0 = [U8(0)] * (32 - len(v0)) + v0
+        else:
+            raise ValueError(v0)
+        assert len(v0) == 32
+        self.v0: List[U8] = v0
+
+    @property
+    def encode(self) -> bytes:
+        return encode_list(self.v0)[1:]
 
 
 SequenceNumber = U64
 EpochId = U64
+ObjectID = SuiAddress
 
 
 class SharedObject:
@@ -167,24 +214,15 @@ class ObjectRef:
         return self.object_id.encode + self.sequence_number.encode + self.object_digest.encode
 
 
-class ObjectArg:
+class ObjectArg(RustEnum):
     ImmOrOwnedObject = (ObjectRef, 0)
     SharedObject = (SharedObject, 1)
 
-    def __init__(self, key, value):
-        assert isinstance(value, getattr(TransactionData, key)[0])
-        self.key = key
-        self.value = value
-
-    @property
-    def encode(self) -> bytes:
-        (ty, index) = getattr(TransactionData, self.key)
-        return bytes(index) + self.value.encode
-
 
 class Pure:
-    def __init__(self, v0):
-        self.v0: List[U8] = v0
+    def __init__(self, v0: list):
+        assert isinstance(v0, list)
+        self.v0: List[U8] = from_list(v0, U8)
 
     @property
     def encode(self) -> bytes:
@@ -209,7 +247,7 @@ class Identifier:
 class NONE:
     @property
     def encode(self) -> bytes:
-        return bytes("")
+        return b''
 
 
 class StructTag:
@@ -337,6 +375,9 @@ class MakeMoveVec:
 
 class Upgrade:
     def __init__(self, v0, v1, v2, v3):
+        assert isinstance(v0, list)
+        for i in range(len(v0)):
+            v0[i] = from_list(v0[i], U8)
         self.v0: List[List[U8]] = v0
         self.v1: List[ObjectID] = v1
         self.v2: ObjectID = v2
@@ -384,16 +425,6 @@ class GasData:
         return encode_list(self.payment) + self.owner.encode + self.price.encode + self.budget.encode
 
 
-class SuiAddress:
-    def __init__(self, v0):
-        assert len(v0) == 32
-        self.v0: List[U8] = v0
-
-    @property
-    def encode(self) -> bytes:
-        return encode_list(self.v0)
-
-
 class TransactionKind(RustEnum):
     ProgrammableTransaction = (ProgrammableTransaction, 0)
 
@@ -401,10 +432,10 @@ class TransactionKind(RustEnum):
 class TransactionDataV1:
     def __init__(
             self,
-            kind,
-            sender,
-            gas_data,
-            expiration
+            kind: TransactionKind,
+            sender: SuiAddress,
+            gas_data: GasData,
+            expiration: TransactionExpiration
     ):
         self.kind: TransactionKind = kind
         self.sender: SuiAddress = sender
@@ -420,44 +451,39 @@ class TransactionData(RustEnum):
     V1 = (TransactionDataV1, 0)
 
 
-class Test(unittest.TestCase):
-    def test_bool_true(self):
-        in_value = True
-        assert Bool(in_value).encode == b'\x01'
+class IntentScope(RustEnum):
+    TransactionData = (NONE, 0)
 
-    def test_bool_false(self):
-        in_value = False
-        assert Bool(in_value).encode == b'\x00'
 
-    def test_str(self):
-        in_value = "1234567890"
-        assert Identifier(in_value).encode == bytes([len(in_value)]) + b"1234567890"
+class IntentVersion(RustEnum):
+    V0 = (NONE, 0)
 
-    def test_u8(self):
-        in_value = 1
-        assert U8(in_value).encode == b"\x01"
 
-    def test_u16(self):
-        in_value = 11115
-        assert U16(in_value).encode == b'k+'
+class AppId(RustEnum):
+    Sui = (NONE, 0)
+    Narwhal = (NONE, 1)
 
-    def test_u32(self):
-        in_value = 1111111115
 
-        assert U32(in_value).encode == b'\xcb5:B'
+class Intent:
+    def __init__(
+            self,
+            scope: IntentScope,
+            version: IntentVersion,
+            app_id: AppId):
+        self.scope = scope
+        self.version = version
+        self.app_id = app_id
 
-    def test_u64(self):
-        in_value = 1111111111111111115
+    @property
+    def encode(self):
+        return self.scope.encode + self.version.encode + self.app_id.encode
 
-        assert U64(in_value).encode == b'\xcbq\xc4+\xabuk\x0f'
 
-    def test_u128(self):
-        in_value = 1111111111111111111111111111111111115
+class IntentMessage:
+    def __init__(self, intent: Intent, value: TransactionData):
+        self.intent = intent
+        self.value = value
 
-        assert U128(in_value).encode == b'\xcbq\x1c\xc7\x11\x06T\x8e4]\xdf\xde\x01\xfe\xd5\x00'
-
-    def test_u256(self):
-        in_value = 111111111111111111111111111111111111111111111111111111111111111111111111111115
-
-        expect = b'\xcbq\x1c\xc7q\x1c\xc7q\x1c\x07\xea&\x97\xa57h\xb7\x05d\xa4Y\x10&R\x14*3n\x07\xa9\xa6\xf5'
-        assert U256(in_value).encode == expect
+    @property
+    def encode(self):
+        return self.intent.encode + self.value.encode
