@@ -6,22 +6,19 @@
 /// Note: when reviewing proposal, make sure that the `certificate` in the proposal will only flow to
 /// this contract. It is created to avoid the possibility of unknown contracts gaining access
 module governance::governance_v1 {
-    use std::option::{Self, Option};
-    use std::vector;
     use std::ascii::{Self, String};
+    use std::option::{Self, Option};
     use std::type_name;
+    use std::vector;
 
+    use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
     use sui::event;
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
-
     #[test_only]
-    use sui::test_scenario;
-    #[test_only]
-    use sui::test_scenario::Scenario;
+    use sui::test_scenario::{Self, Scenario};
 
     /// Proposal State
     /// PROPOSAL_ANNOUNCEMENT_PENDING -> PROPOSAL_VOTING_PENDING -> PROPOSAL_SUCCESS/PROPOSAL_FAIL
@@ -358,8 +355,8 @@ module governance::governance_v1 {
         }
     }
 
-    /// Destory governance cap
-    public fun destory_governance_cap(
+    /// destroy governance cap
+    public fun destroy_governance_cap(
         governance_cap: GovernanceCap
     ) {
         genesis::destroy(governance_cap);
@@ -431,7 +428,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             add_member(&governance_cap, &mut governance_info, governance_second_member);
             assert!(vector::length(&governance_info.members) == 2, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -479,7 +476,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             remove_member(&governance_cap, &mut governance_info, governance_second_member);
             assert!(vector::length(&governance_info.members) == 1, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -517,7 +514,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             update_delay(&governance_cap, &mut governance_info, 1, 1, 3);
             assert!(governance_info.max_delay == 3, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -585,7 +582,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             let governance_manager_cap = upgrade(&governance_cap, &mut governance_info);
             genesis::destroy_manager(&mut governance_genesis, governance_manager_cap);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);

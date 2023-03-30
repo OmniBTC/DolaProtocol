@@ -38,10 +38,10 @@ module 0x1::remote {
         option::borrow(&proposal_info.proposal_cap)
     }
 
-    fun destory_cap(proposal_info: &mut ProposalInfo) {
+    fun destroy_cap(proposal_info: &mut ProposalInfo) {
         if (proposal_info.proposal_num == 0) {
             let proposal_cap = option::extract(&mut proposal_info.proposal_cap);
-            governance_v1::destory_governance_cap(proposal_cap);
+            governance_v1::destroy_governance_cap(proposal_cap);
         }
     }
 
@@ -79,7 +79,7 @@ module 0x1::remote {
             wormhole_emitter_address
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun delete_remote_bridge(
@@ -95,7 +95,7 @@ module 0x1::remote {
             wormhole_emitter_chain
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_register_owner(
@@ -116,7 +116,7 @@ module 0x1::remote {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_register_spender(
@@ -138,7 +138,7 @@ module 0x1::remote {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_delete_owner(
@@ -160,7 +160,7 @@ module 0x1::remote {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_delete_spender(
@@ -182,6 +182,6 @@ module 0x1::remote {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 }

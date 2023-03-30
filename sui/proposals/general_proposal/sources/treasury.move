@@ -36,10 +36,10 @@ module 0x1::treasury {
         option::borrow(&proposal_info.proposal_cap)
     }
 
-    fun destory_cap(proposal_info: &mut ProposalInfo) {
+    fun destroy_cap(proposal_info: &mut ProposalInfo) {
         if (proposal_info.proposal_num == 0) {
             let proposal_cap = option::extract(&mut proposal_info.proposal_cap);
-            governance_v1::destory_governance_cap(proposal_cap);
+            governance_v1::destroy_governance_cap(proposal_cap);
         }
     }
 
@@ -83,6 +83,6 @@ module 0x1::treasury {
             (amount as u256)
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 }

@@ -468,8 +468,8 @@ module governance::governance_v2 {
         }
     }
 
-    /// Destory governance cap
-    public fun destory_governance_cap(
+    /// destroy governance cap
+    public fun destroy_governance_cap(
         governance_cap: GovernanceCap
     ) {
         genesis::destroy(governance_cap);
@@ -585,7 +585,7 @@ module governance::governance_v2 {
             update_minumum_staking(&governance_cap, &mut governance_info_v2, 100, 1000);
             assert!(governance_info_v2.active, 0);
             assert!(governance_info_v2.voting_minimum_staking == 1000, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info_v1);
@@ -687,7 +687,7 @@ module governance::governance_v2 {
             assert!(governance_info.max_delay == 3, 0);
             claim(&mut proposal, test_scenario::ctx(scenario));
 
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
             test_scenario::return_shared(governance_info);
             test_scenario::return_shared(proposal);
         };
@@ -791,7 +791,7 @@ module governance::governance_v2 {
 
             let governance_manager_cap = upgrade(&governance_cap, &mut governance_info);
             genesis::destroy_manager(&mut governance_genesis, governance_manager_cap);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(governance_info);
             test_scenario::return_shared(proposal);

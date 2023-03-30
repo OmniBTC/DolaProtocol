@@ -51,10 +51,10 @@ module genesis_proposal::genesis_proposal {
         option::borrow(&proposal_info.proposal_cap)
     }
 
-    fun destory_cap(proposal_info: &mut ProposalInfo) {
+    fun destroy_cap(proposal_info: &mut ProposalInfo) {
         if (proposal_info.proposal_num == 0) {
             let proposal_cap = option::extract(&mut proposal_info.proposal_cap);
-            governance_v1::destory_governance_cap(proposal_cap);
+            governance_v1::destroy_governance_cap(proposal_cap);
         }
     }
 
@@ -98,7 +98,7 @@ module genesis_proposal::genesis_proposal {
             ctx
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun init_system_core(
@@ -123,7 +123,7 @@ module genesis_proposal::genesis_proposal {
             ctx
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun init_dola_portal(
@@ -147,7 +147,7 @@ module genesis_proposal::genesis_proposal {
         // init system portal
         dola_portal::system::initialize_cap_with_governance(governance_cap, ctx);
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun init_chain_group_id(
@@ -165,7 +165,7 @@ module genesis_proposal::genesis_proposal {
             i = i + 1;
         };
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun init_wormhole_adapter_core(
@@ -187,7 +187,7 @@ module genesis_proposal::genesis_proposal {
             ctx
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun register_new_pool(
@@ -216,7 +216,7 @@ module genesis_proposal::genesis_proposal {
         pool_manager::register_pool(governance_cap, pool_manager_info, pool, dola_pool_id);
         pool_manager::set_pool_weight(governance_cap, pool_manager_info, pool, weight);
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
 
@@ -259,7 +259,7 @@ module genesis_proposal::genesis_proposal {
             ctx
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun register_remote_bridge(
@@ -277,7 +277,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_emitter_address
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun delete_remote_bridge(
@@ -293,7 +293,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_emitter_chain
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_register_owner(
@@ -314,7 +314,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_register_spender(
@@ -336,7 +336,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_delete_owner(
@@ -358,7 +358,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 
     public entry fun remote_delete_spender(
@@ -380,6 +380,6 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee
         );
 
-        destory_cap(proposal_info);
+        destroy_cap(proposal_info);
     }
 }
