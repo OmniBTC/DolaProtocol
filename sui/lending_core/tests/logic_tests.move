@@ -93,7 +93,6 @@ module lending_core::logic_tests {
         oracle::init_for_testing(ctx);
         app_manager::init_for_testing(ctx);
         pool_manager::init_for_testing(ctx);
-        storage::init_for_testing(ctx);
     }
 
     public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, ctx: &mut TxContext) {
@@ -116,18 +115,17 @@ module lending_core::logic_tests {
         oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
     }
 
-    public fun init_app(storage: &mut Storage, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
+    public fun init_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
         // app_id 0 for system core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
         app_manager::destroy_app_cap(app_cap);
         // app_id 1 for lending core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
-        storage::transfer_app_cap(storage, app_cap);
+        storage::init_for_testing(app_cap, ctx);
     }
 
     public fun init_pools(pool_manager_info: &mut PoolManagerInfo, ctx: &mut TxContext) {
         let governance_cap = genesis::register_governance_cap_for_testing();
-
 
         // register btc pool
         let pool = dola_address::create_dola_address(0, b"BTC");

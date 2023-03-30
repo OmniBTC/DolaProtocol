@@ -15,7 +15,7 @@ module governance::genesis {
     const E_EXIST_PACKAGE: u64 = 0;
 
     /// Governance rights struct, responsible for governing all modules of Dola protocol.
-    struct GovernanceCap {}
+    struct GovernanceCap has store {}
 
     /// Used to create and destroy `GovernanceCap`.
     /// `GovernanceManagerCap` is hosted for specific voting modules (v1, v2...) ,
