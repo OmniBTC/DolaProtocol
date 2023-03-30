@@ -18,7 +18,7 @@ module dola_types::dola_contract {
     }
 
     /// Used to represent the contract address in the Dola protocol
-    struct DolaContract has store {
+    struct DolaContract has store, drop {
         dola_contract_id: u256,
     }
 
@@ -61,11 +61,18 @@ module dola_types::dola_contract {
     }
 
     #[test_only]
-    public fun create_for_testing(ctx: &mut TxContext) {
+    public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(DolaContractRegistry {
             id: object::new(ctx),
             next_id: 0
         });
+    }
+
+    #[test_only]
+    public fun create_for_testing(dola_contract_id: u256): DolaContract {
+        DolaContract {
+            dola_contract_id
+        }
     }
 }
 

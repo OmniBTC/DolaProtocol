@@ -315,12 +315,10 @@ module lending_core::logic_tests {
         };
         test_scenario::next_tx(scenario, creator);
         {
-            let storage = test_scenario::take_shared<Storage>(scenario);
             let total_app_info = test_scenario::take_shared<TotalAppInfo>(scenario);
 
-            init_app(&mut storage, &mut total_app_info, test_scenario::ctx(scenario));
+            init_app(&mut total_app_info, test_scenario::ctx(scenario));
 
-            test_scenario::return_shared(storage);
             test_scenario::return_shared(total_app_info);
         };
         test_scenario::next_tx(scenario, creator);

@@ -20,11 +20,9 @@ module omnipool::dola_pool {
     use sui::tx_context::{Self, TxContext};
 
     #[test_only]
-    use dola_types::dola_contract::DolaContractRegistry;
-    #[test_only]
     use sui::sui::SUI;
     #[test_only]
-    use sui::test_scenario::{Self, return_shared};
+    use sui::test_scenario;
 
     friend omnipool::wormhole_adapter_pool;
 
@@ -317,15 +315,13 @@ module omnipool::dola_pool {
         let scenario = &mut scenario_val;
         {
             let ctx = test_scenario::ctx(scenario);
-            dola_contract::create_for_testing(ctx);
+            dola_contract::init_for_testing(ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let dola_contract_registry = test_scenario::take_shared<DolaContractRegistry>(scenario);
             let ctx = test_scenario::ctx(scenario);
-            let dola_contract = dola_contract::create_dola_contract(&mut dola_contract_registry, ctx);
             let spenders = vector::empty();
-            vector::push_back(&mut spenders, dola_contract::get_dola_contract_id(&dola_contract));
+            vector::push_back(&mut spenders, 1);
 
             transfer::share_object(PoolApproval {
                 id: object::new(ctx),
@@ -333,15 +329,11 @@ module omnipool::dola_pool {
                 spenders
             });
 
-            transfer::public_transfer(dola_contract, manager);
-
             create_pool<SUI>(9, ctx);
-            return_shared(dola_contract_registry);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_approval = test_scenario::take_shared<PoolApproval>(scenario);
-            let dola_contract = test_scenario::take_from_sender<DolaContract>(scenario);
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
 
             let user_address = dola_address::convert_address_to_dola(@0xB);
@@ -358,7 +350,7 @@ module omnipool::dola_pool {
             let withdraw_amount = normal_amount(&pool, amount);
             withdraw<SUI>(
                 &pool_approval,
-                &dola_contract,
+                &dola_contract::create_for_testing(1),
                 &mut pool,
                 user_address,
                 withdraw_amount,
@@ -369,7 +361,6 @@ module omnipool::dola_pool {
             assert!(balance::value(&pool.balance) == 0, 0);
 
             test_scenario::return_shared(pool_approval);
-            test_scenario::return_to_sender(scenario, dola_contract);
             test_scenario::return_shared(pool);
         };
         test_scenario::end(scenario_val);

@@ -67,7 +67,7 @@ module user_manager::user_manager {
         dola_user_id: u64
     }
 
-    public fun initialize(ctx: &mut TxContext) {
+    fun init(ctx: &mut TxContext) {
         transfer::share_object(UserManagerInfo {
             id: object::new(ctx),
             dola_contract: dola_contract::create_dola_contract(),
@@ -233,7 +233,15 @@ module user_manager::user_manager {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
+        transfer::share_object(UserManagerInfo {
+            id: object::new(ctx),
+            dola_contract: dola_contract::create_dola_contract(),
+            user_address_catalog: UserAddressCatalog {
+                user_address_to_user_id: table::new(ctx),
+                user_id_to_addresses: table::new(ctx)
+            },
+            chain_id_to_group: table::new(ctx)
+        })
     }
 
     #[test]
