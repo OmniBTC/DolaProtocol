@@ -11,8 +11,8 @@ module genesis_proposal::genesis_proposal {
     use dola_types::dola_contract::DolaContractRegistry;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::storage::Storage;
-    use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
+    use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::transfer;
@@ -259,7 +259,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -291,7 +291,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -323,7 +323,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -355,7 +355,7 @@ module genesis_proposal::genesis_proposal {
 
             governance_v1::destory_governance_cap(governance_cap);
         } else {
-            transfer::transfer(wormhole_message_fee, tx_context::sender(ctx));
+            transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
 
         option::destroy_none(governance_cap);
@@ -364,7 +364,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_register_new_reserve(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_pool_id: u16,
         is_isolated_asset: bool,
         borrowable_in_isolation: bool,
@@ -388,7 +388,7 @@ module genesis_proposal::genesis_proposal {
             lending_core::storage::register_new_reserve(
                 &storage_cap,
                 storage,
-                oracle,
+                clock,
                 dola_pool_id,
                 is_isolated_asset,
                 borrowable_in_isolation,
@@ -410,11 +410,11 @@ module genesis_proposal::genesis_proposal {
     }
 
     public entry fun vote_claim_from_treasury(
+        pool_manager_info: &mut PoolManagerInfo,
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        oracle: &mut PriceOracle,
         storage: &mut Storage,
-        pool_manager_info: &mut PoolManagerInfo,
+        clock: &Clock,
         dola_pool_id: u16,
         dola_user_id: u64,
         amount: u64,
@@ -430,7 +430,7 @@ module genesis_proposal::genesis_proposal {
                 &storage_cap,
                 pool_manager_info,
                 storage,
-                oracle,
+                clock,
                 dola_pool_id,
                 dola_user_id,
                 (amount as u256)

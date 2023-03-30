@@ -12,10 +12,9 @@ module governance::governance_v2 {
     use std::vector;
 
     use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap};
-
-    use sui::event;
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
+    use sui::event;
     use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -273,7 +272,7 @@ module governance::governance_v2 {
             assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
             if (coin::value(&base_coin) > split_amount) {
                 let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::transfer(base_coin, tx_context::sender(ctx));
+                transfer::public_transfer(base_coin, tx_context::sender(ctx));
                 split_coin
             }else {
                 base_coin
@@ -494,14 +493,14 @@ module governance::governance_v2 {
 
         if (table::contains(favor_votes, sender)) {
             let user_favor_num = table::remove(favor_votes, sender);
-            transfer::transfer(
+            transfer::public_transfer(
                 coin::from_balance(balance::split(&mut proposal.staked_coin, user_favor_num), ctx),
                 sender
             );
             proposal.favor_num = proposal.favor_num - user_favor_num;
         }else if (table::contains(against_votes, sender)) {
             let user_against_num = table::remove(against_votes, sender);
-            transfer::transfer(
+            transfer::public_transfer(
                 coin::from_balance(balance::split(&mut proposal.staked_coin, user_against_num), ctx),
                 sender
             );
@@ -520,16 +519,14 @@ module governance::governance_v2 {
         amount: u64,
         ctx: &mut TxContext
     ) {
-        let supply = balance::create_supply(DOLA {});
         let i = 0;
         while (i < vector::length(&members)) {
-            transfer::transfer(
-                coin::from_balance(balance::increase_supply(&mut supply, amount), ctx),
+            transfer::public_transfer(
+                coin::from_balance(balance::create_for_testing<DOLA>(amount), ctx),
                 *vector::borrow(&members, i)
             );
             i = i + 1;
         };
-        balance::destroy_supply_for_testing(supply);
     }
 
     #[test_only]
@@ -635,7 +632,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 9900, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::next_tx(scenario, governance);
@@ -699,7 +696,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 1000, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::end(scenario_val);
@@ -744,7 +741,7 @@ module governance::governance_v2 {
         {
             let governance_coin = test_scenario::take_from_address<Coin<DOLA>>(scenario, governance);
             assert!(coin::value(&governance_coin) == 9900, 0);
-            transfer::transfer(governance_coin, governance);
+            transfer::public_transfer(governance_coin, governance);
         };
 
         test_scenario::next_tx(scenario, governance);

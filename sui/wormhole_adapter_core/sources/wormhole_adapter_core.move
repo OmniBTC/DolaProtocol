@@ -19,10 +19,10 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
     use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
-    use wormhole::emitter::EmitterCapability;
+    use wormhole::emitter::EmitterCap;
     use wormhole::external_address::{Self, ExternalAddress};
-    use wormhole::state::State as WormholeState;
-    use wormhole::wormhole;
+    use wormhole::publish_message;
+    use wormhole::state::{Self, State};
     use wormhole_adapter_core::pool_codec;
     use wormhole_adapter_core::wormhole_adapter_verify::Unit;
 
@@ -49,8 +49,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
         // Allow modification of pool_manager storage via PoolManagerCap
         pool_manager_cap: PoolManagerCap,
         // Move does not have a contract address, Wormhole uses the emitter
-        // in EmitterCapability to represent the send address of this contract
-        wormhole_emitter: EmitterCapability,
+        // in EmitterCap to represent the send address of this contract
+        wormhole_emitter: EmitterCap,
         // Used to verify that the VAA has been processed
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
@@ -107,15 +107,15 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Initializing caps of PoolManager and UserManager through governance
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         ctx: &mut TxContext
     ) {
-        transfer::share_object(
+        transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
                 user_manager_cap: user_manager::register_cap_with_governance(governance),
                 pool_manager_cap: pool_manager::register_cap_with_governance(governance),
-                wormhole_emitter: wormhole::register_emitter(wormhole_state, ctx),
+                wormhole_emitter: state::new_emitter(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
                 cache_vaas: table::new(ctx)
@@ -158,14 +158,14 @@ module wormhole_adapter_core::wormhole_adapter_core {
         );
         event::emit(RegisterBridge {
             wormhole_emitter_chain,
-            wormhole_emitter_address: external_address::get_bytes(&wormhole_emitter_address)
+            wormhole_emitter_address: external_address::to_bytes(wormhole_emitter_address)
         });
     }
 
     /// Register owner for remote bridge through governance
     public fun remote_register_owner(
         _: &GovernanceCap,
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         dola_chain_id: u16,
         dola_contract: u256,
@@ -176,7 +176,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_register_owner_type()
         );
-        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -186,7 +192,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Register spender for remote bridge through governance
     public fun remote_register_spender(
         _: &GovernanceCap,
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         dola_chain_id: u16,
         dola_contract: u256,
@@ -197,7 +203,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_register_spender_type()
         );
-        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -207,7 +219,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Delete owner for remote bridge through governance
     public fun remote_delete_owner(
         _: &GovernanceCap,
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         dola_chain_id: u16,
         dola_contract: u256,
@@ -218,7 +230,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_delete_owner_type()
         );
-        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -228,7 +246,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     /// Delete spender for remote bridge through governance
     public fun remote_delete_spender(
         _: &GovernanceCap,
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         dola_chain_id: u16,
         dola_contract: u256,
@@ -239,7 +257,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_delete_spender_type()
         );
-        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -250,7 +274,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Receive message without funding
     public fun receive_message(
-        _wormhole_state: &mut WormholeState,
+        _wormhole_state: &mut State,
         _core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
@@ -272,7 +296,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Receive deposit on sui network
     public fun receive_deposit(
-        _wormhole_state: &mut WormholeState,
+        _wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
@@ -313,7 +337,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Receive withdraw on sui network
     public fun receive_withdraw(
-        _wormhole_state: &mut WormholeState,
+        _wormhole_state: &mut State,
         _core_state: &mut CoreState,
         app_cap: &AppCap,
         vaa: vector<u8>,
@@ -339,7 +363,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     /// Send withdraw on sui network
     public fun send_withdraw(
-        wormhole_state: &mut WormholeState,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,
         pool_manager_info: &mut PoolManagerInfo,
@@ -364,7 +388,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
             user_address,
             (actual_amount as u64)
         );
-        wormhole::publish_message(&mut core_state.wormhole_emitter, wormhole_state, 0, msg, wormhole_message_fee);
+        publish_message::publish_message(
+            wormhole_state,
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+            wormhole_message_fee
+        );
 
         let index = table::length(&core_state.cache_vaas) + 1;
         table::add(&mut core_state.cache_vaas, index, msg);

@@ -13,6 +13,7 @@ module lending_core::logic_tests {
     use oracle::oracle::{Self, PriceOracle, OracleCap};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
+    use sui::clock::{Self, Clock};
     use sui::test_scenario::{Self, Scenario};
     use sui::tx_context::TxContext;
 
@@ -20,7 +21,7 @@ module lending_core::logic_tests {
 
     const RAY: u256 = 1000000000000000000000000000;
 
-    const SECONDS_PER_DAY: u256 = 86400;
+    const MILLISECONDS_PER_DAY: u64 = 86400000;
 
     const SECONDS_PER_YEAR: u256 = 31536000;
 
@@ -95,21 +96,24 @@ module lending_core::logic_tests {
         storage::init_for_testing(ctx);
     }
 
-    public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle) {
+    public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, ctx: &mut TxContext) {
+        // create sui clock
+        clock::create_for_testing(ctx);
+
         // register btc oracle
-        oracle::register_token_price(cap, oracle, 0, BTC_POOL_ID, 2000000, 2);
+        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 2000000, 2);
 
         // register usdt oracle
-        oracle::register_token_price(cap, oracle, 0, USDT_POOL_ID, 100, 2);
+        oracle::register_token_price(cap, oracle, USDT_POOL_ID, 100, 2);
 
         // register usdc oracle
-        oracle::register_token_price(cap, oracle, 0, USDC_POOL_ID, 100, 2);
+        oracle::register_token_price(cap, oracle, USDC_POOL_ID, 100, 2);
 
         // register eth oracle
-        oracle::register_token_price(cap, oracle, 0, ETH_POOL_ID, 150000, 2);
+        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 150000, 2);
 
         // register isolate oracle
-        oracle::register_token_price(cap, oracle, 0, ISOLATE_POOL_ID, 10000, 2);
+        oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
     }
 
     public fun init_app(storage: &mut Storage, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
@@ -192,13 +196,13 @@ module lending_core::logic_tests {
         genesis::destroy(governance_cap);
     }
 
-    public fun init_reserves(storage: &mut Storage, oracle: &mut PriceOracle, ctx: &mut TxContext) {
+    public fun init_reserves(storage: &mut Storage, clock: &Clock, ctx: &mut TxContext) {
         let cap = storage::register_storage_cap_for_testing();
         // register btc reserve
         storage::register_new_reserve(
             &cap,
             storage,
-            oracle,
+            clock,
             BTC_POOL_ID,
             false,
             false,
@@ -218,7 +222,7 @@ module lending_core::logic_tests {
         storage::register_new_reserve(
             &cap,
             storage,
-            oracle,
+            clock,
             USDT_POOL_ID,
             false,
             true,
@@ -238,7 +242,7 @@ module lending_core::logic_tests {
         storage::register_new_reserve(
             &cap,
             storage,
-            oracle,
+            clock,
             USDC_POOL_ID,
             false,
             true,
@@ -258,7 +262,7 @@ module lending_core::logic_tests {
         storage::register_new_reserve(
             &cap,
             storage,
-            oracle,
+            clock,
             ETH_POOL_ID,
             false,
             false,
@@ -278,7 +282,7 @@ module lending_core::logic_tests {
         storage::register_new_reserve(
             &cap,
             storage,
-            oracle,
+            clock,
             ISOLATE_POOL_ID,
             true,
             false,
@@ -306,7 +310,7 @@ module lending_core::logic_tests {
             let cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
 
-            init_oracle(&cap, &mut oracle);
+            init_oracle(&cap, &mut oracle, test_scenario::ctx(scenario));
 
             test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(oracle);
@@ -331,10 +335,12 @@ module lending_core::logic_tests {
         {
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            init_reserves(&mut storage, &mut oracle, test_scenario::ctx(scenario));
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            init_reserves(&mut storage, &clock, test_scenario::ctx(scenario));
 
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
         };
         (scenario_val)
     }
@@ -354,6 +360,8 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
             pool_manager::add_liquidity(
                 &pool_manager_cap,
                 &mut pool_manager_info,
@@ -366,6 +374,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 supply_user_id,
                 supply_pool_id,
                 supply_amount
@@ -376,6 +385,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             pool_manager::destroy_manager(pool_manager_cap);
         };
     }
@@ -395,6 +405,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // User 0 borrow 5000 usdt
             logic::execute_borrow(
@@ -402,6 +413,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 borrow_user_id,
                 borrow_pool_id,
                 borrow_amount
@@ -420,6 +432,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             pool_manager::destroy_manager(pool_manager_cap);
         };
     }
@@ -454,6 +467,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
             logic::cancel_as_collateral(
@@ -461,6 +475,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 BTC_POOL_ID
             );
@@ -470,6 +485,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario_val);
@@ -497,6 +513,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
             assert!(logic::is_isolation_mode(&mut storage, 0), 202);
@@ -505,6 +522,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 ISOLATE_POOL_ID
             );
@@ -515,6 +533,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::end(scenario_val);
@@ -552,12 +571,14 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             logic::cancel_as_collateral(
                 &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 ISOLATE_POOL_ID
             );
@@ -565,6 +586,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
         };
 
         test_scenario::next_tx(scenario, creator);
@@ -573,6 +595,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             assert!(logic::is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 301);
             logic::as_collateral(
@@ -580,6 +603,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 BTC_POOL_ID
             );
@@ -588,6 +612,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
         };
         test_scenario::end(scenario_val);
     }
@@ -753,6 +778,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
             let withdraw_amount = ONE / 2;
 
             // Withdraw
@@ -761,6 +787,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 BTC_POOL_ID,
                 withdraw_amount
@@ -782,6 +809,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
@@ -957,6 +985,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             let repay_usdt_amount = 1000 * ONE;
 
@@ -973,6 +1002,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 USDT_POOL_ID,
                 repay_usdt_amount
@@ -987,6 +1017,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
@@ -1020,6 +1051,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             assert!(logic::is_isolation_mode(&mut storage, 0), 201);
 
@@ -1038,6 +1070,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 USDT_POOL_ID,
                 repay_usdt_amount
@@ -1058,6 +1091,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 ISOLATE_POOL_ID
             );
@@ -1066,6 +1100,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             pool_manager::destroy_manager(pool_manager_cap);
         };
 
@@ -1103,6 +1138,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Check user HF > 1
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 104);
@@ -1118,6 +1154,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 1,
                 0,
                 BTC_POOL_ID,
@@ -1132,6 +1169,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
@@ -1183,6 +1221,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Simulate BTC price drop
             oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
@@ -1195,6 +1234,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 1,
                 0,
                 BTC_POOL_ID,
@@ -1209,6 +1249,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
@@ -1260,6 +1301,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Simulate BTC price drop
             oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
@@ -1272,6 +1314,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 1,
                 0,
                 ETH_POOL_ID,
@@ -1281,6 +1324,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
@@ -1332,6 +1376,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Simulate BTC price drop
             oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
@@ -1344,6 +1389,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 1,
                 0,
                 BTC_POOL_ID,
@@ -1353,6 +1399,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
@@ -1404,6 +1451,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Simulate BTC price drop
             oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1950000);
@@ -1416,6 +1464,7 @@ module lending_core::logic_tests {
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 1,
                 0,
                 ETH_POOL_ID,
@@ -1425,6 +1474,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
@@ -1450,37 +1500,36 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
             // The initial average liquidity is 0
             assert!(average_liquidity == 0, 201);
 
-            let current_timestamp = oracle::get_timestamp(&mut oracle);
-            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
-            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, 0);
+            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
             let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
             // The average liquidity of the first update must also be 0.
             // This update mainly updates the user's most recent timestamp.
             assert!(average_liquidity == 0, 202);
 
-            let current_timestamp = oracle::get_timestamp(&mut oracle);
-            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
-            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, 0);
+            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
             let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
             let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // [average_liquidity = health_value = collateral_value - loan_value]
             assert!(average_liquidity == health_value, 203);
 
-            let current_timestamp = oracle::get_timestamp(&mut oracle);
-            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY / 2);
+            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY / 2);
 
             logic::execute_supply(
                 &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 0,
                 ONE
@@ -1491,14 +1540,14 @@ module lending_core::logic_tests {
             // Average liquidity accumulates if a user performs an operation in a day.
             assert!(average_liquidity > health_value, 204);
 
-            let current_timestamp = oracle::get_timestamp(&mut oracle);
-            oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
+            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
             logic::execute_supply(
                 &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
+                &clock,
                 0,
                 0,
                 ONE
@@ -1513,6 +1562,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
@@ -1548,6 +1598,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             let before_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
             let before_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
@@ -1557,9 +1608,8 @@ module lending_core::logic_tests {
             let day = 0;
 
             while (day < 365) {
-                let current_timestamp = oracle::get_timestamp(&mut oracle);
-                oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &mut oracle, USDT_POOL_ID);
+                clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -1573,6 +1623,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
@@ -1608,6 +1659,7 @@ module lending_core::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
 
             let before_borrow_index = storage::get_borrow_index(&mut storage, USDT_POOL_ID);
             let before_liquidity_index = storage::get_liquidity_index(&mut storage, USDT_POOL_ID);
@@ -1617,9 +1669,8 @@ module lending_core::logic_tests {
             let day = 0;
 
             while (day < 365) {
-                let current_timestamp = oracle::get_timestamp(&mut oracle);
-                oracle::update_timestamp(&oracle_cap, &mut oracle, current_timestamp + SECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &mut oracle, USDT_POOL_ID);
+                clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -1633,6 +1684,7 @@ module lending_core::logic_tests {
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
             test_scenario::return_to_sender(scenario, oracle_cap);
         };
 

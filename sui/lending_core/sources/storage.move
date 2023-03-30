@@ -6,8 +6,9 @@ module lending_core::storage {
 
     use app_manager::app_manager::{Self, AppCap};
     use governance::genesis::GovernanceCap;
-    use oracle::oracle::{Self, PriceOracle};
+    use oracle::oracle;
     use ray_math::math;
+    use sui::clock::Clock;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -134,7 +135,7 @@ module lending_core::storage {
     public fun register_new_reserve(
         _: &StorageCap,
         storage: &mut Storage,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_pool_id: u16,
         is_isolated_asset: bool,
         borrowable_in_isolation: bool,
@@ -154,7 +155,7 @@ module lending_core::storage {
             is_isolated_asset,
             borrowable_in_isolation,
             isolate_debt: 0,
-            last_update_timestamp: oracle::get_timestamp(oracle),
+            last_update_timestamp: oracle::get_timestamp(clock),
             treasury,
             treasury_factor,
             borrow_cap_ceiling,
@@ -428,13 +429,13 @@ module lending_core::storage {
 
     public fun ensure_user_info_exist(
         storage: &mut Storage,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
     ) {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_update_timestamp: oracle::get_timestamp(oracle),
+                last_update_timestamp: oracle::get_timestamp(clock),
                 liquid_assets: vector::empty(),
                 collaterals: vector::empty(),
                 loans: vector::empty()
@@ -570,12 +571,12 @@ module lending_core::storage {
     public fun update_user_average_liquidity(
         _: &StorageCap,
         storage: &mut Storage,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_user_id: u64,
         average_liquidity: u256
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.last_update_timestamp = oracle::get_timestamp(oracle);
+        user_info.last_update_timestamp = oracle::get_timestamp(clock);
         user_info.average_liquidity = average_liquidity;
     }
 

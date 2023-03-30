@@ -90,7 +90,7 @@ module test_coins::faucet {
             ONE_COIN
         );
 
-        transfer::transfer(
+        transfer::public_transfer(
             coin::from_balance(minted_balance, ctx),
             tx_context::sender(ctx)
         )
@@ -124,7 +124,7 @@ module test_coins::faucet {
             amount * ONE_COIN
         );
 
-        transfer::transfer(
+        transfer::public_transfer(
             coin::from_balance(minted_balance, ctx),
             operator
         )

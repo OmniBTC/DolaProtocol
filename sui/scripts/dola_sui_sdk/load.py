@@ -71,7 +71,7 @@ def wormhole_package(package_id: str = None):
         package_id: str = CacheObject.Wormhole[-1]
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_dcceff545df0d9dd7ce537f51373d3cc6d20d00d/sui/wormhole")))
+                           ".move/https___github_com_OmniBTC_wormhole_git_6fd072e39c386ab00fae9f9321ef14ab2c144e14/sui/wormhole")))
 
 
 def wormhole_adapter_core_package(package_id: str = None):
