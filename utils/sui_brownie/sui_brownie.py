@@ -25,8 +25,8 @@ import toml
 from .parallelism import ThreadExecutor
 
 
-class ObjectType:
-    __single_object: Dict[str, ObjectType] = dict()
+class SuiObject:
+    __single_object: Dict[str, SuiObject] = dict()
 
     def __init__(self,
                  package_id: str,
@@ -44,10 +44,10 @@ class ObjectType:
             cls,
             package_id: str,
             module_name: str,
-            struct_name: str) -> ObjectType:
+            struct_name: str) -> SuiObject:
         data = f"{package_id}::{module_name}::{struct_name}"
         if data not in cls.__single_object:
-            cls.__single_object[data] = ObjectType(package_id, module_name, struct_name)
+            cls.__single_object[data] = SuiObject(package_id, module_name, struct_name)
         return cls.__single_object[data]
 
     @staticmethod
@@ -67,7 +67,7 @@ class ObjectType:
         return "::".join(data)
 
     @classmethod
-    def from_type(cls, data: str) -> ObjectType:
+    def from_type(cls, data: str) -> SuiObject:
         """
         :param data:
             0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello
@@ -176,8 +176,8 @@ class TopCacheDict(RWDict):
         if item in self:
             return super(TopCacheDict, self).__getitem__(item)
 
-        if ObjectType.is_object_type(item) and ObjectType.from_type(item) in self:
-            item = ObjectType.from_type(item)
+        if SuiObject.is_object_type(item) and SuiObject.from_type(item) in self:
+            item = SuiObject.from_type(item)
 
         return super(TopCacheDict, self).__getitem__(item)
 
@@ -185,8 +185,8 @@ class TopCacheDict(RWDict):
         if key in self:
             return super(TopCacheDict, self).get(key)
 
-        if ObjectType.is_object_type(key) and ObjectType.from_type(key) in self:
-            key = ObjectType.from_type(key)
+        if SuiObject.is_object_type(key) and SuiObject.from_type(key) in self:
+            key = SuiObject.from_type(key)
 
         return super(TopCacheDict, self).get(key)
 
@@ -210,7 +210,7 @@ class TopCacheDict(RWDict):
         return None
 
 
-CacheObject: Dict[Union[ObjectType, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
+CacheObject: Dict[Union[SuiObject, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
 
 
 def persist_cache(cache_file=CACHE_FILE):
@@ -245,7 +245,7 @@ def reload_cache(cache_file: Path = CACHE_FILE):
             data = {}
         for k in data:
             try:
-                object_type = ObjectType.from_type(k)
+                object_type = SuiObject.from_type(k)
                 for v in data[k]:
                     for v1 in data[k][v]:
                         insert_cache(object_type, v1, v)
@@ -262,7 +262,7 @@ def insert_coin(coin_type: str, object_id: str, owner: str):
     :param owner:
     :return:
     """
-    insert_cache(ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>'), object_id, owner)
+    insert_cache(SuiObject.from_type(f'0x2::coin::Coin<{coin_type}>'), object_id, owner)
 
 
 def insert_package(package_name, object_id: str = None):
@@ -275,7 +275,7 @@ def insert_package(package_name, object_id: str = None):
         CacheObject[package_name]["Shared"].append(object_id)
 
 
-def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
+def insert_cache(object_type: SuiObject, object_id: str = None, owner="Shared"):
     if object_type not in CacheObject:
         CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
         final_object = CacheObject
@@ -367,6 +367,7 @@ class SuiCliConfig:
 
 
 class MoveToml:
+    """Easy recovery after package replacement address"""
     def __init__(self, file: str):
         self.file = file
         with open(file, "r") as f:
@@ -861,7 +862,7 @@ class SuiPackage:
                         object_detail = object_details[d["reference"]["objectId"]]
                         result[k][i] = object_detail
                         if "data" in object_detail and "type" in object_detail["data"]:
-                            object_type = ObjectType.from_type(object_detail["data"]["type"])
+                            object_type = SuiObject.from_type(object_detail["data"]["type"])
                             if "Shared" in object_detail["owner"]:
                                 insert_cache(object_type, d["reference"]["objectId"])
                                 insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
@@ -1123,7 +1124,7 @@ class SuiPackage:
             for struct_name in result[module_name].get("structs", dict()):
                 if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
                     continue
-                object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
+                object_type = SuiObject.from_type(f"{self.package_id}::{module_name}::{struct_name}")
                 object_type.package_name = self.package_name
                 insert_cache(object_type, None)
                 attr_list = [module_name, struct_name]
@@ -1210,7 +1211,7 @@ class SuiPackage:
         return output
 
     @classmethod
-    def generate_object_type(cls, param: str, ty_args: list = None) -> ObjectType:
+    def generate_object_type(cls, param: str, ty_args: list = None) -> SuiObject:
         if not isinstance(param, dict):
             return None
         if "Reference" in param:
@@ -1230,14 +1231,14 @@ class SuiPackage:
             output = f'{final_arg["Struct"]["address"]}::' \
                      f'{final_arg["Struct"]["module"]}::' \
                      f'{final_arg["Struct"]["name"]}{output}'
-            return ObjectType.from_type(output)
+            return SuiObject.from_type(output)
         else:
             return None
 
     @classmethod
-    def judge_coin(cls, param: str, ty_args: list = None) -> ObjectType:
+    def judge_coin(cls, param: str, ty_args: list = None) -> SuiObject:
         data = cls.generate_object_type(param, ty_args)
-        if isinstance(data, ObjectType) \
+        if isinstance(data, SuiObject) \
                 and data.package_id == "0x2" \
                 and data.module_name == "coin" \
                 and data.struct_name.startswith("Coin"):
@@ -1271,7 +1272,7 @@ class SuiPackage:
             elif isinstance(data[k], list):
                 cls.normal_float_list(data[k])
 
-    def __refresh_coin(self, is_coin: ObjectType):
+    def __refresh_coin(self, is_coin: SuiObject):
         coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
         coin_info = {k: coin_info[k] for k in coin_info if coin_info[k].owner == self.account.account_address}
         CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
@@ -1282,7 +1283,7 @@ class SuiPackage:
         """
         :param coin_type: 0x2::sui::SUI
         """
-        is_coin = ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>')
+        is_coin = SuiObject.from_type(f'0x2::coin::Coin<{coin_type}>')
         self.__refresh_coin(is_coin)
 
     def check_args(
@@ -1348,7 +1349,7 @@ class SuiPackage:
     ):
         param_args, ty_args = self.check_args(abi, param_args, ty_args)
 
-        normal_coin: List[ObjectType] = []
+        normal_coin: List[SuiObject] = []
 
         for k in range(len(param_args)):
             is_coin = self.judge_coin(abi["parameters"][k], ty_args)
@@ -1691,7 +1692,7 @@ class SuiPackage:
         for k in basic_info:
             if not (isinstance(basic_info[k], dict) and "type" in basic_info[k] and "fields" in basic_info[k]):
                 continue
-            object_type = ObjectType.from_type(basic_info[k]["type"])
+            object_type = SuiObject.from_type(basic_info[k]["type"])
             if object_type.package_id == "0x2":
                 if object_type.module_name == "table" and object_type.struct_name.startswith("Table"):
                     tid = basic_info[k]["fields"]["id"]["id"]

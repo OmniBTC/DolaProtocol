@@ -75,7 +75,7 @@ package.{module_name}.{struct_name}
 ~~~
 from sui_brownie import CacheObject
 
-# dict, ObjectType --> list
+# dict, SuiObject --> list
 CacheObject.{module_name}.{struct_name}
 ~~~
 

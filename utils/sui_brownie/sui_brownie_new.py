@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import copy
 import functools
 import json
@@ -7,6 +8,7 @@ import multiprocessing
 import os
 import time
 import traceback
+from enum import Enum, unique
 from pathlib import Path
 from typing import Union, List, Dict
 from pprint import pprint
@@ -287,6 +289,24 @@ class ModuleAttributeDict(AttributeDict):
         return ModuleAttributeDict(copy.deepcopy(self.data))
 
 
+@unique
+class AppId(Enum):
+    Sui = 0
+
+
+@unique
+class IntentVersion(Enum):
+    V0 = 0
+
+
+@unique
+class IntentScope(Enum):
+    TransactionData = 0
+    TransactionEffects = 1
+    CheckpointSummary = 2
+    PersonalMessage = 3
+
+
 class SuiPackage:
     def __init__(
             self,
@@ -478,7 +498,7 @@ class SuiPackage:
         try:
             with self.project.cli_config as cof:
                 cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                      f"--skip-dependency-verification --gas-budget {gas_budget} " \
+                      f" --gas-budget {gas_budget} " \
                       f"--abi --json {self.package_path.absolute()}"
                 with os.popen(cmd) as f:
                     result = f.read()
@@ -562,6 +582,32 @@ class SuiPackage:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.project.add_object_to_cache(sui_object, owner, sui_object_id)
 
+    @classmethod
+    def normal_float(cls, data: list):
+        for k in range(len(data)):
+            if isinstance(data[k], float):
+                assert float(int(data[k])) == data[k], f"{data[k]} must int"
+                data[k] = int(data[k])
+            elif isinstance(data[k], list):
+                cls.normal_float(data[k])
+
+    @staticmethod
+    def is_tx_context(param) -> bool:
+        if not isinstance(param, dict):
+            return False
+        if "MutableReference" in param:
+            final_arg = param["MutableReference"].get("Struct", dict())
+        elif "Reference" in param:
+            final_arg = param["Reference"].get("Struct", dict())
+        else:
+            final_arg = {}
+        if final_arg.get("address", None) == "0x2" \
+                and final_arg.get("module", None) == "tx_context" \
+                and final_arg.get("name", None) == "TxContext":
+            return True
+        else:
+            return False
+
     def check_args(
             self,
             abi: dict,
@@ -569,13 +615,13 @@ class SuiPackage:
             type_arguments: List[str] = None
     ):
         arguments = list(arguments)
-        self.normal_float_list(arguments)
+        self.normal_float(arguments)
 
         if type_arguments is None:
             type_arguments = []
         assert isinstance(list(type_arguments), list) and len(
-            abi["type_parameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
-        if len(abi["parameters"]) and self.judge_ctx(abi["parameters"][-1]):
+            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+        if len(abi["parameters"]) and self.is_tx_context(abi["parameters"][-1]):
             assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
         else:
             assert len(arguments) == len(abi["parameters"]), f'arguments error: {abi["parameters"]}'
@@ -603,7 +649,7 @@ class SuiPackage:
         sui_object_ids = self.get_account_sui()
         gas_object = max(list(sui_object_ids.keys()), key=lambda x: sui_object_ids[x])
         result = self.project.client.unsafe_moveCall(
-            self.account.account_address,
+            self.project.account.account_address,
             self.package_id,
             abi["module_name"],
             abi["func_name"],
@@ -640,6 +686,10 @@ class SuiPackage:
             None
         )
 
+    @staticmethod
+    def encode_signature(data: list):
+        return base64.b64encode(bytes(data)).decode("ascii")
+
     def _execute(
             self,
             tx_bytes,
@@ -666,14 +716,10 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
-        SIGNATURE_SCHEME_TO_FLAG = {
-            "ED25519": 0,
-            "Secp256k1": 1
-        }
-        serialized_sig = [SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]
-        serialized_sig.extend(list(self.account.sign(tx_bytes).get_bytes()))
-        serialized_sig.extend(list(self.account.public_key().get_bytes()))
-        serialized_sig_base64 = self.list_base64(serialized_sig)
+        serialized_sig = [IntentScope.TransactionData.value, IntentVersion.V0.value, AppId.Sui.value]
+        serialized_sig.extend(list(self.project.account.sign(tx_bytes).get_bytes()))
+        serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
+        serialized_sig_base64 = self.encode_signature(serialized_sig)
 
         result = self.project.client.sui_executeTransactionBlock(
             tx_bytes,
@@ -707,7 +753,7 @@ class SuiPackage:
     ):
         result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
         # Simulate before execute
-        self.dry_run_transaction(result["txBytes"])
+        self.project.client.sui_dryRunTransactionBlock(result["txBytes"])
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(result["txBytes"], module=abi["module_name"], function=abi["func_name"])

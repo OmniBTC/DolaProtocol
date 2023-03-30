@@ -7,7 +7,7 @@ import base64
 import json
 from typing import Union
 
-from . import ed25519
+import ed25519
 
 INTENT_BYTES = [0, 0, 0]
 
@@ -39,7 +39,7 @@ class Account:
                 and self.private_key == other.private_key
         )
 
-    def sign(self, data: Union[bytes, str]):
+    def sign(self, data: Union[bytes, str]) -> ed25519.Signature:
         if isinstance(data, bytes):
             tx_bytes = list(data)
         else:

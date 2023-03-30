@@ -48,3 +48,12 @@ class TestSuiBrownie(unittest.TestCase):
         print(math.sandwich.Grocery)
         print(math.counter.create)
         print(math.counter.owner)
+
+    def test_package_call(self):
+        sui_project = self.load_project()
+        sui_project.active_account("Relayer")
+
+        math = SuiPackage(package_id="0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49",
+                          package_name="Math"
+                          )
+        math.counter.create()

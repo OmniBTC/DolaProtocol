@@ -13,7 +13,7 @@ from typing import List
 
 from nacl.signing import SigningKey, VerifyKey
 
-from .utils import get_bytes, padding_to_bytes
+from utils import get_bytes, padding_to_bytes
 
 DEFAULT_ED25519_DERIVATION_PATH = "m/44'/784'/0'/0'/0'"
 ED25519_SEED = b"ed25519 seed"
@@ -108,6 +108,9 @@ class PublicKey:
     def __str__(self) -> str:
         return f"0x{self.key.encode().hex()}"
 
+    def hex(self):
+        return str(self)
+
     def verify(self, data: bytes, signature: Signature) -> bool:
         try:
             self.key.verify(data, signature.data())
@@ -126,9 +129,9 @@ class PublicKey:
 
     def address(self):
         data = bytes([0]) + get_bytes(str(self))
-        hasher = hashlib.blake2b()
+        hasher = hashlib.blake2b(digest_size=32)
         hasher.update(data)
-        return "0x" + hasher.digest()[:32].hex()
+        return "0x" + hasher.digest().hex()
 
 
 class Signature:
@@ -145,11 +148,18 @@ class Signature:
     def __str__(self) -> str:
         return f"0x{self.signature.hex()}"
 
+    def hex(self):
+        return str(self)
+
     def data(self) -> bytes:
         return self.signature
 
     def get_bytes(self) -> bytes:
         return self.signature
+
+    @staticmethod
+    def from_hex(value: str) -> Signature:
+        return Signature(bytes.fromhex(value.replace("0x", "")))
 
     def base64(self):
         data = str(self)
