@@ -40,6 +40,8 @@ module genesis_proposal::genesis_proposal {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(ProposalInfo {
             id: object::new(ctx),
+            // Determine the number of times the function is to be executed,
+            // completing the entire proposal in one programmable transaction.
             proposal_num: 14,
             proposal_cap: option::none()
         })

@@ -3,7 +3,7 @@
 module governance::genesis {
     use std::vector;
 
-    use dola_types::dola_contract::{Self, DolaContract};
+    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
     use sui::object::{Self, UID, ID};
     use sui::package::{Self, UpgradeCap, UpgradeTicket, UpgradeReceipt};
     use sui::table::{Self, Table};
@@ -27,6 +27,7 @@ module governance::genesis {
     /// Record the existing `GovernanceManagerCap` object.
     struct GovernanceGenesis has key {
         id: UID,
+        dola_contract: DolaContract,
         manager_ids: vector<ID>
     }
 
@@ -41,6 +42,7 @@ module governance::genesis {
     fun init(ctx: &mut TxContext) {
         transfer::share_object(GovernanceGenesis {
             id: object::new(ctx),
+            dola_contract: dola_contract::create_dola_contract(),
             manager_ids: vector::empty()
         });
         transfer::share_object(GovernanceContracts {
@@ -55,6 +57,16 @@ module governance::genesis {
         };
         vector::push_back(&mut governance_genesis.manager_ids, object::id(&governance_manager_cap));
         governance_manager_cap
+    }
+
+    public(friend) fun register_dola_contract(
+        governance_genesis: &mut GovernanceGenesis,
+        gov_contracts: &mut GovernanceContracts,
+        dola_contract_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap
+    ) {
+        dola_contract::register_dola_contract(dola_contract_registry, &mut governance_genesis.dola_contract);
+        join_dola_contract(gov_contracts, &governance_genesis.dola_contract, upgrade_cap);
     }
 
     public fun create(_: &GovernanceManagerCap): GovernanceCap {

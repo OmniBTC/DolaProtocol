@@ -11,9 +11,11 @@ module governance::governance_v1 {
     use std::type_name;
     use std::vector;
 
-    use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
+    use dola_types::dola_contract::DolaContractRegistry;
+    use governance::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis, GovernanceContracts};
     use sui::event;
     use sui::object::{Self, UID, ID};
+    use sui::package::UpgradeCap;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
@@ -145,10 +147,14 @@ module governance::governance_v1 {
     public entry fun activate_governance(
         governance_genesis: &mut GovernanceGenesis,
         governance_info: &mut GovernanceInfo,
+        gov_contracts: &mut GovernanceContracts,
+        dola_contract_registry: &mut DolaContractRegistry,
+        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
         check_member(governance_info, tx_context::sender(ctx));
         assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
+        genesis::register_dola_contract(governance_genesis, gov_contracts, dola_contract_registry, upgrade_cap);
         option::fill(&mut governance_info.governance_manager_cap, genesis::new(governance_genesis, ctx));
         governance_info.active = true;
     }
