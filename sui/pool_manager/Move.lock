@@ -31,7 +31,7 @@ dependencies = [
 
 [[move.package]]
 name = "MoveStdlib"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "d79f1f6dec84971a95c7df663fefa13bf7fda336", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c11488858f1d3930f47ec9f335a566683", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
 name = "RayMath"
@@ -51,7 +51,7 @@ dependencies = [
 
 [[move.package]]
 name = "Sui"
-source = { git = "https://github.com/MystenLabs/sui.git", rev = "d79f1f6dec84971a95c7df663fefa13bf7fda336", subdir = "crates/sui-framework/packages/sui-framework" }
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c11488858f1d3930f47ec9f335a566683", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { name = "MoveStdlib" },
