@@ -356,6 +356,8 @@ class MergeCoins:
 
 class Publish:
     def __init__(self, v0, v1):
+        for i in range(len(v0)):
+            v0[i] = from_list(v0[i], U8)
         self.v0: List[List[U8]] = v0
         self.v1: List[ObjectID] = v1
 

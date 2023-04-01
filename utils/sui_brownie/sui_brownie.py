@@ -28,7 +28,7 @@ from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, Transa
     SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
     ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
     ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId, TransferObjects, SplitCoins, \
-    NestedResult
+    NestedResult, MergeCoins, Publish, U8, Upgrade
 from .sui_client import SuiClient
 
 _load_project = []
@@ -667,6 +667,163 @@ class TransactionBuild:
                     Argument("Input", U16(len(inputs) - 1))
                 ))
             )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def pay(
+            cls,
+            sender,
+            input_coins,
+            recipients,
+            amounts,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+        input_coins_info = cls.get_objects([input_coins])
+        # generate inputs
+        inputs = [CallArg(
+            "Object", ObjectArg(
+                "ImmOrOwnedObject",
+                ObjectRef(
+                    ObjectID(input_coin),
+                    SequenceNumber(input_coins_info[input_coin]["version"]),
+                    ObjectDigest(input_coins_info[input_coin]["digest"])
+                ))) for input_coin in input_coins]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        coin_arg = arguments[0]
+        merge_args = arguments[1:]
+        commands = []
+        if len(merge_args) > 0:
+            commands.append(
+                Command("MergeCoins", MergeCoins(
+                    coin_arg,
+                    merge_args
+                ))
+            )
+
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(U64(int(v)).encode)
+            )) for v in amounts]
+        arguments = [Argument("Input", U16(i)) for i in range(len(input_coins), len(inputs))]
+        commands = [
+            Command("SplitCoins", SplitCoins(
+                coin_arg,
+                arguments
+            ))
+        ]
+
+        for i in range(len(recipients)):
+            inputs.append(CallArg(
+                "Pure", Pure(
+                    list(SuiAddress(recipients[i]).encode)
+                )))
+            coins = [Argument("NestedResult", NestedResult(U16(0), U16(i)))]
+            commands.append(
+                Command("TransferObjects", TransferObjects(
+                    coins,
+                    Argument("Input", U16(len(inputs) - 1))
+                ))
+            )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def publish(
+            cls,
+            sender,
+            compiled_modules,
+            dep_ids,
+            gas_price,
+            gas_budget
+    ):
+        commands = [
+            Command("Publish", Publish(
+                compiled_modules,
+                [ObjectID(dep_id) for dep_id in dep_ids]
+            ))
+        ]
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(SuiAddress(sender).encode)
+            ))
+        ]
+        commands.append(
+            Command("TransferObjects", TransferObjects(
+                [Argument("Result", U16(0))],
+                Argument("Input", U16(0))
+            ))
+        )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def prepare_upgrade_capability(cls, upgrade_capability):
+        data = cls.get_objects([upgrade_capability])
+        if "Shared" in data["owner"]:
+            mutable = True
+            initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
+            return CallArg("Object", ObjectArg("SharedObject",
+                                               SharedObject(
+                                                   ObjectID(data["objectId"]),
+                                                   SequenceNumber(initial_shared_version),
+                                                   mutable
+                                               )))
+        else:
+            return CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                               ObjectRef(
+                                                   ObjectID(data["objectId"]),
+                                                   SequenceNumber(data["version"]),
+                                                   ObjectDigest(data["digest"])
+                                               )))
+
+    @classmethod
+    def upgrade(
+            cls,
+            package_id,
+            sender,
+            compiled_modules: list,
+            dep_ids,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            digest: str,
+            gas_price,
+            gas_budget
+    ):
+        upgrade_capability = cls.prepare_upgrade_capability(upgrade_capability)
+        inputs = [
+            upgrade_capability,
+            CallArg(
+                "Pure", Pure(
+                    list(U8(upgrade_policy).encode)
+                )),
+            CallArg(
+                "Pure", Pure(
+                    list(ObjectDigest(digest).encode)
+                ))
+        ]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID("0x2"),
+                Identifier("package"),
+                Identifier("authorize_upgrade"),
+                [],
+                arguments
+            )),
+            Command("Upgrade", Upgrade(
+                compiled_modules,
+                [ObjectID(dep_id) for dep_id in dep_ids],
+                ObjectID(package_id),
+                Argument("Result", U16(0))
+            )),
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID("0x2"),
+                Identifier("package"),
+                Identifier("commit_upgrade"),
+                [],
+                [Argument("Input", U16(0)), Argument("Result", U16(1))]
+            )),
+        ]
+
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
     @classmethod
@@ -1526,3 +1683,81 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
+
+    def pay(self, input_coins: list, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+        msg = TransactionBuild.pay(
+            self.account.account_address,
+            input_coins,
+            recipients,
+            amounts,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction pay::pay, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="pay", function="pay")
+
+    def publish(
+            self,
+            compiled_modules,
+            dep_ids,
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        msg = TransactionBuild.publish(
+            self.account.account_address,
+            compiled_modules,
+            dep_ids,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction publish::package, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
+
+    def upgrade(
+            self,
+            package_id,
+            compiled_modules,
+            dep_ids,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            digest: str,
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        msg = TransactionBuild.upgrade(
+            package_id=package_id,
+            sender=self.account.account_address,
+            compiled_modules=compiled_modules,
+            dep_ids=dep_ids,
+            upgrade_capability=upgrade_capability,
+            upgrade_policy=upgrade_policy,
+            digest=digest,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction publish::package, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
