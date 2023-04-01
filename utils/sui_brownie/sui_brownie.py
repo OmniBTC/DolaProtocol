@@ -27,7 +27,8 @@ from sui_brownie import bcs
 from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
     SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
     ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
-    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId, TransferObjects, SplitCoins
+    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId, TransferObjects, SplitCoins, \
+    NestedResult
 from .sui_client import SuiClient
 
 _load_project = []
@@ -607,13 +608,13 @@ class TransactionBuild:
             recipient,
             gas_price,
             gas_budget
-    ) -> (List[CallArg], List[Command]):
+    ) -> IntentMessage:
         data = cls.get_objects([object_id])[object_id]
         # generate inputs
         inputs = [
             CallArg(
                 "Pure", Pure(
-                    SuiAddress(recipient)
+                    list(SuiAddress(recipient).encode)
                 )),
             CallArg("Object", ObjectArg("ImmOrOwnedObject",
                                         ObjectRef(
@@ -630,6 +631,42 @@ class TransactionBuild:
                 arguments[0]
             ))
         ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def pay_sui(
+            cls,
+            sender,
+            recipients,
+            amounts,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+
+        # generate inputs
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(U64(int(v)).encode)
+            )) for v in amounts]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("SplitCoins", SplitCoins(
+                Argument("GasCoin", NONE()),
+                arguments
+            ))
+        ]
+        for i in range(len(recipients)):
+            inputs.append(CallArg(
+                "Pure", Pure(
+                    list(SuiAddress(recipients[i]).encode)
+                )))
+            coins = [Argument("NestedResult", NestedResult(U16(0), U16(i)))]
+            commands.append(
+                Command("TransferObjects", TransferObjects(
+                    coins,
+                    inputs[-1]
+                ))
+            )
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
     @classmethod
@@ -1106,14 +1143,6 @@ class SuiProject:
                 return data[-1]
         return None
 
-    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
-        TransactionBuild.transfer_object(
-            self.account.account_address,
-            object_id,
-            recipient,
-            gas_price=gas_price,
-            gas_budget=gas_budget)
-
     def _execute(
             self,
             tx_bytes,
@@ -1361,9 +1390,94 @@ class SuiProject:
         serialized_sig_base64 = self.generate_signature(msg)
 
         # Execute
-        print(f'\nExecute transaction unsafe_pay_all_sui, waiting...')
+        print(f'\nExecute transaction unsafe::pay_all_sui, waiting...')
         return self._execute(result["txBytes"],
                              signatures=[serialized_sig_base64],
                              module="unsafe",
                              function="pay_all_sui"
                              )
+
+    def unsafe_pay_sui(self, amounts, recipients=None, gas_budget=10000000):
+        if recipients is None:
+            recipients = [self.account.account_address] * len(amounts)
+        input_coins = list(self.get_account_sui().keys())
+        amounts = [str(v) for v in amounts]
+        result = self.client.unsafe_paySui(
+            self.account.account_address,
+            input_coins,
+            recipients,
+            amounts,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
+
+    def pay_sui(self, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+        if recipients is None:
+            recipients = [self.account.account_address] * len(amounts)
+        msg = TransactionBuild.pay_sui(
+            self.account.account_address,
+            recipients,
+            amounts,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
+
+    def unsafe_transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+        result = self.client.unsafe_transferObject(
+            self.account.account_address,
+            object_id,
+            gas=None,
+            gas_budget=gas_budget,
+            recipient=recipient)
+        # simulate
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
+
+    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+        msg = TransactionBuild.transfer_object(
+            self.account.account_address,
+            object_id,
+            recipient,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
