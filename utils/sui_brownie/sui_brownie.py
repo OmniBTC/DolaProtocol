@@ -1106,7 +1106,7 @@ class SuiProject:
                 return data[-1]
         return None
 
-    def transfer_object(self, object_id, recipient, gas_price=1, gas_budget=1000000):
+    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
         TransactionBuild.transfer_object(
             self.account.account_address,
             object_id,
@@ -1178,7 +1178,7 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=1000000,
+            gas_budget=10000000,
     ):
         result = self.construct_transaction(
             package_id=package_id,
@@ -1207,8 +1207,8 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_price=1,
-            gas_budget=1000000,
+            gas_price=1000,
+            gas_budget=10000000,
     ):
         # Construct
         msg = TransactionBuild.move_call(
@@ -1296,7 +1296,7 @@ class SuiProject:
             abi: dict,
             arguments: list,
             type_arguments: List[str] = None,
-            gas_budget=1000000,
+            gas_budget=10000000,
     ):
         arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
@@ -1325,7 +1325,7 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=1000000,
+            gas_budget=10000000,
     ):
         result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
         return self.client.sui_dryRunTransactionBlock(result["txBytes"])
@@ -1335,7 +1335,7 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=1000000,
+            gas_budget=10000000,
     ):
         result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
         return self.client.sui_devInspectTransactionBlock(
@@ -1345,7 +1345,7 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, recipient=None, gas_budget=1000000):
+    def unsafe_pay_all_sui(self, recipient=None, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
         input_coins = list(self.get_account_sui().keys())
