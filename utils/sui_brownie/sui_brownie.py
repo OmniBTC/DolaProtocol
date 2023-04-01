@@ -670,6 +670,27 @@ class TransactionBuild:
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
     @classmethod
+    def pay_all_sui(
+            cls,
+            sender,
+            recipient,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+        # generate inputs
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(SuiAddress(recipient).encode)
+            ))]
+        commands = [
+            Command("TransferObjects", TransferObjects(
+                [Argument("GasCoin", NONE())],
+                Argument("Input", U16(0))
+            ))
+        ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
     def command_split_coins(
             cls,
             sender,
@@ -1391,7 +1412,31 @@ class SuiProject:
 
         # Execute
         print(f'\nExecute transaction unsafe::pay_all_sui, waiting...')
-        return self._execute(result["txBytes"],
+        return self._execute(tx_bytes,
+                             signatures=[serialized_sig_base64],
+                             module="unsafe",
+                             function="pay_all_sui"
+                             )
+
+    def pay_all_sui(self, recipient=None, gas_price=1000, gas_budget=10000000):
+        if recipient is None:
+            recipient = self.account.account_address
+        msg = TransactionBuild.pay_all_sui(
+            self.account.account_address,
+            recipient,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction unsafe::pay_all_sui, waiting...')
+        return self._execute(tx_bytes,
                              signatures=[serialized_sig_base64],
                              module="unsafe",
                              function="pay_all_sui"
