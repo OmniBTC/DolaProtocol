@@ -26,12 +26,14 @@ class TestSuiBrownie(unittest.TestCase):
 
         math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
         math.publish_package(replace_address=dict(math="0x0"))
+        math.program_publish_package(replace_address=dict(math="0x0"))
 
         # basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
         # basics.publish_package(replace_address=dict(Math=math.package_id))
 
         basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
         basics.publish_package(replace_address=dict(Math=None))
+        basics.program_publish_package(replace_address=dict(Math=None))
 
     def test_project_index(self):
         sui_project = self.load_project()
@@ -73,7 +75,7 @@ class TestSuiBrownie(unittest.TestCase):
                             package_name="Basics"
                             )
         # basics.counter.create.unsafe()
-        basics.counter.increment.unsafe("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89")
+        basics.counter.increment.unsafe(basics.counter.Counter[-1])
 
     def test_package_call(self):
         sui_project = self.load_project()
@@ -82,11 +84,11 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        # basics.counter.create()
-        # basics.counter.increment("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89")
-        # basics.counter.set_value("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89", 2)
-        # basics.counter.assert_value("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89", 2)
-        basics.counter.test_param("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89",
+        basics.counter.create()
+        # basics.counter.increment(basics.counter.Counter[-1])
+        # basics.counter.set_value(basics.counter.Counter[-1], 2)
+        # basics.counter.assert_value(basics.counter.Counter[-1], 2)
+        basics.counter.test_param(basics.counter.Counter[-1],
                                   [10089869, 234567],
                                   1,
                                   8,
@@ -95,5 +97,3 @@ class TestSuiBrownie(unittest.TestCase):
                                   [[9, 8]],
                                   type_arguments=["U64"]
                                   )
-
-

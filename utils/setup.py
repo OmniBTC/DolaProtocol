@@ -32,5 +32,6 @@ setup(
     package_data={'': ['*']},
     packages=["sui_brownie"],
     install_requires=["pyyaml", "toml", "retrying",
-                      "mnemonic", "httpx", "python-dotenv", "pynacl"]
+                      "mnemonic", "httpx", "python-dotenv", "pynacl",
+                      ]
 )

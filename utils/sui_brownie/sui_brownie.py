@@ -21,14 +21,10 @@ from atomicwrites import atomic_write
 import yaml
 import toml
 
-from sui_brownie.account import Account
-from sui_brownie.parallelism import ThreadExecutor
-from sui_brownie import bcs
-from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
-    SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
-    ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
-    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId, TransferObjects, SplitCoins, \
-    NestedResult, MergeCoins, Publish, U8, Upgrade
+from .account import Account
+from .parallelism import ThreadExecutor
+from . import bcs
+from .bcs import *
 from .sui_client import SuiClient
 
 _load_project = []
