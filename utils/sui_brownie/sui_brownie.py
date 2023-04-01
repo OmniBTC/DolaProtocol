@@ -757,7 +757,7 @@ class TransactionBuild:
 
     @classmethod
     def prepare_upgrade_capability(cls, upgrade_capability):
-        data = cls.get_objects([upgrade_capability])
+        data = cls.get_objects([upgrade_capability])[upgrade_capability]
         if "Shared" in data["owner"]:
             mutable = True
             initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
@@ -784,7 +784,7 @@ class TransactionBuild:
             dep_ids,
             upgrade_capability: str,
             upgrade_policy: int,
-            digest: str,
+            digest: Union[str, list],
             gas_price,
             gas_budget
     ):
@@ -846,94 +846,6 @@ class TransactionBuild:
             ))
         ]
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
-
-    @classmethod
-    def command_split_coins(
-            cls,
-            sender,
-            coin_object_id,
-            split_amounts,
-            gas_price: int,
-            gas_budget,
-    ):
-        # gas = cls.prepare_gas()
-        # object_infos = cls.get_objects([coin_object_id])
-        # # generate inputs
-        # inputs = [CallArg(
-        #     "Pure", Pure(
-        #         SuiAddress(recipient)
-        #     )
-        # )]
-        # for object_id in range(len(object_ids)):
-        #     data = object_infos[object_id]
-        #     inputs.append(CallArg("Object", ObjectArg("ImmOrOwnedObject",
-        #                                               ObjectRef(
-        #                                                   ObjectID(object_id),
-        #                                                   SequenceNumber(data["version"]),
-        #                                                   ObjectDigest(data["digest"])
-        #                                               ))))
-        #
-        # # generate commands
-        # arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
-        # commands = [
-        #     Command("SplitCoins", SplitCoins(
-        #         arguments[1:],
-        #         arguments[0]
-        #     ))
-        # ]
-        # programmable_transaction = ProgrammableTransaction(inputs, commands)
-        #
-        # payment = [ObjectRef(
-        #     ObjectID(gas["coinObjectId"]),
-        #     SequenceNumber(gas["version"]),
-        #     ObjectDigest(gas["digest"])
-        # )]
-        # owner = SuiAddress(sender)
-        # price = U64(gas_price)
-        # budget = U64(gas_budget)
-        # expiration = TransactionExpiration("NONE", NONE())
-        # transaction_data_v1 = TransactionDataV1(TransactionKind("ProgrammableTransaction", programmable_transaction),
-        #                                         SuiAddress(sender),
-        #                                         GasData(
-        #                                             payment,
-        #                                             owner,
-        #                                             price,
-        #                                             budget
-        #                                         ),
-        #                                         expiration
-        #                                         )
-        # transaction_data = TransactionData("V1", transaction_data_v1)
-        # msg = IntentMessage(
-        #     Intent(IntentScope("TransactionData", NONE()),
-        #            IntentVersion("V0", NONE()),
-        #            AppId("Sui", NONE())),
-        #     transaction_data
-        # )
-        # return msg
-        pass
-
-    @staticmethod
-    def merge_coins(
-
-    ):
-        pass
-
-    @staticmethod
-    def publish(
-
-    ):
-        pass
-
-    @staticmethod
-    def make_move_vec(
-
-    ):
-        pass
-
-    @staticmethod
-    def upgrade(
-    ):
-        pass
 
 
 class SuiPackage:
@@ -1142,6 +1054,98 @@ class SuiPackage:
                         self.package_id = d["packageId"]
                         self.project.add_package(self)
                         self.update_abi()
+                        break
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            traceback.print_exc()
+            raise
+        return result
+
+    def program_publish_package(
+            self,
+            replace_address: dict = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-bytecode-as-base64 --path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            try:
+                result = json.loads(result[result.find("{"):])
+            except:
+                pprint(f"Build error:\n{result}")
+                raise
+            move_modules = []
+            for m in result["modules"]:
+                move_modules.append(list(base64.b64decode(m)))
+            dep_ids = result["dependencies"]
+            view = f"Publish {self.package_name}"
+            print("\n" + "-" * 50 + view + "-" * 50)
+            result = self.project.publish(move_modules, dep_ids, gas_price, gas_budget)
+            for d in result.get("objectChanges", []):
+                if d["type"] == "published":
+                    self.package_id = d["packageId"]
+                    self.project.add_package(self)
+                    self.update_abi()
+                    break
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            traceback.print_exc()
+            raise
+        return result
+
+    def program_upgrade_package(
+            self,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            replace_address: dict = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+                  f"--path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            try:
+                first_part_start = result.find("{")
+                first_part_end = result.find("}") + 1
+                digest = list(bytes.fromhex(result[first_part_end:]))
+                result = json.loads(result[first_part_start:first_part_end])
+            except:
+                pprint(f"Build error:\n{result}")
+                raise
+            move_modules = []
+            for m in result["modules"]:
+                move_modules.append(list(base64.b64decode(m)))
+            dep_ids = result["dependencies"]
+            view = f"Upgrade {self.package_name}"
+            print("\n" + "-" * 50 + view + "-" * 50)
+            result = self.project.upgrade(self.package_id, move_modules, dep_ids,
+                                          upgrade_capability,
+                                          upgrade_policy, digest,
+                                          gas_price, gas_budget,
+                                          )
+            self.update_abi()
             result = self.format_result(result)
             pprint(result)
             assert self.package_id is not None, f"Package id not found"
@@ -1351,7 +1355,7 @@ class SuiProject:
             signatures,
             {
                 "showInput": True,
-                "showRawInput": True,
+                "showRawInput": False,
                 "showEffects": True,
                 "showEvents": True,
                 "showObjectChanges": True,
@@ -1463,7 +1467,6 @@ class SuiProject:
         :return:
         """
         object_ids = []
-        pprint(result)
         assert result["status"]["status"] == "success", result["status"]["status"]
         for k in ["created", "mutated"]:
             for d in result.get(k, dict()):
@@ -1736,7 +1739,7 @@ class SuiProject:
             dep_ids,
             upgrade_capability: str,
             upgrade_policy: int,
-            digest: str,
+            digest: Union[str, list],
             gas_price=1000,
             gas_budget=10000000
     ):
