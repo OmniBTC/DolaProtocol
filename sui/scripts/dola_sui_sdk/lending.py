@@ -1,10 +1,10 @@
 from pprint import pprint
 
-from sui_brownie import CacheObject, ObjectType
-
 from dola_sui_sdk import load
 from dola_sui_sdk.init import btc, usdt, usdc, sui
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
+from dola_sui_sdk.load import sui_project
+from sui_brownie import SuiObject
 
 U64_MAX = 18446744073709551615
 
@@ -107,8 +107,8 @@ def portal_supply(coin_type):
         dola_portal.lending.LendingPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
-        [CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(pool(coin_type))]["Shared"][-1],
+        [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
         ty_args=[coin_type]
@@ -197,7 +197,7 @@ def portal_withdraw_local(coin_type, amount):
         dola_portal.lending.LendingPortal[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
-        CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
         ty_args=[coin_type]
@@ -272,7 +272,7 @@ def pool_withdraw(vaa, coin_type):
     omnipool.wormhole_adapter_pool.receive_withdraw(
         wormhole.state.State[-1],
         omnipool.wormhole_adapter_pool.PoolState[-1],
-        CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         vaa,
         ty_args=[coin_type]
@@ -362,7 +362,7 @@ def portal_borrow_local(coin_type, amount):
         dola_portal.lending.LendingPortal[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
-        CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
         ty_args=[coin_type]
@@ -494,8 +494,8 @@ def portal_repay(coin_type):
         dola_portal.lending.LendingPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        CacheObject[ObjectType.from_type(pool(coin_type))]["Shared"][-1],
-        [CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(pool(coin_type))]["Shared"][-1],
+        [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
         ty_args=[coin_type]
@@ -583,9 +583,9 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver
         dst_chain,
         [],
         0,
-        CacheObject[ObjectType.from_type(
+        sui_project[SuiObject.from_type(
             pool(debt_coin_type))][account_address][-1],
-        [CacheObject[ObjectType.from_type(
+        [sui_project[SuiObject.from_type(
             coin(debt_coin_type))][account_address][-1]],
         U64_MAX,
         0,
@@ -905,7 +905,7 @@ def export_objects():
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
-        data[dk] = CacheObject[ObjectType.from_type(pool(k))]["Shared"][-1]
+        data[dk] = sui_project[SuiObject.from_type(pool(k))]["Shared"][-1]
 
     pprint(data)
 

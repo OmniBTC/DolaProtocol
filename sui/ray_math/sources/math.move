@@ -3,6 +3,11 @@
 
 module ray_math::math {
 
+    #[test_only]
+    use sui::bcs;
+    #[test_only]
+    use std::debug::print;
+
     /// Used to represent 27-bit precision
     const RAY: u256 = 1000000000000000000000000000;
 
@@ -166,6 +171,8 @@ module ray_math::math {
 
     #[test]
     public fun test_log() {
+        let a: u32 = 11115;
+        print(&bcs::to_bytes(&a));
         let a = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
         let b = 166307941438041216607501375384;
         assert!(ray_log2(a) == b, 0);

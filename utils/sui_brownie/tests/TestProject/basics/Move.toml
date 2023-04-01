@@ -1,0 +1,15 @@
+[package]
+name = "Basics"
+version = "0.0.1"
+
+[addresses]
+basics = "0x0"
+math = "0x0"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "d79f1f6dec84971a95c7df663fefa13bf7fda336"
+
+[dependencies.Math]
+local = "../math"
