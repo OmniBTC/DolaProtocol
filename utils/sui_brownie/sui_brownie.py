@@ -187,6 +187,18 @@ class MoveToml:
         self.origin_data = data
         self.data = copy.deepcopy(data)
 
+    def package_name(self):
+        return self.data["package"]["name"]
+
+    def package_address_name(self):
+        if "addresses" not in self.data:
+            return
+        dependencies_name = {v.lower().replace("_", "") for v in self.data.get("dependencies", {})}
+        for address_name in self.data["addresses"]:
+            if address_name.lower().replace("_", "") not in dependencies_name:
+                return address_name
+        return self.data["addresses"].values[0]
+
     def __getitem__(self, item):
         return self.data[item]
 
@@ -955,6 +967,10 @@ class SuiPackage:
         if output is None:
             output = dict()
         current_move_toml = MoveToml(str(self.move_toml_file))
+        package_name = current_move_toml.package_name()
+        package_address_name = current_move_toml.package_address_name()
+        if package_address_name in replace_address and package_name not in replace_address:
+            replace_address[package_name] = replace_address[package_address_name]
         if current_move_toml["package"]["name"] in output:
             return output
         output[current_move_toml["package"]["name"]] = current_move_toml
@@ -1463,7 +1479,7 @@ class SuiProject:
         :return:
         """
         object_ids = []
-        assert result["status"]["status"] == "success", result["status"]["status"]
+        assert result["status"]["status"] == "success", result
         for k in ["created", "mutated"]:
             for d in result.get(k, dict()):
                 if "reference" in d and "objectId" in d["reference"]:
