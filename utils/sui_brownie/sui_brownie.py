@@ -664,7 +664,7 @@ class TransactionBuild:
             commands.append(
                 Command("TransferObjects", TransferObjects(
                     coins,
-                    inputs[-1]
+                    Argument("Input", U16(len(inputs) - 1))
                 ))
             )
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
