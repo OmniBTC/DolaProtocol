@@ -9,7 +9,6 @@ import multiprocessing
 import os
 import time
 import traceback
-from enum import Enum, unique
 from pathlib import Path
 from typing import Union, List, Dict
 from pprint import pprint
@@ -28,7 +27,7 @@ from sui_brownie import bcs
 from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
     SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
     ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
-    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId
+    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId, TransferObjects, SplitCoins
 from .sui_client import SuiClient
 
 _load_project = []
@@ -271,11 +270,11 @@ class ModuleFunction:
         return str(self.abi)
 
     def __call__(self, *args, **kwargs):
-        return self.package.execute(self.abi, *args, **kwargs)
+        return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
         assert item in ["simulate", "inspect", "unsafe"], f"{item} attribute not found"
-        return functools.partial(getattr(self.package, item), self.abi)
+        return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
 class ModuleAttributeDict(AttributeDict):
@@ -395,15 +394,9 @@ class TransactionBuild:
         return gas
 
     @classmethod
-    def prepare_object_info(cls, call_arg, abi):
-        sui_object_ids = []
-        for i in range(len(call_arg)):
-            param_type = abi["parameters"][i]
-            if isinstance(param_type, dict) and (
-                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
-                sui_object_ids.append(call_arg[i])
+    def get_objects(cls, object_ids):
         object_infos = cls.project().client.sui_multiGetObjects(
-            sui_object_ids,
+            object_ids,
             {
                 "showType": True,
                 "showOwner": True,
@@ -414,8 +407,18 @@ class TransactionBuild:
                 "showStorageRebate": False
             }
         )
-        call_arg_info = {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
-        return call_arg_info
+        return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
+
+    @classmethod
+    def prepare_object_info(cls, call_arg, abi):
+        object_ids = []
+        for i in range(len(call_arg)):
+            param_type = abi["parameters"][i]
+            if isinstance(param_type, dict) and (
+                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
+                object_ids.append(call_arg[i])
+
+        return cls.get_objects(object_ids)
 
     @classmethod
     def generate_pure_value(cls, param_type, data):
@@ -506,23 +509,19 @@ class TransactionBuild:
         return abi
 
     @classmethod
-    def move_call(
+    def command_move_call(
             cls,
-            sender,
             package_id,
             abi,
             type_args,
             call_args,
-            gas_price: int,
-            gas_budget,
-    ) -> IntentMessage:
+    ) -> (List[CallArg], List[Command]):
         call_args, type_args = cls.check_args(abi, call_args, type_args)
         # format param
         abi = cls.format_abi_param(abi, type_args)
 
         # Prepare object
         object_infos = cls.prepare_object_info(call_args, abi)
-        gas = cls.prepare_gas()
 
         # generate inputs
         inputs = []
@@ -543,6 +542,18 @@ class TransactionBuild:
                 arguments
             ))
         ]
+        return inputs, commands
+
+    @classmethod
+    def build_intent_message(
+            cls,
+            sender,
+            inputs,
+            commands,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        gas = cls.prepare_gas()
         programmable_transaction = ProgrammableTransaction(inputs, commands)
 
         payment = [ObjectRef(
@@ -574,16 +585,116 @@ class TransactionBuild:
         )
         return msg
 
-    @staticmethod
-    def transfer_objects(
+    @classmethod
+    def move_call(
+            cls,
+            sender,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        inputs, commands = cls.command_move_call(package_id, abi, type_args, call_args)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
+    @classmethod
+    def transfer_object(
+            cls,
+            sender,
+            object_id,
+            recipient,
+            gas_price,
+            gas_budget
+    ) -> (List[CallArg], List[Command]):
+        data = cls.get_objects([object_id])[object_id]
+        # generate inputs
+        inputs = [
+            CallArg(
+                "Pure", Pure(
+                    SuiAddress(recipient)
+                )),
+            CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                        ObjectRef(
+                                            ObjectID(data["objectId"]),
+                                            SequenceNumber(data["version"]),
+                                            ObjectDigest(data["digest"])
+                                        )))
+        ]
+        # generate commands
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("TransferObjects", TransferObjects(
+                arguments[1:],
+                arguments[0]
+            ))
+        ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def command_split_coins(
+            cls,
+            sender,
+            coin_object_id,
+            split_amounts,
+            gas_price: int,
+            gas_budget,
     ):
-        pass
-
-    @staticmethod
-    def split_coins(
-
-    ):
+        # gas = cls.prepare_gas()
+        # object_infos = cls.get_objects([coin_object_id])
+        # # generate inputs
+        # inputs = [CallArg(
+        #     "Pure", Pure(
+        #         SuiAddress(recipient)
+        #     )
+        # )]
+        # for object_id in range(len(object_ids)):
+        #     data = object_infos[object_id]
+        #     inputs.append(CallArg("Object", ObjectArg("ImmOrOwnedObject",
+        #                                               ObjectRef(
+        #                                                   ObjectID(object_id),
+        #                                                   SequenceNumber(data["version"]),
+        #                                                   ObjectDigest(data["digest"])
+        #                                               ))))
+        #
+        # # generate commands
+        # arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        # commands = [
+        #     Command("SplitCoins", SplitCoins(
+        #         arguments[1:],
+        #         arguments[0]
+        #     ))
+        # ]
+        # programmable_transaction = ProgrammableTransaction(inputs, commands)
+        #
+        # payment = [ObjectRef(
+        #     ObjectID(gas["coinObjectId"]),
+        #     SequenceNumber(gas["version"]),
+        #     ObjectDigest(gas["digest"])
+        # )]
+        # owner = SuiAddress(sender)
+        # price = U64(gas_price)
+        # budget = U64(gas_budget)
+        # expiration = TransactionExpiration("NONE", NONE())
+        # transaction_data_v1 = TransactionDataV1(TransactionKind("ProgrammableTransaction", programmable_transaction),
+        #                                         SuiAddress(sender),
+        #                                         GasData(
+        #                                             payment,
+        #                                             owner,
+        #                                             price,
+        #                                             budget
+        #                                         ),
+        #                                         expiration
+        #                                         )
+        # transaction_data = TransactionData("V1", transaction_data_v1)
+        # msg = IntentMessage(
+        #     Intent(IntentScope("TransactionData", NONE()),
+        #            IntentVersion("V0", NONE()),
+        #            AppId("Sui", NONE())),
+        #     transaction_data
+        # )
+        # return msg
         pass
 
     @staticmethod
@@ -792,7 +903,7 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=10000,
+            gas_budget=10000000,
             replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -810,7 +921,7 @@ class SuiPackage:
                 except:
                     pprint(f"Publish error:\n{result}")
                     raise
-                self.update_object_index(result.get("effects", dict()))
+                self.project.update_object_index(result.get("effects", dict()))
                 for d in result.get("objectChanges", []):
                     if d["type"] == "published":
                         self.package_id = d["packageId"]
@@ -828,272 +939,6 @@ class SuiPackage:
                 replace_tomls[k].restore()
             traceback.print_exc()
             raise
-        return result
-
-    # ###### Call
-    def update_object_index(self, result):
-        """
-        Update Object cache after contract deployment and transaction execution
-        :param result: effects
-            {
-              "messageVersion": "v1",
-              "status": {
-                "status": "success"
-              },
-              "mutated": [
-                {
-                  "owner": {
-                    "AddressOwner": "0x61fbb5b4f342a40bdbf87fe4a946b9e38d18cf8ffc7b0000b975175c7b6a9576"
-                  },
-                  "reference": {
-                    "objectId": "0xe8d8c7ce863f313da3dbd92a83ef26d128b88fe66bf26e0e0d09cdaf727d1d84",
-                    "version": 2,
-                    "digest": "EnRQXe1hDGAJCFyF2ds2GmPHdvf9V6yxf24LisEsDkYt"
-                  }
-                }
-              ]
-            }
-        :return:
-        """
-        sui_object_ids = []
-        assert result["status"]["status"] == "success", result["status"]["status"]
-        for k in ["created", "mutated"]:
-            for d in result.get(k, dict()):
-                if "reference" in d and "objectId" in d["reference"]:
-                    sui_object_ids.append(d["reference"]["objectId"])
-        if len(sui_object_ids):
-            sui_object_infos = self.project.client.sui_multiGetObjects(sui_object_ids, {
-                "showType": True,
-                "showOwner": True,
-                "showPreviousTransaction": False,
-                "showDisplay": False,
-                "showContent": False,
-                "showBcs": False,
-                "showStorageRebate": False
-            })
-            for sui_object_info in sui_object_infos:
-                if "error" in sui_object_info:
-                    continue
-                sui_object_id = sui_object_info["data"]["objectId"]
-                if sui_object_info["data"]["type"] == "package":
-                    continue
-                else:
-                    sui_object = SuiObject.from_type(sui_object_info["data"]["type"])
-                    if "Shared" in sui_object_info["data"]["owner"]:
-                        self.project.add_object_to_cache(sui_object, "Shared", sui_object_id)
-                    elif "AddressOwner" in sui_object_info["data"]["owner"]:
-                        owner = sui_object_info["data"]["owner"]["AddressOwner"]
-                        self.project.add_object_to_cache(sui_object, owner, sui_object_id)
-
-    def get_account_sui(self):
-        result = self.project.client.suix_getCoins(self.project.account.account_address, "0x2::sui::SUI", None, None)
-        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
-
-    def construct_transaction(
-            self,
-            abi: dict,
-            arguments: list,
-            type_arguments: List[str] = None,
-            gas_budget=10000,
-    ):
-        arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
-
-        for k in range(len(arguments)):
-            # Process U64, U128, U256
-            if abi["parameters"][k] in ["U64", "U128", "U256"]:
-                arguments[k] = str(arguments[k])
-
-        sui_object_ids = self.get_account_sui()
-        gas_object = max(list(sui_object_ids.keys()), key=lambda x: sui_object_ids[x])
-        result = self.project.client.unsafe_moveCall(
-            self.project.account.account_address,
-            self.package_id,
-            abi["module_name"],
-            abi["func_name"],
-            type_arguments,
-            arguments,
-            gas_object,
-            gas_budget,
-            None
-        )
-        return result
-
-    def simulate(
-            self,
-            abi: dict,
-            *arguments,
-            type_arguments: List[str] = None,
-            gas_budget=10000,
-    ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
-        return self.project.client.sui_dryRunTransactionBlock(result["txBytes"])
-
-    def inspect(
-            self,
-            abi: dict,
-            *arguments,
-            type_arguments: List[str] = None,
-            gas_budget=10000,
-    ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
-        return self.project.client.sui_devInspectTransactionBlock(
-            self.project.account.account_address,
-            result["txBytes"],
-            None,
-            None
-        )
-
-    @staticmethod
-    def encode_signature(data: list):
-        return base64.b64encode(bytes(data)).decode("ascii")
-
-    def _unsafe(
-            self,
-            tx_bytes,
-            sig_scheme="ED25519",
-            request_type="WaitForLocalExecution",
-            module=None,
-            function=None,
-    ):
-        """
-        :param tx_bytes:
-        :param sig_scheme:
-        :param request_type:
-            Execute the transaction and wait for results if desired. Request types:
-            1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
-            Note the transaction may fail without being noticed by client in this mode. After getting the response,
-            the client may poll the node to check the result of the transaction.
-            2. WaitForTxCert: waits for TransactionCertificate and then return to client.
-            3. WaitForEffectsCert: waits for TransactionEffectsCert and then return to client.
-            This mode is a proxy for transaction finality.
-            4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
-            locally before returning the client. The local execution makes sure this node is aware of this transaction
-            when client fires subsequent queries. However if the node fails to execute the transaction locally in a
-            timely manner, a bool type in the response is set to False to indicated the case
-        :return:
-        """
-        assert sig_scheme == "ED25519", "Only support ED25519"
-        data = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
-                     + list(base64.b64decode(tx_bytes)))
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(data)
-        msg = hasher.digest()
-        serialized_sig = []
-        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
-        serialized_sig.extend(list(self.project.account.sign(msg).get_bytes()))
-        serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
-        serialized_sig_base64 = self.encode_signature(serialized_sig)
-
-        result = self.project.client.sui_executeTransactionBlock(
-            tx_bytes,
-            [serialized_sig_base64],
-            {
-                "showInput": True,
-                "showRawInput": True,
-                "showEffects": True,
-                "showEvents": True,
-                "showObjectChanges": True,
-                "showBalanceChanges": True
-            },
-            request_type
-        )
-
-        if result["effects"]["status"]["status"] != "success":
-            pprint(result)
-        assert result["effects"]["status"]["status"] == "success"
-        self.update_object_index(result["effects"])
-        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
-        return result
-
-    def unsafe(
-            self,
-            abi: dict,
-            *arguments,
-            type_arguments: List[str] = None,
-            gas_budget=10000,
-    ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
-        # Simulate before execute
-        self.project.client.sui_dryRunTransactionBlock(result["txBytes"])
-        # Execute
-        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
-        return self._unsafe(result["txBytes"], module=abi["module_name"], function=abi["func_name"])
-
-    def execute(
-            self,
-            abi: dict,
-            *arguments,
-            type_arguments: List[str] = None,
-            gas_price=1,
-            gas_budget=10000,
-    ):
-        msg = TransactionBuild.move_call(
-            self.project.account.account_address,
-            self.package_id,
-            abi,
-            type_arguments,
-            arguments,
-            gas_price=gas_price,
-            gas_budget=gas_budget
-        )
-        # Execute
-        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
-        return self._execute(msg, module=abi["module_name"], function=abi["func_name"])
-
-    def _execute(
-            self,
-            msg: IntentMessage,
-            sig_scheme="ED25519",
-            request_type="WaitForLocalExecution",
-            module=None,
-            function=None,
-    ):
-        """
-        :param msg:
-        :param sig_scheme:
-        :param request_type:
-            Execute the transaction and wait for results if desired. Request types:
-            1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
-            Note the transaction may fail without being noticed by client in this mode. After getting the response,
-            the client may poll the node to check the result of the transaction.
-            2. WaitForTxCert: waits for TransactionCertificate and then return to client.
-            3. WaitForEffectsCert: waits for TransactionEffectsCert and then return to client.
-            This mode is a proxy for transaction finality.
-            4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
-            locally before returning the client. The local execution makes sure this node is aware of this transaction
-            when client fires subsequent queries. However if the node fails to execute the transaction locally in a
-            timely manner, a bool type in the response is set to False to indicated the case
-        :return:
-        """
-        assert sig_scheme == "ED25519", "Only support ED25519"
-        hasher = hashlib.blake2b(digest_size=32)
-        hasher.update(msg.encode)
-        msg_hash = hasher.digest()
-        serialized_sig = []
-        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
-        serialized_sig.extend(list(self.project.account.sign(msg_hash).get_bytes()))
-        serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
-        serialized_sig_base64 = self.encode_signature(serialized_sig)
-
-        result = self.project.client.sui_executeTransactionBlock(
-            base64.b64encode(msg.value.encode).decode("ascii"),
-            [serialized_sig_base64],
-            {
-                "showInput": True,
-                "showRawInput": True,
-                "showEffects": True,
-                "showEvents": True,
-                "showObjectChanges": True,
-                "showBalanceChanges": True
-            },
-            request_type
-        )
-
-        if result["effects"]["status"]["status"] != "success":
-            pprint(result)
-        assert result["effects"]["status"]["status"] == "success"
-        self.update_object_index(result["effects"])
-        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
         return result
 
 
@@ -1260,3 +1105,265 @@ class SuiProject:
             if len(data):
                 return data[-1]
         return None
+
+    def transfer_object(self, object_id, recipient, gas_price=1, gas_budget=1000000):
+        TransactionBuild.transfer_object(
+            self.account.account_address,
+            object_id,
+            recipient,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+    def _execute(
+            self,
+            tx_bytes,
+            signatures,
+            request_type="WaitForLocalExecution",
+            module=None,
+            function=None,
+    ):
+        """
+        :param tx_bytes:
+        :param signatures:
+        :param request_type:
+            Execute the transaction and wait for results if desired. Request types:
+            1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
+            Note the transaction may fail without being noticed by client in this mode. After getting the response,
+            the client may poll the node to check the result of the transaction.
+            2. WaitForTxCert: waits for TransactionCertificate and then return to client.
+            3. WaitForEffectsCert: waits for TransactionEffectsCert and then return to client.
+            This mode is a proxy for transaction finality.
+            4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
+            locally before returning the client. The local execution makes sure this node is aware of this transaction
+            when client fires subsequent queries. However if the node fails to execute the transaction locally in a
+            timely manner, a bool type in the response is set to False to indicated the case
+        :return:
+        """
+        result = self.client.sui_executeTransactionBlock(
+            tx_bytes,
+            signatures,
+            {
+                "showInput": True,
+                "showRawInput": True,
+                "showEffects": True,
+                "showEvents": True,
+                "showObjectChanges": True,
+                "showBalanceChanges": True
+            },
+            request_type
+        )
+
+        if result["effects"]["status"]["status"] != "success":
+            pprint(result)
+        assert result["effects"]["status"]["status"] == "success"
+        self.update_object_index(result["effects"])
+        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
+        return result
+
+    def generate_signature(self, msg: bytes):
+        sig_scheme = "ED25519"
+        hasher = hashlib.blake2b(digest_size=32)
+        hasher.update(msg)
+        msg = hasher.digest()
+        serialized_sig = []
+        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
+        serialized_sig.extend(list(self.account.sign(msg).get_bytes()))
+        serialized_sig.extend(list(self.account.public_key().get_bytes()))
+        serialized_sig_base64 = base64.b64encode(bytes(serialized_sig)).decode("ascii")
+        return serialized_sig_base64
+
+    def unsafe(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=1000000,
+    ):
+        result = self.construct_transaction(
+            package_id=package_id,
+            abi=abi,
+            arguments=arguments,
+            type_arguments=type_arguments,
+            gas_budget=gas_budget)
+        # Simulate before execute
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(result["txBytes"],
+                             signatures=[serialized_sig_base64],
+                             module=abi["module_name"], function=abi["func_name"])
+
+    def execute(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=1,
+            gas_budget=1000000,
+    ):
+        # Construct
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
+
+    def update_object_index(self, result):
+        """
+        Update Object cache after contract deployment and transaction execution
+        :param result: effects
+            {
+              "messageVersion": "v1",
+              "status": {
+                "status": "success"
+              },
+              "mutated": [
+                {
+                  "owner": {
+                    "AddressOwner": "0x61fbb5b4f342a40bdbf87fe4a946b9e38d18cf8ffc7b0000b975175c7b6a9576"
+                  },
+                  "reference": {
+                    "objectId": "0xe8d8c7ce863f313da3dbd92a83ef26d128b88fe66bf26e0e0d09cdaf727d1d84",
+                    "version": 2,
+                    "digest": "EnRQXe1hDGAJCFyF2ds2GmPHdvf9V6yxf24LisEsDkYt"
+                  }
+                }
+              ]
+            }
+        :return:
+        """
+        object_ids = []
+        pprint(result)
+        assert result["status"]["status"] == "success", result["status"]["status"]
+        for k in ["created", "mutated"]:
+            for d in result.get(k, dict()):
+                if "reference" in d and "objectId" in d["reference"]:
+                    object_ids.append(d["reference"]["objectId"])
+        if len(object_ids):
+            sui_object_infos = self.client.sui_multiGetObjects(object_ids, {
+                "showType": True,
+                "showOwner": True,
+                "showPreviousTransaction": False,
+                "showDisplay": False,
+                "showContent": False,
+                "showBcs": False,
+                "showStorageRebate": False
+            })
+            for sui_object_info in sui_object_infos:
+                if "error" in sui_object_info:
+                    continue
+                sui_object_id = sui_object_info["data"]["objectId"]
+                if sui_object_info["data"]["type"] == "package":
+                    continue
+                else:
+                    sui_object = SuiObject.from_type(sui_object_info["data"]["type"])
+                    if "Shared" in sui_object_info["data"]["owner"]:
+                        self.add_object_to_cache(sui_object, "Shared", sui_object_id)
+                    elif "AddressOwner" in sui_object_info["data"]["owner"]:
+                        owner = sui_object_info["data"]["owner"]["AddressOwner"]
+                        self.add_object_to_cache(sui_object, owner, sui_object_id)
+
+    def get_account_sui(self):
+        result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
+        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
+
+    def construct_transaction(
+            self,
+            package_id,
+            abi: dict,
+            arguments: list,
+            type_arguments: List[str] = None,
+            gas_budget=1000000,
+    ):
+        arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
+
+        for k in range(len(arguments)):
+            # Process U64, U128, U256
+            if abi["parameters"][k] in ["U64", "U128", "U256"]:
+                arguments[k] = str(arguments[k])
+
+        object_ids = self.get_account_sui()
+        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x])
+        result = self.client.unsafe_moveCall(
+            self.account.account_address,
+            package_id,
+            abi["module_name"],
+            abi["func_name"],
+            type_arguments,
+            arguments,
+            gas_object,
+            gas_budget,
+            None
+        )
+        return result
+
+    def simulate(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=1000000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.client.sui_dryRunTransactionBlock(result["txBytes"])
+
+    def inspect(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=1000000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            result["txBytes"],
+            None,
+            None
+        )
+
+    def unsafe_pay_all_sui(self, recipient=None, gas_budget=1000000):
+        if recipient is None:
+            recipient = self.account.account_address
+        input_coins = list(self.get_account_sui().keys())
+        result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, gas_budget)
+
+        # Simulate before execute
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction unsafe_pay_all_sui, waiting...')
+        return self._execute(result["txBytes"],
+                             signatures=[serialized_sig_base64],
+                             module="unsafe",
+                             function="pay_all_sui"
+                             )

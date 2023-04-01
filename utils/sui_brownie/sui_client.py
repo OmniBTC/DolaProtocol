@@ -1011,7 +1011,7 @@ class SuiClient(httpx.Client):
             self,
             signer,
             input_coins,
-            recipients,
+            recipient,
             gas_budget
     ):
         response = self.post(
@@ -1023,7 +1023,7 @@ class SuiClient(httpx.Client):
                 "params": [
                     signer,
                     input_coins,
-                    recipients,
+                    recipient,
                     gas_budget
                 ]
             },

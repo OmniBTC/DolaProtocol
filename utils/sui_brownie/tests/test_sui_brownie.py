@@ -12,7 +12,7 @@ class TestSuiBrownie(unittest.TestCase):
 
     @staticmethod
     def load_project():
-        return SuiProject(project_path=Path.cwd().joinpath("TestProject"), network="sui-devnet")
+        return SuiProject(project_path=Path.cwd().joinpath("TestProject"), network="sui-testnet")
 
     def test_project(self):
         sui_project = self.load_project()
@@ -21,6 +21,8 @@ class TestSuiBrownie(unittest.TestCase):
     def test_publish_package(self):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
+
+        sui_project.unsafe_pay_all_sui()
 
         math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
         math.publish_package(replace_address=dict(math="0x0"))
@@ -71,7 +73,7 @@ class TestSuiBrownie(unittest.TestCase):
                             package_name="Basics"
                             )
         # basics.counter.create.unsafe()
-        basics.counter.increment.unsafe("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504")
+        basics.counter.increment.unsafe("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89")
 
     def test_package_call(self):
         sui_project = self.load_project()
