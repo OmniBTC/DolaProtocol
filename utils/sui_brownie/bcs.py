@@ -276,8 +276,8 @@ class TypeTag(RustEnum):
     U128 = (NONE, 3)
     Address = (NONE, 4)
     Signer = (NONE, 5)
-    Vector = (RustEnum, 6),
-    Struct = (StructTag, 7),
+    Vector = (RustEnum, 6)
+    Struct = (StructTag, 7)
     U16 = (NONE, 8)
     U32 = (NONE, 9)
     U256 = (NONE, 10)
