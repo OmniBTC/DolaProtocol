@@ -70,7 +70,8 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        basics.counter.create.unsafe()
+        # basics.counter.create.unsafe()
+        basics.counter.increment.unsafe("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504")
 
     def test_package_call(self):
         sui_project = self.load_project()
@@ -79,4 +80,9 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        basics.counter.create()
+        # basics.counter.create()
+        # basics.counter.increment("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504")
+
+        basics.counter.assert_value("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504", 2)
+
+

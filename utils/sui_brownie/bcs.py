@@ -204,6 +204,10 @@ class SharedObject:
         self.initial_shared_version: SequenceNumber = initial_shared_version
         self.mutable: Bool = mutable
 
+    @property
+    def encode(self) -> bytes:
+        return self.object_id.encode + self.initial_shared_version.encode + self.mutable.encode
+
 
 class ObjectRef:
     def __init__(self, object_id, sequence_number, object_digest):

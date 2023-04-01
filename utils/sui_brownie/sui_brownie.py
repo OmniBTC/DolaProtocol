@@ -398,7 +398,9 @@ class TransactionBuild:
     def prepare_object_info(cls, call_arg, abi):
         sui_object_ids = []
         for i in range(len(call_arg)):
-            if "Reference" in abi[i] or "MutableReference" in abi[i] or "Struct" in abi[i]:
+            param_type = abi["parameters"][i]
+            if isinstance(param_type, dict) and (
+                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
                 sui_object_ids.append(call_arg[i])
         object_infos = cls.project().client.sui_multiGetObjects(
             sui_object_ids,
@@ -524,7 +526,7 @@ class TransactionBuild:
         # generate inputs
         inputs = []
         for i in range(len(call_args)):
-            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i]))
+            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos))
 
         # generate commands
         type_arguments = [
@@ -1033,7 +1035,6 @@ class SuiPackage:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(msg, module=abi["module_name"], function=abi["func_name"])
@@ -1064,9 +1065,12 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
+        hasher = hashlib.blake2b(digest_size=32)
+        hasher.update(msg.encode)
+        msg_hash = hasher.digest()
         serialized_sig = []
         serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
-        serialized_sig.extend(list(self.project.account.sign(msg.encode).get_bytes()))
+        serialized_sig.extend(list(self.project.account.sign(msg_hash).get_bytes()))
         serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
         serialized_sig_base64 = self.encode_signature(serialized_sig)
 
