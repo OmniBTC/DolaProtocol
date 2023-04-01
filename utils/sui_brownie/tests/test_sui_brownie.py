@@ -81,8 +81,17 @@ class TestSuiBrownie(unittest.TestCase):
                             package_name="Basics"
                             )
         # basics.counter.create()
-        # basics.counter.increment("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504")
-
-        basics.counter.assert_value("0x5eea17ae869916058fcc86140745b295db99a3c254f9b4d174354c9e065a3504", 2)
+        # basics.counter.increment("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89")
+        # basics.counter.set_value("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89", 2)
+        # basics.counter.assert_value("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89", 2)
+        basics.counter.test_param("0x4486d2743ef05ea1002069d2bd4eaad7ec119aa0cdf61f4bc9d7b64c75fe9e89",
+                                  [10089869, 234567],
+                                  1,
+                                  8,
+                                  [9],
+                                  [[9, 9]],
+                                  [[9, 8]],
+                                  type_arguments=["U64"]
+                                  )
 
 

@@ -10,6 +10,7 @@ module basics::counter {
     use sui::transfer;
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
+    use std::vector;
 
     /// A shared counter.
     struct Counter has key {
@@ -77,6 +78,18 @@ module basics::counter {
     public entry fun set_value(counter: &mut Counter, value: u64, ctx: &TxContext) {
         assert!(counter.owner == tx_context::sender(ctx), 0);
         counter.value = value;
+    }
+
+    public entry fun test_param<T: drop>(
+        counter: &mut Counter,
+        value: vector<u64>,
+        index: u64,
+        _v0: T,
+        _v1: vector<T>,
+        _v2: vector<vector<T>>,
+        _v3: vector<vector<u8>>
+    ) {
+        counter.value = *vector::borrow(&value, index);
     }
 
     /// Assert a value for the counter.

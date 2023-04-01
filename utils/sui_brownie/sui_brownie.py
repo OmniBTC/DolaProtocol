@@ -423,8 +423,9 @@ class TransactionBuild:
             return getattr(bcs, param_type)(data)
         elif isinstance(param_type, dict) and "Vector" in param_type:
             output = []
+            assert isinstance(data, list), f"{param_type}:{data}"
             for i in range(len(data)):
-                output[i] = cls.generate_pure_value(param_type["Vector"], data[i])
+                output.append(cls.generate_pure_value(param_type["Vector"], data[i]))
             return output
 
     @classmethod
