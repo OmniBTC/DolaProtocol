@@ -18,6 +18,10 @@ module basics::counter {
         value: u64
     }
 
+    struct Data<T> has drop {
+        value: T
+    }
+
     public fun owner(counter: &Counter): address {
         counter.owner
     }
@@ -28,12 +32,41 @@ module basics::counter {
 
     /// Create and share a Counter object.
     public entry fun create(ctx: &mut TxContext) {
+        transfer::transfer(Counter {
+            id: object::new(ctx),
+            owner: tx_context::sender(ctx),
+            value: 1
+        }, tx_context::sender(ctx));
         transfer::share_object(Counter {
             id: object::new(ctx),
             owner: tx_context::sender(ctx),
             value: 0
         })
     }
+
+    public fun get_counter(counter: Counter): Counter {
+        counter
+    }
+
+    public fun increment_counter(counter: &mut Counter): &mut Counter {
+        counter.value = counter.value + 1;
+        counter
+    }
+
+    public fun test_data_type<T: drop>(
+        _v0: &Data<u8>,
+        _v1: &Data<address>,
+        _v2: &Data<bool>,
+        _v3: &Data<Counter>,
+        _v4: &Data<T>,
+        _v5: &vector<u8>,
+        _v6: &vector<address>,
+        _v7: &vector<bool>,
+        _v8: &vector<Counter>,
+        _v9: &vector<T>,
+        _v10: &Data<Data<u8>>,
+        _v11: &vector<vector<T>>
+    ) {}
 
     /// Increment a counter by 1.
     public entry fun increment(counter: &mut Counter) {

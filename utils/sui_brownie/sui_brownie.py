@@ -17,15 +17,15 @@ from retrying import retry
 
 from dotenv import dotenv_values
 
-from .account import Account
 from atomicwrites import atomic_write
 
 import yaml
 import toml
 
-from .parallelism import ThreadExecutor
-from . import bcs
-from .bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
+from sui_brownie.account import Account
+from sui_brownie.parallelism import ThreadExecutor
+from sui_brownie import bcs
+from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
     SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
     ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
     ObjectArg, SharedObject, Bool, encode_list, Pure
@@ -274,7 +274,7 @@ class ModuleFunction:
         return self.package.execute(self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
-        assert item in ["simulate", "inspect"], f"{item} attribute not found"
+        assert item in ["simulate", "inspect", "unsafe"], f"{item} attribute not found"
         return functools.partial(getattr(self.package, item), self.abi)
 
 
@@ -320,8 +320,15 @@ class IntentScope(Enum):
 
 
 class TransactionBuild:
-    @staticmethod
-    def is_tx_context(param) -> bool:
+
+    @classmethod
+    @functools.lru_cache()
+    def project(cls) -> SuiProject:
+        assert len(_load_project) > 0
+        return _load_project[0]
+
+    @classmethod
+    def is_tx_context(cls, param) -> bool:
         if not isinstance(param, dict):
             return False
         if "MutableReference" in param:
@@ -368,14 +375,14 @@ class TransactionBuild:
         return arguments, type_arguments
 
     @classmethod
-    def fromat_type_arg(cls, data: str) -> TypeTag:
-        if data in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
-            return TypeTag(data, NONE())
-        elif data.startswith("Vector"):
-            child_type_arg = cls.fromat_type_arg(data[7:-1])
+    def generate_type_arg(cls, type_arg: str) -> TypeTag:
+        if type_arg in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return TypeTag(type_arg, NONE())
+        elif type_arg.startswith("Vector"):
+            child_type_arg = cls.generate_type_arg(type_arg[7:-1])
             return TypeTag("Vector", child_type_arg)
-        elif SuiObject.is_sui_object(data):
-            sui_object_type = SuiObject.from_type(data)
+        elif SuiObject.is_sui_object(type_arg):
+            sui_object_type = SuiObject.from_type(type_arg)
             address = SuiAddress(sui_object_type.package_id)
             module = Identifier(sui_object_type.module_name)
             struct_name = sui_object_type.struct_name
@@ -389,29 +396,70 @@ class TransactionBuild:
                 type_arg_list = [v.replace(" ", "") for v in type_arg_list]
                 type_params = []
                 for v in type_arg_list:
-                    type_params.append(v)
+                    child_type_arg = cls.generate_type_arg(v)
+                    type_params.append(child_type_arg)
             return TypeTag("Struct", StructTag(address, module, name, type_params))
 
     @classmethod
-    def format_pure_value(cls, param_type, data):
+    def prepare_gas(cls):
+        # gas
+        sui_coins = cls.project().suix_getCoins(
+            cls.project().account.account_address,
+            "0x2::sui::SUI"
+        )["data"]
+        gas = max(sui_coins, key=lambda x: x["balance"])
+        return gas
+
+    @classmethod
+    def prepare_object_info(cls, call_arg, abi):
+        sui_object_ids = []
+        for i in range(len(call_arg)):
+            if "Reference" in abi[i] or "MutableReference" in abi[i] or "Struct" in abi[i]:
+                sui_object_ids.append(call_arg[i])
+        object_infos = cls.project().client.sui_multiGetObjects(
+            sui_object_ids,
+            {
+                "showType": True,
+                "showOwner": True,
+                "showPreviousTransaction": False,
+                "showDisplay": False,
+                "showContent": False,
+                "showBcs": False,
+                "showStorageRebate": False
+            }
+        )
+        call_arg_info = {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
+        return call_arg_info
+
+    @classmethod
+    def generate_pure_value(cls, param_type, data):
         if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
-            return getattr(bcs, abi[index])(data)
-        elif param_type.startswith("Vector"):
-            child_param_type = param_type[7:-1]
+            return getattr(bcs, param_type)(data)
+        elif isinstance(param_type, dict) and "Vector" in param_type:
             output = []
             for i in range(len(data)):
-                output[i] = cls.format_pure_value(child_param_type, data[i])
+                output[i] = cls.generate_pure_value(param_type["Vector"], data[i])
             return output
 
     @classmethod
-    def format_call_arg(cls, param_type, data):
-        if isinstance(param_type, dict) and ("MutableReference" in param_type or "Reference" in param_type):
+    def generate_call_arg(cls, param_type, data, object_infos):
+        if isinstance(param_type, dict) and \
+                ("MutableReference" in param_type or
+                 "Reference" in param_type or
+                 "Struct" in param_type):
+            data = object_infos[data]
             if "Shared" in data["owner"]:
-                mutable = Bool(True) if "MutableReference" in param_type else Bool(False)
+                if "MutableReference" in param_type:
+                    mutable = Bool(True)
+                elif "Reference" in param_type:
+                    mutable = Bool(False)
+                else:
+                    raise ValueError(param_type)
+                initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
                 return CallArg("Object", ObjectArg("SharedObject",
                                                    SharedObject(
                                                        ObjectID(data["objectId"]),
-                                                       SequenceNumber(data["version"]),
+                                                       SequenceNumber(initial_shared_version),
                                                        mutable
                                                    )))
             else:
@@ -422,12 +470,53 @@ class TransactionBuild:
                                                        ObjectDigest(data["digest"])
                                                    )))
         else:
-            pure_value = cls.format_pure_value(param, data)
+            pure_value = cls.generate_pure_value(param_type, data)
             if isinstance(pure_value, list):
                 data = list(encode_list(pure_value))
             else:
                 data = list(pure_value.encode)
             return CallArg("Pure", Pure(data))
+
+    @classmethod
+    def format_type_arg(cls, type_arg):
+        if type_arg in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return type_arg
+        elif type_arg.startswith("Vector"):
+            child_type_arg = cls.format_type_arg(type_arg[7:-1])
+            return {"Vector": child_type_arg}
+        elif "::" in type_arg:
+            return {"Struct": ""}
+        else:
+            raise ValueError(type_arg)
+
+    @classmethod
+    def format_type_args(cls, type_args):
+        output = []
+        for type_arg in type_args:
+            output.append(cls.format_type_arg(type_arg))
+        return output
+
+    @classmethod
+    def format_vector(cls, param_type: dict, type_args):
+        if not isinstance(param_type["Vector"], dict):
+            return
+        elif "TypeParameter" in param_type["Vector"]:
+            param_type["Vector"] = type_args[param_type["Vector"]["TypeParameter"]]
+        elif "Vector" in param_type["Vector"]:
+            cls.format_vector(param_type["Vector"], type_args)
+
+    @classmethod
+    def format_abi_param(cls, abi, type_args):
+        abi = copy.deepcopy(abi)
+        normal_type_args = cls.format_type_args(type_args)
+        for k, param_type in enumerate(abi["parameters"]):
+            if not isinstance(param_type, dict):
+                continue
+            elif "TypeParameter" in param_type:
+                abi["parameters"][k] = normal_type_args[param_type["TypeParameter"]]
+            elif "Vector" in param_type:
+                cls.format_vector(param_type, normal_type_args)
+        return abi
 
     @classmethod
     def move_call(
@@ -437,50 +526,25 @@ class TransactionBuild:
             abi,
             type_args,
             call_args,
-            gas_object: dict,
             gas_price: int,
             gas_budget,
     ) -> IntentMessage:
-        """
-        example:
-        1.
-            function:
-            public entry fun create<T: store + key>(obj: T, ctx: &mut TxContext)
-            abi:
-            {'visibility': 'Public', 'isEntry': True, 'typeParameters': [{'abilities': ['Store', 'Key']}], 'parameters':
-            [{'TypeParameter': 0}, {'MutableReference': {'Struct': {'address': '0x2', 'module': 'tx_context', 'name':
-            'TxContext', 'typeArguments': []}}}], 'return': [], 'module_name': 'lock', 'func_name': 'create'}
-        2.
-            function:
-            public fun key_for<T: store + key>(key: &Key<T>): ID
-            abi:
-            {'visibility': 'Public', 'isEntry': False, 'typeParameters': [{'abilities': ['Store', 'Key']}], 'parameters'
-            : [{'Reference': {'Struct': {'address':
-            '0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49',
-            'module': 'lock', 'name': 'Key', 'typeArguments': [{'TypeParameter': 0}]}}}], 'return':
-            [{'Struct': {'address': '0x2', 'module': 'object', 'name': 'ID', 'typeArguments': []}}],
-            'module_name': lock', 'func_name': 'key_for'}
-        3.
-            function:
-            public entry fun set_value(counter: &mut Counter, value: u64, ctx: &TxContext)
-            abi
-            {'visibility': 'Public', 'isEntry': True, 'typeParameters': [], 'parameters': [{'MutableReference':
-            {'Struct': {'address': '0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49', 'module':
-            'counter', 'name': 'Counter', 'typeArguments': []}}}, 'U64', {'Reference': {'Struct': {'address': '0x2',
-            'module': 'tx_context', 'name': 'TxContext', 'typeArguments': []}}}], 'return': [], 'module_name':
-            'counter', 'func_name': 'set_value'}
-        """
-        type_arguments = [
-            cls.fromat_type_arg(v) for v in type_args
-        ]
+        # format param
+        abi = cls.format_abi_param(abi, type_args)
+
+        # Prepare object
+        object_infos = cls.prepare_object_info(call_args, abi)
+        gas = cls.prepare_gas()
+
+        # generate inputs
         inputs = []
         for i in range(len(call_args)):
-            # todo! process nest generic type
-            if "TypeParameter" in abi["parameters"][i]:
-                param_type = type_args[i]
-            else:
-                param_type = abi["parameters"][i]
-            inputs.append(cls.format_call_arg(param_type, call_args[i]))
+            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i]))
+
+        # generate commands
+        type_arguments = [
+            cls.generate_type_arg(v) for v in type_args
+        ]
         arguments = [Argument("Input", U16(i)) for i in range(len(call_args))]
         commands = [
             Command("MoveCall", ProgrammableMoveCall(
@@ -494,9 +558,9 @@ class TransactionBuild:
         programmable_transaction = ProgrammableTransaction(inputs, commands)
 
         payment = [ObjectRef(
-            ObjectID(gas_object["objectId"]),
-            SequenceNumber(gas_object["version"]),
-            ObjectDigest(gas_object["digest"])
+            ObjectID(gas["objectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
         )]
         owner = SuiAddress(sender)
         price = U64(gas_price)
@@ -894,7 +958,7 @@ class SuiPackage:
     def encode_signature(data: list):
         return base64.b64encode(bytes(data)).decode("ascii")
 
-    def _execute(
+    def _unsafe(
             self,
             tx_bytes,
             sig_scheme="ED25519",
@@ -916,7 +980,7 @@ class SuiPackage:
             4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
             locally before returning the client. The local execution makes sure this node is aware of this transaction
             when client fires subsequent queries. However if the node fails to execute the transaction locally in a
-            timely manner, a bool type in the response is set to false to indicated the case
+            timely manner, a bool type in the response is set to False to indicated the case
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
@@ -952,7 +1016,7 @@ class SuiPackage:
         print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
         return result
 
-    def execute(
+    def unsafe(
             self,
             abi: dict,
             *arguments,
@@ -964,7 +1028,81 @@ class SuiPackage:
         self.project.client.sui_dryRunTransactionBlock(result["txBytes"])
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
-        return self._execute(result["txBytes"], module=abi["module_name"], function=abi["func_name"])
+        return self._unsafe(result["txBytes"], module=abi["module_name"], function=abi["func_name"])
+
+    def execute(
+            self,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000,
+    ):
+        msg = TransactionBuild.move_call(
+            self.project.account.account_address,
+            self.package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=1,
+            gas_budget=10000
+        )
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(msg, module=abi["module_name"], function=abi["func_name"])
+
+    def _execute(
+            self,
+            msg: IntentMessage,
+            sig_scheme="ED25519",
+            request_type="WaitForLocalExecution",
+            module=None,
+            function=None,
+    ):
+        """
+        :param msg:
+        :param sig_scheme:
+        :param request_type:
+            Execute the transaction and wait for results if desired. Request types:
+            1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
+            Note the transaction may fail without being noticed by client in this mode. After getting the response,
+            the client may poll the node to check the result of the transaction.
+            2. WaitForTxCert: waits for TransactionCertificate and then return to client.
+            3. WaitForEffectsCert: waits for TransactionEffectsCert and then return to client.
+            This mode is a proxy for transaction finality.
+            4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
+            locally before returning the client. The local execution makes sure this node is aware of this transaction
+            when client fires subsequent queries. However if the node fails to execute the transaction locally in a
+            timely manner, a bool type in the response is set to False to indicated the case
+        :return:
+        """
+        assert sig_scheme == "ED25519", "Only support ED25519"
+        serialized_sig = []
+        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
+        serialized_sig.extend(list(self.project.account.sign(msg.encode).get_bytes()))
+        serialized_sig.extend(list(self.project.account.public_key().get_bytes()))
+        serialized_sig_base64 = self.encode_signature(serialized_sig)
+
+        result = self.project.client.sui_executeTransactionBlock(
+            base64.b64encode(msg.value.encode),
+            [serialized_sig_base64],
+            {
+                "showInput": True,
+                "showRawInput": True,
+                "showEffects": True,
+                "showEvents": True,
+                "showObjectChanges": True,
+                "showBalanceChanges": True
+            },
+            request_type
+        )
+
+        if result["effects"]["status"]["status"] != "success":
+            pprint(result)
+        assert result["effects"]["status"]["status"] == "success"
+        self.update_object_index(result["effects"])
+        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
+        return result
 
 
 class SuiProject:

@@ -5,7 +5,7 @@ import time
 import unittest
 from pathlib import Path
 
-from sui_brownie.sui_brownie_new import SuiProject, SuiPackage
+from sui_brownie.sui_brownie import SuiProject, SuiPackage, TransactionBuild
 
 
 class TestSuiBrownie(unittest.TestCase):
@@ -25,8 +25,8 @@ class TestSuiBrownie(unittest.TestCase):
         math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
         math.publish_package(replace_address=dict(math="0x0"))
 
-        basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
-        basics.publish_package(replace_address=dict(Math=math.package_id))
+        # basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
+        # basics.publish_package(replace_address=dict(Math=math.package_id))
 
         basics = SuiPackage(package_path=Path.cwd().joinpath("TestProject/basics"))
         basics.publish_package(replace_address=dict(Math=None))
@@ -42,19 +42,28 @@ class TestSuiBrownie(unittest.TestCase):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
-        math = SuiPackage(package_id="0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49",
-                          package_name="Math"
-                          )
-        print(math.sandwich.Grocery)
-        print(math.lock.create)
-        print(math.lock.key_for)
-        print(math.counter.set_value)
+        basics = SuiPackage(package_id=sui_project.Basics[-1],
+                            package_name="Basics"
+                            )
+        print(basics.counter.test_data_type)
+
+    def test_type_arg(self):
+        type_arg = "Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>>"
+        result = TransactionBuild.fromat_type_arg(type_arg)
+        print(result.__dict__)
+        print(result.encode.hex())
+
+        type_arg = "Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<" \
+                   "0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>>>"
+        result = TransactionBuild.fromat_type_arg(type_arg)
+        print(result.__dict__)
+        print(result.encode.hex())
 
     def test_package_call(self):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
-        math = SuiPackage(package_id="0x1b57e5fd1bf38dd5d3249d66cabf975f64c2ce04e876ba66d1cd48a50a7c8a49",
-                          package_name="Math"
-                          )
-        math.counter.create()
+        basics = SuiPackage(package_id=sui_project.Basics[-1],
+                            package_name="Basics"
+                            )
+        basics.counter.create()
