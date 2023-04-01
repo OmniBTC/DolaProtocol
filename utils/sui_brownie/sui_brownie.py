@@ -28,7 +28,7 @@ from sui_brownie import bcs
 from sui_brownie.bcs import IntentMessage, Intent, NONE, TransactionData, TransactionDataV1, TransactionKind, \
     SuiAddress, GasData, ObjectRef, ObjectID, SequenceNumber, ObjectDigest, U64, TransactionExpiration, \
     ProgrammableTransaction, Command, Identifier, Argument, U16, ProgrammableMoveCall, TypeTag, StructTag, CallArg, \
-    ObjectArg, SharedObject, Bool, encode_list, Pure
+    ObjectArg, SharedObject, Bool, encode_list, Pure, IntentScope, IntentVersion, AppId
 from .sui_client import SuiClient
 
 _load_project = []
@@ -301,24 +301,6 @@ SIGNATURE_SCHEME_TO_FLAG = {
 }
 
 
-@unique
-class AppId(Enum):
-    Sui = 0
-
-
-@unique
-class IntentVersion(Enum):
-    V0 = 0
-
-
-@unique
-class IntentScope(Enum):
-    TransactionData = 0
-    TransactionEffects = 1
-    CheckpointSummary = 2
-    PersonalMessage = 3
-
-
 class TransactionBuild:
 
     @classmethod
@@ -403,9 +385,11 @@ class TransactionBuild:
     @classmethod
     def prepare_gas(cls):
         # gas
-        sui_coins = cls.project().suix_getCoins(
+        sui_coins = cls.project().client.suix_getCoins(
             cls.project().account.account_address,
-            "0x2::sui::SUI"
+            "0x2::sui::SUI",
+            None,
+            None
         )["data"]
         gas = max(sui_coins, key=lambda x: x["balance"])
         return gas
@@ -529,6 +513,7 @@ class TransactionBuild:
             gas_price: int,
             gas_budget,
     ) -> IntentMessage:
+        call_args, type_args = cls.check_args(abi, call_args, type_args)
         # format param
         abi = cls.format_abi_param(abi, type_args)
 
@@ -558,7 +543,7 @@ class TransactionBuild:
         programmable_transaction = ProgrammableTransaction(inputs, commands)
 
         payment = [ObjectRef(
-            ObjectID(gas["objectId"]),
+            ObjectID(gas["coinObjectId"]),
             SequenceNumber(gas["version"]),
             ObjectDigest(gas["digest"])
         )]
@@ -584,6 +569,7 @@ class TransactionBuild:
                    AppId("Sui", NONE())),
             transaction_data
         )
+        return msg
 
     @staticmethod
     def transfer_objects(
@@ -984,7 +970,7 @@ class SuiPackage:
         :return:
         """
         assert sig_scheme == "ED25519", "Only support ED25519"
-        data = bytes([IntentScope.TransactionData.value, IntentVersion.V0.value, AppId.Sui.value]
+        data = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
                      + list(base64.b64decode(tx_bytes)))
         hasher = hashlib.blake2b(digest_size=32)
         hasher.update(data)
@@ -1035,6 +1021,7 @@ class SuiPackage:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
+            gas_price=1,
             gas_budget=10000,
     ):
         msg = TransactionBuild.move_call(
@@ -1043,8 +1030,8 @@ class SuiPackage:
             abi,
             type_arguments,
             arguments,
-            gas_price=1,
-            gas_budget=10000
+            gas_price=gas_price,
+            gas_budget=gas_budget
         )
 
         # Execute
@@ -1084,7 +1071,7 @@ class SuiPackage:
         serialized_sig_base64 = self.encode_signature(serialized_sig)
 
         result = self.project.client.sui_executeTransactionBlock(
-            base64.b64encode(msg.value.encode),
+            base64.b64encode(msg.value.encode).decode("ascii"),
             [serialized_sig_base64],
             {
                 "showInput": True,

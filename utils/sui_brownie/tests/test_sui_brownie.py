@@ -49,15 +49,28 @@ class TestSuiBrownie(unittest.TestCase):
 
     def test_type_arg(self):
         type_arg = "Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>>"
-        result = TransactionBuild.fromat_type_arg(type_arg)
-        print(result.__dict__)
+        result = TransactionBuild.generate_type_arg(type_arg)
         print(result.encode.hex())
 
         type_arg = "Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<" \
                    "0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>>>"
-        result = TransactionBuild.fromat_type_arg(type_arg)
-        print(result.__dict__)
+        result = TransactionBuild.generate_type_arg(type_arg)
         print(result.encode.hex())
+
+        type_args = ["Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>",
+                     "Vector<Vector<U8>>"
+                     ]
+        result = TransactionBuild.format_type_args(type_args)
+        print(result)
+
+    def test_package_call_unsafe(self):
+        sui_project = self.load_project()
+        sui_project.active_account("Relayer")
+
+        basics = SuiPackage(package_id=sui_project.Basics[-1],
+                            package_name="Basics"
+                            )
+        basics.counter.create.unsafe()
 
     def test_package_call(self):
         sui_project = self.load_project()
