@@ -80,8 +80,8 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        # basics.counter.create.unsafe()
-        basics.counter.increment.unsafe(basics.counter.Counter[-1])
+        basics.counter.create.unsafe()
+        # basics.counter.increment.unsafe(basics.counter.Counter[-1])
 
     def test_package_call(self):
         sui_project = self.load_project()
@@ -90,20 +90,25 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        basics.counter.create()
-        sui_project.batch_transaction(
-            actual_params=[basics.counter.Counter[-1], 2],
-            transactions=[
-                [basics.counter.increment, [Argument("Input", U16(0))], []],
-                [basics.counter.assert_value, [Argument("Input", U16(0)), Argument("Input", U16(1))], []],
-            ]
+        # basics.counter.create()
+        # sui_project.batch_transaction(
+        #     actual_params=[basics.counter.Counter[-1], 2],
+        #     transactions=[
+        #         [basics.counter.increment, [Argument("Input", U16(0))], []],
+        #         [basics.counter.assert_value, [Argument("Input", U16(0)), Argument("Input", U16(1))], []],
+        #     ]
+        # )
+        # basics.counter.test_param(basics.counter.Counter[-1],
+        #                           [10089869, 234567],
+        #                           1,
+        #                           8,
+        #                           [9],
+        #                           [[9, 9]],
+        #                           [[9, 8]],
+        #                           type_arguments=["U64"]
+        #                           )
+
+        basics.counter.test_vec_object(
+            ["0x543a78751e8f24bfabc089020c4bdd425c25ef38648a0131b9906fe19c9b1fdb"],
+            type_arguments=["0xe6ea734a94c6edb3c6f964a5ab880f1773fd5f58fb1b7fb4be4e521ce94078d7::counter::USDT"]
         )
-        basics.counter.test_param(basics.counter.Counter[-1],
-                                  [10089869, 234567],
-                                  1,
-                                  8,
-                                  [9],
-                                  [[9, 9]],
-                                  [[9, 8]],
-                                  type_arguments=["U64"]
-                                  )

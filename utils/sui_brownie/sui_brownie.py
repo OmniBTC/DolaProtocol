@@ -424,11 +424,13 @@ class TransactionBuild:
         object_ids = []
         for i in range(len(call_arg)):
             param_type = parameters[i]
-            if isinstance(param_type, dict) and (
-                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) and (
-                    isinstance(call_arg[i], str)
-            ):
-                object_ids.append(call_arg[i])
+            if isinstance(param_type, dict):
+                if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
+                        and isinstance(call_arg[i], str):
+                    object_ids.append(call_arg[i])
+                elif "Vector" in param_type and "Struct" in param_type["Vector"]:
+                    assert isinstance(call_arg[i], list)
+                    object_ids.extend(call_arg[i])
 
         return cls.get_objects(object_ids)
 
@@ -560,24 +562,23 @@ class TransactionBuild:
                                            for i in range(child_command_start_index, len(inputs))]
                 commands.append(Command("MakeMoveVec", MakeMoveVec(OptionTypeTag("NONE", NONE()),
                                                                    child_command_arguments)))
-                arguments.append(Argument("Result", U16(len(commands - 1))))
+                arguments.append(Argument("Result", U16(len(commands) - 1)))
             else:
                 inputs.append(call_arg_result)
-                arguments.append(Argument("Input", U16(len(inputs - 1))))
+                arguments.append(Argument("Input", U16(len(inputs) - 1)))
 
         # generate commands
         type_arguments = [
             cls.generate_type_arg(v) for v in type_args
         ]
-        commands.append([
+        commands.append(
             Command("MoveCall", ProgrammableMoveCall(
                 ObjectID(package_id),
                 Identifier(abi["module_name"]),
                 Identifier(abi["func_name"]),
                 type_arguments,
                 arguments
-            ))
-        ])
+            )))
         return inputs, commands
 
     @classmethod
