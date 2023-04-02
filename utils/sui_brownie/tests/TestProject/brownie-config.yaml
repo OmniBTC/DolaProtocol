@@ -11,3 +11,4 @@ networks:
 sui_wallets:
   from_mnemonic:
     Relayer: ${MNEMONIC}
+

@@ -9,8 +9,6 @@ from typing import Union
 
 from . import ed25519
 
-INTENT_BYTES = [0, 0, 0]
-
 
 class Account:
     """Represents an account as well as the private, public key-pair for the Aptos blockchain."""
@@ -39,15 +37,8 @@ class Account:
                 and self.private_key == other.private_key
         )
 
-    def sign(self, data: Union[bytes, str]):
-        if isinstance(data, bytes):
-            tx_bytes = list(data)
-        else:
-            tx_bytes = list(base64.b64decode(data))
-        intent_message = []
-        intent_message.extend(INTENT_BYTES)
-        intent_message.extend(tx_bytes)
-        return self.private_key.sign(bytes(intent_message))
+    def sign(self, data: bytes) -> ed25519.Signature:
+        return self.private_key.sign(data)
 
     @property
     def account_address(self):

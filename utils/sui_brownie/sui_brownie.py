@@ -3,30 +3,86 @@ from __future__ import annotations
 import base64
 import copy
 import functools
+import hashlib
 import json
+import multiprocessing
 import os
-import threading
 import time
 import traceback
-from collections import OrderedDict
 from pathlib import Path
 from typing import Union, List, Dict
-from pprint import pprint, pformat
+from pprint import pprint
 from retrying import retry
 
-import httpx
 from dotenv import dotenv_values
 
-from .account import Account
+from atomicwrites import atomic_write
 
 import yaml
 import toml
 
+from .account import Account
 from .parallelism import ThreadExecutor
+from . import bcs
+from .bcs import *
+from .sui_client import SuiClient
+
+_load_project = []
+
+_cache_file_lock = multiprocessing.Lock()
 
 
-class ObjectType:
-    __single_object: Dict[str, ObjectType] = dict()
+class AttributeDict:
+    """Dictionaries that can be indexed by  '.' to index the dictionary"""
+
+    def __init__(self, data=None):
+        if isinstance(data, dict):
+            self.data = data
+        else:
+            self.data = {}
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __getattr__(self, item):
+        return self.data[item]
+
+    def __deepcopy__(self, memodict={}):
+
+        return AttributeDict(copy.deepcopy(self.data))
+
+
+class DefaultDict(dict):
+    def __init__(self, default=None):
+        self.default = default
+        super().__init__()
+
+    def __getitem__(self, item):
+        if item not in self:
+            super(DefaultDict, self).__setitem__(item, copy.deepcopy(self.default))
+        return super(DefaultDict, self).__getitem__(item)
+
+    def __len__(self):
+        return len(self.keys())
+
+    def keys(self):
+        data = list(super().keys())
+        if "default" in data:
+            del data["default"]
+        return data
+
+
+class NonDupList(list):
+    def append(self, __object) -> None:
+        if __object not in self:
+            super(NonDupList, self).append(__object)
+
+
+class SuiObject:
+    __single_object: Dict[str, SuiObject] = dict()
 
     def __init__(self,
                  package_id: str,
@@ -37,43 +93,28 @@ class ObjectType:
         self.module_name = module_name
         self.struct_name = struct_name
         self.package_name = ""
-        assert str(self) not in self.__single_object, "Has exist, use from_data"
+        assert str(self) not in self.__single_object, f"{package_id} has exist, use 'from_data' create"
 
     @classmethod
     def from_data(
             cls,
             package_id: str,
             module_name: str,
-            struct_name: str) -> ObjectType:
+            struct_name: str
+    ) -> SuiObject:
         data = f"{package_id}::{module_name}::{struct_name}"
         if data not in cls.__single_object:
-            cls.__single_object[data] = ObjectType(package_id, module_name, struct_name)
+            cls.__single_object[data] = SuiObject(package_id, module_name, struct_name)
         return cls.__single_object[data]
 
-    @staticmethod
-    def normal_package_id(package_id) -> str:
-        if package_id == "0x2":
-            return package_id
-        if package_id[:2] == "0x" and len(package_id[2:]) < 40:
-            package_id = f"0x{'0' * (40 - len(package_id[2:]))}{package_id[2:]}"
-        return package_id
-
     @classmethod
-    def normal_data(cls, data: str):
-        data = data.split("::")
-        for k in range(len(data)):
-            index = data[k].find("0x")
-            data[k] = data[k][:index] + cls.normal_package_id(data[k][index:])
-        return "::".join(data)
-
-    @classmethod
-    def from_type(cls, data: str) -> ObjectType:
+    def from_type(cls, data: str) -> SuiObject:
         """
         :param data:
             0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello
         :return:
         """
-        data = cls.normal_data(data)
+        data = cls.normal_type(data)
         data = data.split("::")
         result = data[:2]
         result.append("::".join(data[2:]))
@@ -81,7 +122,33 @@ class ObjectType:
         return cls.from_data(*result)
 
     @staticmethod
-    def is_object_type(data: str) -> bool:
+    def normal_package_id(package_id) -> str:
+        """
+        0x2 -> 0x0000000000000000000000000000000000000000000000000000000000000002
+        :param package_id:
+        :return:
+        """
+        if package_id == "0x2":
+            return package_id
+        if package_id[:2] == "0x" and len(package_id[2:]) < 64:
+            package_id = f"0x{'0' * (64 - len(package_id[2:]))}{package_id[2:]}"
+        return package_id
+
+    @classmethod
+    def normal_type(cls, data: str):
+        """
+        0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello -> SuiObject
+        :param data:
+        :return:
+        """
+        data = data.split("::")
+        for k in range(len(data)):
+            index = data[k].find("0x")
+            data[k] = data[k][:index] + cls.normal_package_id(data[k][index:])
+        return "::".join(data)
+
+    @staticmethod
+    def is_sui_object(data: str) -> bool:
         if not isinstance(data, str):
             return False
         return len(data.split("::")) >= 3
@@ -96,6 +163,11 @@ class ObjectType:
         return hash(str(self))
 
     def normal_struct(self):
+        """
+        0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello -> [Hello]
+        0xb5189942a34446f1d037b446df717987e20a5717::main1::Hello<T> -> [Hello, T]
+        :return:
+        """
         if self.struct_name is None:
             return []
         elif self.struct_name[-1] == ">":
@@ -105,215 +177,47 @@ class ObjectType:
             return [self.struct_name]
 
 
-CACHE_DIR = Path(os.environ.get('HOME')).joinpath(".cache")
-if not CACHE_DIR.exists():
-    CACHE_DIR.mkdir()
+class MoveToml:
+    """Easy recovery after package replacement address"""
 
-CACHE_FILE = CACHE_DIR.joinpath("objects.json")
+    def __init__(self, file: str):
+        self.file = file
+        with open(file, "r") as f:
+            data = toml.load(f)
+        self.origin_data = data
+        self.data = copy.deepcopy(data)
 
+    def package_name(self):
+        return self.data["package"]["name"]
 
-class RWList(list):
-    def __init__(self, rw_name="", write_flag=False, *args, **kwargs):
-        self.rw_name = rw_name
-        self.write_flag = write_flag
-        super(RWList, self).__init__(*args, **kwargs)
-
-    def append(self, *args, **kwargs) -> None:
-        if self.write_flag:
-            print(f"RWList write {self.rw_name} of {args[0]}")
-        super(RWList, self).append(*args, **kwargs)
-
-
-class RWDict(OrderedDict):
-
-    def __init__(self, rw_name="", read_flag=False, write_flag=False, *args, **kwargs):
-        self.rw_name = rw_name
-        self.read_flag = read_flag
-        self.write_flag = write_flag
-        super(RWDict, self).__init__(*args, **kwargs)
+    def package_address_name(self):
+        if "addresses" not in self.data:
+            return
+        dependencies_name = {v.lower().replace("_", "") for v in self.data.get("dependencies", {})}
+        for address_name in self.data["addresses"]:
+            if address_name.lower().replace("_", "") not in dependencies_name:
+                return address_name
+        return self.data["addresses"].values[0]
 
     def __getitem__(self, item):
-        if self.read_flag:
-            print(f"RWDict read {self.rw_name} of {item}")
-        return super(RWDict, self).__getitem__(item)
+        return self.data[item]
 
     def __setitem__(self, key, value):
-        if self.write_flag:
-            print(f"RWDict write {self.rw_name} of {key} {value}")
-        return super(RWDict, self).__setitem__(key, value)
+        self.data[key] = value
 
+    def store(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.data, f)
 
-class ThirdCacheList(RWList):
-    def append(self, *args, **kwargs) -> None:
-        super(ThirdCacheList, self).append(*args, **kwargs)
-        persist_cache()
+    def restore(self):
+        with open(self.file, "w") as f:
+            toml.dump(self.origin_data, f)
 
+    def get(self, item, default):
+        return self.data.get(item, default)
 
-class SecondCacheDict(RWDict):
-    def __setitem__(self, key, value):
-        if isinstance(value, list):
-            kv = ThirdCacheList(rw_name=f"{self.rw_name.replace('second', 'value')}", write_flag=False)
-            for v in value:
-                kv.append(v)
-        else:
-            raise ValueError
-        super(SecondCacheDict, self).__setitem__(key, kv)
-        persist_cache()
-
-    def __getitem__(self, item):
-        if item not in self and "Shared" in self:
-            self.__setitem__(item, copy.deepcopy(self["Shared"]))
-
-        return super(SecondCacheDict, self).__getitem__(item)
-
-
-CachePersistLock = threading.Lock()
-
-
-class TopCacheDict(RWDict):
-
-    def __getitem__(self, item):
-        if item in self:
-            return super(TopCacheDict, self).__getitem__(item)
-
-        if ObjectType.is_object_type(item) and ObjectType.from_type(item) in self:
-            item = ObjectType.from_type(item)
-
-        return super(TopCacheDict, self).__getitem__(item)
-
-    def get(self, key):
-        if key in self:
-            return super(TopCacheDict, self).get(key)
-
-        if ObjectType.is_object_type(key) and ObjectType.from_type(key) in self:
-            key = ObjectType.from_type(key)
-
-        return super(TopCacheDict, self).get(key)
-
-    def __setitem__(self, key, value):
-        if isinstance(value, dict):
-            kv = SecondCacheDict(rw_name=self.rw_name.replace("top", "second"), write_flag=False)
-            for k in value:
-                kv[k] = value[k]
-        else:
-            raise ValueError
-        super(TopCacheDict, self).__setitem__(key, kv)
-        persist_cache()
-
-    def fuzzy_search_package(self, key):
-        keys = {k.lower().replace("_", ""): k for k in list(self.keys()) if isinstance(k, str)}
-        key = key.lower().replace("_", "")
-        if key in keys:
-            data = self[keys[key]].get("Shared", [])
-            if len(data):
-                return data[-1]
-        return None
-
-
-CacheObject: Dict[Union[ObjectType, str], dict] = TopCacheDict(rw_name="CacheObject-top", write_flag=False)
-
-
-def persist_cache(cache_file=CACHE_FILE):
-    data = {}
-    for k in CacheObject:
-        for m in CacheObject[k]:
-            if len(CacheObject[k][m]):
-                if str(k) not in data:
-                    data[str(k)] = {}
-                data[str(k)][m] = CacheObject[k][m]
-    if len(data) == 0:
-        return
-
-    pt = ThreadExecutor(executor=1, mode="all")
-
-    def worker():
-        with open(str(cache_file), "w") as f:
-            json.dump(data, f, indent=4, sort_keys=True)
-
-    CachePersistLock.acquire()
-    pt.run([worker])
-    CachePersistLock.release()
-
-
-def reload_cache(cache_file: Path = CACHE_FILE):
-    if not cache_file.exists():
-        return
-    with open(str(cache_file), "r") as f:
-        try:
-            data = json.load(f)
-        except:
-            data = {}
-        for k in data:
-            try:
-                object_type = ObjectType.from_type(k)
-                for v in data[k]:
-                    for v1 in data[k][v]:
-                        insert_cache(object_type, v1, v)
-            except:
-                for v in data[k]:
-                    for v1 in data[k][v]:
-                        insert_package(k, v1)
-
-
-def insert_coin(coin_type: str, object_id: str, owner: str):
-    """
-    :param coin_type: 0x2::sui::SUI
-    :param object_id:
-    :param owner:
-    :return:
-    """
-    insert_cache(ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>'), object_id, owner)
-
-
-def insert_package(package_name, object_id: str = None):
-    if object_id is None:
-        return
-    if package_name not in CacheObject:
-        CacheObject[package_name] = {"Shared": []}
-        setattr(CacheObject, package_name, CacheObject[package_name]["Shared"])
-    if object_id not in CacheObject[package_name]["Shared"]:
-        CacheObject[package_name]["Shared"].append(object_id)
-
-
-def insert_cache(object_type: ObjectType, object_id: str = None, owner="Shared"):
-    if object_type not in CacheObject:
-        CacheObject[object_type] = {owner: [object_id]} if object_id is not None else {owner: []}
-        final_object = CacheObject
-        attr_list = [object_type.module_name, object_type.struct_name]
-        for k, attr in enumerate(attr_list):
-            if hasattr(final_object, attr):
-                final_object = getattr(final_object, attr)
-            else:
-                if k == len(attr_list) - 1:
-                    struct_names = object_type.normal_struct()
-                    if len(struct_names) == 0:
-                        return
-                    # correct name
-                    attr = struct_names[0]
-                    ob = dict()
-                else:
-                    ob = type(f"CacheObject_{object_type.module_name}", (object,), dict())()
-                setattr(final_object, attr, ob)
-                final_object = ob
-            if k == len(attr_list) - 1 and object_type not in final_object:
-                final_object[object_type] = CacheObject[object_type]
-    elif object_id is not None:
-        if owner not in CacheObject[object_type]:
-            CacheObject[object_type][owner] = []
-        if object_id not in CacheObject[object_type][owner]:
-            CacheObject[object_type][owner].append(object_id)
-
-
-reload_cache()
-
-
-class ApiError(Exception):
-    """Error thrown when the API returns >= 400"""
-
-    def __init__(self, message, status_code):
-        # Call the base class constructor with the parameters it needs
-        super().__init__(message)
-        self.status_code = status_code
+    def keys(self):
+        return self.data.keys()
 
 
 class SuiCliConfig:
@@ -366,292 +270,748 @@ class SuiCliConfig:
             f.write(config_data)
 
 
-class MoveToml:
-    def __init__(self, file: str):
-        self.file = file
-        with open(file, "r") as f:
-            data = toml.load(f)
-        self.origin_data = data
-        self.data = copy.deepcopy(data)
-
-    def __getitem__(self, item):
-        return self.data[item]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def store(self):
-        with open(self.file, "w") as f:
-            toml.dump(self.data, f)
-
-    def restore(self):
-        with open(self.file, "w") as f:
-            toml.dump(self.origin_data, f)
-
-    def get(self, param, param1):
-        return self.data.get(param, param1)
-
-    def keys(self):
-        return self.data.keys()
-
-
-class Coin:
-    __single_object: Dict[str, Coin] = dict()
-
-    def __init__(self,
-                 object_id: str,
-                 owner: str,
-                 balance: int,
-                 ):
-        self.object_id = object_id
-        self.owner = owner
-        self.balance = int(balance)
-        assert self.object_id not in self.__single_object
-
-    @classmethod
-    def from_data(cls,
-                  object_id: str,
-                  owner: str,
-                  balance: int,
-                  ) -> Coin:
-        if object_id in cls.__single_object:
-            cls.__single_object[object_id].owner = owner
-            cls.__single_object[object_id].balance = balance
-        else:
-            cls.__single_object[object_id] = Coin(object_id, owner, balance)
-        return cls.__single_object[object_id]
+class ModuleFunction:
+    def __init__(self, package: SuiPackage, abi: dict):
+        self.package = package
+        self.abi = abi
 
     def __repr__(self):
-        return self.__str__()
+        return str(self.abi)
 
-    def __str__(self):
-        return json.dumps(dict(object_id=self.object_id, owner=self.owner, balance=self.balance))
+    def __call__(self, *args, **kwargs):
+        return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
-
-class HttpClient(httpx.Client):
-
-    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
-    def get(self, *args, **kwargs):
-        return super().get(*args, **kwargs)
-
-    @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
-    def post(self, *args, **kwargs):
-        response = super().post(*args, **kwargs)
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        return response
+    def __getattr__(self, item):
+        assert item in ["simulate", "inspect", "unsafe"], f"{item} attribute not found"
+        return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
-class SuiDynamicFiled:
+class ModuleAttributeDict(AttributeDict):
+    def __getattr__(self, item):
+        if len(_load_project) == 0:
+            return []
+        project: SuiProject = _load_project[0]
+        value = super().__getattr__(item)
+        if isinstance(value, SuiObject):
+            return project.read_item_from_cache(value)
+        elif isinstance(value, ModuleFunction):
+            return value
+        else:
+            return []
 
-    @staticmethod
-    def format_bytes(d: bytes):
-        try:
-            da = d.decode("ascii")
-        except:
-            return "0x" + d.hex()
-        for v in da:
-            if '0' <= v <= "9" or 'a' <= v <= "z" or 'A' <= v <= "Z" or v == ":":
+    def __deepcopy__(self, memodict={}):
+        return ModuleAttributeDict(copy.deepcopy(self.data))
+
+
+SIGNATURE_SCHEME_TO_FLAG = {
+    "ED25519": 0,
+    "Secp256k1": 1
+}
+
+
+class TransactionBuild:
+
+    @classmethod
+    @functools.lru_cache()
+    def project(cls) -> SuiProject:
+        assert len(_load_project) > 0
+        return _load_project[0]
+
+    @classmethod
+    def is_tx_context(cls, param) -> bool:
+        if not isinstance(param, dict):
+            return False
+        if "MutableReference" in param:
+            final_arg = param["MutableReference"].get("Struct", dict())
+        elif "Reference" in param:
+            final_arg = param["Reference"].get("Struct", dict())
+        else:
+            final_arg = {}
+        if final_arg.get("address", None) == "0x2" \
+                and final_arg.get("module", None) == "tx_context" \
+                and final_arg.get("name", None) == "TxContext":
+            return True
+        else:
+            return False
+
+    @classmethod
+    def normal_float(cls, data: list):
+        for k in range(len(data)):
+            if isinstance(data[k], float):
+                assert float(int(data[k])) == data[k], f"{data[k]} must int"
+                data[k] = int(data[k])
+            elif isinstance(data[k], list):
+                cls.normal_float(data[k])
+
+    @classmethod
+    def check_args(
+            cls,
+            abi: dict,
+            arguments: list,
+            type_arguments: List[str] = None
+    ):
+        arguments = list(arguments)
+        cls.normal_float(arguments)
+
+        if type_arguments is None:
+            type_arguments = []
+        assert isinstance(list(type_arguments), list) and len(
+            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+        if len(abi["parameters"]) and TransactionBuild.is_tx_context(abi["parameters"][-1]):
+            assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
+        else:
+            assert len(arguments) == len(abi["parameters"]), f'arguments error: {abi["parameters"]}'
+
+        return arguments, type_arguments
+
+    @classmethod
+    def generate_type_arg(cls, type_arg: str) -> TypeTag:
+        if type_arg in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return TypeTag(type_arg, NONE())
+        elif type_arg.startswith("Vector"):
+            child_type_arg = cls.generate_type_arg(type_arg[7:-1])
+            return TypeTag("Vector", child_type_arg)
+        elif SuiObject.is_sui_object(type_arg):
+            sui_object_type = SuiObject.from_type(type_arg)
+            address = SuiAddress(sui_object_type.package_id)
+            module = Identifier(sui_object_type.module_name)
+            struct_name = sui_object_type.struct_name
+            type_arg_index = struct_name.index("<")
+            if type_arg_index == -1:
+                name = Identifier(struct_name)
+                type_params = []
+            else:
+                name = Identifier(struct_name[:type_arg_index])
+                type_arg_list = struct_name[type_arg_index + 1:-1].split(",")
+                type_arg_list = [v.replace(" ", "") for v in type_arg_list]
+                type_params = []
+                for v in type_arg_list:
+                    child_type_arg = cls.generate_type_arg(v)
+                    type_params.append(child_type_arg)
+            return TypeTag("Struct", StructTag(address, module, name, type_params))
+
+    @classmethod
+    def prepare_gas(cls):
+        # gas
+        sui_coins = cls.project().client.suix_getCoins(
+            cls.project().account.account_address,
+            "0x2::sui::SUI",
+            None,
+            None
+        )["data"]
+        gas = max(sui_coins, key=lambda x: x["balance"])
+        return gas
+
+    @classmethod
+    def get_objects(cls, object_ids):
+        object_infos = cls.project().client.sui_multiGetObjects(
+            object_ids,
+            {
+                "showType": True,
+                "showOwner": True,
+                "showPreviousTransaction": False,
+                "showDisplay": False,
+                "showContent": False,
+                "showBcs": False,
+                "showStorageRebate": False
+            }
+        )
+        return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
+
+    @classmethod
+    def prepare_object_info(cls, call_arg, abi):
+        object_ids = []
+        for i in range(len(call_arg)):
+            param_type = abi["parameters"][i]
+            if isinstance(param_type, dict) and (
+                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
+                object_ids.append(call_arg[i])
+
+        return cls.get_objects(object_ids)
+
+    @classmethod
+    def generate_pure_value(cls, param_type, data):
+        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return getattr(bcs, param_type)(data)
+        elif isinstance(param_type, dict) and "Vector" in param_type:
+            output = []
+            assert isinstance(data, list), f"{param_type}:{data}"
+            for i in range(len(data)):
+                output.append(cls.generate_pure_value(param_type["Vector"], data[i]))
+            return output
+
+    @classmethod
+    def generate_call_arg(cls, param_type, data, object_infos):
+        if isinstance(param_type, dict) and \
+                ("MutableReference" in param_type or
+                 "Reference" in param_type or
+                 "Struct" in param_type):
+            data = object_infos[data]
+            if "Shared" in data["owner"]:
+                if "MutableReference" in param_type:
+                    mutable = Bool(True)
+                elif "Reference" in param_type:
+                    mutable = Bool(False)
+                else:
+                    raise ValueError(param_type)
+                initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
+                return CallArg("Object", ObjectArg("SharedObject",
+                                                   SharedObject(
+                                                       ObjectID(data["objectId"]),
+                                                       SequenceNumber(initial_shared_version),
+                                                       mutable
+                                                   )))
+            else:
+                return CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                                   ObjectRef(
+                                                       ObjectID(data["objectId"]),
+                                                       SequenceNumber(data["version"]),
+                                                       ObjectDigest(data["digest"])
+                                                   )))
+        else:
+            pure_value = cls.generate_pure_value(param_type, data)
+            if isinstance(pure_value, list):
+                data = list(encode_list(pure_value))
+            else:
+                data = list(pure_value.encode)
+            return CallArg("Pure", Pure(data))
+
+    @classmethod
+    def format_type_arg(cls, type_arg):
+        if type_arg in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+            return type_arg
+        elif type_arg.startswith("Vector"):
+            child_type_arg = cls.format_type_arg(type_arg[7:-1])
+            return {"Vector": child_type_arg}
+        elif "::" in type_arg:
+            return {"Struct": ""}
+        else:
+            raise ValueError(type_arg)
+
+    @classmethod
+    def format_type_args(cls, type_args):
+        output = []
+        for type_arg in type_args:
+            output.append(cls.format_type_arg(type_arg))
+        return output
+
+    @classmethod
+    def format_vector(cls, param_type: dict, type_args):
+        if not isinstance(param_type["Vector"], dict):
+            return
+        elif "TypeParameter" in param_type["Vector"]:
+            param_type["Vector"] = type_args[param_type["Vector"]["TypeParameter"]]
+        elif "Vector" in param_type["Vector"]:
+            cls.format_vector(param_type["Vector"], type_args)
+
+    @classmethod
+    def format_abi_param(cls, abi, type_args):
+        abi = copy.deepcopy(abi)
+        normal_type_args = cls.format_type_args(type_args)
+        for k, param_type in enumerate(abi["parameters"]):
+            if not isinstance(param_type, dict):
                 continue
-            return "0x" + d.hex()
-        return da
+            elif "TypeParameter" in param_type:
+                abi["parameters"][k] = normal_type_args[param_type["TypeParameter"]]
+            elif "Vector" in param_type:
+                cls.format_vector(param_type, normal_type_args)
+        return abi
 
     @classmethod
-    def format_data(cls, d):
-        """
-        :param d:
-            bytes --> ascii | hex (padding 0x)
-            str --> str
-        :return:
-        """
-        try:
-            return int(d)
-        except:
-            pass
-        if isinstance(d, list):
-            for k in range(len(d)):
-                d[k] = cls.format_data(d[k])
-            try:
-                return cls.format_bytes(bytes(d))
-            except:
-                pass
-        elif isinstance(d, dict):
-            for k in list(d.keys()):
-                if k == "fields":
-                    for m in d[k]:
-                        try:
-                            d[k][m] = cls.format_data(d[k][m])
-                        except:
-                            pass
-                elif k == "type":
-                    pass
-                else:
-                    d[k] = cls.format_data(d[k])
-        return d
+    def command_move_call(
+            cls,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+    ) -> (List[CallArg], List[Command]):
+        call_args, type_args = cls.check_args(abi, call_args, type_args)
+        # format param
+        abi = cls.format_abi_param(abi, type_args)
 
-    def __init__(self, owner, uid, name, value, ty):
-        self.owner = owner
-        self.uid = uid
-        self.name_type, self.value_type = self.format_type(ty)
-        self.name = self.format_data(name)
-        self.value = self.format_data(value)
+        # Prepare object
+        object_infos = cls.prepare_object_info(call_args, abi)
 
-    @staticmethod
-    def format_type(data: str) -> (str, str):
-        data = data.replace("0x2::dynamic_field::Field<", "")[:-1]
-        data = data.split(",")
-        return data[0], ",".join(data[1:])
+        # generate inputs
+        inputs = []
+        for i in range(len(call_args)):
+            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos))
 
-    def __repr__(self):
-        return self.__str__()
+        # generate commands
+        type_arguments = [
+            cls.generate_type_arg(v) for v in type_args
+        ]
+        arguments = [Argument("Input", U16(i)) for i in range(len(call_args))]
+        commands = [
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(package_id),
+                Identifier(abi["module_name"]),
+                Identifier(abi["func_name"]),
+                type_arguments,
+                arguments
+            ))
+        ]
+        return inputs, commands
 
-    def __str__(self):
-        if isinstance(self.name, str):
-            name = self.name
+    @classmethod
+    def build_intent_message(
+            cls,
+            sender,
+            inputs,
+            commands,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        gas = cls.prepare_gas()
+        programmable_transaction = ProgrammableTransaction(inputs, commands)
+
+        payment = [ObjectRef(
+            ObjectID(gas["coinObjectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
+        )]
+        owner = SuiAddress(sender)
+        price = U64(gas_price)
+        budget = U64(gas_budget)
+        expiration = TransactionExpiration("NONE", NONE())
+        transaction_data_v1 = TransactionDataV1(TransactionKind("ProgrammableTransaction", programmable_transaction),
+                                                SuiAddress(sender),
+                                                GasData(
+                                                    payment,
+                                                    owner,
+                                                    price,
+                                                    budget
+                                                ),
+                                                expiration
+                                                )
+        transaction_data = TransactionData("V1", transaction_data_v1)
+
+        msg = IntentMessage(
+            Intent(IntentScope("TransactionData", NONE()),
+                   IntentVersion("V0", NONE()),
+                   AppId("Sui", NONE())),
+            transaction_data
+        )
+        return msg
+
+    @classmethod
+    def move_call(
+            cls,
+            sender,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        inputs, commands = cls.command_move_call(package_id, abi, type_args, call_args)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def transfer_object(
+            cls,
+            sender,
+            object_id,
+            recipient,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+        data = cls.get_objects([object_id])[object_id]
+        # generate inputs
+        inputs = [
+            CallArg(
+                "Pure", Pure(
+                    list(SuiAddress(recipient).encode)
+                )),
+            CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                        ObjectRef(
+                                            ObjectID(data["objectId"]),
+                                            SequenceNumber(data["version"]),
+                                            ObjectDigest(data["digest"])
+                                        )))
+        ]
+        # generate commands
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("TransferObjects", TransferObjects(
+                arguments[1:],
+                arguments[0]
+            ))
+        ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def pay_sui(
+            cls,
+            sender,
+            recipients,
+            amounts,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+
+        # generate inputs
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(U64(int(v)).encode)
+            )) for v in amounts]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("SplitCoins", SplitCoins(
+                Argument("GasCoin", NONE()),
+                arguments
+            ))
+        ]
+        for i in range(len(recipients)):
+            inputs.append(CallArg(
+                "Pure", Pure(
+                    list(SuiAddress(recipients[i]).encode)
+                )))
+            coins = [Argument("NestedResult", NestedResult(U16(0), U16(i)))]
+            commands.append(
+                Command("TransferObjects", TransferObjects(
+                    coins,
+                    Argument("Input", U16(len(inputs) - 1))
+                ))
+            )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def pay(
+            cls,
+            sender,
+            input_coins,
+            recipients,
+            amounts,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+        input_coins_info = cls.get_objects([input_coins])
+        # generate inputs
+        inputs = [CallArg(
+            "Object", ObjectArg(
+                "ImmOrOwnedObject",
+                ObjectRef(
+                    ObjectID(input_coin),
+                    SequenceNumber(input_coins_info[input_coin]["version"]),
+                    ObjectDigest(input_coins_info[input_coin]["digest"])
+                ))) for input_coin in input_coins]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        coin_arg = arguments[0]
+        merge_args = arguments[1:]
+        commands = []
+        if len(merge_args) > 0:
+            commands.append(
+                Command("MergeCoins", MergeCoins(
+                    coin_arg,
+                    merge_args
+                ))
+            )
+
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(U64(int(v)).encode)
+            )) for v in amounts]
+        arguments = [Argument("Input", U16(i)) for i in range(len(input_coins), len(inputs))]
+        commands = [
+            Command("SplitCoins", SplitCoins(
+                coin_arg,
+                arguments
+            ))
+        ]
+
+        for i in range(len(recipients)):
+            inputs.append(CallArg(
+                "Pure", Pure(
+                    list(SuiAddress(recipients[i]).encode)
+                )))
+            coins = [Argument("NestedResult", NestedResult(U16(0), U16(i)))]
+            commands.append(
+                Command("TransferObjects", TransferObjects(
+                    coins,
+                    Argument("Input", U16(len(inputs) - 1))
+                ))
+            )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def publish(
+            cls,
+            sender,
+            compiled_modules,
+            dep_ids,
+            gas_price,
+            gas_budget
+    ):
+        commands = [
+            Command("Publish", Publish(
+                compiled_modules,
+                [ObjectID(dep_id) for dep_id in dep_ids]
+            ))
+        ]
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(SuiAddress(sender).encode)
+            ))
+        ]
+        commands.append(
+            Command("TransferObjects", TransferObjects(
+                [Argument("Result", U16(0))],
+                Argument("Input", U16(0))
+            ))
+        )
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
+    def prepare_upgrade_capability(cls, upgrade_capability):
+        data = cls.get_objects([upgrade_capability])[upgrade_capability]
+        if "Shared" in data["owner"]:
+            mutable = True
+            initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
+            return CallArg("Object", ObjectArg("SharedObject",
+                                               SharedObject(
+                                                   ObjectID(data["objectId"]),
+                                                   SequenceNumber(initial_shared_version),
+                                                   mutable
+                                               )))
         else:
-            name = str(pformat(self.name, compact=True))
+            return CallArg("Object", ObjectArg("ImmOrOwnedObject",
+                                               ObjectRef(
+                                                   ObjectID(data["objectId"]),
+                                                   SequenceNumber(data["version"]),
+                                                   ObjectDigest(data["digest"])
+                                               )))
 
-        return str(pformat({name: self.value}, compact=True))
+    @classmethod
+    def upgrade(
+            cls,
+            package_id,
+            sender,
+            compiled_modules: list,
+            dep_ids,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            digest: Union[str, list],
+            gas_price,
+            gas_budget
+    ):
+        upgrade_capability = cls.prepare_upgrade_capability(upgrade_capability)
+        inputs = [
+            upgrade_capability,
+            CallArg(
+                "Pure", Pure(
+                    list(U8(upgrade_policy).encode)
+                )),
+            CallArg(
+                "Pure", Pure(
+                    list(ObjectDigest(digest).encode)
+                ))
+        ]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID("0x2"),
+                Identifier("package"),
+                Identifier("authorize_upgrade"),
+                [],
+                arguments
+            )),
+            Command("Upgrade", Upgrade(
+                compiled_modules,
+                [ObjectID(dep_id) for dep_id in dep_ids],
+                ObjectID(package_id),
+                Argument("Result", U16(0))
+            )),
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID("0x2"),
+                Identifier("package"),
+                Identifier("commit_upgrade"),
+                [],
+                [Argument("Input", U16(0)), Argument("Result", U16(1))]
+            )),
+        ]
 
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
-def validator_retry(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        while True:
-            try:
-                result = func(*args, **kwargs)
-                return result
-            except Exception as e:
-                if "validators" in str(e):
-                    print("validators error:", e)
-                    time.sleep(5)
-                else:
-                    raise e
-
-    return wrapper
+    @classmethod
+    def pay_all_sui(
+            cls,
+            sender,
+            recipient,
+            gas_price,
+            gas_budget
+    ) -> IntentMessage:
+        # generate inputs
+        inputs = [CallArg(
+            "Pure", Pure(
+                list(SuiAddress(recipient).encode)
+            ))]
+        commands = [
+            Command("TransferObjects", TransferObjects(
+                [Argument("GasCoin", NONE())],
+                Argument("Input", U16(0))
+            ))
+        ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
 
 class SuiPackage:
-    def __init__(self,
-                 brownie_config: Union[Path, str] = Path.cwd(),
-                 network: str = "sui-devnet",
-                 is_compile: bool = False,
-                 package_id: str = None,
-                 package_path: Union[Path, str] = None,
-                 mnemonic: str = None
-                 ):
-        """
-        :param brownie_config: The folder where brownie-config.yaml is located.
-        :param network:
-        :param is_compile:
-        :param package_path: The folder where Move.toml is located. Mostly the same as brownie_config.
-        """
-        self.package_id = package_id
-        if isinstance(brownie_config, Path):
-            self.brownie_config = brownie_config
-        else:
-            self.brownie_config = Path(brownie_config)
-
-        self.network = network
-
+    def __init__(
+            self,
+            package_id: str = None,
+            package_name: str = None,
+            package_path: Union[Path, str] = None,
+    ):
+        assert len(_load_project) > 0, "Project not init"
+        self.project: SuiProject = _load_project[0]
+        assert package_id is not None or package_path is not None
         if package_path is None:
-            self.package_path = self.brownie_config
-        elif isinstance(package_path, str):
-            self.package_path = Path(package_path)
-        else:
-            self.package_path = package_path
+            assert package_name is not None, f"Package path is none, set package name"
+        self.package_id = package_id
+        self.package_name = package_name
 
-        # # # # # load config
-        assert self.brownie_config.joinpath(
-            "brownie-config.yaml").exists(), "brownie-config.yaml not found"
-        self.config_path = self.brownie_config.joinpath("brownie-config.yaml")
-        self.config = {}  # all network configs
-        with self.config_path.open() as fp:
-            self.config = yaml.safe_load(fp)
-        try:
-            env = dotenv_values(self.brownie_config.joinpath(self.config["dotenv"]))
-            self.private_key = None
-            self.mnemonic = None
-            if mnemonic is not None:
-                self.mnemonic = mnemonic
-            elif env.get("PRIVATE_KEY_SUI", None) is not None:
-                self.private_key = env.get("PRIVATE_KEY_SUI")
-            elif env.get("PRIVATE_KEY", None) is not None:
-                self.private_key = env.get("PRIVATE_KEY")
-            elif env.get("MNEMONIC_SUI", None) is not None:
-                self.mnemonic = env.get("MNEMONIC_SUI")
-            elif env.get("MNEMONIC", None) is not None:
-                self.mnemonic = env.get("MNEMONIC")
-            else:
-                raise EnvironmentError
+        self.package_path = package_path
+        # package_path is not none
+        self.move_toml_file = self.package_path.joinpath("Move.toml") if self.package_path is not None else None
+        self.move_toml: MoveToml = MoveToml(str(self.move_toml_file)) if self.move_toml_file is not None else None
+        if self.package_name is None and self.move_toml is not None:
+            self.package_name = self.move_toml["package"]["name"]
 
-            if self.private_key is not None:
-                self.account = Account.load_key(self.private_key)
-            elif self.mnemonic is not None:
-                self.account = Account.load_mnemonic(self.mnemonic)
-        except Exception as e:
-            raise e
+        # module name -> struct -> SuiObjectType
+        #             -> func  -> () : call transaction
+        #                      -> simulate : simulate transaction
+        #                      -> inspect : inspect value
+        # Record package struct and func abi
+        self.modules = DefaultDict(ModuleAttributeDict())
+        self.abi = None
 
-        # current aptos network config
-        self.network_config = self.config["networks"][network]
-        self.base_url = self.config["networks"][network]["node_url"]
-        self.client = HttpClient(timeout=30)
-
-        # # # # # load move toml
-        assert self.package_path.joinpath(
-            "Move.toml").exists(), "Move.toml not found"
-        self.move_path = self.package_path.joinpath("Move.toml")
-        self.move_toml = {}
-        with self.move_path.open() as fp:
-            self.move_toml = toml.load(fp)
-        self.package_name = self.move_toml["package"]["name"]
-
-        if is_compile:
-            self.compile()
-
-        # # # # # Bytecode
-        self.build_path = self.package_path.joinpath(
-            f"build/{self.package_name}")
-        self.move_module_files = []
-        bytecode_modules = self.build_path.joinpath("bytecode_modules")
-        if bytecode_modules.exists():
-            for m in os.listdir(bytecode_modules):
-                if str(m).endswith(".mv"):
-                    self.move_module_files.append(
-                        bytecode_modules.joinpath(str(m)))
-        self.move_modules = []
-        for m in self.move_module_files:
-            with open(m, "rb") as f:
-                self.move_modules.append(f.read())
-
-        # # # # # # Abis
-        self.abis = {}
-        reload_cache(CACHE_FILE)
-        self.get_abis()
-
-        # # # # # # Sui cli config
-        self.cli_config_file = CACHE_DIR.joinpath(".cli.yaml")
-        self.cli_config = SuiCliConfig(self.cli_config_file, self.base_url, self.network, self.account)
+        if self.package_id is not None:
+            self.update_abi()
 
         # # # # # # filter result
         self.filter_result_key = ["disassembled", "signers_map"]
 
-    def compile(self):
-        # # # # # Compile
-        view = f"Compile {self.package_name}"
-        print("\n" + "-" * 50 + view + "-" * 50)
-        compile_cmd = f"sui move build --abi --path {self.package_path}"
-        print(compile_cmd)
-        os.system(compile_cmd)
-        print("-" * (100 + len(view)))
-        print("\n")
-
-    @staticmethod
-    def base64(data: Union[str, list]):
-        if isinstance(data, str):
-            return base64.b64encode(data)
+    def __getattr__(self, item):
+        if item in self.modules:
+            return self.modules[item]
         else:
-            return [base64.b64encode(d).decode("ascii") for d in data]
+            raise ValueError(f"{item} not found")
+
+    def __repr__(self):
+        return self.package_id
+
+    def load_package(self):
+        if self.package_path is None:
+            self.package_path = self.project.project_path
+        elif isinstance(self.package_path, str):
+            self.package_path = Path(self.package_path)
+        else:
+            self.package_path = self.package_path
+
+    def update_abi(self):
+        if self.package_id is None:
+            return
+
+        result = None
+        for i in range(10):
+            time.sleep(3)
+            try:
+                result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+                break
+            except Exception as e:
+                print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+
+        self.abi = result
+        for module_name in result:
+            # Update
+            for struct_name in result[module_name].get("structs", dict()):
+                # refuse process include type param object
+                if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
+                    continue
+                object_type = SuiObject.from_type(f"{self.package_id}::{module_name}::{struct_name}")
+                object_type.package_name = self.package_name
+                self.modules[module_name][struct_name] = object_type
+            for func_name in result[module_name].get("exposedFunctions", dict()):
+                abi = result[module_name]["exposedFunctions"][func_name]
+                abi["module_name"] = module_name
+                abi["func_name"] = func_name
+                self.modules[module_name][func_name] = ModuleFunction(self, abi)
+
+    # ####### Publish
+
+    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None):
+        package_name = move_toml["package"]["name"]
+        if package_name in replace_address:
+            if replace_address[package_name] is not None:
+                move_toml["package"]["published-at"] = replace_address[package_name]
+            elif self.project.search_package(package_name) is not None:
+                move_toml["package"]["published-at"] = self.project.search_package(package_name)
+            else:
+                assert False, "Replace address not found for published-at"
+        for k in list(move_toml.get("addresses", dict()).keys()):
+            if k in replace_address:
+                if replace_address[k] is not None:
+                    move_toml["addresses"][k] = replace_address[k]
+                else:
+                    assert False, "Replace address is None for addresses"
+        return move_toml
+
+    def replace_addresses(
+            self,
+            replace_address: dict = None,
+            output: dict = None
+    ) -> dict:
+        if replace_address is None:
+            return output
+        if output is None:
+            output = dict()
+        current_move_toml = MoveToml(str(self.move_toml_file))
+        package_name = current_move_toml.package_name()
+        package_address_name = current_move_toml.package_address_name()
+        if package_address_name in replace_address and package_name not in replace_address:
+            replace_address[package_name] = replace_address[package_address_name]
+        if current_move_toml["package"]["name"] in output:
+            return output
+        output[current_move_toml["package"]["name"]] = current_move_toml
+
+        # process current move toml
+        self.replace_toml(current_move_toml, replace_address)
+
+        # process dependencies move toml
+        for k in list(current_move_toml.keys()):
+            if "dependencies" == k:
+                for d in list(current_move_toml[k].keys()):
+                    # process local
+                    if "local" in current_move_toml[k][d]:
+                        local_path = self.package_path \
+                            .joinpath(current_move_toml[k][d]["local"])
+                        assert local_path.exists(), f"{local_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(package_path=local_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+                    # process remote
+                    else:
+                        git_index = current_move_toml[k][d]["git"].rfind("/")
+                        git_path = current_move_toml[k][d]["git"][:git_index + 1]
+                        git_file = current_move_toml[k][d]["git"][git_index + 1:]
+                        if "subdir" not in current_move_toml[k][d]:
+                            git_file = f"{d}.git"
+                            sub_dir = ""
+                        else:
+                            sub_dir = current_move_toml[k][d]["subdir"]
+                        git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
+                            .replace("://", "___") \
+                            .replace("/", "_").replace(".", "_")
+                        remote_path = Path(f"{os.environ.get('HOME')}/.move") \
+                            .joinpath(git_file) \
+                            .joinpath(sub_dir)
+                        assert remote_path.exists(), f"{remote_path.absolute()} not found"
+                        dep_move_toml = SuiPackage(package_path=remote_path)
+                        dep_move_toml.replace_addresses(replace_address, output)
+
+        for k in output:
+            output[k].store()
+        return output
 
     def format_dict(self, data):
         for k in list(data.keys()):
@@ -679,219 +1039,315 @@ class SuiPackage:
             self.format_dict(data)
         return data
 
-    @staticmethod
-    def replace_toml(move_toml: MoveToml, replace_address: dict = None):
-        for k in list(move_toml.get("addresses", dict()).keys()):
-            if k in replace_address:
-                if replace_address[k] is not None:
-                    move_toml["addresses"][k] = replace_address[k]
-                elif CacheObject.fuzzy_search_package(k) is not None:
-                    move_toml["addresses"][k] = CacheObject.fuzzy_search_package(k)
-                else:
-                    assert False, "replace address is None"
-        return move_toml
-
-    def replace_addresses(
-            self,
-            replace_address: dict = None,
-            output: dict = None
-    ) -> dict:
-        if replace_address is None:
-            return output
-        if output is None:
-            output = dict()
-        current_move_toml = MoveToml(self.move_path)
-        if current_move_toml["package"]["name"] in output:
-            return output
-        output[current_move_toml["package"]["name"]] = current_move_toml
-
-        # process current move toml
-        self.replace_toml(current_move_toml, replace_address)
-
-        # process dependencies move toml
-        for k in list(current_move_toml.keys()):
-            if "dependencies" == k:
-                for d in list(current_move_toml[k].keys()):
-                    # process local
-                    if "local" in current_move_toml[k][d]:
-                        local_path = self.package_path \
-                            .joinpath(current_move_toml[k][d]["local"])
-                        assert local_path.exists(), f"{local_path.absolute()} not found"
-                        dep_move_toml = SuiPackage(
-                            brownie_config=self.brownie_config,
-                            network=self.network,
-                            is_compile=False,
-                            package_path=local_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
-                    # process remote
-                    else:
-                        git_index = current_move_toml[k][d]["git"].rfind("/")
-                        git_path = current_move_toml[k][d]["git"][:git_index + 1]
-                        git_file = current_move_toml[k][d]["git"][git_index + 1:]
-                        if "subdir" not in current_move_toml[k][d]:
-                            git_file = f"{d}.git"
-                            sub_dir = ""
-                        else:
-                            sub_dir = current_move_toml[k][d]["subdir"]
-                        git_file = (git_path + git_file + f"_{current_move_toml[k][d]['rev']}") \
-                            .replace("://", "___") \
-                            .replace("/", "_").replace(".", "_")
-                        remote_path = Path(f"{os.environ.get('HOME')}/.move") \
-                            .joinpath(git_file) \
-                            .joinpath(sub_dir)
-                        assert remote_path.exists(), f"{remote_path.absolute()} not found"
-                        dep_move_toml = SuiPackage(
-                            brownie_config=self.brownie_config,
-                            network=self.network,
-                            is_compile=False,
-                            package_path=remote_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
-
-        for k in output:
-            output[k].store()
-        return output
-
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=10000,
+            gas_budget=10000000,
             replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
-            with self.cli_config as cof:
-                compile_cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                              f"--skip-dependency-verification --gas-budget {gas_budget} " \
-                              f"--abi --json {self.package_path.absolute()}"
-                with os.popen(compile_cmd) as f:
+            with self.project.cli_config as cof:
+                cmd = f"sui client --client.config {cof.file.absolute()} publish " \
+                      f" --gas-budget {gas_budget} " \
+                      f"--abi --json {self.package_path.absolute()}"
+                with os.popen(cmd) as f:
                     result = f.read()
                 try:
                     result = json.loads(result[result.find("{"):])
-                    result = self.format_result(result)
                 except:
-                    pprint(result)
-                self.add_details(result.get("effects", dict()))
-                pprint(result)
-                for d in result.get("effects").get("created", []):
-                    if "data" in d and "dataType" in d["data"]:
-                        if d["data"]["dataType"] == "package":
-                            self.package_id = d["reference"]["objectId"]
-                            insert_package(self.package_name, self.package_id)
-                            self.get_abis()
+                    pprint(f"Publish error:\n{result}")
+                    raise
+                self.project.update_object_index(result.get("effects", dict()))
+                for d in result.get("objectChanges", []):
+                    if d["type"] == "published":
+                        self.package_id = d["packageId"]
+                        self.project.add_package(self)
+                        self.update_abi()
+                        break
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
             print("-" * (100 + len(view)))
             print("\n")
             for k in replace_tomls:
                 replace_tomls[k].restore()
-        except Exception as e:
+        except:
             for k in replace_tomls:
                 replace_tomls[k].restore()
-            assert False, e
-
-        # For ubuntu has some issue
-        # view = f"Publish {self.package_name}"
-        # print("\n" + "-" * 50 + view + "-" * 50)
-        # response = self.client.post(
-        #     f"{self.base_url}",
-        #     json={
-        #         "jsonrpc": "2.0",
-        #         "id": 1,
-        #         "method": "sui_publish",
-        #         "params": [
-        #             self.account.account_address,
-        #             self.base64(self.move_modules),
-        #             None,
-        #             gas_budget
-        #         ]
-        #     },
-        # )
-        # result = response.json()
-        # result = self.execute_transaction(tx_bytes=result["result"]["txBytes"])
-        # # # # # Update package id
-        # for d in result.get("created", []):
-        #     if "data" in d and "dataType" in d["data"]:
-        #         if d["data"]["dataType"] == "package":
-        #             self.package_id = d["reference"]["objectId"]
-        #             self.get_abis()
-        #
-        # pprint(result)
-        # print("-" * (100 + len(view)))
-        # print("\n")
+            traceback.print_exc()
+            raise
         return result
 
-    def dry_run_transaction(self,
-                            tx_bytes
-                            ):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_dryRunTransaction",
-                "params": [
-                    tx_bytes
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
+    def program_publish_package(
+            self,
+            replace_address: dict = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-bytecode-as-base64 --path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            try:
+                result = json.loads(result[result.find("{"):])
+            except:
+                pprint(f"Build error:\n{result}")
+                raise
+            move_modules = []
+            for m in result["modules"]:
+                move_modules.append(list(base64.b64decode(m)))
+            dep_ids = result["dependencies"]
+            view = f"Publish {self.package_name}"
+            print("\n" + "-" * 50 + view + "-" * 50)
+            result = self.project.publish(move_modules, dep_ids, gas_price, gas_budget)
+            for d in result.get("objectChanges", []):
+                if d["type"] == "published":
+                    self.package_id = d["packageId"]
+                    self.project.add_package(self)
+                    self.update_abi()
+                    break
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            traceback.print_exc()
+            raise
         return result
 
-    def add_details(self, result):
+    def program_upgrade_package(
+            self,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            replace_address: dict = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+                  f"--path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            try:
+                first_part_start = result.find("{")
+                first_part_end = result.find("}") + 1
+                digest = list(bytes.fromhex(result[first_part_end:]))
+                result = json.loads(result[first_part_start:first_part_end])
+            except:
+                pprint(f"Build error:\n{result}")
+                raise
+            move_modules = []
+            for m in result["modules"]:
+                move_modules.append(list(base64.b64decode(m)))
+            dep_ids = result["dependencies"]
+            view = f"Upgrade {self.package_name}"
+            print("\n" + "-" * 50 + view + "-" * 50)
+            result = self.project.upgrade(self.package_id, move_modules, dep_ids,
+                                          upgrade_capability,
+                                          upgrade_policy, digest,
+                                          gas_price, gas_budget,
+                                          )
+            self.update_abi()
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            traceback.print_exc()
+            raise
+        return result
+
+
+class SuiProject:
+    def __init__(
+            self,
+            project_path: Union[Path, str] = Path.cwd(),
+            network: str = "sui-testnet"
+    ):
+        self.project_path = project_path
+        self.network = network
+
+        self.config = {}
+        self.network_config = {}
+        self.client: SuiClient = None
+        self.accounts: Dict[str, Account] = {}
+        self.__active_account = None
+        self.packages: Dict[str, List[SuiPackage]] = DefaultDict([])
+
+        self.cache_dir = Path(os.environ.get('HOME')).joinpath(".sui-brownie")
+        if not self.cache_dir.exists():
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_file = self.cache_dir.joinpath("objects.json")
+        self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList()))
+        self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
+        self.cli_config: SuiCliConfig = None
+
+        self.load_config()
+        self.reload_cache()
+
+        _load_project.append(self)
+
+    def read_item_from_cache(self, item: Union[str, SuiObject]):
+        if item in self.cache_objects:
+            if self.account.account_address in self.cache_objects[item]:
+                return self.cache_objects[item][self.account.account_address]
+            elif "Shared" in self.cache_objects[item]:
+                return self.cache_objects[item]["Shared"]
+            else:
+                raise ValueError(f"item not found for {self.account.account_address}")
+        elif isinstance(item, str):
+            try:
+                sui_object = SuiObject.from_type(item)
+                if sui_object in self.cache_objects:
+                    return self.read_item_from_cache(sui_object)
+                else:
+                    raise ValueError(f"{item} not found")
+            except:
+                raise ValueError(f"{item} not found")
+        else:
+            raise ValueError(f"{item} not found")
+
+    def __getitem__(self, item):
+        return self.read_item_from_cache(item)
+
+    def __getattr__(self, item):
+        return self.read_item_from_cache(item)
+
+    def active_account(self, account_name):
+        assert account_name in self.accounts, f"{account_name} not found in {list(self.accounts.keys())}"
+        self.__active_account = self.accounts[account_name]
+        print(f"\nActive account {account_name}, address:{self.__active_account.account_address}")
+        self.cli_config = SuiCliConfig(self.cli_config_file, str(self.client.endpoint), self.network, self.account)
+
+    @property
+    def account(self) -> Account:
+        if self.__active_account is None:
+            print("account not active")
+        return self.__active_account
+
+    def load_config(self):
+        # Check path
+        if isinstance(self.project_path, Path):
+            self.project_path = self.project_path
+        else:
+            self.project_path = Path(self.project_path)
+        assert self.project_path.joinpath("brownie-config.yaml").exists(), "Project not found brownie-config.yaml"
+
+        # Read config
+        with self.project_path.joinpath("brownie-config.yaml").open() as fp:
+            self.config = yaml.safe_load(fp)
+        assert "networks" in self.config, f"networks not found in brownie-config.yaml"
+        assert self.network in self.config["networks"], f"{self.network} not found in brownie-config.yaml"
+        self.network_config = self.config["networks"][self.network]
+
+        # Read count
+        env_file = self.config["dotenv"] if "dotenv" in self.config else ".env"
+        env = dotenv_values(self.project_path.joinpath(env_file))
+        assert "sui_wallets" in self.config, "Unassigned activation accounts"
+        assert "from_mnemonic" in self.config["sui_wallets"], "Wallet config format error"
+        for account_name, env_name in self.config["sui_wallets"]["from_mnemonic"].items():
+            env_name = env_name.replace("$", "").replace("{", "").replace("}", "")
+            assert env_name in env, f"{env_name} env not exist"
+            self.accounts[account_name] = Account(mnemonic=env[env_name])
+
+        # Create client
+        assert "node_url" in self.network_config, "Endpoint not config"
+        self.client = SuiClient(base_url=self.network_config["node_url"], timeout=30)
+
+    def reload_cache(self):
+        data = self.read_cache()
+        for k1 in data:
+            try:
+                sui_object = SuiObject.from_type(k1)
+                for k2 in data[k1]:
+                    for object_id in data[k1][k2]:
+                        self.add_object_to_cache(sui_object, k2, object_id, persist=False)
+            except:
+                for k2 in data[k1]:
+                    for package_id in data[k1][k2]:
+                        self.add_package_to_cache(k1, package_id, persist=False)
+
+    def read_cache(self):
+        if not self.cache_file.exists():
+            return {}
+
+        with open(str(self.cache_file), "r") as f:
+            try:
+                data = json.load(f)
+            except Exception as e:
+                print(f"Warning: read cache occurs {e}")
+                return {}
+        return data
+
+    def write_cache(self):
+        def write_cache_worker():
+            output = DefaultDict({})
+            for k1 in self.cache_objects:
+                for k2 in self.cache_objects[k1]:
+                    output[str(k1)][str(k2)] = self.cache_objects[k1][k2]
+            while True:
+                try:
+                    _cache_file_lock.acquire(timeout=10)
+                    with atomic_write(str(self.cache_file), overwrite=True) as f:
+                        json.dump(output, f, indent=1, sort_keys=True)
+                    _cache_file_lock.release()
+                    break
+                except Exception as e:
+                    print(f"Write cache fail, err:{e}")
+                    time.sleep(1)
+
+        pt = ThreadExecutor(executor=1, mode="all")
+        pt.run([write_cache_worker])
+
+    def add_object_to_cache(self, sui_object: SuiObject, owner, sui_object_id, persist=True):
+        self.cache_objects[sui_object][owner].append(sui_object_id)
+        if persist:
+            self.write_cache()
+
+    def add_package_to_cache(self, package_name, package_id, persist=True):
+        assert package_name is not None, f"{package_id} name is none"
+        self.cache_objects[package_name]["Shared"].append(package_id)
+        if persist:
+            self.write_cache()
+
+    def add_package(self, package: SuiPackage):
+        self.packages[package.package_id].append(package)
+        self.add_package_to_cache(package.package_name, package.package_id)
+
+    def search_package(self, package_name):
+        package_names = {k: True for k in list(self.cache_objects.keys()) if isinstance(k, str)}
+        if package_name in package_names:
+            data = self.cache_objects[package_name].get("Shared", [])
+            if len(data):
+                return data[-1]
+        return None
+
+    def _execute(
+            self,
+            tx_bytes,
+            signatures,
+            request_type="WaitForLocalExecution",
+            module=None,
+            function=None,
+    ):
         """
-
-        :param result: effects
-        :return:
-        """
-        object_ids = []
-        for k in ["created", "mutated"]:
-            for d in result.get(k, dict()):
-                if "reference" in d and "objectId" in d["reference"]:
-                    object_ids.append(d["reference"]["objectId"])
-        if len(object_ids):
-            cached_object_ids = set()
-            object_details = self.get_objects(object_ids)
-            for k in ["created", "mutated"]:
-                for i, d in enumerate(result.get(k, dict())):
-                    if "reference" in d and "objectId" in d["reference"] \
-                            and d["reference"]["objectId"] in object_details:
-                        object_detail = object_details[d["reference"]["objectId"]]
-                        result[k][i] = object_detail
-                        if "data" in object_detail and "type" in object_detail["data"]:
-                            object_type = ObjectType.from_type(object_detail["data"]["type"])
-                            if "Shared" in object_detail["owner"]:
-                                insert_cache(object_type, d["reference"]["objectId"])
-                                insert_cache(object_type, d["reference"]["objectId"], self.account.account_address)
-                                cached_object_ids.add(d["reference"]["objectId"])
-                            else:
-                                try:
-                                    insert_cache(object_type, d["reference"]["objectId"],
-                                                 object_detail["owner"]["AddressOwner"])
-                                    cached_object_ids.add(d["reference"]["objectId"])
-                                except:
-                                    pass
-            remain_object_ids = cached_object_ids - set(object_ids)
-            if len(remain_object_ids):
-                print(f"Warning:not cache ids:{remain_object_ids}")
-
-    @staticmethod
-    def list_base64(data: list):
-        return base64.b64encode(bytes(data)).decode("ascii")
-
-    def execute_transaction(self,
-                            tx_bytes,
-                            sig_scheme="ED25519",
-                            request_type="WaitForLocalExecution",
-                            index_object: bool = True
-                            ) -> dict:
-        """
-
-        :param index_object:
         :param tx_bytes:
-        :param sig_scheme:
+        :param signatures:
         :param request_type:
             Execute the transaction and wait for results if desired. Request types:
             1. ImmediateReturn: immediately returns a response to client without waiting for any execution results.
@@ -903,863 +1359,420 @@ class SuiPackage:
             4. WaitForLocalExecution: waits for TransactionEffectsCert and make sure the node executed the transaction
             locally before returning the client. The local execution makes sure this node is aware of this transaction
             when client fires subsequent queries. However if the node fails to execute the transaction locally in a
-            timely manner, a bool type in the response is set to false to indicated the case
+            timely manner, a bool type in the response is set to False to indicated the case
         :return:
         """
-        assert sig_scheme == "ED25519", "Only support ED25519"
-        SIGNATURE_SCHEME_TO_FLAG = {
-            "ED25519": 0,
-            "Secp256k1": 1
-        }
-        serialized_sig = [SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]
-        serialized_sig.extend(list(self.account.sign(tx_bytes).get_bytes()))
+        result = self.client.sui_executeTransactionBlock(
+            tx_bytes,
+            signatures,
+            {
+                "showInput": True,
+                "showRawInput": False,
+                "showEffects": True,
+                "showEvents": True,
+                "showObjectChanges": True,
+                "showBalanceChanges": True
+            },
+            request_type
+        )
+
+        if result["effects"]["status"]["status"] != "success":
+            pprint(result)
+        assert result["effects"]["status"]["status"] == "success"
+        self.update_object_index(result["effects"])
+        print(f"Execute {module}::{function} success, transactionDigest: {result['effects']['transactionDigest']}")
+        return result
+
+    def generate_signature(self, msg: bytes):
+        sig_scheme = "ED25519"
+        hasher = hashlib.blake2b(digest_size=32)
+        hasher.update(msg)
+        msg = hasher.digest()
+        serialized_sig = []
+        serialized_sig.extend(bytes([SIGNATURE_SCHEME_TO_FLAG[sig_scheme]]))
+        serialized_sig.extend(list(self.account.sign(msg).get_bytes()))
         serialized_sig.extend(list(self.account.public_key().get_bytes()))
-        serialized_sig_base64 = self.list_base64(serialized_sig)
+        serialized_sig_base64 = base64.b64encode(bytes(serialized_sig)).decode("ascii")
+        return serialized_sig_base64
 
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_executeTransactionSerializedSig",
-                "params": [
-                    tx_bytes,
-                    serialized_sig_base64,
-                    request_type
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        result = self.format_result(result)
-        try:
-            transactions = result["certificate"]["data"]["transactions"][0]["Call"]
-            module = transactions["module"]
-            function = transactions["function"]
-        except:
-            module = None
-            function = None
-        try:
-            if result["effects"]["effects"]["status"]["status"] != "success":
-                pprint(result)
-            assert result["effects"]["effects"]["status"]["status"] == "success"
-            result = result["effects"]["effects"]
-            if index_object:
-                self.add_details(result)
-            if module is None:
-                print(f"Execute success, transactionDigest: {result['transactionDigest']}")
-            else:
-                print(f"Execute {module}::{function} success, transactionDigest: {result['transactionDigest']}")
-            return result
-        except:
-            traceback.print_exc()
-            return result
-
-    @staticmethod
-    def slice_data(data: list, num: int) -> List[list]:
-        result = {}
-        for i in range(len(data)):
-            index = i % num
-            if index not in result:
-                result[index] = []
-            result[index].append(data[i])
-        return [v for v in result.values()]
-
-    def get_objects(self, object_ids: List[str]):
-
-        result = {}
-
-        def worker(d: List[str]):
-            for v in d:
-                try:
-                    detail = self.get_object(v)
-                except:
-                    traceback.print_exc()
-                if "data" in detail and "disassembled" in detail["data"]:
-                    del detail["data"]["disassembled"]
-                result[v] = detail
-
-        num = 20
-
-        engine = ThreadExecutor(executor=num)
-
-        split_data = self.slice_data(object_ids, num)
-        workers = [functools.partial(worker, m) for m in split_data]
-        engine.run(workers)
-        return result
-
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
-    def get_object(self, object_id: str):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getObject",
-                "params": [
-                    object_id
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                assert result["status"] == "Exists"
-                data["status"] = result["status"]
-
-            return data
-        except:
-            return result
-
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
-    def get_transaction(self, digest: str):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getTransaction",
-                "params": [
-                    digest,
-                    {
-                        "showInput": True,
-                        "showRawInput": False,
-                        "showEffects": True,
-                        "showEvents": True,
-                        "showObjectChanges": True,
-                        "showBalanceChanges": True
-                    }
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                assert result["status"] == "Exists"
-                data["status"] = result["status"]
-
-            return data
-        except:
-            return result
-
-    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
-    def query_events(self, query: str, cursor=None, limit=None, descending_order=None):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_queryEvents",
-                "params": [
-                    query,
-                    cursor,
-                    limit,
-                    descending_order
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                assert result["status"] == "Exists"
-                data["status"] = result["status"]
-
-            return data
-        except:
-            return result
-
-    def get_object_by_object(self, object_id: str):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getDynamicFields",
-                "params": [
-                    object_id
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["data"]
-            return data
-        except:
-            return result
-
-    def get_object_by_address(self, addr: str):
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getObjectsOwnedByAddress",
-                "params": [
-                    addr
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        try:
-            data = result["details"]
-            if "status" in result:
-                data["status"] = result["status"]
-            return data
-        except:
-            return result
-
-    def get_abis(self):
-        if self.package_id is None:
-            return
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getNormalizedMoveModulesByPackage",
-                "params": [
-                    self.package_id
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        for module_name in result:
-            for struct_name in result[module_name].get("structs", dict()):
-                if len(result[module_name]["structs"][struct_name].get("type_parameters", [])):
-                    continue
-                object_type = ObjectType.from_type(f"{self.package_id}::{module_name}::{struct_name}")
-                object_type.package_name = self.package_name
-                insert_cache(object_type, None)
-                attr_list = [module_name, struct_name]
-                if len(attr_list):
-                    final_object = self
-                    for attr in attr_list[:-1]:
-                        if hasattr(final_object, attr):
-                            final_object = getattr(final_object, attr)
-                        else:
-                            ob = type(f"{attr}_{id(self)}", (object,), dict())()
-                            setattr(final_object, attr, ob)
-                            final_object = ob
-                    struct_names = object_type.normal_struct()
-                    if len(struct_names) == 0:
-                        break
-                    # correct name
-                    attr = struct_names[0]
-                    if self.account.account_address not in CacheObject[object_type]:
-                        if "Shared" in CacheObject[object_type] and len(CacheObject[object_type]["Shared"]):
-                            init_acc_data = copy.deepcopy(CacheObject[object_type]["Shared"])
-                        else:
-                            init_acc_data = []
-                        CacheObject[object_type][self.account.account_address] = init_acc_data
-                    setattr(final_object, attr, CacheObject[object_type][self.account.account_address])
-            for func_name in result[module_name].get("exposed_functions", dict()):
-                abi = result[module_name]["exposed_functions"][func_name]
-                abi["module_name"] = module_name
-                abi["func_name"] = func_name
-                self.abis[f"{module_name}::{func_name}"] = abi
-                attr_list = [module_name, func_name]
-                if len(attr_list):
-                    final_object = self
-                    for attr in attr_list[:-1]:
-                        if hasattr(final_object, attr):
-                            final_object = getattr(final_object, attr)
-                        else:
-                            ob = type(f"{attr}_{id(self)}", (object,), dict())()
-                            setattr(final_object, attr, ob)
-                            final_object = ob
-                    func = functools.partial(self.submit_transaction, abi)
-                    setattr(func, "simulate", functools.partial(self.simulate_transaction, abi))
-                    setattr(func, "inspect_call", functools.partial(self.dev_inspect_move_call, abi))
-                    setattr(final_object, attr_list[-1], func)
-
-    def __getitem__(self, key):
-        assert key in self.abis, f"key not found in abi"
-        return functools.partial(self.submit_transaction, self.abis[key])
-
-    @staticmethod
-    def judge_ctx(param) -> bool:
-        if not isinstance(param, dict):
-            return False
-        if "MutableReference" in param:
-            final_arg = param["MutableReference"].get("Struct", dict())
-        elif "Reference" in param:
-            final_arg = param["Reference"].get("Struct", dict())
-        else:
-            final_arg = {}
-        if final_arg.get("address", None) == "0x2" \
-                and final_arg.get("module", None) == "tx_context" \
-                and final_arg.get("name", None) == "TxContext":
-            return True
-        else:
-            return False
-
-    @classmethod
-    def cascade_type_arguments(cls, data, ty_args: list = None) -> str:
-        if ty_args is None:
-            ty_args = []
-        if len(data) == 0:
-            return ""
-        output = "<"
-        for k, v in enumerate(data):
-            if k != 0:
-                output += ","
-            if "TypeParameter" in v:
-                data = ty_args[v["TypeParameter"]]
-            else:
-                data = "::".join([v["Struct"]["address"], v["Struct"]["module"], v["Struct"]["name"]])
-                if len(v["Struct"]["type_arguments"]):
-                    data += cls.cascade_type_arguments(v["Struct"]["type_arguments"], ty_args)
-            output += data
-        output += ">"
-        return output
-
-    @classmethod
-    def generate_object_type(cls, param: str, ty_args: list = None) -> ObjectType:
-        if not isinstance(param, dict):
-            return None
-        if "Reference" in param:
-            final_arg = param["Reference"]
-        elif "MutableReference" in param:
-            final_arg = param["MutableReference"]
-        elif "Struct" in param:
-            final_arg = param
-        else:
-            return None
-
-        if "Struct" in final_arg:
-            try:
-                output = cls.cascade_type_arguments(final_arg["Struct"]["type_arguments"], ty_args)
-            except:
-                return None
-            output = f'{final_arg["Struct"]["address"]}::' \
-                     f'{final_arg["Struct"]["module"]}::' \
-                     f'{final_arg["Struct"]["name"]}{output}'
-            return ObjectType.from_type(output)
-        else:
-            return None
-
-    @classmethod
-    def judge_coin(cls, param: str, ty_args: list = None) -> ObjectType:
-        data = cls.generate_object_type(param, ty_args)
-        if isinstance(data, ObjectType) \
-                and data.package_id == "0x2" \
-                and data.module_name == "coin" \
-                and data.struct_name.startswith("Coin"):
-            return data
-        else:
-            return None
-
-    def get_coin_info(self, object_ids: list) -> Dict[str, Coin]:
-        result = self.get_objects(object_ids)
-        coin_info: Dict[str, Coin] = {}
-        for k in result:
-            if not result[k].get("status", None) == "Exists":
-                continue
-            owner_info = result[k]["owner"]
-            if "Shared" in owner_info:
-                owner = "Shared"
-            else:
-                try:
-                    owner = owner_info["AddressOwner"]
-                except:
-                    continue
-            coin_info[k] = Coin(k, owner, int(result[k]["data"]["fields"]["balance"]))
-        return coin_info
-
-    @classmethod
-    def normal_float_list(cls, data: list):
-        for k in range(len(data)):
-            if isinstance(data[k], float):
-                assert float(int(data[k])) == data[k], f"{data[k]} must int"
-                data[k] = int(data[k])
-            elif isinstance(data[k], list):
-                cls.normal_float_list(data[k])
-
-    def __refresh_coin(self, is_coin: ObjectType):
-        coin_info = self.get_coin_info(CacheObject[is_coin][self.account.account_address])
-        coin_info = {k: coin_info[k] for k in coin_info if coin_info[k].owner == self.account.account_address}
-        CacheObject[is_coin][self.account.account_address] = sorted(coin_info.keys(),
-                                                                    key=lambda x: coin_info[x].balance)[::-1]
-        return coin_info
-
-    def refresh_coin(self, coin_type: str):
-        """
-        :param coin_type: 0x2::sui::SUI
-        """
-        is_coin = ObjectType.from_type(f'0x2::coin::Coin<{coin_type}>')
-        self.__refresh_coin(is_coin)
-
-    def check_args(
+    def unsafe(
             self,
+            package_id,
             abi: dict,
-            param_args: list,
-            ty_args: List[str] = None
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000000,
     ):
-        param_args = list(param_args)
-        self.normal_float_list(param_args)
+        result = self.construct_transaction(
+            package_id=package_id,
+            abi=abi,
+            arguments=arguments,
+            type_arguments=type_arguments,
+            gas_budget=gas_budget)
+        # Simulate before execute
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-        if ty_args is None:
-            ty_args = []
-        assert isinstance(list(ty_args), list) and len(
-            abi["type_parameters"]) == len(ty_args), f"ty_args error: {abi['type_parameters']}"
-        if len(abi["parameters"]) and self.judge_ctx(abi["parameters"][-1]):
-            assert len(param_args) == len(abi["parameters"]) - 1, f'param_args error: {abi["parameters"]}'
-        else:
-            assert len(param_args) == len(abi["parameters"]), f'param_args error: {abi["parameters"]}'
+        # sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
 
-        return param_args, ty_args
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(result["txBytes"],
+                             signatures=[serialized_sig_base64],
+                             module=abi["module_name"], function=abi["func_name"])
 
-    def dev_inspect_move_call(
+    def execute(
             self,
+            package_id,
             abi: dict,
-            *param_args,
-            ty_args: List[str] = None
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=1000,
+            gas_budget=10000000,
     ):
-        param_args, ty_args = self.check_args(abi, param_args, ty_args)
-
-        for k in range(len(param_args)):
-            if abi["parameters"][k] in ["U64", "U128", "U256"]:
-                param_args[k] = str(param_args[k])
-
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_devInspectMoveCall",
-                "params": [
-                    self.account.account_address,
-                    self.package_id,
-                    abi["module_name"],
-                    abi["func_name"],
-                    ty_args,
-                    param_args,
-                ]
-            },
+        # Construct
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
         )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]["results"]
-        return result
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
+
+    def update_object_index(self, result):
+        """
+        Update Object cache after contract deployment and transaction execution
+        :param result: effects
+            {
+              "messageVersion": "v1",
+              "status": {
+                "status": "success"
+              },
+              "mutated": [
+                {
+                  "owner": {
+                    "AddressOwner": "0x61fbb5b4f342a40bdbf87fe4a946b9e38d18cf8ffc7b0000b975175c7b6a9576"
+                  },
+                  "reference": {
+                    "objectId": "0xe8d8c7ce863f313da3dbd92a83ef26d128b88fe66bf26e0e0d09cdaf727d1d84",
+                    "version": 2,
+                    "digest": "EnRQXe1hDGAJCFyF2ds2GmPHdvf9V6yxf24LisEsDkYt"
+                  }
+                }
+              ]
+            }
+        :return:
+        """
+        object_ids = []
+        assert result["status"]["status"] == "success", result
+        for k in ["created", "mutated"]:
+            for d in result.get(k, dict()):
+                if "reference" in d and "objectId" in d["reference"]:
+                    object_ids.append(d["reference"]["objectId"])
+        if len(object_ids):
+            sui_object_infos = self.client.sui_multiGetObjects(object_ids, {
+                "showType": True,
+                "showOwner": True,
+                "showPreviousTransaction": False,
+                "showDisplay": False,
+                "showContent": False,
+                "showBcs": False,
+                "showStorageRebate": False
+            })
+            for sui_object_info in sui_object_infos:
+                if "error" in sui_object_info:
+                    continue
+                sui_object_id = sui_object_info["data"]["objectId"]
+                if sui_object_info["data"]["type"] == "package":
+                    continue
+                else:
+                    sui_object = SuiObject.from_type(sui_object_info["data"]["type"])
+                    if "Shared" in sui_object_info["data"]["owner"]:
+                        self.add_object_to_cache(sui_object, "Shared", sui_object_id)
+                    elif "AddressOwner" in sui_object_info["data"]["owner"]:
+                        owner = sui_object_info["data"]["owner"]["AddressOwner"]
+                        self.add_object_to_cache(sui_object, owner, sui_object_id)
+
+    def get_account_sui(self):
+        result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
+        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
 
     def construct_transaction(
             self,
+            package_id,
             abi: dict,
-            param_args: list,
-            ty_args: List[str] = None,
-            gas_budget=10000,
+            arguments: list,
+            type_arguments: List[str] = None,
+            gas_budget=10000000,
     ):
-        param_args, ty_args = self.check_args(abi, param_args, ty_args)
+        arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
-        normal_coin: List[ObjectType] = []
-
-        for k in range(len(param_args)):
-            is_coin = self.judge_coin(abi["parameters"][k], ty_args)
-            if is_coin is None:
-                continue
-            if not isinstance(param_args[k], int):
-                continue
-            object_ids = list(self.get_coins(self.account.account_address, str(is_coin)[16:-1]).keys())
-            assert len(object_ids), f"Not found coin"
-            CacheObject[is_coin][self.account.account_address] = object_ids
-
-            normal_coin.append(is_coin)
-
-            # merge
-            self.__refresh_coin(is_coin)
-
-            if len(CacheObject[is_coin][self.account.account_address]) > 1:
-                if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-                    self.pay_all_sui(
-                        self.account.account_address,
-                        gas_budget
-                    )
-                else:
-                    self.merge_coins(CacheObject[is_coin][self.account.account_address], gas_budget)
-
-            # split
-            coin_info = self.__refresh_coin(is_coin)
-            first_object_id = CacheObject[is_coin][self.account.account_address][0]
-            first_coin_info = coin_info[first_object_id]
-            assert first_coin_info.balance >= param_args[k] + gas_budget, \
-                f'Balance not enough: ' \
-                f'{first_coin_info.balance} < ' \
-                f'{param_args[k]}'
-            split_amounts = [param_args[k]]
-            if str(is_coin) == "0x2::coin::Coin<0x2::sui::SUI>":
-                self.pay_sui(
-                    [first_object_id],
-                    split_amounts,
-                    [self.account.account_address] * len(split_amounts),
-                    gas_budget)
-            else:
-                self.split_coin(
-                    [first_object_id],
-                    split_amounts
-                )
-
-            # find
-            coin_info = self.__refresh_coin(is_coin)
-            for oid in coin_info:
-                if coin_info[oid].balance == param_args[k]:
-                    param_args[k] = oid
-                    break
-            assert not isinstance(param_args[k], int), "Fail split amount"
-
-        for k in range(len(param_args)):
+        for k in range(len(arguments)):
+            # Process U64, U128, U256
             if abi["parameters"][k] in ["U64", "U128", "U256"]:
-                param_args[k] = str(param_args[k])
+                arguments[k] = str(arguments[k])
 
-        # print(f'\nConstruct transaction {abi["module_name"]}::{abi["func_name"]}')
-        object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
+        object_ids = self.get_account_sui()
         gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x])
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_moveCall",
-                "params": [
-                    self.account.account_address,
-                    self.package_id,
-                    abi["module_name"],
-                    abi["func_name"],
-                    ty_args,
-                    param_args,
-                    gas_object,
-                    gas_budget
-                ]
-            },
+        result = self.client.unsafe_moveCall(
+            self.account.account_address,
+            package_id,
+            abi["module_name"],
+            abi["func_name"],
+            type_arguments,
+            arguments,
+            gas_object,
+            gas_budget,
+            None
         )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
         return result
 
-    @validator_retry
-    def submit_transaction(
+    def simulate(
             self,
             abi: dict,
-            *param_args,
-            ty_args: List[str] = None,
-            gas_budget=10000,
-            is_merge_sui=True
-    ) -> dict:
-        """
-        {
-          'is_entry': True,
-          "module_name": "main",
-          "func_name": "set_m",
-          'parameters': [{'MutableReference': {'Struct': {'address': '0x22f59a7d8680232c52e2203475382532630989a4',
-                                                          'module': 'main',
-                                                          'name': 'Hello',
-                                                          'type_arguments': []}}},
-                         {'Reference': {'Struct': {'address': '0x22f59a7d8680232c52e2203475382532630989a4',
-                                                   'module': 'main',
-                                                   'name': 'Hello',
-                                                   'type_arguments': []}}},
-                         {'Struct': {'address': '0x22f59a7d8680232c52e2203475382532630989a4',
-                                     'module': 'main',
-                                     'name': 'Hello',
-                                     'type_arguments': []}},
-                         'U8',
-                         {'MutableReference': {'Struct': {'address': '0x2',
-                                                          'module': 'tx_context',
-                                                          'name': 'TxContext',
-                                                          'type_arguments': []}}}],
-          'return_': [],
-          'type_parameters': [{'abilities': []},
-                              {'abilities': []}],
-          'visibility': 'Public'}
-        :param is_merge_sui:
-        :param param_args:
-        :param abi:
-        :param ty_args:
-        :param gas_budget:
-        :return:
-        """
-        # Merge sui
-        if is_merge_sui:
-            self.pay_all_sui(self.account.account_address)
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.client.sui_dryRunTransactionBlock(result["txBytes"])
 
-        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
-        # Simulate before execute
-        self.dry_run_transaction(result["txBytes"])
-        # Execute
-        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
-        return self.execute_transaction(result["txBytes"])
-
-    def simulate_transaction(
+    def inspect(
             self,
             abi: dict,
-            *param_args,
-            ty_args: List[str] = None,
-            gas_budget=10000,
-    ) -> Union[list | int]:
-        """
-        return_types: storage|gas
-            storage: return storage changes
-            gas: return gas
-        """
-        result = self.construct_transaction(abi, param_args, ty_args, gas_budget)
-        # print(f'\nSimulate transaction {abi["module_name"]}::{abi["func_name"]}')
-        return self.dry_run_transaction(result["txBytes"])
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_budget=10000000,
+    ):
+        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            result["txBytes"],
+            None,
+            None
+        )
 
-    @validator_retry
-    def pay_all_sui(self, recipient: str = None, gas_budget=1000):
-        object_ids = self.get_coins(self.account.account_address, "0x2::sui::SUI")
-        input_coins = sorted(list(object_ids.keys()), key=lambda x: object_ids[x])[::-1]
+    def unsafe_pay_all_sui(self, recipient=None, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
-        if len(input_coins) < 2 and recipient == self.account.account_address:
-            return
-        print(f'\nExecute sui_payAllSui...')
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_payAllSui",
-                "params": [
-                    self.account.account_address,
-                    input_coins,
-                    recipient,
-                    gas_budget
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        return self.execute_transaction(result["txBytes"])
+        input_coins = list(self.get_account_sui().keys())
+        result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, gas_budget)
 
-    @validator_retry
-    def pay_sui(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
+        # Simulate before execute
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction unsafe::pay_all_sui, waiting...')
+        return self._execute(tx_bytes,
+                             signatures=[serialized_sig_base64],
+                             module="unsafe",
+                             function="pay_all_sui"
+                             )
+
+    def pay_all_sui(self, recipient=None, gas_price=1000, gas_budget=10000000):
+        if recipient is None:
+            recipient = self.account.account_address
+        msg = TransactionBuild.pay_all_sui(
+            self.account.account_address,
+            recipient,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction unsafe::pay_all_sui, waiting...')
+        return self._execute(tx_bytes,
+                             signatures=[serialized_sig_base64],
+                             module="unsafe",
+                             function="pay_all_sui"
+                             )
+
+    def unsafe_pay_sui(self, amounts, recipients=None, gas_budget=10000000):
         if recipients is None:
-            recipients = self.account.account_address
-        print(f'\nExecute sui_paySui...')
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_paySui",
-                "params": [
-                    self.account.account_address,
-                    input_coins,
-                    recipients,
-                    amounts,
-                    gas_budget
-                ]
-            },
+            recipients = [self.account.account_address] * len(amounts)
+        input_coins = list(self.get_account_sui().keys())
+        amounts = [str(v) for v in amounts]
+        result = self.client.unsafe_paySui(
+            self.account.account_address,
+            input_coins,
+            recipients,
+            amounts,
+            gas_budget=gas_budget
         )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        return self.execute_transaction(result["txBytes"])
+        # simulate
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-    @validator_retry
-    def pay(self, input_coins: list, amounts: list, recipients: list = None, gas_budget=10000):
+        # Sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
+
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
+
+    def pay_sui(self, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
         if recipients is None:
-            recipients = self.account.account_address
-        print(f'\nExecute sui_pay...')
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_pay",
-                "params": [
-                    self.account.account_address,
-                    input_coins,
-                    recipients,
-                    amounts,
-                    None,
-                    gas_budget
-                ]
-            },
+            recipients = [self.account.account_address] * len(amounts)
+        msg = TransactionBuild.pay_sui(
+            self.account.account_address,
+            recipients,
+            amounts,
+            gas_price=gas_price,
+            gas_budget=gas_budget
         )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        return self.execute_transaction(result["txBytes"])
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-    @validator_retry
-    def merge_coins(self, input_coins: list, gas_budget=10000):
-        assert len(input_coins) >= 2
-        print(f'\nExecute sui_mergeCoins...')
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_mergeCoins",
-                "params": [
-                    self.account.account_address,
-                    input_coins[0],
-                    input_coins[1:],
-                    None,
-                    gas_budget
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        return self.execute_transaction(result["txBytes"])
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
 
-    @validator_retry
-    def split_coin(self, input_coin: str, split_amounts: list, gas_budget=10000):
-        print(f'\nExecute sui_splitCoin...')
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_splitCoin",
-                "params": [
-                    self.account.account_address,
-                    input_coin,
-                    split_amounts,
-                    None,
-                    gas_budget
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        result = result["result"]
-        return self.execute_transaction(result["txBytes"])
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def get_coins(self, addr: str, coin_type: str) -> dict:
-        response = self.client.post(
-            f"{self.base_url}",
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "sui_getCoins",
-                "params": [
-                    addr,
-                    coin_type
-                ]
-            },
-        )
-        result = response.json()
-        if "error" in result:
-            assert False, result["error"]
-        object_ids = {v["coinObjectId"]: v["balance"] for v in result["result"]["data"]}
-        return object_ids
+    def unsafe_transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+        result = self.client.unsafe_transferObject(
+            self.account.account_address,
+            object_id,
+            gas=None,
+            gas_budget=gas_budget,
+            recipient=recipient)
+        # simulate
+        tx_bytes = result["txBytes"]
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-    def get_dynamic_field(self, object_id: str) -> List[SuiDynamicFiled]:
-        data = self.get_object_by_object(object_id)
-        oids = []
-        for v in data:
-            oids.append(v["objectId"])
-        if len(oids) == 0:
-            return []
-        output = []
-        info = self.get_objects(oids)
-        for k in info:
-            output.append(SuiDynamicFiled(owner=object_id,
-                                          uid=info[k]["data"]["fields"]["id"]["id"],
-                                          name=info[k]["data"]["fields"]["name"],
-                                          value=info[k]["data"]["fields"]["value"]["fields"]
-                                          if (isinstance(info[k]["data"]["fields"]["value"], dict) and "fields" in
-                                              info[k]["data"]["fields"]["value"])
-                                          else info[k]["data"]["fields"]["value"],
-                                          ty=info[k]["data"]["type"]
-                                          ))
-        return output
+        # Sig
+        msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
+                    + list(base64.b64decode(tx_bytes)))
+        serialized_sig_base64 = self.generate_signature(msg)
 
-    def get_table_item(self, object_id: str) -> List[SuiDynamicFiled]:
-        return self.get_dynamic_field(object_id)
+        # Execute
+        print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def get_bag_item(self, object_id: str) -> List[SuiDynamicFiled]:
-        return self.get_dynamic_field(object_id)
+    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+        msg = TransactionBuild.transfer_object(
+            self.account.account_address,
+            object_id,
+            recipient,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
 
-    @staticmethod
-    def normal_object_info(data):
-        return data.get("data", dict()).get("fields", dict())
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-    def nest_process_table(self, basic_info: dict):
-        if not isinstance(basic_info, dict):
-            return
-        table_keys = []
-        for k in basic_info:
-            if not (isinstance(basic_info[k], dict) and "type" in basic_info[k] and "fields" in basic_info[k]):
-                continue
-            object_type = ObjectType.from_type(basic_info[k]["type"])
-            if object_type.package_id == "0x2":
-                if object_type.module_name == "table" and object_type.struct_name.startswith("Table"):
-                    tid = basic_info[k]["fields"]["id"]["id"]
-                    basic_info[k] = self.get_table_item(tid)
-                    table_keys.append(k)
-                elif object_type.module_name == "bag" and object_type.struct_name.startswith("Bag"):
-                    tid = basic_info[k]["fields"]["id"]["id"]
-                    basic_info[k] = self.get_bag_item(tid)
-                    table_keys.append(k)
-            if "fields" in basic_info[k]:
-                self.nest_process_table(basic_info[k]["fields"])
-                basic_info[k] = basic_info[k]["fields"]
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
 
-        # nested processing table info's value
-        for k in table_keys:
-            for i in range(len(basic_info[k])):
-                data: SuiDynamicFiled = basic_info[k][i]
-                self.nest_process_table(data.value)
+        # Execute
+        print(f'\nExecute transaction transfer::transfer_object, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
 
-    def normal_detail(self, data):
-        if isinstance(data, dict):
-            if "type" in data and "fields" in data:
-                d = data["fields"]
-                del data["fields"]
-                del data["type"]
-                data.update(d)
-            for k in list(data.keys()):
-                self.normal_detail(data[k])
-        elif isinstance(data, list):
-            for i in range(len(data)):
-                self.normal_detail(data[i])
-        elif isinstance(data, SuiDynamicFiled):
-            self.normal_detail(data.name)
-            self.normal_detail(data.value)
+    def pay(self, input_coins: list, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+        msg = TransactionBuild.pay(
+            self.account.account_address,
+            input_coins,
+            recipients,
+            amounts,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
 
-    def get_object_with_super_detail(self, object_id):
-        basic_info = self.normal_object_info(self.get_object(object_id))
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
 
-        self.nest_process_table(basic_info)
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
 
-        dynamic_info = self.get_dynamic_field(object_id)
-        basic_info["dynamic_field"] = dynamic_info
-        self.normal_detail(basic_info)
-        return basic_info
+        # Execute
+        print(f'\nExecute transaction pay::pay, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="pay", function="pay")
+
+    def publish(
+            self,
+            compiled_modules,
+            dep_ids,
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        msg = TransactionBuild.publish(
+            self.account.account_address,
+            compiled_modules,
+            dep_ids,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction publish::package, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
+
+    def upgrade(
+            self,
+            package_id,
+            compiled_modules,
+            dep_ids,
+            upgrade_capability: str,
+            upgrade_policy: int,
+            digest: Union[str, list],
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        msg = TransactionBuild.upgrade(
+            package_id=package_id,
+            sender=self.account.account_address,
+            compiled_modules=compiled_modules,
+            dep_ids=dep_ids,
+            upgrade_capability=upgrade_capability,
+            upgrade_policy=upgrade_policy,
+            digest=digest,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction publish::package, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
