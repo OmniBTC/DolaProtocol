@@ -10,6 +10,7 @@ module omnipool::wormhole_adapter_verify {
     use sui::object_table;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
+    use wormhole::bytes32::Bytes32;
     use wormhole::external_address::ExternalAddress;
     use wormhole::state::State as WormholeState;
     use wormhole::vaa::{Self, VAA};
@@ -61,14 +62,14 @@ module omnipool::wormhole_adapter_verify {
 
     /// Ensure that vaa is not reused
     public fun replay_protect(
-        consumed_vaas: &mut object_table::ObjectTable<vector<u8>, Unit>,
+        consumed_vaas: &mut object_table::ObjectTable<Bytes32, Unit>,
         vaa: &VAA,
         ctx: &mut TxContext
     ) {
         // this calls set::add which aborts if the element already exists
-        object_table::add<vector<u8>, Unit>(
+        object_table::add<Bytes32, Unit>(
             consumed_vaas,
-            vaa::hash_as_bytes(vaa),
+            vaa::digest(vaa),
             Unit { id: object::new(ctx) }
         );
     }
@@ -77,7 +78,7 @@ module omnipool::wormhole_adapter_verify {
     public fun parse_verify_and_replay_protect(
         wormhole_state: &mut WormholeState,
         registered_emitters: &VecMap<u16, ExternalAddress>,
-        consumed_vaas: &mut object_table::ObjectTable<vector<u8>, Unit>,
+        consumed_vaas: &mut object_table::ObjectTable<Bytes32, Unit>,
         vaa: vector<u8>,
         ctx: &mut TxContext
     ): VAA {
