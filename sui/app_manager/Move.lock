@@ -4,15 +4,14 @@
 version = 0
 
 dependencies = [
-  { name = "DolaTypes" },
+  { name = "Governance" },
   { name = "Serde" },
   { name = "Sui" },
-  { name = "Wormhole" },
 ]
 
 [[move.package]]
-name = "DolaTypes"
-source = { local = "../dola_types" }
+name = "Governance"
+source = { local = "../governance" }
 
 dependencies = [
   { name = "Serde" },
@@ -37,12 +36,4 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c1148885
 
 dependencies = [
   { name = "MoveStdlib" },
-]
-
-[[move.package]]
-name = "Wormhole"
-source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "0a92c428ec511225bcc2a880c8b395b4af4ed0b6", subdir = "sui/wormhole" }
-
-dependencies = [
-  { name = "Sui" },
 ]
