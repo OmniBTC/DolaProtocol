@@ -1046,7 +1046,7 @@ class SuiPackage:
             self,
             gas_budget=10000000,
             replace_address: dict = None,
-            skip_dependency_verification=False
+            skip_dependency_verification=True
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
