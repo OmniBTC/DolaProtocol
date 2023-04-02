@@ -376,7 +376,7 @@ class TransactionBuild:
             address = SuiAddress(sui_object_type.package_id)
             module = Identifier(sui_object_type.module_name)
             struct_name = sui_object_type.struct_name
-            type_arg_index = struct_name.index("<")
+            type_arg_index = struct_name.find("<")
             if type_arg_index == -1:
                 name = Identifier(struct_name)
                 type_params = []
