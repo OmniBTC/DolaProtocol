@@ -81,7 +81,8 @@ omnipool_package.publish_package(replace_address=dict(
     serde=serde_package.package_id,
     dola_types=dola_types_package.package_id,
     wormhole=wormhole_package.package_id
-))
+)
+)
 
 wormhole_adapter_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_adapter_core")
@@ -96,7 +97,8 @@ wormhole_adapter_core_package.publish_package(replace_address=dict(
     app_manager=app_manager_package.package_id,
     pool_manager=pool_manager_package.package_id,
     user_manager=user_manager_package.package_id
-))
+)
+)
 
 lending_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_core")
@@ -114,7 +116,8 @@ lending_core_package.publish_package(replace_address=dict(
     wormhole=wormhole_package.package_id,
     wormhole_adapter_core=wormhole_adapter_core_package.package_id,
     governance=governance_package.package_id
-))
+)
+)
 
 system_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("system_core")
@@ -128,7 +131,8 @@ system_core_package.publish_package(replace_address=dict(
     wormhole=wormhole_package.package_id,
     wormhole_adapter_core=wormhole_adapter_core_package.package_id,
     governance=governance_package.package_id
-))
+)
+)
 
 dola_portal_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal")
@@ -147,7 +151,8 @@ dola_portal_package.publish_package(replace_address=dict(
     wormhole=wormhole_package.package_id,
     omnipool=omnipool_package.package_id,
     governance=governance_package.package_id
-))
+)
+)
 
 external_interfaces_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
@@ -180,7 +185,8 @@ genesis_proposal_package.publish_package(replace_address=dict(
     dola_types=dola_types_package.package_id,
     oracle=oracle_package.package_id,
     omnipool=omnipool_package.package_id
-))
+)
+)
 
 test_coins_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
