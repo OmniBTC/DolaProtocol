@@ -5,6 +5,7 @@ import time
 import unittest
 from pathlib import Path
 
+from sui_brownie import Argument, U16
 from sui_brownie.sui_brownie import SuiProject, SuiPackage, TransactionBuild
 
 
@@ -85,9 +86,13 @@ class TestSuiBrownie(unittest.TestCase):
                             package_name="Basics"
                             )
         basics.counter.create()
-        # basics.counter.increment(basics.counter.Counter[-1])
-        # basics.counter.set_value(basics.counter.Counter[-1], 2)
-        # basics.counter.assert_value(basics.counter.Counter[-1], 2)
+        sui_project.batch_transaction(
+            transactions=[
+                [basics.counter.Counter[-1], 2]
+                [basics.counter.increment, [Argument("Input", U16(0))], []],
+                [basics.counter.assert_value, [], []],
+            ]
+        )
         basics.counter.test_param(basics.counter.Counter[-1],
                                   [10089869, 234567],
                                   1,

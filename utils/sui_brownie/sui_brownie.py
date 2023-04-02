@@ -356,7 +356,7 @@ class TransactionBuild:
         if type_arguments is None:
             type_arguments = []
         assert isinstance(list(type_arguments), list) and len(
-            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['typeParameters']}"
         if len(abi["parameters"]) and TransactionBuild.is_tx_context(abi["parameters"][-1]):
             assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
         else:
@@ -419,12 +419,15 @@ class TransactionBuild:
         return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
 
     @classmethod
-    def prepare_object_info(cls, call_arg, abi):
+    def prepare_object_info(cls, call_arg, parameters):
+        assert len(call_arg) == len(parameters)
         object_ids = []
         for i in range(len(call_arg)):
-            param_type = abi["parameters"][i]
+            param_type = parameters[i]
             if isinstance(param_type, dict) and (
-                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
+                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) and (
+                    isinstance(call_arg[i], str)
+            ):
                 object_ids.append(call_arg[i])
 
         return cls.get_objects(object_ids)
@@ -530,7 +533,7 @@ class TransactionBuild:
         abi = cls.format_abi_param(abi, type_args)
 
         # Prepare object
-        object_infos = cls.prepare_object_info(call_args, abi)
+        object_infos = cls.prepare_object_info(call_args, abi["parameters"][:len(call_args)])
 
         # generate inputs
         inputs = []
@@ -782,6 +785,22 @@ class TransactionBuild:
                                                    SequenceNumber(data["version"]),
                                                    ObjectDigest(data["digest"])
                                                )))
+
+    @classmethod
+    def batch_transaction(
+            cls,
+            sender,
+            transactions: list,
+            gas_price,
+            gas_budget
+    ):
+        inputs = []
+        commands = []
+        for (package_id, abi, type_args, call_args) in transactions:
+            single_inputs, single_commands = cls.command_move_call(package_id, abi, type_args, call_args)
+            inputs.extend(single_inputs)
+            single_commands.extend(commands)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
     @classmethod
     def upgrade(
@@ -1196,7 +1215,7 @@ class SuiProject:
         self.cache_dir = Path(os.environ.get('HOME')).joinpath(".sui-brownie")
         if not self.cache_dir.exists():
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.cache_file = self.cache_dir.joinpath("objects.json")
+        self.cache_file = self.cache_dir.joinpath(f"{self.network}-objects.json")
         self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList()))
         self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
         self.cli_config: SuiCliConfig = None
@@ -1790,3 +1809,31 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction publish::package, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
+
+    def batch_transaction(
+            self,
+            transactions,
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction batch::transactions, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")

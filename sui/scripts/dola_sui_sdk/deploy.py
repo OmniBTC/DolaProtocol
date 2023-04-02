@@ -68,7 +68,7 @@ pool_manager_package.publish_package(
 
 wormhole_package = sui_brownie.SuiPackage(
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_dcceff545df0d9dd7ce537f51373d3cc6d20d00d/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_6fd072e39c386ab00fae9f9321ef14ab2c144e14/sui/wormhole")),
 )
 
 wormhole_package.publish_package()
