@@ -1,7 +1,7 @@
 from pprint import pprint
 
 from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt, usdc, sui
+from dola_sui_sdk.init import btc, usdt, usdc, sui, clock
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
 from dola_sui_sdk.load import sui_project
 from sui_brownie import SuiObject
@@ -898,15 +898,17 @@ def export_objects():
         "Storage": lending_core.storage.Storage[-1],
         "Faucet": test_coins.faucet.Faucet[-1],
         "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
-        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1]
+        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1],
+        "Clock": clock(),
     }
     coin_types = [btc(), usdt(), usdc(), sui()]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
-        data[dk] = sui_project[SuiObject.from_type(pool(k))]["Shared"][-1]
+        data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
 
+    data['SUI'] = sui().removeprefix("0x")
     pprint(data)
 
 

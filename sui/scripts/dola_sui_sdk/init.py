@@ -604,7 +604,7 @@ def bnb():
 
 
 def sui():
-    return "0x2::sui::SUI"
+    return "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
 
 
 def clock():
@@ -666,7 +666,7 @@ def main():
     create_pool(btc())
     create_pool(usdt())
     create_pool(usdc())
-    create_pool("0x0000000000000000000000000000000000000002::sui::SUI")
+    create_pool(sui())
 
     # 2. init oracle
     register_token_price(0, 2300000, 2)
@@ -696,8 +696,7 @@ def main():
     vote_register_new_pool(2, b"USDC", usdc())
 
     create_proposal()
-    vote_register_new_pool(
-        7, b"SUI", "0x0000000000000000000000000000000000000002::sui::SUI")
+    vote_register_new_pool(7, b"SUI", sui())
 
     # 6. init system core
     create_proposal()
