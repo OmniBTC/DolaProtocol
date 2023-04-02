@@ -1,22 +1,72 @@
-import time
+import functools
 
-import sui_brownie
-from dola_sui_sdk import load, DOLA_CONFIG
-
+from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject
 
 RAY = 1000000000000000000000000000
 
-net = "devnet"
-
-sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=net)
-sui_project.active_account("Relayer")
+net = "sui-testnet"
 
 
 def create_pool(coin_type):
     omnipool = load.omnipool_package()
-    omnipool.dola_pool.create_pool(8, ty_args=[coin_type])
+    omnipool.dola_pool.create_pool(8, type_arguments=[coin_type])
+
+
+@functools.lru_cache()
+def get_upgrade_cap_info(upgrade_cap_ids: tuple):
+    result = sui_project.client.sui_multiGetObjects(
+        upgrade_cap_ids,
+        {
+            "showType": True,
+            "showOwner": True,
+            "showPreviousTransaction": False,
+            "showDisplay": False,
+            "showContent": True,
+            "showBcs": False,
+            "showStorageRebate": False
+        }
+    )
+    return {v["data"]["content"]["fields"]["package"]: v["data"] for v in result}
+
+
+def get_upgrade_cap_by_package_id(package_id: str):
+    upgrade_cap_ids = tuple(list(sui_project["0x2::package::UpgradeCap"]))
+    info = get_upgrade_cap_info(upgrade_cap_ids)
+    if package_id in info:
+        return info[package_id]["objectId"]
+
+
+def init_wormhole():
+    """
+    public entry fun init_and_share_state(
+        deployer: DeployerCap,
+        upgrade_cap: UpgradeCap,
+        governance_chain: u16,
+        governance_contract: vector<u8>,
+        initial_guardians: vector<vector<u8>>,
+        guardian_set_epochs_to_live: u32,
+        message_fee: u64,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    wormhole = load.wormhole_package()
+
+    wormhole.setup.init_and_share_state(
+        wormhole.setup.DeployerCap[-1],
+        get_upgrade_cap_by_package_id(wormhole.package_id),
+        0,
+        list(bytes.fromhex("deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")),
+        [
+            list(bytes.fromhex("1337133713371337133713371337133713371337")),
+            list(bytes.fromhex("c0dec0dec0dec0dec0dec0dec0dec0dec0dec0de")),
+            list(bytes.fromhex("ba5edba5edba5edba5edba5edba5edba5edba5ed"))
+        ],
+        0,
+        0
+    )
 
 
 def register_token_price(dola_pool_id, price, decimal):
@@ -24,7 +74,6 @@ def register_token_price(dola_pool_id, price, decimal):
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
-        timestamp: u64,
         dola_pool_id: u16,
         token_price: u64,
         price_decimal: u8
@@ -36,7 +85,6 @@ def register_token_price(dola_pool_id, price, decimal):
     oracle.oracle.register_token_price(
         oracle.oracle.OracleCap[-1],
         oracle.oracle.PriceOracle[-1],
-        int(time.time()),
         dola_pool_id,
         price,
         decimal
@@ -80,7 +128,7 @@ def init_wormhole_adapter_pool():
     omnipool.wormhole_adapter_pool.initialize(
         omnipool.wormhole_adapter_pool.PoolGenesis[-1],
         0,
-        wormhole_adapter_core.package_id,
+        list(bytes.fromhex(wormhole_adapter_core.package_id.removeprefix("0x"))),
         omnipool.dola_pool.PoolApproval[-1],
         dola_types.dola_contract.DolaContractRegistry[-1],
         wormhole.state.State[-1]
@@ -186,7 +234,7 @@ def vote_init_wormhole_adapter_core():
 
     genesis_proposal.genesis_proposal.vote_init_wormhole_adapter_core(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1]
     )
 
@@ -210,7 +258,7 @@ def vote_init_lending_core():
 
     genesis_proposal.genesis_proposal.vote_init_lending_core(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         lending_core.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
         lending_core.wormhole_adapter.WormholeAdapter[-1]
@@ -233,7 +281,7 @@ def vote_init_system_core():
 
     genesis_proposal.genesis_proposal.vote_init_system_core(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         app_manager.app_manager.TotalAppInfo[-1],
     )
 
@@ -254,7 +302,7 @@ def vote_init_dola_portal():
 
     genesis_proposal.genesis_proposal.vote_init_dola_portal(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         dola_types.dola_contract.DolaContractRegistry[-1]
     )
 
@@ -276,7 +324,7 @@ def vote_init_chain_group_id(group_id, chain_ids):
     user_manager = load.user_manager_package()
     genesis_proposal.genesis_proposal.vote_init_chain_group_id(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         user_manager.user_manager.UserManagerInfo[-1],
         group_id,
         chain_ids
@@ -304,7 +352,7 @@ def vote_remote_register_owner(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_register_owner(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -334,7 +382,7 @@ def vote_remote_delete_owner(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_delete_owner(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -362,14 +410,17 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
     wormhole = load.wormhole_package()
     wormhole_adapter_core = load.wormhole_adapter_core_package()
 
+    result = sui_project.pay_sui([0])
+    zero_coin = result['objectChanges'][-1]['objectId']
+
     genesis_proposal.genesis_proposal.vote_remote_register_spender(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
         dola_contract,
-        0
+        zero_coin
     )
 
 
@@ -394,7 +445,7 @@ def vote_remote_delete_spender(dola_chain_id, dola_contract):
 
     genesis_proposal.genesis_proposal.vote_remote_delete_spender(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
@@ -413,7 +464,7 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
         pool_dola_chain_id: u16,
         dola_pool_name: vector<u8>,
         dola_pool_id: u16,
-        pool_weight: u256,
+        weight: u256,
         ctx: &mut TxContext
     )
     :return:
@@ -435,7 +486,7 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     pool_manager = load.pool_manager_package()
     genesis_proposal.genesis_proposal.vote_register_new_pool(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         coin_type,
         dst_chain,
@@ -450,13 +501,13 @@ def vote_register_new_reserve(dola_pool_id):
     public entry fun vote_register_new_reserve(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        oracle: &mut PriceOracle,
+        clock: &Clock,
         dola_pool_id: u16,
         is_isolated_asset: bool,
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
-        borrow_cap_ceiling: u128,
+        borrow_cap_ceiling: u256,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
         base_borrow_rate: u256,
@@ -477,8 +528,8 @@ def vote_register_new_reserve(dola_pool_id):
     borrowable_in_isolation = dola_pool_id in [1, 2]
     genesis_proposal.genesis_proposal.vote_register_new_reserve(
         governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())]["Shared"][-1],
-        oracle.oracle.PriceOracle[-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
+        clock(),
         dola_pool_id,
         is_isolated_asset,
         borrowable_in_isolation,
@@ -499,7 +550,7 @@ def claim_test_coin(coin_type):
     test_coins = load.test_coins_package()
     test_coins.faucet.claim(
         test_coins.faucet.Faucet[-1],
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -508,7 +559,7 @@ def force_claim_test_coin(coin_type, amount):
     test_coins.faucet.force_claim(
         test_coins.faucet.Faucet[-1],
         int(amount),
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -556,6 +607,10 @@ def sui():
     return "0x2::sui::SUI"
 
 
+def clock():
+    return "0x0000000000000000000000000000000000000000000000000000000000000006"
+
+
 def coin(coin_type):
     return f"0x2::coin::Coin<{coin_type}>"
 
@@ -584,17 +639,18 @@ def bridge_core_read_vaa(index=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     result = wormhole_adapter_core.wormhole_adapter_core.read_vaa.simulate(
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1], index
-    )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
+    )["events"][0]["parsedJson"]
+    return result["vaa"], result["nonce"]
 
 
 def lending_portal_contract_id():
-    dola_portal = load.dola_portal_package()
-    lending_portal_info = dola_portal.get_object_with_super_detail(
-        dola_portal.lending.LendingPortal[-1]
-    )
-
-    return int(lending_portal_info['dola_contract']['dola_contract'])
+    # dola_portal = load.dola_portal_package()
+    # lending_portal_info = dola_portal.get_object_with_super_detail(
+    #     dola_portal.lending.LendingPortal[-1]
+    # )
+    #
+    # return int(lending_portal_info['dola_contract']['dola_contract'])
+    return 1
 
 
 def query_relay_event(limit=1):

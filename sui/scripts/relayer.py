@@ -12,10 +12,6 @@ from multiprocessing import Queue
 from pathlib import Path
 
 import ccxt
-from retrying import retry
-from sui_brownie import SuiObject
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
-
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -27,6 +23,9 @@ import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
 from dola_sui_sdk.load import sui_project
+from retrying import retry
+from sui_brownie import SuiObject
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -434,7 +433,7 @@ def sui_pool_executor():
                     sui_project[SuiObject.from_type(
                         dola_sui_init.pool(token_name))][sui_account_address][-1],
                     vaa,
-                    ty_args=[token_name]
+                    type_arguments=[token_name]
                 )
                 gas_used = dola_sui_lending.calculate_sui_gas(result['gasUsed'])
                 # todo: use sui gas price
@@ -449,7 +448,7 @@ def sui_pool_executor():
                         sui_project[SuiObject.from_type(
                             dola_sui_init.pool(token_name))][sui_account_address][-1],
                         vaa,
-                        ty_args=[token_name]
+                        type_arguments=[token_name]
                     )
                     finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                  "consumed_fee": get_fee_value(tx_gas_amount)}
@@ -500,7 +499,7 @@ def aptos_pool_executor():
 
                 gas_used = aptos_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     vaa,
-                    ty_args=[token_name],
+                    type_arguments=[token_name],
                     return_types="gas"
                 )
                 gas_price = aptos_omnipool.estimate_gas_price()
@@ -508,7 +507,7 @@ def aptos_pool_executor():
                 if avaliable_gas_amount > tx_gas_amount:
                     aptos_omnipool.wormhole_adapter_pool.receive_withdraw(
                         vaa,
-                        ty_args=[token_name]
+                        type_arguments=[token_name]
                     )
                     finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                  "consumed_fee": get_fee_value(tx_gas_amount)}

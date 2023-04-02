@@ -111,7 +111,7 @@ def portal_supply(coin_type):
         [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -200,7 +200,7 @@ def portal_withdraw_local(coin_type, amount):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -275,7 +275,7 @@ def pool_withdraw(vaa, coin_type):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         vaa,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -365,7 +365,7 @@ def portal_borrow_local(coin_type, amount):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -498,7 +498,7 @@ def portal_repay(coin_type):
         [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -589,7 +589,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver
             coin(debt_coin_type))][account_address][-1]],
         U64_MAX,
         0,
-        ty_args=[debt_coin_type, collateral_coin_type]
+        type_arguments=[debt_coin_type, collateral_coin_type]
     )
     return bridge_pool_read_vaa()[0]
 
