@@ -36,9 +36,9 @@ networks:
     scan_rpc_url: "https://api-testnet-zkevm.polygonscan.com/api"
     wormhole_chainid: 7
     wormhole: "0x0000000000000000000000000000000000000000"
-    btc: "0xDDEF8C897561010486B9af63A92974c8D9B6F854"
-    usdt: "0x9bB8072dFf04a718f45Cc813E39c047C0792DB82"
-    usdc: "0xBD664D0b9D368599203a42CbE5eFBA2520A332E6"
+    btc: "0x9895bcd049eE00560599b1458fC2436793E3E011"
+    usdt: "0xABC8849BB0fF39EDF2CfC41d23C307f0FEaE1714"
+    usdc: "0x2bb68D45ce273e5eed8D10193B98a9e33259f2B1"
   avax-test:
     wormhole_chainid: 6
     wormhole: "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C"

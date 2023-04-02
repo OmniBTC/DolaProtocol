@@ -1,5 +1,3 @@
-import functools
-
 from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject
@@ -14,7 +12,6 @@ def create_pool(coin_type):
     omnipool.dola_pool.create_pool(8, type_arguments=[coin_type])
 
 
-@functools.lru_cache()
 def get_upgrade_cap_info(upgrade_cap_ids: tuple):
     result = sui_project.client.sui_multiGetObjects(
         upgrade_cap_ids,
@@ -53,10 +50,11 @@ def init_wormhole():
     :return:
     """
     wormhole = load.wormhole_package()
+    upgrade_cap = get_upgrade_cap_by_package_id(wormhole.package_id)
 
     wormhole.setup.init_and_share_state(
         wormhole.setup.DeployerCap[-1],
-        get_upgrade_cap_by_package_id(wormhole.package_id),
+        upgrade_cap,
         0,
         list(bytes.fromhex("deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")),
         [
