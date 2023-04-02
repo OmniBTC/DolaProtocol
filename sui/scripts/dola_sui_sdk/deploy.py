@@ -19,7 +19,7 @@ dola_types_package = sui_brownie.SuiPackage(
 )
 
 dola_types_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id
+    replace_address=dict(serde=None
                          ))
 
 ray_math_package = sui_brownie.SuiPackage(
@@ -33,24 +33,24 @@ governance_package = sui_brownie.SuiPackage(
 )
 
 governance_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id))
+    replace_address=dict(serde=None))
 
 user_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("user_manager")
 )
 
 user_manager_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id,
-                         dola_types=dola_types_package.package_id,
-                         governance=governance_package.package_id))
+    replace_address=dict(serde=None,
+                         dola_types=None,
+                         governance=None))
 
 app_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("app_manager")
 )
 
 app_manager_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id,
-                         governance=governance_package.package_id))
+    replace_address=dict(serde=None,
+                         governance=None))
 
 oracle_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("oracle")
@@ -63,8 +63,8 @@ pool_manager_package = sui_brownie.SuiPackage(
 )
 
 pool_manager_package.publish_package(
-    replace_address=dict(serde=serde_package.package_id, governance=governance_package.package_id,
-                         dola_types=dola_types_package.package_id, ray_math=ray_math_package.package_id))
+    replace_address=dict(serde=None, governance=None,
+                         dola_types=None, ray_math=None))
 
 wormhole_package = sui_brownie.SuiPackage(
     package_path=Path.home().joinpath(Path(
@@ -78,9 +78,9 @@ omnipool_package = sui_brownie.SuiPackage(
 )
 
 omnipool_package.publish_package(replace_address=dict(
-    serde=serde_package.package_id,
-    dola_types=dola_types_package.package_id,
-    wormhole=wormhole_package.package_id
+    serde=None,
+    dola_types=None,
+    wormhole=None
 )
 )
 
@@ -90,13 +90,14 @@ wormhole_adapter_core_package = sui_brownie.SuiPackage(
 
 wormhole_adapter_core_package.publish_package(replace_address=dict(
     wormhole_adapter_core="0x0",
-    serde=serde_package.package_id,
-    dola_types=dola_types_package.package_id,
-    wormhole=wormhole_package.package_id,
-    governance=governance_package.package_id,
-    app_manager=app_manager_package.package_id,
-    pool_manager=pool_manager_package.package_id,
-    user_manager=user_manager_package.package_id
+    serde=None,
+    dola_types=None,
+    wormhole=None,
+    governance=None,
+    app_manager=None,
+    pool_manager=None,
+    user_manager=None,
+    ray_math=None,
 )
 )
 
@@ -106,16 +107,16 @@ lending_core_package = sui_brownie.SuiPackage(
 
 lending_core_package.publish_package(replace_address=dict(
     lending_core="0x0",
-    serde=serde_package.package_id,
-    dola_types=dola_types_package.package_id,
-    ray_math=ray_math_package.package_id,
-    oracle=oracle_package.package_id,
-    app_manager=app_manager_package.package_id,
-    pool_manager=pool_manager_package.package_id,
-    user_manager=user_manager_package.package_id,
-    wormhole=wormhole_package.package_id,
-    wormhole_adapter_core=wormhole_adapter_core_package.package_id,
-    governance=governance_package.package_id
+    serde=None,
+    dola_types=None,
+    ray_math=None,
+    oracle=None,
+    app_manager=None,
+    pool_manager=None,
+    user_manager=None,
+    wormhole=None,
+    wormhole_adapter_core=None,
+    governance=None
 )
 )
 
@@ -124,14 +125,14 @@ system_core_package = sui_brownie.SuiPackage(
 )
 
 system_core_package.publish_package(replace_address=dict(
-    serde=serde_package.package_id,
-    dola_types=dola_types_package.package_id,
-    app_manager=app_manager_package.package_id,
-    user_manager=user_manager_package.package_id,
-    pool_manager=pool_manager_package.package_id,
-    wormhole=wormhole_package.package_id,
-    wormhole_adapter_core=wormhole_adapter_core_package.package_id,
-    governance=governance_package.package_id
+    serde=None,
+    dola_types=None,
+    app_manager=None,
+    user_manager=None,
+    pool_manager=None,
+    wormhole=None,
+    wormhole_adapter_core=None,
+    governance=None
 )
 )
 
@@ -140,18 +141,18 @@ dola_portal_package = sui_brownie.SuiPackage(
 )
 
 dola_portal_package.publish_package(replace_address=dict(
-    serde=serde_package.package_id,
-    dola_types=dola_types_package.package_id,
-    pool_manager=pool_manager_package.package_id,
-    user_manager=user_manager_package.package_id,
-    app_manager=app_manager_package.package_id,
-    lending_core=lending_core_package.package_id,
-    system_core=system_core_package.package_id,
-    oracle=oracle_package.package_id,
-    wormhole_adapter_core=wormhole_adapter_core_package.package_id,
-    wormhole=wormhole_package.package_id,
-    omnipool=omnipool_package.package_id,
-    governance=governance_package.package_id
+    serde=None,
+    dola_types=None,
+    pool_manager=None,
+    user_manager=None,
+    app_manager=None,
+    lending_core=None,
+    system_core=None,
+    oracle=None,
+    wormhole_adapter_core=None,
+    wormhole=None,
+    omnipool=None,
+    governance=None
 )
 )
 
@@ -160,12 +161,12 @@ external_interfaces_package = sui_brownie.SuiPackage(
 )
 
 external_interfaces_package.publish_package(replace_address=dict(
-    pool_manager=pool_manager_package.package_id,
-    user_manager=user_manager_package.package_id,
-    dola_types=dola_types_package.package_id,
-    lending_core=lending_core_package.package_id,
-    ray_math=ray_math_package.package_id,
-    oracle=oracle_package.package_id
+    pool_manager=None,
+    user_manager=None,
+    dola_types=None,
+    lending_core=None,
+    ray_math=None,
+    oracle=None
 ))
 
 genesis_proposal_package = sui_brownie.SuiPackage(
@@ -174,18 +175,18 @@ genesis_proposal_package = sui_brownie.SuiPackage(
 )
 
 genesis_proposal_package.publish_package(replace_address=dict(
-    pool_manager=pool_manager_package.package_id,
-    user_manager=user_manager_package.package_id,
-    wormhole=wormhole_package.package_id,
-    wormhole_adapter_core=wormhole_adapter_core_package.package_id,
-    governance=governance_package.package_id,
-    lending_core=lending_core_package.package_id,
-    system_core=system_core_package.package_id,
+    pool_manager=None,
+    user_manager=None,
+    wormhole=None,
+    wormhole_adapter_core=None,
+    governance=None,
+    lending_core=None,
+    system_core=None,
     dola_portal=dola_portal_package.package_id,
-    app_manager=app_manager_package.package_id,
-    dola_types=dola_types_package.package_id,
-    oracle=oracle_package.package_id,
-    omnipool=omnipool_package.package_id
+    app_manager=None,
+    dola_types=None,
+    oracle=None,
+    omnipool=None
 )
 )
 
@@ -196,19 +197,19 @@ test_coins_package = sui_brownie.SuiPackage(
 test_coins_package.publish_package()
 
 print("---------------------------Deployed Package ID-------------------------------------\n")
-print(f"serde={serde_package.package_id}")
-print(f"dola_types={dola_types_package.package_id}")
-print(f"ray_math={ray_math_package.package_id}")
-print(f"omnipool={omnipool_package.package_id}")
-print(f"app_manager={app_manager_package.package_id}")
-print(f"governance={governance_package.package_id}")
-print(f"oracle={oracle_package.package_id}")
-print(f"pool_manager={pool_manager_package.package_id}")
-print(f"wormhole={wormhole_package.package_id}")
-print(f"wormhole_adapter_core={wormhole_adapter_core_package.package_id}")
-print(f"lending_core={lending_core_package.package_id}")
-print(f"system_core={system_core_package.package_id}")
-print(f"dola_portal={dola_portal_package.package_id}")
-print(f"external_interfaces={external_interfaces_package.package_id}")
-print(f"genesis_proposal={genesis_proposal_package.package_id}")
-print(f"test_coins={test_coins_package.package_id}")
+print(f"serde={sui_project.Serde[-1]}")
+print(f"dola_types={sui_project.DolaTypes[-1]}")
+print(f"ray_math={sui_project.RayMath[-1]}")
+print(f"omnipool={sui_project.OmniPool[-1]}")
+print(f"app_manager={sui_project.AppManager[-1]}")
+print(f"governance={sui_project.Governance[-1]}")
+print(f"oracle={sui_project.Oracle[-1]}")
+print(f"pool_manager={sui_project.PoolManager[-1]}")
+print(f"wormhole={sui_project.Wormhole[-1]}")
+print(f"wormhole_adapter_core={sui_project.WormholeAdapterCore[-1]}")
+print(f"lending_core={sui_project.LendingCore[-1]}")
+print(f"system_core={sui_project.SystemCore[-1]}")
+print(f"dola_portal={sui_project.DolaPortal[-1]}")
+print(f"external_interfaces={sui_project.ExternalInterfaces[-1]}")
+print(f"genesis_proposal={sui_project.GenesisProposal[-1]}")
+print(f"test_coins={sui_project.TestCoins[-1]}")
