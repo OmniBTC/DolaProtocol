@@ -1045,15 +1045,17 @@ class SuiPackage:
     def publish_package(
             self,
             gas_budget=10000000,
-            replace_address: dict = None
+            replace_address: dict = None,
+            skip_dependency_verification=False
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
             with self.project.cli_config as cof:
+                skip_flag = " --skip-dependency-verification" if skip_dependency_verification else ""
                 cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                      f" --gas-budget {gas_budget} " \
+                      f"{skip_flag} --gas-budget {gas_budget} " \
                       f"--abi --json {self.package_path.absolute()}"
                 with os.popen(cmd) as f:
                     result = f.read()
