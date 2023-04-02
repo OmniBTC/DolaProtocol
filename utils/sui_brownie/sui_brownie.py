@@ -790,17 +790,50 @@ class TransactionBuild:
     def batch_transaction(
             cls,
             sender,
+            actual_params,
             transactions: list,
             gas_price,
             gas_budget
     ):
-        inputs = []
-        commands = []
+        batch_commands = []
+        batch_call_args = []
+        batch_parameters = []
+        has_actual_params = DefaultDict(False)
         for (package_id, abi, type_args, call_args) in transactions:
-            single_inputs, single_commands = cls.command_move_call(package_id, abi, type_args, call_args)
-            inputs.extend(single_inputs)
-            single_commands.extend(commands)
-        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+            call_args, type_args = cls.check_args(abi, call_args, type_args)
+            # format param
+            abi = cls.format_abi_param(abi, type_args)
+
+            for i in range(len(call_args)):
+                call_arg = call_args[i]
+                actual_params_index = call_arg.value.v0
+                if isinstance(call_arg, Argument) and call_arg.key == "Input" and \
+                        not has_actual_params[actual_params_index]:
+                    batch_call_args.append(actual_params[actual_params_index])
+                    batch_parameters.append(abi["parameters"][i])
+                    has_actual_params[actual_params_index] = True
+            # generate commands
+            type_arguments = [
+                cls.generate_type_arg(v) for v in type_args
+            ]
+            commands = [
+                Command("MoveCall", ProgrammableMoveCall(
+                    ObjectID(package_id),
+                    Identifier(abi["module_name"]),
+                    Identifier(abi["func_name"]),
+                    type_arguments,
+                    call_args
+                ))
+            ]
+            batch_commands.extend(commands)
+
+        # Prepare object
+        object_infos = cls.prepare_object_info(batch_call_args, batch_parameters)
+        batch_inputs = []
+        for i in range(len(batch_call_args)):
+            batch_inputs.append(cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos))
+
+        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget)
 
     @classmethod
     def upgrade(
@@ -1812,6 +1845,7 @@ class SuiProject:
 
     def batch_transaction(
             self,
+            actual_params,
             transactions,
             gas_price=1000,
             gas_budget=10000000
@@ -1823,6 +1857,7 @@ class SuiProject:
             inputs.append([package_id, abi, type_arguments, arguments])
         msg = TransactionBuild.batch_transaction(
             sender=self.account.account_address,
+            actual_params=actual_params,
             transactions=inputs,
             gas_price=gas_price,
             gas_budget=gas_budget)

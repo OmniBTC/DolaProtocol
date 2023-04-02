@@ -128,6 +128,7 @@ system_core_package.publish_package(replace_address=dict(
     dola_types=dola_types_package.package_id,
     app_manager=app_manager_package.package_id,
     user_manager=user_manager_package.package_id,
+    pool_manager=pool_manager_package.package_id,
     wormhole=wormhole_package.package_id,
     wormhole_adapter_core=wormhole_adapter_core_package.package_id,
     governance=governance_package.package_id

@@ -87,10 +87,10 @@ class TestSuiBrownie(unittest.TestCase):
                             )
         basics.counter.create()
         sui_project.batch_transaction(
+            actual_params=[basics.counter.Counter[-1], 2],
             transactions=[
-                [basics.counter.Counter[-1], 2]
                 [basics.counter.increment, [Argument("Input", U16(0))], []],
-                [basics.counter.assert_value, [], []],
+                [basics.counter.assert_value, [Argument("Input", U16(0)), Argument("Input", U16(1))], []],
             ]
         )
         basics.counter.test_param(basics.counter.Counter[-1],
