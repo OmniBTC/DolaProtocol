@@ -953,8 +953,6 @@ class SuiPackage:
             if k in replace_address:
                 if replace_address[k] is not None:
                     move_toml["addresses"][k] = replace_address[k]
-                elif self.project.fuzzy_search_package(k) is not None:
-                    move_toml["addresses"][k] = self.project.fuzzy_search_package(k)
                 else:
                     assert False, "Replace address is None for addresses"
         return move_toml
@@ -1045,17 +1043,15 @@ class SuiPackage:
     def publish_package(
             self,
             gas_budget=10000000,
-            replace_address: dict = None,
-            skip_dependency_verification=False
+            replace_address: dict = None
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
             with self.project.cli_config as cof:
-                skip_flag = " --skip-dependency-verification" if skip_dependency_verification else ""
                 cmd = f"sui client --client.config {cof.file.absolute()} publish " \
-                      f"{skip_flag} --gas-budget {gas_budget} " \
+                      f" --gas-budget {gas_budget} " \
                       f"--abi --json {self.package_path.absolute()}"
                 with os.popen(cmd) as f:
                     result = f.read()
@@ -1337,16 +1333,6 @@ class SuiProject:
         package_names = {k: True for k in list(self.cache_objects.keys()) if isinstance(k, str)}
         if package_name in package_names:
             data = self.cache_objects[package_name].get("Shared", [])
-            if len(data):
-                return data[-1]
-        return None
-
-    def fuzzy_search_package(self, package_name):
-        package_names = {k.lower().replace("_", ""): k
-                         for k in list(self.cache_objects.keys()) if isinstance(k, str)}
-        package_name = package_name.lower().replace("_", "")
-        if package_name in package_names:
-            data = self.cache_objects[package_names[package_name]].get("Shared", [])
             if len(data):
                 return data[-1]
         return None
