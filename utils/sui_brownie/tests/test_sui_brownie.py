@@ -47,10 +47,15 @@ class TestSuiBrownie(unittest.TestCase):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
-        basics = SuiPackage(package_id=sui_project.Basics[-1],
-                            package_name="Basics"
-                            )
-        print(basics.counter.test_data_type)
+        # basics = SuiPackage(package_id=sui_project.Basics[-1],
+        #                     package_name="Basics"
+        #                     )
+        # print(basics.counter.test_data_type)
+
+        dola_portal = SuiPackage(package_id="0x420d506a6bc1b6b2530ebcbda785f684de0ea7ff8c66644a334bf3fd662b050b",
+                                 package_name="DolaPortal"
+                                 )
+        print(dola_portal.lending.supply)
 
     def test_type_arg(self):
         type_arg = "Vector<0xcad9befcc5684c53de572ca6332b873fab338bcd7a244d6614bff57f2ab35444::counter::Data<U8>>"

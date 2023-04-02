@@ -10,7 +10,7 @@ import os
 import time
 import traceback
 from pathlib import Path
-from typing import Union, List, Dict
+from typing import Union, Dict
 from pprint import pprint
 from retrying import retry
 
@@ -442,6 +442,33 @@ class TransactionBuild:
             for i in range(len(data)):
                 output.append(cls.generate_pure_value(param_type["Vector"], data[i]))
             return output
+        else:
+            raise ValueError(str(param_type))
+
+    @classmethod
+    def generate_object_arg(cls, object_id, object_infos, param_type="") -> ObjectArg:
+        data = object_infos[object_id]
+        if "Shared" in data["owner"]:
+            if "MutableReference" in param_type:
+                mutable = Bool(True)
+            elif "Reference" in param_type:
+                mutable = Bool(False)
+            else:
+                raise ValueError(param_type)
+            initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
+            return ObjectArg("SharedObject",
+                             SharedObject(
+                                 ObjectID(data["objectId"]),
+                                 SequenceNumber(initial_shared_version),
+                                 mutable
+                             ))
+        else:
+            return ObjectArg("ImmOrOwnedObject",
+                             ObjectRef(
+                                 ObjectID(data["objectId"]),
+                                 SequenceNumber(data["version"]),
+                                 ObjectDigest(data["digest"])
+                             ))
 
     @classmethod
     def generate_call_arg(cls, param_type, data, object_infos):
@@ -449,28 +476,13 @@ class TransactionBuild:
                 ("MutableReference" in param_type or
                  "Reference" in param_type or
                  "Struct" in param_type):
-            data = object_infos[data]
-            if "Shared" in data["owner"]:
-                if "MutableReference" in param_type:
-                    mutable = Bool(True)
-                elif "Reference" in param_type:
-                    mutable = Bool(False)
-                else:
-                    raise ValueError(param_type)
-                initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
-                return CallArg("Object", ObjectArg("SharedObject",
-                                                   SharedObject(
-                                                       ObjectID(data["objectId"]),
-                                                       SequenceNumber(initial_shared_version),
-                                                       mutable
-                                                   )))
-            else:
-                return CallArg("Object", ObjectArg("ImmOrOwnedObject",
-                                                   ObjectRef(
-                                                       ObjectID(data["objectId"]),
-                                                       SequenceNumber(data["version"]),
-                                                       ObjectDigest(data["digest"])
-                                                   )))
+            return CallArg("Object", cls.generate_object_arg(data, object_infos, param_type))
+        elif isinstance(param_type, dict) and "Vector" in param_type and "Struct" in param_type["Vector"]:
+            assert isinstance(data, list)
+            call_args = []
+            for object_id in data:
+                call_args.append(CallArg("Object", cls.generate_object_arg(object_id, object_infos)))
+            return call_args
         else:
             pure_value = cls.generate_pure_value(param_type, data)
             if isinstance(pure_value, list):
@@ -537,15 +549,27 @@ class TransactionBuild:
 
         # generate inputs
         inputs = []
+        commands = []
+        arguments = []
         for i in range(len(call_args)):
-            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos))
+            call_arg_result = cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos)
+            if isinstance(call_arg_result, list):
+                child_command_start_index = len(inputs)
+                inputs.extend(call_arg_result)
+                child_command_arguments = [Argument("Input", U16(i))
+                                           for i in range(child_command_start_index, len(inputs))]
+                commands.append(Command("MakeMoveVec", MakeMoveVec(OptionTypeTag("NONE", NONE()),
+                                                                   child_command_arguments)))
+                arguments.append(Argument("Result", U16(len(commands - 1))))
+            else:
+                inputs.append(call_arg_result)
+                arguments.append(Argument("Input", U16(len(inputs - 1))))
 
         # generate commands
         type_arguments = [
             cls.generate_type_arg(v) for v in type_args
         ]
-        arguments = [Argument("Input", U16(i)) for i in range(len(call_args))]
-        commands = [
+        commands.append([
             Command("MoveCall", ProgrammableMoveCall(
                 ObjectID(package_id),
                 Identifier(abi["module_name"]),
@@ -553,7 +577,7 @@ class TransactionBuild:
                 type_arguments,
                 arguments
             ))
-        ]
+        ])
         return inputs, commands
 
     @classmethod
@@ -806,9 +830,9 @@ class TransactionBuild:
 
             for i in range(len(call_args)):
                 call_arg = call_args[i]
+                assert isinstance(call_arg, Argument), f"Not support:{call_arg}"
                 actual_params_index = call_arg.value.v0
-                if isinstance(call_arg, Argument) and call_arg.key == "Input" and \
-                        not has_actual_params[actual_params_index]:
+                if call_arg.key == "Input" and not has_actual_params[actual_params_index]:
                     batch_call_args.append(actual_params[actual_params_index])
                     batch_parameters.append(abi["parameters"][i])
                     has_actual_params[actual_params_index] = True
@@ -1560,8 +1584,9 @@ class SuiProject:
                 "showBcs": False,
                 "showStorageRebate": False
             })
-            for sui_object_info in sui_object_infos:
+            for k, sui_object_info in enumerate(sui_object_infos):
                 if "error" in sui_object_info:
+                    print(f"Warning:get {object_ids[k]} info err: {sui_object_info['error']}")
                     continue
                 sui_object_id = sui_object_info["data"]["objectId"]
                 if sui_object_info["data"]["type"] == "package":
@@ -1573,6 +1598,8 @@ class SuiProject:
                     elif "AddressOwner" in sui_object_info["data"]["owner"]:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.add_object_to_cache(sui_object, owner, sui_object_id)
+                    else:
+                        raise ValueError(str(sui_object_info["data"]["owner"]))
 
     def get_account_sui(self):
         result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
@@ -1610,25 +1637,47 @@ class SuiProject:
 
     def simulate(
             self,
+            package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
+            gas_price=1000,
             gas_budget=10000000,
     ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
-        return self.client.sui_dryRunTransactionBlock(result["txBytes"])
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        return self.client.sui_dryRunTransactionBlock(tx_bytes)
 
     def inspect(
             self,
+            package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
+            gas_price=1000,
             gas_budget=10000000,
     ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
         return self.client.sui_devInspectTransactionBlock(
             self.account.account_address,
-            result["txBytes"],
+            tx_bytes,
             None,
             None
         )
