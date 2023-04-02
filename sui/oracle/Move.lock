@@ -4,18 +4,6 @@
 version = 0
 
 dependencies = [
-  { name = "DolaTypes" },
-  { name = "Serde" },
-  { name = "Sui" },
-  { name = "Wormhole" },
-]
-
-[[move.package]]
-name = "DolaTypes"
-source = { local = "../dola_types" }
-
-dependencies = [
-  { name = "Serde" },
   { name = "Sui" },
 ]
 
@@ -24,25 +12,9 @@ name = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c11488858f1d3930f47ec9f335a566683", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
-name = "Serde"
-source = { local = "../serde" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
 name = "Sui"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c11488858f1d3930f47ec9f335a566683", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { name = "MoveStdlib" },
-]
-
-[[move.package]]
-name = "Wormhole"
-source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "0a92c428ec511225bcc2a880c8b395b4af4ed0b6", subdir = "sui/wormhole" }
-
-dependencies = [
-  { name = "Sui" },
 ]
