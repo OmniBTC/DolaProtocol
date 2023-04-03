@@ -127,6 +127,7 @@ def core_supply(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -149,6 +150,7 @@ def core_supply(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa,
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -164,6 +166,7 @@ def core_supply(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa,
         )
     return gas, executed
@@ -291,6 +294,7 @@ def core_withdraw(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -304,6 +308,9 @@ def core_withdraw(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
+    result = sui_project.pay_sui([0])
+    zero_coin = result['objectChanges'][-1]['objectId']
+
     result = lending_core.wormhole_adapter.withdraw.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -312,7 +319,8 @@ def core_withdraw(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
-        0,
+        clock(),
+        zero_coin,
         vaa,
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -327,7 +335,8 @@ def core_withdraw(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
-            0,
+            clock(),
+            zero_coin,
             vaa,
         )
 
@@ -426,6 +435,7 @@ def core_borrow(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -439,6 +449,9 @@ def core_borrow(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
+    result = sui_project.pay_sui([0])
+    zero_coin = result['objectChanges'][-1]['objectId']
+
     result = lending_core.wormhole_adapter.borrow(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -447,7 +460,8 @@ def core_borrow(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
-        0,
+        clock(),
+        zero_coin,
         vaa,
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -462,7 +476,8 @@ def core_borrow(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
-            0,
+            clock(),
+            zero_coin,
             vaa,
         )
     return gas, executed
@@ -514,6 +529,7 @@ def core_repay(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -534,6 +550,7 @@ def core_repay(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -548,6 +565,7 @@ def core_repay(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
@@ -606,6 +624,7 @@ def core_liquidate(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -626,6 +645,7 @@ def core_liquidate(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa,
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -640,6 +660,7 @@ def core_liquidate(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa,
         )
     return gas, executed
@@ -779,6 +800,7 @@ def core_as_collateral(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>
     )
     :param relay_fee:
@@ -800,6 +822,7 @@ def core_as_collateral(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -814,6 +837,7 @@ def core_as_collateral(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
@@ -829,6 +853,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>
     )
     :return:
@@ -848,6 +873,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -862,6 +888,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
