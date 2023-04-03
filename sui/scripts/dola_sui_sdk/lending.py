@@ -10,12 +10,8 @@ U64_MAX = 18446744073709551615
 
 
 def calculate_sui_gas(gas_used):
-    # todo: use sui gas price to calculate
-    # devnet gasprice == 1
-    # testnet gasprice == 1000
-    gas_price = 1000
-    return (int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
-        gas_used['storageRebate'])) * gas_price
+    return int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
+        gas_used['storageRebate'])
 
 
 def portal_as_collateral(pool_ids=None):
@@ -684,7 +680,7 @@ def portal_binding(bind_address, dola_chain_id=0):
         dola_portal.system.SystemPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         dola_chain_id,
-        bind_address
+        list(bytes.fromhex(bind_address))
     )
 
 
@@ -993,6 +989,7 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
+    portal_binding("29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566")
     # claim_test_coin(usdt())
     # monitor_supply(usdt())
     # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)
@@ -1004,4 +1001,4 @@ if __name__ == "__main__":
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()
-    export_objects()
+    # export_objects()

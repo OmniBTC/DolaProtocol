@@ -386,7 +386,9 @@ def sui_core_executor():
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 relay_fee = get_fee_amount(relay_fee_value)
-                gas_amount, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
+                gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
+                gas_price = 1000
+                gas_amount = gas * gas_price
                 if executed:
                     if call_name in ["withdraw", "borrow"]:
                         relay_fee_record[dk] = get_fee_value(relay_fee - gas_amount)
@@ -446,9 +448,8 @@ def sui_pool_executor():
                     vaa,
                     type_arguments=[token_name]
                 )
-                gas_used = dola_sui_lending.calculate_sui_gas(result['gasUsed'])
-                # todo: use sui gas price
-                gas_price = 1
+                gas_used = dola_sui_lending.calculate_sui_gas(result['effects']['gasUsed'])
+                gas_price = 1000
 
                 tx_gas_amount = int(gas_used) * gas_price
                 if avaliable_gas_amount > tx_gas_amount:
