@@ -1,11 +1,10 @@
-from brownie import Contract
-
 import dola_ethereum_sdk.load as load
+from brownie import Contract
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from dola_ethereum_sdk.init import usdt, btc
 
 
-def portal_binding(bind_address, dola_chain_id=5):
+def portal_binding(bind_address, dola_chain_id=5, fee=0):
     """
     function binding(uint16 bindDolaChainId, bytes memory bindAddress)
     :param bind_address:
@@ -16,6 +15,7 @@ def portal_binding(bind_address, dola_chain_id=5):
     system_portal.binding(
         dola_chain_id,
         bind_address,
+        fee,
         {'from': account}
     )
 

@@ -236,6 +236,8 @@ action_gas_record = BridgeDict("action_gas_record.json")
 m = multiprocessing.Manager()
 relay_fee_record = m.dict()
 
+ZERO_FEE = int(1e18)
+
 
 def sui_portal_watcher():
     data = BridgeDict("sui_pool_vaa.json")
@@ -255,7 +257,8 @@ def sui_portal_watcher():
                 dk = f"sui_portal_{call_name}_{nonce}"
 
                 if dk not in relay_fee_record:
-                    relay_fee_record[dk] = get_fee_value(relay_fee_amount)
+                    # relay_fee_record[dk] = get_fee_value(relay_fee_amount)
+                    relay_fee_record[dk] = ZERO_FEE
                     local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
 
                 if dk not in data and call_name == 'liquidate':
@@ -272,19 +275,22 @@ def aptos_portal_watcher():
 
     while True:
         with contextlib.suppress(Exception):
-            nonce, relay_fee_amount = dola_aptos_init.relay_events()
-            vaa, nonce = dola_aptos_init.bridge_pool_read_vaa(nonce)
-            decode_vaa = list(bytes.fromhex(
-                vaa.replace("0x", "") if "0x" in vaa else vaa))
-            call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-            dk = f"aptos_portal_{call_name}_{str(nonce)}"
+            relay_events = dola_aptos_init.relay_events()
+            for event in relay_events:
+                nonce = int(event['nonce'])
+                relay_fee_amount = int(event['amount'])
+                vaa, nonce = dola_aptos_init.bridge_pool_read_vaa(nonce)
+                decode_vaa = list(bytes.fromhex(
+                    vaa.replace("0x", "") if "0x" in vaa else vaa))
+                call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
+                dk = f"aptos_portal_{call_name}_{str(nonce)}"
 
-            if dk not in data:
-                relay_fee_record[dk] = get_fee_value(relay_fee_amount, 'apt')
-
-                portal_vaa_q.put((vaa, nonce, "aptos"))
-                data[dk] = vaa
-                local_logger.info(f"Have a {call_name} transaction from aptos, nonce: {nonce}")
+                if dk not in data:
+                    # relay_fee_record[dk] = get_fee_value(relay_fee_amount, 'apt')
+                    relay_fee_record[dk] = ZERO_FEE
+                    portal_vaa_q.put((vaa, nonce, "aptos"))
+                    data[dk] = vaa
+                    local_logger.info(f"Have a {call_name} transaction from aptos, nonce: {nonce}")
         time.sleep(1)
 
 
@@ -312,7 +318,8 @@ def eth_portal_watcher(network="polygon-test"):
                 if dk not in data:
                     gas_token = get_gas_token(network)
 
-                    relay_fee_record[dk] = get_fee_value(relay_events[nonce], gas_token)
+                    # relay_fee_record[dk] = get_fee_value(relay_events[nonce], gas_token)
+                    relay_fee_record[dk] = ZERO_FEE
 
                     portal_vaa_q.put((vaa, nonce, network))
                     data[dk] = vaa
@@ -664,13 +671,14 @@ def run_sui_relayer():
 
 
 def main():
-    pt = ProcessExecutor(executor=5)
+    pt = ProcessExecutor(executor=6)
 
     pt.run([
         run_sui_relayer,
         run_aptos_relayer,
         functools.partial(eth_portal_watcher, "polygon-test"),
         functools.partial(eth_portal_watcher, "bsc-test"),
+        functools.partial(eth_portal_watcher, "polygon-zk-test"),
         eth_pool_executor,
     ])
 

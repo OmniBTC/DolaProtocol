@@ -109,4 +109,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print(bridge_pool_read_vaa(1))

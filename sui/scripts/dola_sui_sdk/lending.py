@@ -12,8 +12,10 @@ U64_MAX = 18446744073709551615
 def calculate_sui_gas(gas_used):
     # todo: use sui gas price to calculate
     # devnet gasprice == 1
-    return gas_used['computationCost'] + gas_used['computationCost'] - gas_used[
-        'storageRebate']
+    # testnet gasprice == 1000
+    gas_price = 1000
+    return (int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
+        gas_used['storageRebate'])) * gas_price
 
 
 def portal_as_collateral(pool_ids=None):
@@ -149,7 +151,7 @@ def core_supply(vaa, relay_fee=0):
         lending_core.storage.Storage[-1],
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
 
     executed = False
     if relay_fee > gas:
@@ -313,7 +315,7 @@ def core_withdraw(vaa, relay_fee=0):
         0,
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -448,7 +450,7 @@ def core_borrow(vaa, relay_fee=0):
         0,
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -534,7 +536,7 @@ def core_repay(vaa, relay_fee=0):
         lending_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -626,7 +628,7 @@ def core_liquidate(vaa, relay_fee=0):
         lending_core.storage.Storage[-1],
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -690,7 +692,7 @@ def core_binding(vaa, relay_fee=0):
         system_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -752,7 +754,7 @@ def core_unbinding(vaa, relay_fee=0):
         system_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -800,7 +802,7 @@ def core_as_collateral(vaa, relay_fee=0):
         lending_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -848,7 +850,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         lending_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -901,7 +903,7 @@ def export_objects():
         "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1],
         "Clock": clock(),
     }
-    coin_types = [btc(), usdt(), usdc(), sui()]
+    coin_types = [btc(), usdt(), usdc(), "0x2::sui::SUI"]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
