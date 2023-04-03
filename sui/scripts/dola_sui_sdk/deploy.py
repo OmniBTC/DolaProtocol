@@ -1,12 +1,11 @@
 from pathlib import Path
 
 import sui_brownie
-from dola_sui_sdk import DOLA_CONFIG
+from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 net = "sui-testnet"
 
-sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=net)
-sui_project.active_account("Relayer")
+sui_project.active_account("Relayer1")
 
 serde_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde")

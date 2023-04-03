@@ -1318,7 +1318,8 @@ class SuiProject:
             self.project_path = self.project_path
         else:
             self.project_path = Path(self.project_path)
-        assert self.project_path.joinpath("brownie-config.yaml").exists(), "Project not found brownie-config.yaml"
+        assert self.project_path.joinpath("brownie-config.yaml").exists(), f"Project not found brownie-config.yaml " \
+                                                                           f"for {self.project_path.absolute()}"
 
         # Read config
         with self.project_path.joinpath("brownie-config.yaml").open() as fp:
