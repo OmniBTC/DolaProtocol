@@ -1,9 +1,21 @@
 import time
-from pathlib import Path
 
 import ccxt
 
-from dola_sui_sdk import load, set_dola_project_path
+from dola_sui_sdk import load, sui_project
+
+
+def get_pool_id(symbol):
+    if symbol == "BTC/USDT":
+        return 0
+    elif symbol == "ETH/USDT":
+        return 3
+    elif symbol == "MATIC/USDT":
+        return 4
+    elif symbol == "APT/USDT":
+        return 5
+    elif symbol == "BNB/USDT":
+        return 6
 
 
 def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
@@ -19,30 +31,27 @@ def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
     return prices
 
 
-def feed(symbol, dola_pool_id):
-    set_dola_project_path(Path("../.."))
+def feed(symbols=("BTC/USDT", "ETH/USDT")):
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
+
+    sui_project.active_account("Oracle")
+    oracle = load.oracle_package()
     while True:
-        try:
-            price = kucoin.fetch_ticker(symbol)['close']
-        except:
-            continue
-        oracle = load.oracle_package()
-        oracle.oracle.update_token_price(
-            oracle.oracle.OracleCap[-1],
-            oracle.oracle.PriceOracle[-1],
-            dola_pool_id,
-            int(price * 100)
-        )
-        timestamp = time.time()
-        oracle.oracle.update_timestamp(
-            oracle.oracle.OracleCap[-1],
-            oracle.oracle.PriceOracle[-1],
-            int(timestamp)
-        )
+        for symbol in symbols:
+            try:
+                price = kucoin.fetch_ticker(symbol)['close']
+                oracle.oracle.update_token_price(
+                    oracle.oracle.OracleCap[-1],
+                    oracle.oracle.PriceOracle[-1],
+                    get_pool_id(symbol),
+                    int(price * 100)
+                )
+            except Exception as e:
+                print(e)
+                continue
         time.sleep(1)
 
 
 if __name__ == '__main__':
-    feed("BTC/USDT", 0)
+    feed(("BTC/USDT", "ETH/USDT", "MATIC/USDT", "APT/USDT", "BNB/USDT"))
