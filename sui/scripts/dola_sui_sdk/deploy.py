@@ -68,7 +68,7 @@ pool_manager_package.publish_package(
 
 wormhole_package = sui_brownie.SuiPackage(
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_6fd072e39c386ab00fae9f9321ef14ab2c144e14/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_0a92c428ec511225bcc2a880c8b395b4af4ed0b6/sui/wormhole")),
 )
 
 wormhole_package.publish_package()
@@ -127,6 +127,7 @@ system_core_package = sui_brownie.SuiPackage(
 system_core_package.publish_package(replace_address=dict(
     serde=None,
     dola_types=None,
+    ray_math=None,
     app_manager=None,
     user_manager=None,
     pool_manager=None,
@@ -143,6 +144,7 @@ dola_portal_package = sui_brownie.SuiPackage(
 dola_portal_package.publish_package(replace_address=dict(
     serde=None,
     dola_types=None,
+    ray_math=None,
     pool_manager=None,
     user_manager=None,
     app_manager=None,
@@ -163,6 +165,12 @@ external_interfaces_package = sui_brownie.SuiPackage(
 external_interfaces_package.publish_package(replace_address=dict(
     pool_manager=None,
     user_manager=None,
+    app_manager=None,
+    governance=None,
+    serde=None,
+    wormhole_adapter_core=None,
+    wormhole=None,
+    omnipool=None,
     dola_types=None,
     lending_core=None,
     ray_math=None,
@@ -177,6 +185,8 @@ genesis_proposal_package = sui_brownie.SuiPackage(
 genesis_proposal_package.publish_package(replace_address=dict(
     pool_manager=None,
     user_manager=None,
+    ray_math=None,
+    serde=None,
     wormhole=None,
     wormhole_adapter_core=None,
     governance=None,
