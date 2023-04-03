@@ -21,24 +21,33 @@ networks:
     scan_rpc_url: "https://api-testnet.bscscan.com/api"
     wormhole_chainid: 4
     wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
+    wormhole_adapter_pool: '0xf6D384aAd207F3De738aa8dA72191b00b30b0c7A'
     btc: "0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5"
     usdt: "0xe6606196DfcE08E0B0945BDbfECDF5952F8C2cfC"
     usdc: "0x1b619121e3918489C3214917f23AA18c5DC877fe"
+    lending_portal: '0xA42203928eAC6a133071a89D46e3989b752C6639'
+    system_portal: '0x3813C05D3b0C5C84f37ec178F745c7Ec647fEEC6'
   polygon-test:
     scan_rpc_url: "https://api-testnet.polygonscan.com/api"
     wormhole_chainid: 5
     wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
+    wormhole_adapter_pool: '0xA98cA91F8e756a3F0F5732dfC2226091f1F55212'
     btc: "0x9d6b8FeCDe95C9E222a388BdAC04d4b57CcEc27F"
     usdt: "0x896e955002262debAdB35f8a1F23B79284D0118F"
     usdc: "0xcFD3A43F83E7A0d932c446A410be93fFf668FEc8"
+    lending_portal: '0x3De3F1D90B99065C552dD1F1848d5178E1dA131c'
+    system_portal: '0x166eB09Cf22AFF2b898Dc658AAd01b128aCcD39d'
   polygon-zk-test:
     # Maintenance in progress
     scan_rpc_url: "https://api-testnet-zkevm.polygonscan.com/api"
     wormhole_chainid: 7
     wormhole: "0x0000000000000000000000000000000000000000"
+    wormhole_adapter_pool: '0x5DAa53dd528dbc1d885Ad5E9D963f8368F9A39F0'
     btc: "0x9895bcd049eE00560599b1458fC2436793E3E011"
     usdt: "0xABC8849BB0fF39EDF2CfC41d23C307f0FEaE1714"
     usdc: "0x2bb68D45ce273e5eed8D10193B98a9e33259f2B1"
+    lending_portal: '0x4e7AE7De13Db1587EA9B6C306299f66c3991D57e'
+    system_portal: '0xe70A651AD6c734BEC6Dbb5F7039cc288259C183e'
   avax-test:
     wormhole_chainid: 6
     wormhole: "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C"
