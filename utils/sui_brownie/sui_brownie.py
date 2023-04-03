@@ -1596,8 +1596,10 @@ class SuiProject:
                     elif "AddressOwner" in sui_object_info["data"]["owner"]:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.add_object_to_cache(sui_object, owner, sui_object_id)
+                    elif "ObjectOwner" in sui_object_info["data"]["owner"]:
+                        pass
                     else:
-                        raise ValueError(str(sui_object_info["data"]["owner"]))
+                        raise ValueError(f'{str(sui_object_info["data"]["owner"])},{sui_object_id}')
 
     def get_account_sui(self):
         result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
