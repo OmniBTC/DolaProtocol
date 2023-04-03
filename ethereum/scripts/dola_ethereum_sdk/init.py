@@ -141,7 +141,10 @@ def relay_events(start_block=0, end_block=99999999, limit=5):
 
     system_relay_events = decode_relay_events(system_relay_result.json())
     lending_relay_events = decode_relay_events(lending_relay_result.json())
-    return lending_relay_events | system_relay_events
+
+    lending_relay_events.update(system_relay_events)
+
+    return lending_relay_events
 
 
 def decode_relay_events(data):
