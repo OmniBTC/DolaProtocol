@@ -12,34 +12,33 @@ serde_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde")
 )
 
-serde_package.publish_package()
+serde_package.program_publish_package()
 
 dola_types_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_types")
 )
 
-dola_types_package.publish_package(
-    replace_address=dict(serde=None
-                         ))
+dola_types_package.program_publish_package(
+    replace_address=dict(serde=None))
 
 ray_math_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("ray_math")
 )
 
-ray_math_package.publish_package()
+ray_math_package.program_publish_package()
 
 governance_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("governance")
 )
 
-governance_package.publish_package(
+governance_package.program_publish_package(
     replace_address=dict(serde=None))
 
 user_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("user_manager")
 )
 
-user_manager_package.publish_package(
+user_manager_package.program_publish_package(
     replace_address=dict(serde=None,
                          dola_types=None,
                          governance=None))
@@ -48,7 +47,7 @@ app_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("app_manager")
 )
 
-app_manager_package.publish_package(
+app_manager_package.program_publish_package(
     replace_address=dict(serde=None,
                          governance=None))
 
@@ -56,13 +55,13 @@ oracle_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("oracle")
 )
 
-oracle_package.publish_package()
+oracle_package.program_publish_package()
 
 pool_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("pool_manager")
 )
 
-pool_manager_package.publish_package(
+pool_manager_package.program_publish_package(
     replace_address=dict(serde=None, governance=None,
                          dola_types=None, ray_math=None))
 
@@ -71,13 +70,13 @@ wormhole_package = sui_brownie.SuiPackage(
         ".move/https___github_com_OmniBTC_wormhole_git_0a92c428ec511225bcc2a880c8b395b4af4ed0b6/sui/wormhole")),
 )
 
-wormhole_package.publish_package()
+wormhole_package.program_publish_package()
 
 omnipool_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnipool")
 )
 
-omnipool_package.publish_package(replace_address=dict(
+omnipool_package.program_publish_package(replace_address=dict(
     serde=None,
     dola_types=None,
     wormhole=None
@@ -88,16 +87,16 @@ wormhole_adapter_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_adapter_core")
 )
 
-wormhole_adapter_core_package.publish_package(replace_address=dict(
+wormhole_adapter_core_package.program_publish_package(replace_address=dict(
     wormhole_adapter_core="0x0",
     serde=None,
+    ray_math=None,
     dola_types=None,
     wormhole=None,
     governance=None,
     app_manager=None,
     pool_manager=None,
-    user_manager=None,
-    ray_math=None,
+    user_manager=None
 )
 )
 
@@ -105,7 +104,7 @@ lending_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_core")
 )
 
-lending_core_package.publish_package(replace_address=dict(
+lending_core_package.program_publish_package(replace_address=dict(
     lending_core="0x0",
     serde=None,
     dola_types=None,
@@ -124,13 +123,13 @@ system_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("system_core")
 )
 
-system_core_package.publish_package(replace_address=dict(
+system_core_package.program_publish_package(replace_address=dict(
     serde=None,
-    dola_types=None,
     ray_math=None,
+    pool_manager=None,
+    dola_types=None,
     app_manager=None,
     user_manager=None,
-    pool_manager=None,
     wormhole=None,
     wormhole_adapter_core=None,
     governance=None
@@ -141,10 +140,10 @@ dola_portal_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal")
 )
 
-dola_portal_package.publish_package(replace_address=dict(
+dola_portal_package.program_publish_package(replace_address=dict(
     serde=None,
-    dola_types=None,
     ray_math=None,
+    dola_types=None,
     pool_manager=None,
     user_manager=None,
     app_manager=None,
@@ -162,7 +161,7 @@ external_interfaces_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
 )
 
-external_interfaces_package.publish_package(replace_address=dict(
+external_interfaces_package.program_publish_package(replace_address=dict(
     pool_manager=None,
     user_manager=None,
     app_manager=None,
@@ -182,7 +181,7 @@ genesis_proposal_package = sui_brownie.SuiPackage(
         "proposals/genesis_proposal")
 )
 
-genesis_proposal_package.publish_package(replace_address=dict(
+genesis_proposal_package.program_publish_package(replace_address=dict(
     pool_manager=None,
     user_manager=None,
     ray_math=None,
@@ -204,7 +203,7 @@ test_coins_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
 )
 
-test_coins_package.publish_package()
+test_coins_package.program_publish_package()
 
 print("---------------------------Deployed Package ID-------------------------------------\n")
 print(f"serde={sui_project.Serde[-1]}")

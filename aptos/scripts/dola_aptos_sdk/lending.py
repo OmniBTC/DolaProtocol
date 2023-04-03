@@ -188,6 +188,7 @@ def portal_binding(bind_address, dola_chain_id=5):
         sender: &signer,
         dola_chain_id: u16,
         binded_address: vector<u8>,
+        fee: u64
     )
     :return:
     """
@@ -195,7 +196,8 @@ def portal_binding(bind_address, dola_chain_id=5):
 
     _result = dola_portal.system.binding(
         dola_chain_id,
-        bind_address
+        bind_address,
+        int(0)
     )
     return bridge_pool_read_vaa()
 
@@ -241,6 +243,7 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 if __name__ == "__main__":
     claim_test_coin(usdt())
     portal_supply(usdt(), 1e8, 0)
+    # portal_binding("0x47270a932d2fe124b87959a964334ca78bcc7afd559bb3abf004c73f7282a4e6")
     # monitor_withdraw(usdt(), 10000)
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)

@@ -13,7 +13,7 @@ def aptos_package(package_path: Union[Path, str] = None):
     return aptos_brownie.AptosPackage(
         project_path=DOLA_CONFIG["DOLA_APTOS_PATH"],
         network=net,
-        is_compile=False,
+        is_compile=True,
         package_path=package_path
     )
 

@@ -1,19 +1,18 @@
 from pprint import pprint
 
+from sui_brownie import SuiObject
+
 from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt, usdc, sui
+from dola_sui_sdk.init import btc, usdt, usdc, sui, clock
 from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
 from dola_sui_sdk.load import sui_project
-from sui_brownie import SuiObject
 
 U64_MAX = 18446744073709551615
 
 
 def calculate_sui_gas(gas_used):
-    # todo: use sui gas price to calculate
-    # devnet gasprice == 1
-    return gas_used['computationCost'] + gas_used['computationCost'] - gas_used[
-        'storageRebate']
+    return int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
+        gas_used['storageRebate'])
 
 
 def portal_as_collateral(pool_ids=None):
@@ -111,7 +110,7 @@ def portal_supply(coin_type):
         [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -125,6 +124,7 @@ def core_supply(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -147,9 +147,10 @@ def core_supply(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
 
     executed = False
     if relay_fee > gas:
@@ -162,6 +163,7 @@ def core_supply(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa,
         )
     return gas, executed
@@ -200,7 +202,7 @@ def portal_withdraw_local(coin_type, amount):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -275,7 +277,7 @@ def pool_withdraw(vaa, coin_type):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         vaa,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -289,6 +291,7 @@ def core_withdraw(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -302,6 +305,9 @@ def core_withdraw(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
+    result = sui_project.pay_sui([0])
+    zero_coin = result['objectChanges'][-1]['objectId']
+
     result = lending_core.wormhole_adapter.withdraw.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -310,10 +316,11 @@ def core_withdraw(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
-        0,
+        clock(),
+        zero_coin,
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -325,7 +332,8 @@ def core_withdraw(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
-            0,
+            clock(),
+            zero_coin,
             vaa,
         )
 
@@ -365,7 +373,7 @@ def portal_borrow_local(coin_type, amount):
         sui_project[SuiObject.from_type(
             pool(coin_type))][account_address][-1],
         int(amount),
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -424,6 +432,7 @@ def core_borrow(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
         ctx: &mut TxContext
@@ -437,6 +446,9 @@ def core_borrow(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
+    result = sui_project.pay_sui([0])
+    zero_coin = result['objectChanges'][-1]['objectId']
+
     result = lending_core.wormhole_adapter.borrow(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -445,10 +457,11 @@ def core_borrow(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
-        0,
+        clock(),
+        zero_coin,
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -460,7 +473,8 @@ def core_borrow(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
-            0,
+            clock(),
+            zero_coin,
             vaa,
         )
     return gas, executed
@@ -498,7 +512,7 @@ def portal_repay(coin_type):
         [sui_project[SuiObject.from_type(
             coin(coin_type))][account_address][-1]],
         U64_MAX,
-        ty_args=[coin_type]
+        type_arguments=[coin_type]
     )
 
 
@@ -512,6 +526,7 @@ def core_repay(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -532,9 +547,10 @@ def core_repay(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -546,6 +562,7 @@ def core_repay(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
@@ -589,7 +606,7 @@ def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver
             coin(debt_coin_type))][account_address][-1]],
         U64_MAX,
         0,
-        ty_args=[debt_coin_type, collateral_coin_type]
+        type_arguments=[debt_coin_type, collateral_coin_type]
     )
     return bridge_pool_read_vaa()[0]
 
@@ -604,6 +621,7 @@ def core_liquidate(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>,
         ctx: &mut TxContext
     )
@@ -624,9 +642,10 @@ def core_liquidate(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa,
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -638,6 +657,7 @@ def core_liquidate(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa,
         )
     return gas, executed
@@ -661,7 +681,7 @@ def portal_binding(bind_address, dola_chain_id=0):
         dola_portal.system.SystemPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         dola_chain_id,
-        bind_address
+        list(bytes.fromhex(bind_address))
     )
 
 
@@ -690,7 +710,7 @@ def core_binding(vaa, relay_fee=0):
         system_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -752,7 +772,7 @@ def core_unbinding(vaa, relay_fee=0):
         system_core.storage.Storage[-1],
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -777,6 +797,7 @@ def core_as_collateral(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>
     )
     :param relay_fee:
@@ -798,9 +819,10 @@ def core_as_collateral(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -812,6 +834,7 @@ def core_as_collateral(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
@@ -827,6 +850,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        clock: &Clock,
         vaa: vector<u8>
     )
     :return:
@@ -846,9 +870,10 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         oracle.oracle.PriceOracle[-1],
         lending_core.storage.Storage[-1],
+        clock(),
         vaa
     )
-    gas = calculate_sui_gas(result['gasUsed'])
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
     if relay_fee > gas:
         executed = True
@@ -860,6 +885,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
             wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
             oracle.oracle.PriceOracle[-1],
             lending_core.storage.Storage[-1],
+            clock(),
             vaa
         )
     return gas, executed
@@ -893,20 +919,23 @@ def export_objects():
         "PoolState": omnipool.wormhole_adapter_pool.PoolState[-1],
         "CoreState": wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         "WormholeState": wormhole.state.State[-1],
-        "DolaPortal": dola_portal.lending.LendingPortal[-1],
+        "LendingPortal": dola_portal.lending.LendingPortal[-1],
+        "SystemPortal": dola_portal.system.SystemPortal[-1],
         "PriceOracle": oracle.oracle.PriceOracle[-1],
         "Storage": lending_core.storage.Storage[-1],
         "Faucet": test_coins.faucet.Faucet[-1],
         "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
-        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1]
+        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1],
+        "Clock": clock(),
     }
-    coin_types = [btc(), usdt(), usdc(), sui()]
+    coin_types = [btc(), usdt(), usdc(), "0x2::sui::SUI"]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
-        data[dk] = sui_project[SuiObject.from_type(pool(k))]["Shared"][-1]
+        data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
 
+    data['SUI'] = sui().removeprefix("0x")
     pprint(data)
 
 
@@ -962,6 +991,7 @@ def check_user_manager():
 
 
 if __name__ == "__main__":
+    # portal_binding("29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566")
     # claim_test_coin(usdt())
     # monitor_supply(usdt())
     # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)

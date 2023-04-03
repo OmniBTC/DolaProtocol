@@ -5,9 +5,17 @@ networks:
   sui-devnet:
     node_url: "https://fullnode.devnet.sui.io:443"
   sui-testnet:
-    node_url: "https://fullnode.testnet.sui.io:443"
+<<<<<<< Updated upstream
+    #    node_url: "https://fullnode.testnet.sui.io:443"
+    node_url: "https://suinode-testnet.belaunch.io:443"
+  #    node_url: "https://sui-testnet-wave3.coming.chat:443"
+=======
+    node_url: "https://node.shinami.com:443/api/v1/sui_testnet_98ee1f7031ac5e0ac97565618191d724"
+>>>>>>> Stashed changes
   sui-localnet:
     node_url: "http://127.0.0.1:9000"
 sui_wallets:
   from_mnemonic:
-    Relayer: ${MNEMONIC}
+    Oracle: ${ORACLE_MNEMONIC}
+    Relayer1: ${RELAYER1_MNEMONIC}
+    Relayer2: ${RELAYER2_MNEMONIC}

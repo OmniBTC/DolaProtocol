@@ -3,11 +3,15 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
+<<<<<<< HEAD
 from dola_sui_sdk import DOLA_CONFIG
 
 net = "sui-testnet"
 sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=net)
 sui_project.active_account("Relayer")
+=======
+from dola_sui_sdk import DOLA_CONFIG, sui_project
+>>>>>>> origin/pre-testnet
 
 
 @functools.lru_cache()
