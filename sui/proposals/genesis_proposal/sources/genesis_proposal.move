@@ -384,9 +384,8 @@ module genesis_proposal::genesis_proposal {
 
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
-            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
             lending_core::storage::register_new_reserve(
-                &storage_cap,
+                &governance_cap,
                 storage,
                 clock,
                 dola_pool_id,
