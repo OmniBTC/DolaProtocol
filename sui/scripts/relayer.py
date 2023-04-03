@@ -426,6 +426,10 @@ def sui_pool_executor():
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
 
+            # todo: removed after fixing sui_watcher
+            if dk not in relay_fee_record:
+                relay_fee_record[dk] == ZERO_FEE
+
             if dk not in data:
                 sui_account_address = sui_omnipool.account.account_address
 
@@ -500,6 +504,10 @@ def aptos_pool_executor():
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
 
+            # todo: removed after fixing sui_watcher
+            if dk not in relay_fee_record:
+                relay_fee_record[dk] == ZERO_FEE
+
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 avaliable_gas_amount = get_fee_amount(relay_fee_value, 'apt')
@@ -561,6 +569,10 @@ def eth_pool_executor():
             call_name = get_call_name(1, int(call_type))
             source_chain = get_dola_network(source_chain_id)
             dk = f"{source_chain}_portal_{call_name}_{source_nonce}"
+
+            # todo: removed after fixing sui_watcher
+            if dk not in relay_fee_record:
+                relay_fee_record[dk] == ZERO_FEE
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
