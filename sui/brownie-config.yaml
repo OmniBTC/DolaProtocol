@@ -12,4 +12,5 @@ networks:
     node_url: "http://127.0.0.1:9000"
 sui_wallets:
   from_mnemonic:
-    Relayer: ${MNEMONIC}
+    Relayer1: ${RELAYER1_MNEMONIC}
+    Relayer2: ${RELAYER2_MNEMONIC}

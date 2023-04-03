@@ -386,6 +386,8 @@ def sui_core_executor():
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 relay_fee = get_fee_amount(relay_fee_value)
+
+                sui_project.active_account("Relayer1")
                 gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
                 gas_price = 1000
                 gas_amount = gas * gas_price
@@ -439,6 +441,7 @@ def sui_pool_executor():
 
                 avaliable_gas_amount = get_fee_amount(relay_fee_value, 'sui')
 
+                sui_project.active_account("Relayer2")
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
                     sui_omnipool.dola_pool.PoolApproval[-1],

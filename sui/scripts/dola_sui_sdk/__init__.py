@@ -12,7 +12,7 @@ DOLA_CONFIG = {
 }
 
 sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network="sui-testnet")
-sui_project.active_account("Relayer")
+sui_project.active_account("Relayer1")
 
 
 def set_dola_project_path(path: Union[Path, str]):
