@@ -1,10 +1,9 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 module lending_core::storage {
-    use std::option::{Self, Option};
     use std::vector;
 
-    use app_manager::app_manager::{Self, AppCap};
+    use app_manager::app_manager::{Self, AppCap, TotalAppInfo};
     use governance::genesis::GovernanceCap;
     use oracle::oracle;
     use ray_math::math;
@@ -26,7 +25,7 @@ module lending_core::storage {
 
     struct Storage has key {
         id: UID,
-        app_cap: Option<AppCap>,
+        app_cap: AppCap,
         // Token category -> reserve data
         reserves: Table<u16, ReserveData>,
         // Dola user id -> user info
@@ -98,10 +97,14 @@ module lending_core::storage {
 
     struct StorageCap has store, drop {}
 
-    fun init(ctx: &mut TxContext) {
+    public fun initialize_cap_with_governance(
+        governance: &GovernanceCap,
+        total_app_info: &mut TotalAppInfo,
+        ctx: &mut TxContext
+    ) {
         transfer::share_object(Storage {
             id: object::new(ctx),
-            app_cap: option::none(),
+            app_cap: app_manager::register_cap_with_governance(governance, total_app_info, ctx),
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
         });
@@ -111,25 +114,17 @@ module lending_core::storage {
         StorageCap {}
     }
 
-    public fun transfer_app_cap(
-        storage: &mut Storage,
-        app_cap: AppCap
-    ) {
-        assert!(option::is_none(&storage.app_cap), EMUST_NONE);
-        option::fill(&mut storage.app_cap, app_cap);
-    }
-
     public fun get_app_id(
         storage: &mut Storage
     ): u16 {
-        app_manager::get_app_id(option::borrow(&storage.app_cap))
+        app_manager::get_app_id(&storage.app_cap)
     }
 
     public fun get_app_cap(
         _: &StorageCap,
         storage: &mut Storage
     ): &AppCap {
-        option::borrow(&storage.app_cap)
+        &storage.app_cap
     }
 
     public fun register_new_reserve(
@@ -628,10 +623,10 @@ module lending_core::storage {
     }
 
     #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
+    public fun init_for_testing(app_cap: AppCap, ctx: &mut TxContext) {
         transfer::share_object(Storage {
             id: object::new(ctx),
-            app_cap: option::none(),
+            app_cap,
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
         });
