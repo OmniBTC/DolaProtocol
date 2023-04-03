@@ -1,8 +1,7 @@
 import functools
 from typing import List
 
-from dola_sui_sdk import load
-from dola_sui_sdk.load import sui_project
+from dola_sui_sdk import load, sui_project
 
 from sui_brownie import SuiObject
 

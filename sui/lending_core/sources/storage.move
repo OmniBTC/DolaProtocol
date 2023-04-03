@@ -13,20 +13,17 @@ module lending_core::storage {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    const EONLY_ONE_ADMIN: u64 = 0;
+    /// Errors
 
-    const EALREADY_EXIST_RESERVE: u64 = 1;
+    const EALREADY_EXIST_RESERVE: u64 = 0;
 
-    const EMUST_NONE: u64 = 2;
-
-    const EMUST_SOME: u64 = 3;
-
-    const EAMOUNT_NOT_ENOUGH: u64 = 4;
+    const EAMOUNT_NOT_ENOUGH: u64 = 1;
 
     struct Storage has key {
         id: UID,
+        /// Used in representative lending app
         app_cap: AppCap,
-        // Token category -> reserve data
+        // Dola pool id -> reserve data
         reserves: Table<u16, ReserveData>,
         // Dola user id -> user info
         user_infos: Table<u64, UserInfo>
@@ -53,7 +50,6 @@ module lending_core::storage {
         // Accumulated isolate debt
         isolate_debt: u256,
         // Timestamp of last update
-        // todo: use sui timestamp
         last_update_timestamp: u256,
         // Treasury (dola_user_id)
         treasury: u64,
