@@ -404,18 +404,7 @@ class TransactionBuild:
 
     @classmethod
     def get_objects(cls, object_ids):
-        object_infos = cls.project().client.sui_multiGetObjects(
-            object_ids,
-            {
-                "showType": True,
-                "showOwner": True,
-                "showPreviousTransaction": False,
-                "showDisplay": False,
-                "showContent": False,
-                "showBcs": False,
-                "showStorageRebate": False
-            }
-        )
+        object_infos = cls.project().get_objects(object_ids)
         return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
 
     @classmethod
@@ -986,18 +975,20 @@ class SuiPackage:
         else:
             self.package_path = self.package_path
 
+    @retry(stop_max_attempt_number=10, wait_random_min=3000, wait_random_max=5000)
+    def get_abi(self):
+        try:
+            result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+        except Exception as e:
+            print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+            raise ValueError
+        return result
+
     def update_abi(self):
         if self.package_id is None:
             return
 
-        result = None
-        for i in range(10):
-            time.sleep(3)
-            try:
-                result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
-                break
-            except Exception as e:
-                print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+        result = self.get_abi()
 
         self.abi = result
         for module_name in result:
@@ -1545,6 +1536,23 @@ class SuiProject:
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
 
+    @retry(stop_max_attempt_number=5, wait_random_min=3000, wait_random_max=5000)
+    def get_objects(self, object_ids):
+        object_infos = self.client.sui_multiGetObjects(object_ids, {
+            "showType": True,
+            "showOwner": True,
+            "showPreviousTransaction": False,
+            "showDisplay": False,
+            "showContent": False,
+            "showBcs": False,
+            "showStorageRebate": False
+        })
+        for k, object_info in enumerate(object_infos):
+            if "error" in object_info:
+                print(f"Warning:get {object_ids[k]} info err: {object_info['error']}, retry...")
+                raise ValueError
+        return object_infos
+
     def update_object_index(self, result):
         """
         Update Object cache after contract deployment and transaction execution
@@ -1576,19 +1584,8 @@ class SuiProject:
                 if "reference" in d and "objectId" in d["reference"]:
                     object_ids.append(d["reference"]["objectId"])
         if len(object_ids):
-            sui_object_infos = self.client.sui_multiGetObjects(object_ids, {
-                "showType": True,
-                "showOwner": True,
-                "showPreviousTransaction": False,
-                "showDisplay": False,
-                "showContent": False,
-                "showBcs": False,
-                "showStorageRebate": False
-            })
-            for k, sui_object_info in enumerate(sui_object_infos):
-                if "error" in sui_object_info:
-                    print(f"Warning:get {object_ids[k]} info err: {sui_object_info['error']}")
-                    continue
+            sui_object_infos = self.get_objects(object_ids)
+            for sui_object_info in sui_object_infos:
                 sui_object_id = sui_object_info["data"]["objectId"]
                 if sui_object_info["data"]["type"] == "package":
                     continue
