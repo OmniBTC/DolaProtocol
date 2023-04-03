@@ -10,7 +10,7 @@ import os
 import time
 import traceback
 from pathlib import Path
-from typing import Union, List, Dict
+from typing import Union, Dict
 from pprint import pprint
 from retrying import retry
 
@@ -356,7 +356,7 @@ class TransactionBuild:
         if type_arguments is None:
             type_arguments = []
         assert isinstance(list(type_arguments), list) and len(
-            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['type_parameters']}"
+            abi["typeParameters"]) == len(type_arguments), f"type_arguments error: {abi['typeParameters']}"
         if len(abi["parameters"]) and TransactionBuild.is_tx_context(abi["parameters"][-1]):
             assert len(arguments) == len(abi["parameters"]) - 1, f'arguments error: {abi["parameters"]}'
         else:
@@ -376,7 +376,7 @@ class TransactionBuild:
             address = SuiAddress(sui_object_type.package_id)
             module = Identifier(sui_object_type.module_name)
             struct_name = sui_object_type.struct_name
-            type_arg_index = struct_name.index("<")
+            type_arg_index = struct_name.find("<")
             if type_arg_index == -1:
                 name = Identifier(struct_name)
                 type_params = []
@@ -419,13 +419,18 @@ class TransactionBuild:
         return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
 
     @classmethod
-    def prepare_object_info(cls, call_arg, abi):
+    def prepare_object_info(cls, call_arg, parameters):
+        assert len(call_arg) == len(parameters)
         object_ids = []
         for i in range(len(call_arg)):
-            param_type = abi["parameters"][i]
-            if isinstance(param_type, dict) and (
-                    "Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type):
-                object_ids.append(call_arg[i])
+            param_type = parameters[i]
+            if isinstance(param_type, dict):
+                if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
+                        and isinstance(call_arg[i], str):
+                    object_ids.append(call_arg[i])
+                elif "Vector" in param_type and "Struct" in param_type["Vector"]:
+                    assert isinstance(call_arg[i], list)
+                    object_ids.extend(call_arg[i])
 
         return cls.get_objects(object_ids)
 
@@ -439,6 +444,33 @@ class TransactionBuild:
             for i in range(len(data)):
                 output.append(cls.generate_pure_value(param_type["Vector"], data[i]))
             return output
+        else:
+            raise ValueError(str(param_type))
+
+    @classmethod
+    def generate_object_arg(cls, object_id, object_infos, param_type="") -> ObjectArg:
+        data = object_infos[object_id]
+        if "Shared" in data["owner"]:
+            if "MutableReference" in param_type:
+                mutable = Bool(True)
+            elif "Reference" in param_type:
+                mutable = Bool(False)
+            else:
+                raise ValueError(param_type)
+            initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
+            return ObjectArg("SharedObject",
+                             SharedObject(
+                                 ObjectID(data["objectId"]),
+                                 SequenceNumber(initial_shared_version),
+                                 mutable
+                             ))
+        else:
+            return ObjectArg("ImmOrOwnedObject",
+                             ObjectRef(
+                                 ObjectID(data["objectId"]),
+                                 SequenceNumber(data["version"]),
+                                 ObjectDigest(data["digest"])
+                             ))
 
     @classmethod
     def generate_call_arg(cls, param_type, data, object_infos):
@@ -446,28 +478,13 @@ class TransactionBuild:
                 ("MutableReference" in param_type or
                  "Reference" in param_type or
                  "Struct" in param_type):
-            data = object_infos[data]
-            if "Shared" in data["owner"]:
-                if "MutableReference" in param_type:
-                    mutable = Bool(True)
-                elif "Reference" in param_type:
-                    mutable = Bool(False)
-                else:
-                    raise ValueError(param_type)
-                initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
-                return CallArg("Object", ObjectArg("SharedObject",
-                                                   SharedObject(
-                                                       ObjectID(data["objectId"]),
-                                                       SequenceNumber(initial_shared_version),
-                                                       mutable
-                                                   )))
-            else:
-                return CallArg("Object", ObjectArg("ImmOrOwnedObject",
-                                                   ObjectRef(
-                                                       ObjectID(data["objectId"]),
-                                                       SequenceNumber(data["version"]),
-                                                       ObjectDigest(data["digest"])
-                                                   )))
+            return CallArg("Object", cls.generate_object_arg(data, object_infos, param_type))
+        elif isinstance(param_type, dict) and "Vector" in param_type and "Struct" in param_type["Vector"]:
+            assert isinstance(data, list)
+            call_args = []
+            for object_id in data:
+                call_args.append(CallArg("Object", cls.generate_object_arg(object_id, object_infos)))
+            return call_args
         else:
             pure_value = cls.generate_pure_value(param_type, data)
             if isinstance(pure_value, list):
@@ -530,27 +547,38 @@ class TransactionBuild:
         abi = cls.format_abi_param(abi, type_args)
 
         # Prepare object
-        object_infos = cls.prepare_object_info(call_args, abi)
+        object_infos = cls.prepare_object_info(call_args, abi["parameters"][:len(call_args)])
 
         # generate inputs
         inputs = []
+        commands = []
+        arguments = []
         for i in range(len(call_args)):
-            inputs.append(cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos))
+            call_arg_result = cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos)
+            if isinstance(call_arg_result, list):
+                child_command_start_index = len(inputs)
+                inputs.extend(call_arg_result)
+                child_command_arguments = [Argument("Input", U16(i))
+                                           for i in range(child_command_start_index, len(inputs))]
+                commands.append(Command("MakeMoveVec", MakeMoveVec(OptionTypeTag("NONE", NONE()),
+                                                                   child_command_arguments)))
+                arguments.append(Argument("Result", U16(len(commands) - 1)))
+            else:
+                inputs.append(call_arg_result)
+                arguments.append(Argument("Input", U16(len(inputs) - 1)))
 
         # generate commands
         type_arguments = [
             cls.generate_type_arg(v) for v in type_args
         ]
-        arguments = [Argument("Input", U16(i)) for i in range(len(call_args))]
-        commands = [
+        commands.append(
             Command("MoveCall", ProgrammableMoveCall(
                 ObjectID(package_id),
                 Identifier(abi["module_name"]),
                 Identifier(abi["func_name"]),
                 type_arguments,
                 arguments
-            ))
-        ]
+            )))
         return inputs, commands
 
     @classmethod
@@ -782,6 +810,55 @@ class TransactionBuild:
                                                    SequenceNumber(data["version"]),
                                                    ObjectDigest(data["digest"])
                                                )))
+
+    @classmethod
+    def batch_transaction(
+            cls,
+            sender,
+            actual_params,
+            transactions: list,
+            gas_price,
+            gas_budget
+    ):
+        batch_commands = []
+        batch_call_args = []
+        batch_parameters = []
+        has_actual_params = DefaultDict(False)
+        for (package_id, abi, type_args, call_args) in transactions:
+            call_args, type_args = cls.check_args(abi, call_args, type_args)
+            # format param
+            abi = cls.format_abi_param(abi, type_args)
+
+            for i in range(len(call_args)):
+                call_arg = call_args[i]
+                assert isinstance(call_arg, Argument), f"Not support:{call_arg}"
+                actual_params_index = call_arg.value.v0
+                if call_arg.key == "Input" and not has_actual_params[actual_params_index]:
+                    batch_call_args.append(actual_params[actual_params_index])
+                    batch_parameters.append(abi["parameters"][i])
+                    has_actual_params[actual_params_index] = True
+            # generate commands
+            type_arguments = [
+                cls.generate_type_arg(v) for v in type_args
+            ]
+            commands = [
+                Command("MoveCall", ProgrammableMoveCall(
+                    ObjectID(package_id),
+                    Identifier(abi["module_name"]),
+                    Identifier(abi["func_name"]),
+                    type_arguments,
+                    call_args
+                ))
+            ]
+            batch_commands.extend(commands)
+
+        # Prepare object
+        object_infos = cls.prepare_object_info(batch_call_args, batch_parameters)
+        batch_inputs = []
+        for i in range(len(batch_call_args)):
+            batch_inputs.append(cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos))
+
+        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget)
 
     @classmethod
     def upgrade(
@@ -1196,7 +1273,7 @@ class SuiProject:
         self.cache_dir = Path(os.environ.get('HOME')).joinpath(".sui-brownie")
         if not self.cache_dir.exists():
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.cache_file = self.cache_dir.joinpath("objects.json")
+        self.cache_file = self.cache_dir.joinpath(f"{self.network}-objects.json")
         self.cache_objects: Dict[Union[SuiObject, str], Dict[str, list]] = DefaultDict(DefaultDict(NonDupList()))
         self.cli_config_file = self.cache_dir.joinpath(".cli.yaml")
         self.cli_config: SuiCliConfig = None
@@ -1508,8 +1585,9 @@ class SuiProject:
                 "showBcs": False,
                 "showStorageRebate": False
             })
-            for sui_object_info in sui_object_infos:
+            for k, sui_object_info in enumerate(sui_object_infos):
                 if "error" in sui_object_info:
+                    print(f"Warning:get {object_ids[k]} info err: {sui_object_info['error']}")
                     continue
                 sui_object_id = sui_object_info["data"]["objectId"]
                 if sui_object_info["data"]["type"] == "package":
@@ -1521,6 +1599,8 @@ class SuiProject:
                     elif "AddressOwner" in sui_object_info["data"]["owner"]:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.add_object_to_cache(sui_object, owner, sui_object_id)
+                    else:
+                        raise ValueError(str(sui_object_info["data"]["owner"]))
 
     def get_account_sui(self):
         result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
@@ -1558,25 +1638,47 @@ class SuiProject:
 
     def simulate(
             self,
+            package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
+            gas_price=1000,
             gas_budget=10000000,
     ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
-        return self.client.sui_dryRunTransactionBlock(result["txBytes"])
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        return self.client.sui_dryRunTransactionBlock(tx_bytes)
 
     def inspect(
             self,
+            package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
+            gas_price=1000,
             gas_budget=10000000,
     ):
-        result = self.construct_transaction(abi, arguments, type_arguments, gas_budget)
+        msg = TransactionBuild.move_call(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
         return self.client.sui_devInspectTransactionBlock(
             self.account.account_address,
-            result["txBytes"],
+            tx_bytes,
             None,
             None
         )
@@ -1790,3 +1892,33 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction publish::package, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
+
+    def batch_transaction(
+            self,
+            actual_params,
+            transactions,
+            gas_price=1000,
+            gas_budget=10000000
+    ):
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            actual_params=actual_params,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction batch::transactions, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")

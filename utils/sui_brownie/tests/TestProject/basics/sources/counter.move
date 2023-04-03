@@ -11,6 +11,12 @@ module basics::counter {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
     use std::vector;
+    use sui::balance;
+    use sui::balance::Supply;
+    use sui::coin;
+    use sui::coin::Coin;
+
+    struct USDT has drop {}
 
     /// A shared counter.
     struct Counter has key {
@@ -23,6 +29,11 @@ module basics::counter {
         value: T
     }
 
+    struct Bag<phantom T> has key {
+        id: UID,
+        supply: Supply<T>
+    }
+
     public fun owner(counter: &Counter): address {
         counter.owner
     }
@@ -33,6 +44,27 @@ module basics::counter {
 
     /// Create and share a Counter object.
     public entry fun create(ctx: &mut TxContext) {
+        let supply = balance::create_supply(USDT {});
+        let minted_balance = balance::increase_supply(
+            &mut supply,
+            10000000000
+        );
+        transfer::public_transfer(
+            coin::from_balance(minted_balance, ctx),
+            tx_context::sender(ctx)
+        );
+        let minted_balance = balance::increase_supply(
+            &mut supply,
+            500000
+        );
+        transfer::public_transfer(
+            coin::from_balance(minted_balance, ctx),
+            tx_context::sender(ctx)
+        );
+        transfer::transfer(Bag {
+            id: object::new(ctx),
+            supply
+        }, tx_context::sender(ctx));
         transfer::transfer(Counter {
             id: object::new(ctx),
             owner: tx_context::sender(ctx),
@@ -68,6 +100,16 @@ module basics::counter {
         _v10: &Data<Data<u8>>,
         _v11: &vector<vector<T>>
     ) {}
+
+    public entry fun test_vec_object<T: drop>(
+        v0: vector<Coin<T>>,
+        ctx: &mut TxContext
+    ) {
+        while (!vector::is_empty(&v0)) {
+            transfer::public_transfer(vector::pop_back(&mut v0), tx_context::sender(ctx));
+        };
+        vector::destroy_empty(v0);
+    }
 
     /// Increment a counter by 1.
     public entry fun increment(counter: &mut Counter) {
