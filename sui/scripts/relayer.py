@@ -453,8 +453,6 @@ def sui_pool_executor():
                 relay_fee_record[dk] = ZERO_FEE
 
             if dk not in data:
-                sui_account_address = sui_omnipool.account.account_address
-
                 relay_fee_value = relay_fee_record[dk]
 
                 available_gas_amount = get_fee_amount(relay_fee_value, 'sui')
@@ -466,7 +464,7 @@ def sui_pool_executor():
                     sui_omnipool.dola_pool.PoolApproval[-1],
                     sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                     sui_project[SuiObject.from_type(
-                        dola_sui_init.pool(token_name))][sui_account_address][-1],
+                        dola_sui_init.pool(token_name))][-1],
                     list(bytes.fromhex(vaa.removeprefix("0x"))),
                     type_arguments=[token_name]
                 )
@@ -480,7 +478,7 @@ def sui_pool_executor():
                         sui_omnipool.dola_pool.PoolApproval[-1],
                         sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                         sui_project[SuiObject.from_type(
-                            dola_sui_init.pool(token_name))][sui_account_address][-1],
+                            dola_sui_init.pool(token_name))][-1],
                         list(bytes.fromhex(vaa.removeprefix("0x"))),
                         type_arguments=[token_name]
                     )
