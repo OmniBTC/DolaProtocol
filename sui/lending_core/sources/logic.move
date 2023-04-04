@@ -12,6 +12,7 @@ module lending_core::logic {
     use ray_math::math;
     use sui::clock::Clock;
     use sui::event;
+    use lending_core::lending_codec;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
@@ -20,20 +21,6 @@ module lending_core::logic {
 
     /// HF 1.25
     const TARGET_HEALTH_FACTOR: u256 = 1250000000000000000000000000;
-
-    const SUPPLY: u8 = 0;
-
-    const WITHDRAW: u8 = 1;
-
-    const BORROW: u8 = 2;
-
-    const REPAY: u8 = 3;
-
-    const LIQUIDATE: u8 = 4;
-
-    const AS_COLLATERAL: u8 = 7;
-
-    const CANCEL_AS_COLLATERAL: u8 = 8;
 
     /// Errors
     const ECOLLATERAL_AS_LOAN: u64 = 0;
@@ -165,7 +152,7 @@ module lending_core::logic {
             amount: actual_liquidable_collateral,
             pool_id: collateral,
             violator_id: violator,
-            call_type: LIQUIDATE
+            call_type: lending_codec::get_liquidate_type()
         })
     }
 
@@ -217,7 +204,7 @@ module lending_core::logic {
             amount: supply_amount,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: SUPPLY
+            call_type: lending_codec::get_supply_type()
         })
     }
 
@@ -257,7 +244,7 @@ module lending_core::logic {
             amount: actual_amount,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: WITHDRAW
+            call_type: lending_codec::get_withdraw_type()
         });
 
         actual_amount
@@ -303,7 +290,7 @@ module lending_core::logic {
             amount: borrow_amount,
             pool_id: borrow_pool_id,
             violator_id: 0,
-            call_type: BORROW
+            call_type: lending_codec::get_borrow_type()
         });
     }
 
@@ -348,7 +335,7 @@ module lending_core::logic {
             amount: repay_debt,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: REPAY
+            call_type: lending_codec::get_repay_type()
         });
     }
 
@@ -378,7 +365,7 @@ module lending_core::logic {
             amount: 0,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: AS_COLLATERAL
+            call_type: lending_codec::get_as_colleteral_type()
         });
     }
 
@@ -412,7 +399,7 @@ module lending_core::logic {
             amount: 0,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: CANCEL_AS_COLLATERAL
+            call_type: lending_codec::get_cancel_as_colleteral_type()
         });
     }
 
