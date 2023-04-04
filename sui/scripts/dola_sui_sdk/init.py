@@ -1,6 +1,7 @@
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -651,7 +652,7 @@ def lending_portal_contract_id():
     return 1
 
 
-def query_relay_event(limit=1):
+def query_relay_event(limit=5):
     dola_portal = load.dola_portal_package()
     return dola_portal.query_events(
         {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']

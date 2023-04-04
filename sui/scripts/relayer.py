@@ -299,16 +299,21 @@ def eth_portal_watcher(network="polygon-test"):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
     data = BridgeDict(f"{network}_pool_vaa.json")
+    # Ethereum start block
+    start_block_record = BridgeDict("start_block_record.json")
+
     local_logger = logger.getChild(f"[{network}_portal_watcher]")
     local_logger.info(f"Start to read {network} pool vaa ^-^")
 
-    start_block = 0
+    if network not in start_block_record:
+        start_block_record[network] = 0
+
     while True:
         with contextlib.suppress(Exception):
+            start_block = start_block_record[network]
             current_block_number = dola_ethereum_init.current_block_number()
             relay_events = dola_ethereum_init.relay_events(start_block=start_block,
                                                            end_block=current_block_number)
-            start_block = current_block_number - 10
 
             for nonce in relay_events:
                 vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa(nonce)
@@ -323,6 +328,7 @@ def eth_portal_watcher(network="polygon-test"):
                     relay_fee_record[dk] = ZERO_FEE
 
                     portal_vaa_q.put((vaa, nonce, network))
+                    start_block_record[network] = current_block_number
                     data[dk] = vaa
                     local_logger.info(f"Have a {call_name} transaction from {network}, nonce: {nonce}")
         time.sleep(1)
