@@ -136,7 +136,7 @@ def get_dola_network(dola_chain_id):
         return "bsc-test"
     elif dola_chain_id == 5:
         return "polygon-test"
-    elif dola_chain_id == 1442:
+    elif dola_chain_id == 7:
         return "polygon-zk-test"
 
 
@@ -156,6 +156,8 @@ def get_gas_token(network='polygon-test'):
 def execute_sui_core(app_id, call_type, vaa, relay_fee):
     gas = 0
     executed = False
+    # prevent sui `ObjectSequenceNumberTooHigh`
+    time.sleep(1)
     if app_id == 0:
         if call_type == 0:
             gas, executed = dola_sui_lending.core_binding(vaa, relay_fee)
@@ -176,6 +178,8 @@ def execute_sui_core(app_id, call_type, vaa, relay_fee):
             gas, executed = dola_sui_lending.core_as_collateral(vaa, relay_fee)
         elif call_type == 6:
             gas, executed = dola_sui_lending.core_cancel_as_collateral(vaa, relay_fee)
+    # prevent sui `ObjectSequenceNumberTooHigh`
+    time.sleep(1)
     return gas, executed
 
 
@@ -353,7 +357,7 @@ def pool_withdraw_watcher():
         with contextlib.suppress(Exception):
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
             result = sui_omnipool.wormhole_adapter_pool.decode_withdraw_payload.simulate(
-                vaa)
+                list(bytes.fromhex(vaa.removeprefix("0x"))))
             decode_payload = result["events"][-1]["parsedJson"]
             token_name = decode_payload["pool_address"]["dola_address"]
             dola_chain_id = decode_payload["pool_address"]["dola_chain_id"]
@@ -469,7 +473,7 @@ def sui_pool_executor():
                     sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                     sui_project[SuiObject.from_type(
                         dola_sui_init.pool(token_name))][sui_account_address][-1],
-                    vaa,
+                    list(bytes.fromhex(vaa.removeprefix("0x"))),
                     type_arguments=[token_name]
                 )
                 gas_used = dola_sui_lending.calculate_sui_gas(result['effects']['gasUsed'])
@@ -483,7 +487,7 @@ def sui_pool_executor():
                         sui_omnipool.wormhole_adapter_pool.PoolState[-1],
                         sui_project[SuiObject.from_type(
                             dola_sui_init.pool(token_name))][sui_account_address][-1],
-                        vaa,
+                        list(bytes.fromhex(vaa.removeprefix("0x"))),
                         type_arguments=[token_name]
                     )
                     finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
@@ -586,6 +590,7 @@ def eth_pool_executor():
     while True:
         try:
             (vaa, source_chain_id, source_nonce, call_type, dola_chain_id) = eth_withdraw_q.get()
+
             network = get_dola_network(dola_chain_id)
             dola_ethereum_sdk.set_ethereum_network(network)
 

@@ -639,7 +639,7 @@ def bridge_core_read_vaa(index=0):
     result = wormhole_adapter_core.wormhole_adapter_core.read_vaa.simulate(
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1], index
     )["events"][0]["parsedJson"]
-    return result["vaa"], result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def lending_portal_contract_id():
