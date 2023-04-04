@@ -299,8 +299,8 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
 
 if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
-    # pprint.pp(get_dola_user_id("47270a932d2fe124b87959a964334ca78bcc7afd559bb3abf004c73f7282a4e6"))
-    dola_addresses = get_dola_user_addresses(3)
+    # pprint.pp(get_dola_user_id("B6B12aDA59a8Ac44Ded72e03693dd14614224349", 5))
+    dola_addresses = get_dola_user_addresses(1)
     result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
               dola_addresses['dola_user_addresses']]
     pprint.pp(result)
