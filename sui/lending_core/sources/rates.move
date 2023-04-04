@@ -55,11 +55,9 @@ module lending_core::rates {
         health_value: u256
     ): u256 {
         let delta_time = current_timestamp - last_update_timestamp;
-        if (delta_time >= SECONDS_PER_DAY) {
-            health_value
-        } else {
-            average_liquidity * delta_time / SECONDS_PER_DAY + health_value
-        }
+        let cur_duration = math::min(delta_time, SECONDS_PER_DAY);
+        let pre_duration = SECONDS_PER_DAY - delta_time;
+        (average_liquidity * pre_duration + health_value * cur_duration) / SECONDS_PER_DAY
     }
 
     public fun calculate_compounded_interest(
