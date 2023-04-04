@@ -1359,7 +1359,10 @@ class SuiProject:
         for account_name, env_name in self.config["sui_wallets"]["from_mnemonic"].items():
             env_name = env_name.replace("$", "").replace("{", "").replace("}", "")
             assert env_name in env, f"{env_name} env not exist"
-            self.accounts[account_name] = Account(mnemonic=env[env_name])
+            if env[env_name][:2] == "0x":
+                self.accounts[account_name] = Account(private_key=env[env_name])
+            else:
+                self.accounts[account_name] = Account(mnemonic=env[env_name])
 
         # Create client
         assert "node_url" in self.network_config, "Endpoint not config"
