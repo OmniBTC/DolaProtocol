@@ -13,5 +13,7 @@ networks:
 sui_wallets:
   from_mnemonic:
     Oracle: ${ORACLE_MNEMONIC}
+    Relayer0: ${RELAYER0_MNEMONIC}
     Relayer1: ${RELAYER1_MNEMONIC}
     Relayer2: ${RELAYER2_MNEMONIC}
+    Relayer3: ${RELAYER3_MNEMONIC}

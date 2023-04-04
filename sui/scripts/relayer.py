@@ -218,6 +218,16 @@ class BridgeDict(OrderedDict):
         write_json(self.file, self)
 
 
+account_index = 0
+
+
+def rotate_accounts():
+    global account_index
+    account_index += 1
+    num = account_index % 4
+    sui_project.active_account(f"Relayer{num}")
+
+
 portal_vaa_q = Queue()
 sui_withdraw_q = Queue()
 aptos_withdraw_q = Queue()
@@ -394,7 +404,7 @@ def sui_core_executor():
                 relay_fee_value = relay_fee_record[dk]
                 relay_fee = get_fee_amount(relay_fee_value)
 
-                sui_project.active_account("Relayer1")
+                rotate_accounts()
                 sui_project.pay_all_sui()
 
                 gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
@@ -448,9 +458,9 @@ def sui_pool_executor():
 
                 relay_fee_value = relay_fee_record[dk]
 
-                avaliable_gas_amount = get_fee_amount(relay_fee_value, 'sui')
+                available_gas_amount = get_fee_amount(relay_fee_value, 'sui')
 
-                sui_project.active_account("Relayer2")
+                rotate_accounts()
                 sui_project.pay_all_sui()
 
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
@@ -466,7 +476,7 @@ def sui_pool_executor():
                 gas_price = 1000
 
                 tx_gas_amount = int(gas_used) * gas_price
-                if avaliable_gas_amount > tx_gas_amount:
+                if available_gas_amount > tx_gas_amount:
                     sui_omnipool.wormhole_adapter_pool.receive_withdraw(
                         sui_wormhole.state.State[-1],
                         sui_omnipool.dola_pool.PoolApproval[-1],
