@@ -31,6 +31,12 @@ def get_prices(symbols=("BTC/USDT", "ETH/USDT")):
     return prices
 
 
+def check_sui_objects():
+    sui_objects = sui_project.get_account_sui()
+    if len(sui_objects) > 1:
+        sui_project.pay_all_sui()
+
+
 def feed(symbols=("BTC/USDT", "ETH/USDT")):
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
@@ -38,6 +44,7 @@ def feed(symbols=("BTC/USDT", "ETH/USDT")):
     sui_project.active_account("Oracle")
     oracle = load.oracle_package()
     while True:
+        check_sui_objects()
         for symbol in symbols:
             try:
                 price = kucoin.fetch_ticker(symbol)['close']
@@ -50,7 +57,7 @@ def feed(symbols=("BTC/USDT", "ETH/USDT")):
             except Exception as e:
                 print(e)
                 continue
-        time.sleep(60)
+        time.sleep(600)
 
 
 if __name__ == '__main__':
