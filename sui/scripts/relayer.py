@@ -156,8 +156,6 @@ def get_gas_token(network='polygon-test'):
 def execute_sui_core(app_id, call_type, vaa, relay_fee):
     gas = 0
     executed = False
-    # prevent sui `ObjectSequenceNumberTooHigh`
-    time.sleep(1)
     if app_id == 0:
         if call_type == 0:
             gas, executed = dola_sui_lending.core_binding(vaa, relay_fee)
@@ -178,8 +176,6 @@ def execute_sui_core(app_id, call_type, vaa, relay_fee):
             gas, executed = dola_sui_lending.core_as_collateral(vaa, relay_fee)
         elif call_type == 6:
             gas, executed = dola_sui_lending.core_cancel_as_collateral(vaa, relay_fee)
-    # prevent sui `ObjectSequenceNumberTooHigh`
-    time.sleep(1)
     return gas, executed
 
 
@@ -409,7 +405,6 @@ def sui_core_executor():
                 relay_fee = get_fee_amount(relay_fee_value)
 
                 rotate_accounts()
-                sui_project.pay_all_sui()
 
                 gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
                 gas_price = 1000
@@ -455,7 +450,7 @@ def sui_pool_executor():
 
             # todo: removed after fixing sui_watcher
             if dk not in relay_fee_record:
-                relay_fee_record[dk] == ZERO_FEE
+                relay_fee_record[dk] = ZERO_FEE
 
             if dk not in data:
                 sui_account_address = sui_omnipool.account.account_address
@@ -465,7 +460,6 @@ def sui_pool_executor():
                 available_gas_amount = get_fee_amount(relay_fee_value, 'sui')
 
                 rotate_accounts()
-                sui_project.pay_all_sui()
 
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
@@ -535,7 +529,7 @@ def aptos_pool_executor():
 
             # todo: removed after fixing sui_watcher
             if dk not in relay_fee_record:
-                relay_fee_record[dk] == ZERO_FEE
+                relay_fee_record[dk] = ZERO_FEE
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
@@ -543,7 +537,7 @@ def aptos_pool_executor():
 
                 gas_used = aptos_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     vaa,
-                    type_arguments=[token_name],
+                    ty_args=[token_name],
                     return_types="gas"
                 )
                 gas_price = aptos_omnipool.estimate_gas_price()
@@ -551,7 +545,7 @@ def aptos_pool_executor():
                 if avaliable_gas_amount > tx_gas_amount:
                     aptos_omnipool.wormhole_adapter_pool.receive_withdraw(
                         vaa,
-                        type_arguments=[token_name]
+                        ty_args=[token_name]
                     )
                     finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                  "consumed_fee": get_fee_value(tx_gas_amount)}
@@ -602,7 +596,7 @@ def eth_pool_executor():
 
             # todo: removed after fixing sui_watcher
             if dk not in relay_fee_record:
-                relay_fee_record[dk] == ZERO_FEE
+                relay_fee_record[dk] = ZERO_FEE
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]

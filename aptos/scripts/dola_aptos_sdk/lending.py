@@ -241,8 +241,6 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 if __name__ == "__main__":
     # claim_test_coin(usdt())
     # portal_supply(usdt(), 1e8, 0)
-    portal_unbinding("0x47270a932d2fe124b87959a964334ca78bcc7afd559bb3abf004c73f7282a4e6")
-    # portal_binding("0x5f9d7979996d37e56da374fa1c0612cee3316839a913450f3b6983f8c7b49908", 1)
-    # monitor_withdraw(usdt(), 10000)
+    monitor_withdraw(usdt())
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)
