@@ -942,20 +942,24 @@ module lending_core::logic {
         let treasury_factor = storage::get_treasury_factor(storage, dola_pool_id);
 
         let new_borrow_index = math::ray_mul(rates::calculate_compounded_interest(
-            (current_timestamp),
-            (last_update_timestamp),
+            current_timestamp,
+            last_update_timestamp,
             storage::get_borrow_rate(storage, dola_pool_id)
         ), current_borrow_index);
 
         let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
-            (current_timestamp),
-            (last_update_timestamp),
+            current_timestamp,
+            last_update_timestamp,
             storage::get_liquidity_rate(storage, dola_pool_id)
         ), current_liquidity_index);
 
         let mint_to_treasury = math::ray_mul(
-            math::ray_mul((dtoken_scaled_total_supply), (new_borrow_index - current_borrow_index)),
+            math::ray_mul(dtoken_scaled_total_supply, (new_borrow_index - current_borrow_index)),
             treasury_factor
+        );
+        let mint_to_treasury_scaled = scaled_balance::mint_scaled(
+            mint_to_treasury,
+            new_liquidity_index
         );
         storage::update_state(
             cap,
@@ -964,7 +968,7 @@ module lending_core::logic {
             new_borrow_index,
             new_liquidity_index,
             current_timestamp,
-            mint_to_treasury
+            mint_to_treasury_scaled
         );
     }
 
