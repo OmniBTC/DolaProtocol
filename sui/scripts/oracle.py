@@ -50,7 +50,7 @@ def feed(symbols=("BTC/USDT", "ETH/USDT")):
             except Exception as e:
                 print(e)
                 continue
-        time.sleep(1)
+        time.sleep(60)
 
 
 if __name__ == '__main__':
