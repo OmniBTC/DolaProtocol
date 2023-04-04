@@ -109,4 +109,4 @@ def main():
 
 
 if __name__ == "__main__":
-    print(bridge_pool_read_vaa(1))
+    print(relay_events())

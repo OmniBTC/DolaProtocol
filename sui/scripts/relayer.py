@@ -344,9 +344,9 @@ def pool_withdraw_watcher():
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
             result = sui_omnipool.wormhole_adapter_pool.decode_withdraw_payload.simulate(
                 vaa)
-            decode_payload = result["events"][-1]["moveEvent"]["fields"]
-            token_name = decode_payload["pool_address"]["fields"]["dola_address"]
-            dola_chain_id = decode_payload["pool_address"]["fields"]["dola_chain_id"]
+            decode_payload = result["events"][-1]["parsedJson"]
+            token_name = decode_payload["pool_address"]["dola_address"]
+            dola_chain_id = decode_payload["pool_address"]["dola_chain_id"]
             if dola_chain_id in [0, 1]:
                 token_name = bytes(token_name).decode("ascii")
                 if token_name[:2] != "0x":
