@@ -32,8 +32,8 @@ module lending_core::storage {
     struct UserInfo has store {
         // Average liquidity
         average_liquidity: u256,
-        // Timestamp of last update
-        last_update_timestamp: u256,
+        // Timestamp of last update average
+        last_average_update: u256,
         // Tokens as liquid assets, they can still capture the yield but won't be able to use it as collateral
         liquid_assets: vector<u16>,
         // Tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
@@ -274,18 +274,13 @@ module lending_core::storage {
     }
 
     public fun get_user_last_timestamp(storage: &mut Storage, dola_user_id: u64): u256 {
-        if (exist_user_info(storage, dola_user_id)) {
-            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
-            user_info.last_update_timestamp
-        } else { 0 }
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+        user_info.last_average_update
     }
 
     public fun get_user_average_liquidity(storage: &mut Storage, dola_user_id: u64): u256 {
-        if (exist_user_info(storage, dola_user_id)) {
-            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
-            user_info.average_liquidity
-        }
-        else { 0 }
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+        user_info.average_liquidity
     }
 
     public fun get_user_liquid_assets(storage: &mut Storage, dola_user_id: u64): vector<u16> {
@@ -351,8 +346,7 @@ module lending_core::storage {
     }
 
     public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u256 {
-        let borrow_cap_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling;
-        borrow_cap_ceiling
+        table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling
     }
 
     public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
@@ -508,7 +502,7 @@ module lending_core::storage {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_update_timestamp: oracle::get_timestamp(clock),
+                last_average_update: oracle::get_timestamp(clock),
                 liquid_assets: vector::empty(),
                 collaterals: vector::empty(),
                 loans: vector::empty()
@@ -591,7 +585,7 @@ module lending_core::storage {
 
         let (exist, index) = vector::index_of(&user_info.loans, &dola_pool_id);
         if (exist) {
-            let _ = vector::remove(&mut user_info.loans, index);
+            vector::remove(&mut user_info.loans, index);
         }
     }
 
@@ -603,7 +597,7 @@ module lending_core::storage {
         average_liquidity: u256
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.last_update_timestamp = oracle::get_timestamp(clock);
+        user_info.last_average_update = oracle::get_timestamp(clock);
         user_info.average_liquidity = average_liquidity;
     }
 
@@ -632,12 +626,12 @@ module lending_core::storage {
         reserve.last_update_timestamp = last_update_timestamp;
 
         // Mint to treasury
-        let dola_user_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
+        let dola_treasury_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
         mint_otoken_scaled(
             cap,
             storage,
             dola_pool_id,
-            dola_user_id,
+            dola_treasury_id,
             mint_to_treasury_scaled
         );
     }

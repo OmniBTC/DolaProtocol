@@ -66,6 +66,8 @@ module lending_core::logic {
 
     const ENOT_DEFICIT: u64 = 14;
 
+    const  ENOT_USER: u64 = 15;
+
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
         user_id: u64,
@@ -671,6 +673,8 @@ module lending_core::logic {
         collateral: u16,
         loan: u16
     ): u256 {
+        assert!(storage::exist_user_info(storage, violator), ENOT_USER);
+        assert!(storage::exist_user_info(storage, liquidator), ENOT_USER);
         let base_discount = calculate_liquidation_base_discount(storage, oracle, violator);
         let average_liquidity = storage::get_user_average_liquidity(storage, liquidator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
