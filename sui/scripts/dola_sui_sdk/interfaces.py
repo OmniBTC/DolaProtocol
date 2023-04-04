@@ -19,7 +19,7 @@ def get_dola_token_liquidity(dola_pool_id):
         dola_pool_id
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_dola_user_id(user_address):
@@ -36,7 +36,7 @@ def get_dola_user_id(user_address):
         user_address
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_dola_user_addresses(dola_user_id):
@@ -54,7 +54,7 @@ def get_dola_user_addresses(dola_user_id):
         dola_user_id
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_app_token_liquidity(app_id, dola_pool_id):
@@ -74,7 +74,7 @@ def get_app_token_liquidity(app_id, dola_pool_id):
         dola_pool_id
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_pool_liquidity(dola_chain_id, pool_address):
@@ -94,7 +94,7 @@ def get_pool_liquidity(dola_chain_id, pool_address):
         pool_address
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_all_pool_liquidity(dola_pool_id):
@@ -112,7 +112,7 @@ def get_all_pool_liquidity(dola_pool_id):
         dola_pool_id,
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_health_factor(dola_user_id):
@@ -133,7 +133,7 @@ def get_user_health_factor(dola_user_id):
         oracle.oracle.PriceOracle[-1],
         dola_user_id
     )
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_all_debt(dola_user_id):
@@ -148,7 +148,7 @@ def get_user_all_debt(dola_user_id):
         lending.storage.Storage[-1],
         dola_user_id
     )
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_token_debt(user, dola_pool_id):
@@ -178,7 +178,7 @@ def get_user_token_debt(user, dola_pool_id):
         0,
         dola_pool_id
     )
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_all_collateral(dola_user_id):
@@ -193,7 +193,7 @@ def get_user_all_collateral(dola_user_id):
         lending.storage.Storage[-1],
         dola_user_id
     )
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_collateral(user, dola_pool_id):
@@ -221,7 +221,7 @@ def get_user_collateral(user, dola_pool_id):
         dola_pool_id
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_lending_info(user):
@@ -242,7 +242,7 @@ def get_user_lending_info(user):
         user,
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_reserve_info(dola_pool_id):
@@ -256,7 +256,7 @@ def get_reserve_info(dola_pool_id):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    lending = load.lending_package()
+    lending = load.lending_core_package()
     pool_manager = load.pool_manager_package()
     result = external_interfaces.interfaces.get_reserve_info.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -264,7 +264,7 @@ def get_reserve_info(dola_pool_id):
         dola_pool_id
     )
 
-    return result['events'][-1]['moveEvent']['fields']
+    return result['events'][-1]['parsedJson']
 
 
 def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
@@ -282,7 +282,7 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
     """
     external_interfaces = load.external_interfaces_package()
     pool_manager = load.pool_manager_package()
-    lending = load.lending_package()
+    lending = load.lending_core_package()
     oracle = load.oracle_package()
     result = external_interfaces.interfaces.get_user_allowed_borrow.simulate(
         pool_manager.pool_manager.PoolManagerInfo[-1],
@@ -292,7 +292,8 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
         dola_user_id,
         dola_pool_id
     )
-    return result['events'][-1]['moveEvent']['fields']
+
+    return result['events'][-1]['parsedJson']
 
 
 if __name__ == "__main__":
@@ -302,9 +303,9 @@ if __name__ == "__main__":
     # pprint.pp(get_user_health_factor(1))
     # pprint.pp(get_reserve_info(1))
     # pprint.pp(get_app_token_liquidity(1, 0))
-    # pprint.pp(get_all_pool_liquidity(2))
+    # pprint.pp(get_all_pool_liquidity(4))
     # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    pprint.pp(get_user_lending_info(1))
-    # pprint.pp(get_user_allowed_borrow(5, 4, 2))
+    # pprint.pp(get_user_lending_info(6))
+    pprint.pp(get_user_allowed_borrow(5, 6, 1))

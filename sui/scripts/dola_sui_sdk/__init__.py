@@ -7,8 +7,8 @@ from typing import Union
 import sui_brownie
 
 DOLA_CONFIG = {
-    "DOLA_PROJECT_PATH": Path("../.."),
-    "DOLA_SUI_PATH": Path("../..").joinpath("sui")
+    "DOLA_PROJECT_PATH": Path("../../.."),
+    "DOLA_SUI_PATH": Path("../../..").joinpath("sui")
 }
 
 sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network="sui-testnet")
