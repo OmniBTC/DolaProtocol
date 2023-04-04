@@ -12,6 +12,10 @@ from multiprocessing import Queue
 from pathlib import Path
 
 import ccxt
+from retrying import retry
+from sui_brownie import SuiObject
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
+
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -23,9 +27,6 @@ import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
 from dola_sui_sdk.load import sui_project
-from retrying import retry
-from sui_brownie import SuiObject
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -398,7 +399,7 @@ def sui_core_executor():
                         finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                      "consumed_fee": get_fee_value(gas_amount)}
                         del relay_fee_record[dk]
-                        action_gas_record[f"sui_{call_name}"] = gas_amount
+                        action_gas_record[f"sui_{call_name}"] = gas
                     data[dk] = vaa
                     local_logger.info("Execute sui core success! ")
                     local_logger.info(f"call: {call_name} source: {chain}, nonce: {nonce}")
@@ -580,7 +581,7 @@ def eth_pool_executor():
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
-                avaliable_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+                available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
 
                 # todo: get real-time gas price
                 gas_price = 1
@@ -588,7 +589,7 @@ def eth_pool_executor():
                     vaa, {"from": ethereum_account})
 
                 tx_gas_amount = int(gas_used) * gas_price
-                if avaliable_gas_amount > tx_gas_amount:
+                if available_gas_amount > tx_gas_amount:
                     ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
 
