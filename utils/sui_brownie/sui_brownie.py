@@ -578,15 +578,17 @@ class TransactionBuild:
             commands,
             gas_price: int,
             gas_budget,
+            payment=None,
     ) -> IntentMessage:
-        gas = cls.prepare_gas()
-        programmable_transaction = ProgrammableTransaction(inputs, commands)
 
-        payment = [ObjectRef(
-            ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
-            ObjectDigest(gas["digest"])
-        )]
+        programmable_transaction = ProgrammableTransaction(inputs, commands)
+        if payment is None:
+            gas = cls.prepare_gas()
+            payment = [ObjectRef(
+                ObjectID(gas["coinObjectId"]),
+                SequenceNumber(gas["version"]),
+                ObjectDigest(gas["digest"])
+            )]
         owner = SuiAddress(sender)
         price = U64(gas_price)
         budget = U64(gas_budget)
@@ -662,11 +664,21 @@ class TransactionBuild:
     def pay_sui(
             cls,
             sender,
+            input_coins,
             recipients,
             amounts,
             gas_price,
             gas_budget
     ) -> IntentMessage:
+        assert len(input_coins) > 0
+        if isinstance(input_coins, list):
+            input_coins = cls.get_objects(input_coins)
+
+        payment = [ObjectRef(
+            ObjectID(gas["coinObjectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
+        ) for gas in input_coins.values()]
 
         # generate inputs
         inputs = [CallArg(
@@ -692,7 +704,7 @@ class TransactionBuild:
                     Argument("Input", U16(len(inputs) - 1))
                 ))
             )
-        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, payment=payment)
 
     @classmethod
     def pay(
@@ -904,10 +916,21 @@ class TransactionBuild:
     def pay_all_sui(
             cls,
             sender,
+            input_coins,
             recipient,
             gas_price,
             gas_budget
     ) -> IntentMessage:
+        assert len(input_coins) > 0
+        if isinstance(input_coins, list):
+            input_coins = cls.get_objects(input_coins)
+
+        payment = [ObjectRef(
+            ObjectID(gas["coinObjectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
+        ) for gas in input_coins.values()]
+
         # generate inputs
         inputs = [CallArg(
             "Pure", Pure(
@@ -919,7 +942,7 @@ class TransactionBuild:
                 Argument("Input", U16(0))
             ))
         ]
-        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, payment=payment)
 
 
 class SuiPackage:
@@ -1604,7 +1627,7 @@ class SuiProject:
 
     def get_account_sui(self):
         result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
-        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
+        return {v["coinObjectId"]: v for v in result["data"]}
 
     def construct_transaction(
             self,
@@ -1622,7 +1645,7 @@ class SuiProject:
                 arguments[k] = str(arguments[k])
 
         object_ids = self.get_account_sui()
-        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x])
+        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x]["balance"])
         result = self.client.unsafe_moveCall(
             self.account.account_address,
             package_id,
@@ -1683,10 +1706,11 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, recipient=None, gas_budget=10000000):
+    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
-        input_coins = list(self.get_account_sui().keys())
+        if input_coins is None:
+            input_coins = list(self.get_account_sui().keys())
         result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, gas_budget)
 
         # Simulate before execute
@@ -1706,12 +1730,15 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def pay_all_sui(self, recipient=None, gas_price=1000, gas_budget=10000000):
+    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=1000, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
+        if input_coins is None:
+            input_coins = self.get_account_sui()
         msg = TransactionBuild.pay_all_sui(
             self.account.account_address,
-            recipient,
+            input_coins=input_coins,
+            recipient=recipient,
             gas_price=gas_price,
             gas_budget=gas_budget
         )
@@ -1730,10 +1757,11 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def unsafe_pay_sui(self, amounts, recipients=None, gas_budget=10000000):
+    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=10000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
-        input_coins = list(self.get_account_sui().keys())
+        if input_coins is None:
+            input_coins = list(self.get_account_sui().keys())
         amounts = [str(v) for v in amounts]
         result = self.client.unsafe_paySui(
             self.account.account_address,
@@ -1755,11 +1783,14 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def pay_sui(self, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=1000, gas_budget=10000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
+        if input_coins is None:
+            input_coins = self.get_account_sui()
         msg = TransactionBuild.pay_sui(
             self.account.account_address,
+            input_coins,
             recipients,
             amounts,
             gas_price=gas_price,
