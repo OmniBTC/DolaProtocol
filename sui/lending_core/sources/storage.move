@@ -162,27 +162,37 @@ module lending_core::storage {
         });
     }
 
-    public fun set_reserve_isolated(
+    public fun set_is_isolated_asset(
         _: &GovernanceCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        isolated: bool
+        is_isolated_asset: bool
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.is_isolated_asset = isolated;
+        reserve.is_isolated_asset = is_isolated_asset;
     }
 
     public fun set_borrowable_in_isolation(
         _: &GovernanceCap,
         storage: &mut Storage,
         dola_pool_id: u16,
-        can_borrow: bool
+        borrowable_in_isolation: bool
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.borrowable_in_isolation = can_borrow;
+        reserve.borrowable_in_isolation = borrowable_in_isolation;
     }
 
-    public fun update_reserve_ceilings(
+    public fun set_treasury_factor(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        treasury_factor: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.treasury_factor = treasury_factor;
+    }
+
+    public fun set_borrow_cap_ceiling(
         _: &GovernanceCap,
         storage: &mut Storage,
         dola_pool_id: u16,
@@ -192,7 +202,27 @@ module lending_core::storage {
         reserve.borrow_cap_ceiling = borrow_cap_ceiling;
     }
 
-    public fun update_borrow_rate_factors(
+    public fun set_collateral_coefficient(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        collateral_coefficient: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.collateral_coefficient = collateral_coefficient;
+    }
+
+    public fun set_borrow_coefficient(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        borrow_coefficient: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.borrow_coefficient = borrow_coefficient;
+    }
+
+    public fun set_borrow_rate_factors(
         _: &GovernanceCap,
         storage: &mut Storage,
         dola_pool_id: u16,
