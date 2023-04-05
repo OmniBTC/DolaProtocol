@@ -103,6 +103,7 @@ module basics::counter {
 
     public entry fun test_vec_object<T: drop>(
         v0: vector<Coin<T>>,
+        _amount: u64,
         ctx: &mut TxContext
     ) {
         while (!vector::is_empty(&v0)) {

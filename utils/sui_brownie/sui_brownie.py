@@ -282,7 +282,7 @@ class ModuleFunction:
         return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
-        assert item in ["simulate", "inspect", "unsafe"], f"{item} attribute not found"
+        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin"], f"{item} attribute not found"
         return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
@@ -965,6 +965,80 @@ class TransactionBuild:
             ))
         ]
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, payment=payment)
+
+    @classmethod
+    def move_call_with_gas_coin(
+            cls,
+            sender,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        """
+        The function conforms to the following format, with sui coins and amounts:
+            public entry fun withdraw_remote(
+                relay_fee_coins: vector<Coin<SUI>>,
+                relay_fee_amount: u64,
+                ctx: &mut TxContext
+            )
+        """
+        """The param of move call with gas coin"""
+        call_args, type_args = cls.check_args(abi, call_args, type_args)
+        # format param
+        abi = cls.format_abi_param(abi, type_args)
+
+        # Prepare object
+        object_infos = cls.prepare_object_info(call_args, abi["parameters"][:len(call_args)])
+
+        # generate inputs
+        inputs = []
+        commands = []
+        arguments = []
+        for i in range(len(call_args)):
+            call_arg_result = cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos)
+            if isinstance(call_arg_result, list):
+                if len(call_args[i]) and object_infos[call_args[i][0]]["type"] == "0x2::coin::Coin<0x2::sui::SUI>":
+                    gas_budget += call_args[i + 1]
+                    commands.append(
+                        Command("SplitCoins", SplitCoins(
+                            Argument("GasCoin", NONE()),
+                            [Argument("Input", U16(len(inputs)))]
+                        )))
+                    commands.append(Command("MakeMoveVec", MakeMoveVec(
+                        OptionTypeTag("NONE", NONE()),
+                        [Argument("NestedResult", NestedResult(U16(len(commands) - 1), U16(0)))]
+                    )))
+                    arguments.append(Argument("Result", U16(len(commands) - 1)))
+                else:
+                    child_command_start_index = len(inputs)
+                    inputs.extend(call_arg_result)
+                    child_command_arguments = [Argument("Input", U16(i))
+                                               for i in range(child_command_start_index, len(inputs))]
+
+                    commands.append(Command("MakeMoveVec", MakeMoveVec(OptionTypeTag("NONE", NONE()),
+                                                                       child_command_arguments)))
+                    arguments.append(Argument("Result", U16(len(commands) - 1)))
+            else:
+                inputs.append(call_arg_result)
+                arguments.append(Argument("Input", U16(len(inputs) - 1)))
+
+        # generate commands
+        type_arguments = [
+            cls.generate_type_arg(v) for v in type_args
+        ]
+        commands.append(
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(package_id),
+                Identifier(abi["module_name"]),
+                Identifier(abi["func_name"]),
+                type_arguments,
+                arguments
+            )))
+
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
 
 class SuiPackage:
@@ -1978,3 +2052,33 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction batch::transactions, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")
+
+    def with_gas_coin(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        # Construct
+        msg = TransactionBuild.move_call_with_gas_coin(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])

@@ -1,7 +1,6 @@
 # @Time    : 2023/3/29 13:07
 # @Author  : WeiDai
 # @FileName: test_sui_brownie.py
-import time
 import unittest
 from pathlib import Path
 
@@ -118,4 +117,10 @@ class TestSuiBrownie(unittest.TestCase):
         basics.counter.test_vec_object(
             ["0x543a78751e8f24bfabc089020c4bdd425c25ef38648a0131b9906fe19c9b1fdb"],
             type_arguments=["0xe6ea734a94c6edb3c6f964a5ab880f1773fd5f58fb1b7fb4be4e521ce94078d7::counter::USDT"]
+        )
+
+        basics.counter.test_vec_object.with_gas_coin(
+            ["0x009e62a155ad5f89ef78b01ca2772b429e141438ab70661730f4be154c3efb63"],
+            1,
+            type_arguments=["0x2::sui::SUI"]
         )
