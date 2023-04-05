@@ -391,16 +391,20 @@ class TransactionBuild:
             return TypeTag("Struct", StructTag(address, module, name, type_params))
 
     @classmethod
-    def prepare_gas(cls):
-        # gas
-        sui_coins = cls.project().client.suix_getCoins(
-            cls.project().account.account_address,
+    def get_account_sui(cls, account_address):
+        return cls.project().client.suix_getCoins(
+            account_address,
             "0x2::sui::SUI",
             None,
             None
         )["data"]
-        gas = max(sui_coins, key=lambda x: x["balance"])
-        return gas
+
+    @classmethod
+    def prepare_gas(cls):
+        # gas
+        sui_coins = cls.get_account_sui(cls.project().account.account_address)
+        gases = sorted(sui_coins, key=lambda x: x["balance"])[::-1]
+        return gases
 
     @classmethod
     def get_objects(cls, object_ids):
@@ -583,12 +587,18 @@ class TransactionBuild:
 
         programmable_transaction = ProgrammableTransaction(inputs, commands)
         if payment is None:
-            gas = cls.prepare_gas()
-            payment = [ObjectRef(
-                ObjectID(gas["coinObjectId"]),
-                SequenceNumber(gas["version"]),
-                ObjectDigest(gas["digest"])
-            )]
+            gases = cls.prepare_gas()
+            gas_amount = 0
+            for gas in gases:
+                if gas_amount >= gas_budget:
+                    break
+                payment = [ObjectRef(
+                    ObjectID(gas["coinObjectId"]),
+                    SequenceNumber(gas["version"]),
+                    ObjectDigest(gas["digest"])
+                )]
+                gas_amount += gas["balance"]
+
         owner = SuiAddress(sender)
         price = U64(gas_price)
         budget = U64(gas_budget)
@@ -672,13 +682,19 @@ class TransactionBuild:
     ) -> IntentMessage:
         assert len(input_coins) > 0
         if isinstance(input_coins, list):
-            input_coins = cls.get_objects(input_coins)
-
+            all_coins = {v["coinObjectId"]: v for v in cls.get_account_sui(sender)}
+            input_coins_info = {}
+            for object_id in input_coins:
+                if object_id not in all_coins:
+                    raise ValueError(f"{object_id} not found in {sender}")
+                input_coins_info[object_id] = all_coins[object_id]
+        else:
+            input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
             SequenceNumber(gas["version"]),
             ObjectDigest(gas["digest"])
-        ) for gas in input_coins.values()]
+        ) for gas in input_coins_info.values()]
 
         # generate inputs
         inputs = [CallArg(
@@ -923,13 +939,19 @@ class TransactionBuild:
     ) -> IntentMessage:
         assert len(input_coins) > 0
         if isinstance(input_coins, list):
-            input_coins = cls.get_objects(input_coins)
-
+            all_coins = {v["coinObjectId"]: v for v in cls.get_account_sui(sender)}
+            input_coins_info = {}
+            for object_id in input_coins:
+                if object_id not in all_coins:
+                    raise ValueError(f"{object_id} not found in {sender}")
+                input_coins_info[object_id] = all_coins[object_id]
+        else:
+            input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
             SequenceNumber(gas["version"]),
             ObjectDigest(gas["digest"])
-        ) for gas in input_coins.values()]
+        ) for gas in input_coins_info.values()]
 
         # generate inputs
         inputs = [CallArg(
