@@ -39,27 +39,21 @@ module lending_core::logic {
 
     const ENOT_ENOUGH_LIQUIDITY: u64 = 7;
 
-    const EREACH_SUPPLY_CEILING: u64 = 8;
+    const EREACH_BORROW_CEILING: u64 = 8;
 
-    const EREACH_BORROW_CEILING: u64 = 9;
+    const EBORROW_UNISOLATED: u64 = 9;
 
-    const EBORROW_UNISOLATED: u64 = 10;
+    const ENOT_BORROWABLE: u64 = 10;
 
-    const ENOT_BORROWABLE: u64 = 11;
+    const ENOT_LIQUID_ASSET: u64 = 11;
 
-    const ENOT_LIQUID_ASSET: u64 = 12;
+    const EIN_ISOLATION: u64 = 12;
 
-    const EIN_ISOLATION: u64 = 13;
+    const ENOT_USER: u64 = 13;
 
-    const EHAS_DEBT_ISOLATION: u64 = 14;
+    const EIS_ISOLATED_ASSET: u64 = 14;
 
-    const ENOT_DEFICIT: u64 = 15;
-
-    const ENOT_USER: u64 = 16;
-
-    const EIS_ISOLATED_ASSET: u64 = 17;
-
-    const EIS_LOAN: u64 = 18;
+    const EIS_LOAN: u64 = 15;
 
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
@@ -667,18 +661,16 @@ module lending_core::logic {
         oracle: &mut PriceOracle,
         liquidator: u64,
         violator: u64,
-        collateral: u16,
-        loan: u16
+        collateral: u16
     ): u256 {
         assert!(storage::exist_user_info(storage, violator), ENOT_USER);
         assert!(storage::exist_user_info(storage, liquidator), ENOT_USER);
         let base_discount = calculate_liquidation_base_discount(storage, oracle, violator);
         let average_liquidity = storage::get_user_average_liquidity(storage, liquidator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
-        let borrow_coefficient = storage::get_borrow_coefficient(storage, loan);
         let discount_booster = math::ray_div(
-            (average_liquidity),
-            5 * math::ray_mul((health_loan_value), borrow_coefficient)
+            average_liquidity,
+            5 * health_loan_value
         );
         discount_booster = math::min(discount_booster, math::ray()) + math::ray();
         let treasury_factor = storage::get_treasury_factor(storage, collateral);
@@ -704,8 +696,7 @@ module lending_core::logic {
             oracle,
             liquidator,
             violator,
-            collateral,
-            loan
+            collateral
         );
 
         let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
