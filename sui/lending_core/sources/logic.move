@@ -122,8 +122,9 @@ module lending_core::logic {
         burn_dtoken(cap, storage, violator, loan, actual_liquidable_debt);
         burn_otoken(cap, storage, violator, collateral, actual_liquidable_collateral);
         // For liquidator
-        mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
         burn_otoken(cap, storage, liquidator, loan, actual_liquidable_debt);
+        // For treasury
+        mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
 
         // Check if violator cause a lending deficit, use treasury to cover the deficit.
         if (has_deficit(storage, oracle, violator)) {
