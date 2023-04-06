@@ -69,7 +69,7 @@ kucoin = ccxt.kucoin()
 kucoin.load_markets()
 
 
-@retry(stop_max_attempt_number=5)
+@retry
 def get_token_price(token):
     if token == "eth":
         return float(kucoin.fetch_ticker("ETH/USDT")['close'])
@@ -80,7 +80,7 @@ def get_token_price(token):
     elif token == "apt":
         return float(kucoin.fetch_ticker("APT/USDT")['close'])
     elif token == "sui":
-        return float(1)
+        return float(100)
 
 
 def get_token_decimal(token):
@@ -350,7 +350,7 @@ def pool_withdraw_watcher():
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
     while True:
-        with contextlib.suppress(Exception):
+        try:
             vaa, nonce = dola_sui_init.bridge_core_read_vaa()
             result = sui_omnipool.wormhole_adapter_pool.decode_withdraw_payload.simulate(
                 list(bytes.fromhex(vaa.removeprefix("0x"))))
@@ -383,6 +383,8 @@ def pool_withdraw_watcher():
                     local_logger.info(
                         f"Have a {call_name} from {network} to {get_dola_network(dola_chain_id)}, nonce: {nonce}")
                 data[dk] = vaa
+        except Exception as e:
+            local_logger.error(f"Error: {e}")
         time.sleep(1)
 
 
@@ -459,6 +461,9 @@ def sui_pool_executor():
 
                 rotate_accounts()
 
+                if "sui" in token_name:
+                    token_name = "0x2::sui::SUI"
+
                 result = sui_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     sui_wormhole.state.State[-1],
                     sui_omnipool.dola_pool.PoolApproval[-1],
@@ -531,7 +536,7 @@ def aptos_pool_executor():
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
-                avaliable_gas_amount = get_fee_amount(relay_fee_value, 'apt')
+                available_gas_amount = get_fee_amount(relay_fee_value, 'apt')
 
                 gas_used = aptos_omnipool.wormhole_adapter_pool.receive_withdraw.simulate(
                     vaa,
@@ -540,7 +545,7 @@ def aptos_pool_executor():
                 )
                 gas_price = aptos_omnipool.estimate_gas_price()
                 tx_gas_amount = int(gas_used) * int(gas_price)
-                if avaliable_gas_amount > tx_gas_amount:
+                if available_gas_amount > tx_gas_amount:
                     aptos_omnipool.wormhole_adapter_pool.receive_withdraw(
                         vaa,
                         ty_args=[token_name]
@@ -548,7 +553,7 @@ def aptos_pool_executor():
                     finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                  "consumed_fee": get_fee_value(tx_gas_amount)}
                     del relay_fee_record[dk]
-                    action_gas_record[f"aptos_{call_name}"] = gas_used
+                    action_gas_record[f"aptos_{call_name}"] = int(gas_used)
                     data[dk] = vaa
 
                     local_logger.info("Execute aptos withdraw success! ")
