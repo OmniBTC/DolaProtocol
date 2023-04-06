@@ -6,7 +6,7 @@ module lending_core::logic {
     use governance::genesis::GovernanceCap;
     use lending_core::rates;
     use lending_core::scaled_balance;
-    use lending_core::storage::{Self, StorageCap, Storage};
+    use lending_core::storage::{Self, StorageCap, Storage, is_isolated_asset};
     use oracle::oracle::{Self, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
@@ -57,6 +57,8 @@ module lending_core::logic {
 
     const ENOT_USER: u64 = 16;
 
+    const ENOT_ISOLATED_ASSET: u64 = 17;
+
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
         user_id: u64,
@@ -65,6 +67,8 @@ module lending_core::logic {
         violator_id: u64,
         call_type: u8
     }
+
+    /// Operate
 
     public fun execute_liquidate(
         cap: &StorageCap,
@@ -357,6 +361,10 @@ module lending_core::logic {
         // No other assets can be added as collateral in isolation mode.
         assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
 
+        if (has_collateral(storage, dola_user_id)) {
+            assert!(!is_isolated_asset(storage, dola_pool_id), ENOT_ISOLATED_ASSET);
+        };
+
         storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
         storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
 
@@ -384,11 +392,6 @@ module lending_core::logic {
     ) {
         update_state(cap, storage, clock, dola_pool_id);
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
-
-        // The isolation mode requires no debt to turn the isolated asset into liquid asset.
-        if (is_isolation_mode(storage, dola_user_id)) {
-            assert!(user_total_loan_value(storage, oracle, dola_user_id) == 0, EHAS_DEBT_ISOLATION);
-        };
 
         storage::remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
