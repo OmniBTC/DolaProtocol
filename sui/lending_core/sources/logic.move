@@ -25,35 +25,37 @@ module lending_core::logic {
     /// Errors
     const ECOLLATERAL_AS_LOAN: u64 = 0;
 
-    const ENOT_HEALTH: u64 = 1;
+    const ELIQUID_AS_LOAN: u64 = 1;
 
-    const EIS_HEALTH: u64 = 2;
+    const ENOT_HEALTH: u64 = 2;
 
-    const ENOT_COLLATERAL: u64 = 3;
+    const EIS_HEALTH: u64 = 3;
 
-    const ENOT_LOAN: u64 = 4;
+    const ENOT_COLLATERAL: u64 = 4;
 
-    const EINVALID_POOL_ID: u64 = 5;
+    const ENOT_LOAN: u64 = 5;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
+    const EINVALID_POOL_ID: u64 = 6;
 
-    const EREACH_SUPPLY_CEILING: u64 = 7;
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 7;
 
-    const EREACH_BORROW_CEILING: u64 = 8;
+    const EREACH_SUPPLY_CEILING: u64 = 8;
 
-    const EBORROW_UNISOLATED: u64 = 9;
+    const EREACH_BORROW_CEILING: u64 = 9;
 
-    const ENOT_BORROWABLE: u64 = 10;
+    const EBORROW_UNISOLATED: u64 = 10;
 
-    const ENOT_LIQUID_ASSET: u64 = 11;
+    const ENOT_BORROWABLE: u64 = 11;
 
-    const EIN_ISOLATION: u64 = 12;
+    const ENOT_LIQUID_ASSET: u64 = 12;
 
-    const EHAS_DEBT_ISOLATION: u64 = 13;
+    const EIN_ISOLATION: u64 = 13;
 
-    const ENOT_DEFICIT: u64 = 14;
+    const EHAS_DEBT_ISOLATION: u64 = 14;
 
-    const  ENOT_USER: u64 = 15;
+    const ENOT_DEFICIT: u64 = 15;
+
+    const ENOT_USER: u64 = 16;
 
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
@@ -266,6 +268,7 @@ module lending_core::logic {
         update_state(cap, storage, clock, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
+        assert!(!is_liquid_asset(storage, dola_user_id, borrow_pool_id), ELIQUID_AS_LOAN);
         assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
 
         // In isolation mode, can only borrow the allowed assets
