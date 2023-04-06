@@ -660,8 +660,7 @@ module lending_core::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         liquidator: u64,
-        violator: u64,
-        collateral: u16
+        violator: u64
     ): u256 {
         assert!(storage::exist_user_info(storage, violator), ENOT_USER);
         assert!(storage::exist_user_info(storage, liquidator), ENOT_USER);
@@ -673,8 +672,7 @@ module lending_core::logic {
             5 * health_loan_value
         );
         discount_booster = math::min(discount_booster, math::ray()) + math::ray();
-        let treasury_factor = storage::get_treasury_factor(storage, collateral);
-        let liquidation_discount = math::ray_mul(base_discount, discount_booster) + treasury_factor;
+        let liquidation_discount = math::ray_mul(base_discount, discount_booster);
         math::min(liquidation_discount, MAX_DISCOUNT)
     }
 
@@ -696,7 +694,6 @@ module lending_core::logic {
             oracle,
             liquidator,
             violator,
-            collateral
         );
 
         let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
