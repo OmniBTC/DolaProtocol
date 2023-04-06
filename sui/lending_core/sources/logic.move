@@ -4,6 +4,7 @@ module lending_core::logic {
     use std::vector;
 
     use governance::genesis::GovernanceCap;
+    use lending_core::lending_codec;
     use lending_core::rates;
     use lending_core::scaled_balance;
     use lending_core::storage::{Self, StorageCap, Storage, is_isolated_asset};
@@ -12,7 +13,6 @@ module lending_core::logic {
     use ray_math::math;
     use sui::clock::Clock;
     use sui::event;
-    use lending_core::lending_codec;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
@@ -57,7 +57,9 @@ module lending_core::logic {
 
     const ENOT_USER: u64 = 16;
 
-    const ENOT_ISOLATED_ASSET: u64 = 17;
+    const EIS_ISOLATED_ASSET: u64 = 17;
+
+    const EIS_LOAN: u64 = 18;
 
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
@@ -174,7 +176,7 @@ module lending_core::logic {
     ) {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
-        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
+        assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
 
         update_state(cap, storage, clock, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
@@ -362,7 +364,8 @@ module lending_core::logic {
         assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
 
         if (has_collateral(storage, dola_user_id)) {
-            assert!(!is_isolated_asset(storage, dola_pool_id), ENOT_ISOLATED_ASSET);
+            // When there is collateral, isolated assets are not allowed to become collateral.
+            assert!(!is_isolated_asset(storage, dola_pool_id), EIS_ISOLATED_ASSET);
         };
 
         storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
