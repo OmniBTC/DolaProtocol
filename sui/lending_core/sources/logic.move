@@ -322,7 +322,7 @@ module lending_core::logic {
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
 
         if (is_isolation_mode(storage, dola_user_id)) {
-            reduce_isolate_debt(cap, storage, dola_user_id, repay_amount);
+            reduce_isolate_debt(cap, storage, dola_user_id, repay_debt);
         };
 
         // Debt is paid off, moving asset out of the user's debt assets
