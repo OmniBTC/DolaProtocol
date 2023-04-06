@@ -93,7 +93,6 @@ module lending_core::logic_tests {
         oracle::init_for_testing(ctx);
         app_manager::init_for_testing(ctx);
         pool_manager::init_for_testing(ctx);
-        storage::init_for_testing(ctx);
     }
 
     public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, ctx: &mut TxContext) {
@@ -116,13 +115,13 @@ module lending_core::logic_tests {
         oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
     }
 
-    public fun init_app(storage: &mut Storage, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
+    public fun init_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
         // app_id 0 for system core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
         app_manager::destroy_app_cap(app_cap);
         // app_id 1 for lending core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
-        storage::transfer_app_cap(storage, app_cap);
+        storage::init_for_testing(app_cap, ctx);
     }
 
     public fun init_pools(pool_manager_info: &mut PoolManagerInfo, ctx: &mut TxContext) {
@@ -197,7 +196,7 @@ module lending_core::logic_tests {
     }
 
     public fun init_reserves(storage: &mut Storage, clock: &Clock, ctx: &mut TxContext) {
-        let cap = storage::register_storage_cap_for_testing();
+        let cap = genesis::register_governance_cap_for_testing();
         // register btc reserve
         storage::register_new_reserve(
             &cap,
@@ -297,6 +296,7 @@ module lending_core::logic_tests {
             OPTIMAL_UTILIZATION,
             ctx
         );
+        genesis::destroy(cap);
     }
 
     public fun init_test_scenario(creator: address): Scenario {
@@ -317,12 +317,10 @@ module lending_core::logic_tests {
         };
         test_scenario::next_tx(scenario, creator);
         {
-            let storage = test_scenario::take_shared<Storage>(scenario);
             let total_app_info = test_scenario::take_shared<TotalAppInfo>(scenario);
 
-            init_app(&mut storage, &mut total_app_info, test_scenario::ctx(scenario));
+            init_app(&mut total_app_info, test_scenario::ctx(scenario));
 
-            test_scenario::return_shared(storage);
             test_scenario::return_shared(total_app_info);
         };
         test_scenario::next_tx(scenario, creator);
@@ -1502,25 +1500,17 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            let average_liquidity_0 = storage::get_user_average_liquidity(&mut storage, 0);
             // The initial average liquidity is 0
-            assert!(average_liquidity == 0, 201);
+            assert!(average_liquidity_0 == 0, 201);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
             logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            // The average liquidity of the first update must also be 0.
-            // This update mainly updates the user's most recent timestamp.
-            assert!(average_liquidity == 0, 202);
-
-            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-
-            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            let average_liquidity_1 = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value_1 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // [average_liquidity = health_value = collateral_value - loan_value]
-            assert!(average_liquidity == health_value, 203);
+            assert!(average_liquidity_1 == health_value_1, 202);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY / 2);
 
@@ -1535,10 +1525,10 @@ module lending_core::logic_tests {
                 ONE
             );
 
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            let average_liquidity_2 = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value_2 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // Average liquidity accumulates if a user performs an operation in a day.
-            assert!(average_liquidity > health_value, 204);
+            assert!(average_liquidity_2 == average_liquidity_1 / 2 + health_value_2 / 2, 203);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
@@ -1556,8 +1546,7 @@ module lending_core::logic_tests {
             let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
             let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // If the user operates in the protocol for more than one day, the accumulated average liquidity will return to zero.
-            assert!(average_liquidity == health_value, 205);
-
+            assert!(average_liquidity == health_value, 204);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);

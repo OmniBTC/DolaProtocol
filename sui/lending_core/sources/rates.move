@@ -56,7 +56,7 @@ module lending_core::rates {
     ): u256 {
         let delta_time = current_timestamp - last_update_timestamp;
         let cur_duration = math::min(delta_time, SECONDS_PER_DAY);
-        let pre_duration = SECONDS_PER_DAY - delta_time;
+        let pre_duration = SECONDS_PER_DAY - cur_duration;
         (average_liquidity * pre_duration + health_value * cur_duration) / SECONDS_PER_DAY
     }
 
