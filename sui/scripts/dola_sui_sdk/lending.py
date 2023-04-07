@@ -15,6 +15,19 @@ def calculate_sui_gas(gas_used):
         gas_used['storageRebate'])
 
 
+def get_zero_coin():
+    sui_coins = sui_project.get_account_sui()
+    if len(sui_coins) == 1:
+        result = sui_project.pay_sui([0])
+        return result['objectChanges'][-1]['objectId']
+    elif len(sui_coins) == 2 and 0 in [coin['balance'] for coin in sui_coins.values()]:
+        return [coin_object for coin_object, coin in sui_coins.items() if coin['balance'] == 0][0]
+    else:
+        sui_project.pay_all_sui()
+        result = sui_project.pay_sui([0])
+        return result['objectChanges'][-1]['objectId']
+
+
 def portal_as_collateral(pool_ids=None):
     """
     public entry fun as_collateral(
@@ -82,6 +95,7 @@ def portal_supply(coin_type):
     public entry fun supply<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
@@ -98,17 +112,17 @@ def portal_supply(coin_type):
     oracle = load.oracle_package()
     user_manager = load.user_manager_package()
     pool_manager = load.pool_manager_package()
-    account_address = dola_portal.account.account_address
 
     dola_portal.lending.supply(
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         dola_portal.lending.LendingPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        sui_project[SuiObject.from_type(pool(coin_type))]["Shared"][-1],
+        sui_project[SuiObject.from_type(pool(coin_type))][-1],
         [sui_project[SuiObject.from_type(
-            coin(coin_type))][account_address][-1]],
+            coin(coin_type))][-1]],
         U64_MAX,
         type_arguments=[coin_type]
     )
@@ -211,6 +225,7 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     public entry fun withdraw_remote(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         core_state: &mut CoreState,
         lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
@@ -233,7 +248,7 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     pool_manager = load.pool_manager_package()
     wormhole = load.wormhole_package()
     wormhole_adapter_core = load.wormhole_adapter_core_package()
-    account_address = dola_portal.account.account_address
+    account_address = sui_project.account.account_address
     if receiver is None:
         assert dst_chain == 0
         receiver = account_address
@@ -241,17 +256,19 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     dola_portal.lending.withdraw_remote(
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
         dola_portal.lending.LendingPortal[-1],
         wormhole.state.State[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         list(pool_addr),
-        receiver,
+        list(bytes.fromhex(receiver.removeprefix('0x'))),
         dst_chain,
         int(amount),
-        [],
-        0,
+        [get_zero_coin()],
+        relay_fee,
+        gas_budget=5000 * 10000
     )
 
 
@@ -305,8 +322,7 @@ def core_withdraw(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    result = sui_project.pay_sui([0])
-    zero_coin = result['objectChanges'][-1]['objectId']
+    zero_coin = get_zero_coin()
 
     result = lending_core.wormhole_adapter.withdraw.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
@@ -335,6 +351,7 @@ def core_withdraw(vaa, relay_fee=0):
             clock(),
             zero_coin,
             vaa,
+            gas_budget=5000 * 10000
         )
 
     return gas, executed
@@ -446,10 +463,9 @@ def core_borrow(vaa, relay_fee=0):
     wormhole_adapter_core = load.wormhole_adapter_core_package()
     oracle = load.oracle_package()
 
-    result = sui_project.pay_sui([0])
-    zero_coin = result['objectChanges'][-1]['objectId']
+    zero_coin = get_zero_coin()
 
-    result = lending_core.wormhole_adapter.borrow(
+    result = lending_core.wormhole_adapter.borrow.simulate(
         lending_core.wormhole_adapter.WormholeAdapter[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
@@ -476,6 +492,7 @@ def core_borrow(vaa, relay_fee=0):
             clock(),
             zero_coin,
             vaa,
+            gas_budget=5000 * 10000
         )
     return gas, executed
 
@@ -994,7 +1011,7 @@ if __name__ == "__main__":
     # portal_binding("29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566")
     # claim_test_coin(usdt())
     # monitor_supply(usdt())
-    # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)
+    portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)
     # force_claim_test_coin(usdc(), 100000)
     # monitor_supply(usdc())
     # monitor_supply(sui())
@@ -1003,4 +1020,4 @@ if __name__ == "__main__":
     # check_pool_info()
     # check_app_storage()
     # check_user_manager()
-    export_objects()
+    # export_objects()

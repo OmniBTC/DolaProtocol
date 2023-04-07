@@ -94,7 +94,7 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
     }
 
 
-def relay_events(start_block=0, end_block=99999999, limit=5):
+def relay_events(start_block=0, end_block=99999999, limit=10):
     lending_portal = load.lending_portal_package()
     system_portal = load.system_portal_package()
     topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
@@ -141,7 +141,10 @@ def relay_events(start_block=0, end_block=99999999, limit=5):
 
     system_relay_events = decode_relay_events(system_relay_result.json())
     lending_relay_events = decode_relay_events(lending_relay_result.json())
-    return lending_relay_events | system_relay_events
+
+    lending_relay_events.update(system_relay_events)
+
+    return lending_relay_events
 
 
 def decode_relay_events(data):

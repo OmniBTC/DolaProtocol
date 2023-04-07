@@ -1,11 +1,11 @@
 import functools
 from typing import List
 
-from dola_sui_sdk import load, sui_project
-
+# 1e27
 from sui_brownie import SuiObject
 
-# 1e27
+from dola_sui_sdk import load, sui_project
+
 RAY = 1000000000000000000000000000
 
 net = "sui-testnet"
@@ -253,7 +253,6 @@ def vote_init_lending_core():
     genesis_proposal = load.genesis_proposal_package()
     app_manager = load.app_manager_package()
     governance = load.governance_package()
-    lending_core = load.lending_core_package()
 
     genesis_proposal.genesis_proposal.vote_init_lending_core(
         governance.governance_v1.GovernanceInfo[-1],
@@ -620,7 +619,8 @@ def pool(coin_type):
 
 
 def proposal():
-    return f"{sui_project.Governance[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}::genesis_proposal::Certificate>"
+    return f"{sui_project.Governance[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
+           f"::genesis_proposal::Certificate>"
 
 
 def bridge_pool_read_vaa(index=0):
@@ -636,7 +636,7 @@ def bridge_core_read_vaa(index=0):
     result = wormhole_adapter_core.wormhole_adapter_core.read_vaa.simulate(
         wormhole_adapter_core.wormhole_adapter_core.CoreState[-1], index
     )["events"][0]["parsedJson"]
-    return result["vaa"], result["nonce"]
+    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def lending_portal_contract_id():
@@ -649,7 +649,7 @@ def lending_portal_contract_id():
     return 1
 
 
-def query_relay_event(limit=1):
+def query_relay_event(limit=5):
     dola_portal = load.dola_portal_package()
     return dola_portal.query_events(
         {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']

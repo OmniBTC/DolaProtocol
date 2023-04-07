@@ -666,7 +666,7 @@ module external_interfaces::interfaces {
             let pool_address = option::extract(&mut pool_address);
             pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         };
-        let reserve = pool_manager::get_app_liquidity(pool_manager_info, borrow_pool_id, 0);
+        let reserve = pool_manager::get_app_liquidity(pool_manager_info, borrow_pool_id, storage::get_app_id(storage));
 
         let max_borrow_amount = math::min(borrow_amount, reserve);
         borrow_amount = math::min(borrow_amount, pool_liquidity);

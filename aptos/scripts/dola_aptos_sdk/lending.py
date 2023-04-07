@@ -182,7 +182,7 @@ def portal_cancel_as_collateral(dola_pool_ids=None):
     return bridge_pool_read_vaa()
 
 
-def portal_binding(bind_address, dola_chain_id=5):
+def portal_binding(bind_address, dola_chain_id=1):
     """
     public entry fun binding(
         sender: &signer,
@@ -194,20 +194,17 @@ def portal_binding(bind_address, dola_chain_id=5):
     """
     dola_portal = load.dola_portal_package()
 
-    _result = dola_portal.system.binding(
-        dola_chain_id,
-        bind_address,
-        int(0)
-    )
+    dola_portal.system.binding(dola_chain_id, bind_address, 0)
     return bridge_pool_read_vaa()
 
 
-def portal_unbinding(bind_address, dola_chain_id=5):
+def portal_unbinding(bind_address, dola_chain_id=5, relay_fee=0):
     """
     public entry fun unbinding(
         sender: &signer,
         dola_chain_id: u16,
-        unbinded_address: vector<u8>
+        unbinded_address: vector<u8>,
+        fee: u64
     )
     :return:
     """
@@ -215,7 +212,8 @@ def portal_unbinding(bind_address, dola_chain_id=5):
 
     _result = dola_portal.system.unbinding(
         dola_chain_id,
-        bind_address
+        bind_address,
+        relay_fee
     )
     return bridge_pool_read_vaa()
 
@@ -241,9 +239,8 @@ def monitor_liquidate(dst_chain=1, receiver=None):
 
 
 if __name__ == "__main__":
-    claim_test_coin(usdt())
-    portal_supply(usdt(), 1e8, 0)
-    # portal_binding("0x47270a932d2fe124b87959a964334ca78bcc7afd559bb3abf004c73f7282a4e6")
-    # monitor_withdraw(usdt(), 10000)
+    # claim_test_coin(usdt())
+    # portal_supply(usdt(), 1e8, 0)
+    monitor_withdraw(usdt())
     # monitor_borrow(usdt(), 100)
     # monitor_repay(usdt(), 100)
