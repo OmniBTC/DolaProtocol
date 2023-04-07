@@ -1,20 +1,15 @@
-module upgrade_proposal::upgrade_proposal {
+module test_proposal::test {
     use std::option::{Self, Option};
 
+    use app_manager::app_manager::{Self, TotalAppInfo};
+    use dola_types::dola_contract::DolaContractRegistry;
     use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::object::{Self, UID};
-    use sui::package::{UpgradeTicket, UpgradeReceipt};
+    use sui::package::{UpgradeCap, UpgradeTicket, UpgradeReceipt};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    // todo: use const to define upgrade info
-    // const DOLA_CONTRACT_ID: u256 = 1;
-    // const DIGEST: vector<u8> = x"";
-    // const POLICY: u8 = 0;
-
-    /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
-    /// governance contract.
     struct Certificate has store, drop {}
 
     struct ProposalInfo has key {
@@ -42,7 +37,7 @@ module upgrade_proposal::upgrade_proposal {
         governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
     }
 
-    public entry fun vote_porposal(
+    public entry fun vote_proposal(
         governance_info: &GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         proposal_info: &mut ProposalInfo,
@@ -54,6 +49,24 @@ module upgrade_proposal::upgrade_proposal {
             option::fill(&mut proposal_info.proposal_cap, cap);
         };
         option::destroy_none(governance_cap)
+    }
+
+    public entry fun join_app_manager(
+        governance_contract: &mut GovernanceContracts,
+        total_app_info: &mut TotalAppInfo,
+        dola_registry: &mut DolaContractRegistry,
+        proposal_info: &mut ProposalInfo,
+        upgrade_cap: UpgradeCap
+    ) {
+        let governance_cap = get_proposal_cap(proposal_info);
+
+        app_manager::register_dola_contract(
+            governance_cap,
+            governance_contract,
+            total_app_info,
+            dola_registry,
+            upgrade_cap
+        )
     }
 
     public fun upgrade_package(
