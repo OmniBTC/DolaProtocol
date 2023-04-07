@@ -13,6 +13,7 @@ dependencies = [
   { name = "PoolManager" },
   { name = "Serde" },
   { name = "Sui" },
+  { name = "SystemCore" },
   { name = "UserManager" },
   { name = "Wormhole" },
   { name = "WormholeAdapterCore" },
@@ -121,6 +122,21 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c1148885
 
 dependencies = [
   { name = "MoveStdlib" },
+]
+
+[[move.package]]
+name = "SystemCore"
+source = { local = "../system_core" }
+
+dependencies = [
+  { name = "AppManager" },
+  { name = "DolaTypes" },
+  { name = "Governance" },
+  { name = "Serde" },
+  { name = "Sui" },
+  { name = "UserManager" },
+  { name = "Wormhole" },
+  { name = "WormholeAdapterCore" },
 ]
 
 [[move.package]]

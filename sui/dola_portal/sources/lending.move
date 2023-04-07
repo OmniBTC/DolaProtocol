@@ -28,32 +28,18 @@ module dola_portal::lending {
 
     /// Errors
 
-    const EAMOUNT_NOT_ENOUGH: u64 = 1;
+    const EAMOUNT_NOT_ENOUGH: u64 = 0;
 
-    const EAMOUNT_MUST_ZERO: u64 = 2;
+    const EAMOUNT_MUST_ZERO: u64 = 1;
 
-    const EMUST_NONE: u64 = 3;
+    const ENOT_FIND_POOL: u64 = 2;
 
-    const EMUST_SOME: u64 = 4;
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 3;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 5;
-
-    const ENOT_RELAYER: u64 = 6;
+    const ENOT_RELAYER: u64 = 4;
 
     /// App ID
-
     const LENDING_APP_ID: u16 = 1;
-
-    /// Lending Call types
-    const SUPPLY: u8 = 0;
-
-    const WITHDRAW: u8 = 1;
-
-    const BORROW: u8 = 2;
-
-    const REPAY: u8 = 3;
-
-    const LIQUIDATE: u8 = 4;
 
     const U64_MAX: u64 = 18446744073709551615;
 
@@ -290,7 +276,7 @@ module dola_portal::lending {
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: deposit_amount,
-            call_type: SUPPLY
+            call_type: lending_core::lending_codec::get_supply_type()
         })
     }
 
@@ -315,7 +301,7 @@ module dola_portal::lending {
 
         // Locate withdrawal pool
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
 
         // Execute withdraw logic in lending_core app
@@ -359,7 +345,7 @@ module dola_portal::lending {
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: (actual_amount as u64),
-            call_type: WITHDRAW
+            call_type: lending_core::lending_codec::get_withdraw_type()
         })
     }
 
@@ -388,7 +374,7 @@ module dola_portal::lending {
 
         // Locate withdrawal pool
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
 
         // Execute withdraw logic in lending_core app
@@ -436,7 +422,7 @@ module dola_portal::lending {
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
-            call_type: WITHDRAW
+            call_type: lending_core::lending_codec::get_withdraw_type()
         });
 
         emit(LendingPortalEvent {
@@ -447,7 +433,7 @@ module dola_portal::lending {
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount: (actual_amount as u64),
-            call_type: WITHDRAW
+            call_type: lending_core::lending_codec::get_withdraw_type()
         })
     }
 
@@ -472,7 +458,7 @@ module dola_portal::lending {
 
         // Locate withdraw pool
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
 
         // Check pool liquidity
@@ -515,7 +501,7 @@ module dola_portal::lending {
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount,
-            call_type: BORROW
+            call_type: lending_core::lending_codec::get_borrow_type()
         })
     }
 
@@ -544,7 +530,7 @@ module dola_portal::lending {
 
         // Locate withdraw pool
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
@@ -591,7 +577,7 @@ module dola_portal::lending {
         emit(RelayEvent {
             nonce,
             amount: fee_amount,
-            call_type: BORROW
+            call_type: lending_core::lending_codec::get_borrow_type()
         });
 
         emit(LendingPortalEvent {
@@ -602,7 +588,7 @@ module dola_portal::lending {
             dst_chain_id: dst_chain,
             receiver: receiver_addr,
             amount,
-            call_type: BORROW
+            call_type: lending_core::lending_codec::get_borrow_type()
         })
     }
 
@@ -665,7 +651,7 @@ module dola_portal::lending {
             sender: tx_context::sender(ctx),
             dola_pool_address: dola_address::get_dola_address(&pool_address),
             amount: repay_amount,
-            call_type: REPAY
+            call_type: lending_core::lending_codec::get_repay_type()
         })
     }
 
@@ -715,7 +701,7 @@ module dola_portal::lending {
         emit(RelayEvent {
             nonce: wormhole_adapter_pool::vaa_nonce(pool_state),
             amount: fee_amount,
-            call_type: LIQUIDATE
+            call_type: lending_core::lending_codec::get_liquidate_type()
         });
 
         emit(LendingPortalEvent {
@@ -726,7 +712,7 @@ module dola_portal::lending {
             dst_chain_id: dola_address::get_dola_chain_id(&receiver),
             receiver: dola_address::get_dola_address(&receiver),
             amount: debt_amount,
-            call_type: LIQUIDATE
+            call_type: lending_core::lending_codec::get_liquidate_type()
         })
     }
 }
