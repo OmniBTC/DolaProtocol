@@ -245,9 +245,7 @@ def vote_init_lending_core():
     public entry fun vote_init_lending_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
-        wormhole_adapater: &mut lending_core::wormhole_adapter::WormholeAdapter,
         ctx: &mut TxContext
     )
     :return:
@@ -260,9 +258,7 @@ def vote_init_lending_core():
     genesis_proposal.genesis_proposal.vote_init_lending_core(
         governance.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
-        lending_core.storage.Storage[-1],
         app_manager.app_manager.TotalAppInfo[-1],
-        lending_core.wormhole_adapter.WormholeAdapter[-1]
     )
 
 

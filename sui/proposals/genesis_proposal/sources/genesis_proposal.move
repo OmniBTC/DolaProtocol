@@ -6,7 +6,7 @@ module genesis_proposal::genesis_proposal {
     use std::option;
     use std::vector;
 
-    use app_manager::app_manager::{Self, TotalAppInfo};
+    use app_manager::app_manager::TotalAppInfo;
     use dola_types::dola_address;
     use dola_types::dola_contract::DolaContractRegistry;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
@@ -32,9 +32,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_lending_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        storage: &mut Storage,
         total_app_info: &mut TotalAppInfo,
-        wormhole_adapater: &mut lending_core::wormhole_adapter::WormholeAdapter,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
@@ -43,12 +41,10 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             // init storage
-            let app_cap = app_manager::register_cap_with_governance(&governance_cap, total_app_info, ctx);
-            lending_core::storage::transfer_app_cap(storage, app_cap);
+            lending_core::storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
 
             // init wormhole adapter
-            let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
-            lending_core::wormhole_adapter::transfer_storage_cap(wormhole_adapater, storage_cap);
+            lending_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
 
             governance_v1::destory_governance_cap(governance_cap);
         };
