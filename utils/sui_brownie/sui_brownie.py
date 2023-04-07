@@ -282,7 +282,7 @@ class ModuleFunction:
         return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
-        assert item in ["simulate", "inspect", "unsafe"], f"{item} attribute not found"
+        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin"], f"{item} attribute not found"
         return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
@@ -391,31 +391,24 @@ class TransactionBuild:
             return TypeTag("Struct", StructTag(address, module, name, type_params))
 
     @classmethod
-    def prepare_gas(cls):
-        # gas
-        sui_coins = cls.project().client.suix_getCoins(
-            cls.project().account.account_address,
+    def get_account_sui(cls, account_address):
+        return cls.project().client.suix_getCoins(
+            account_address,
             "0x2::sui::SUI",
             None,
             None
         )["data"]
-        gas = max(sui_coins, key=lambda x: x["balance"])
-        return gas
+
+    @classmethod
+    def prepare_gas(cls):
+        # gas
+        sui_coins = cls.get_account_sui(cls.project().account.account_address)
+        gases = sorted(sui_coins, key=lambda x: x["balance"])[::-1]
+        return gases
 
     @classmethod
     def get_objects(cls, object_ids):
-        object_infos = cls.project().client.sui_multiGetObjects(
-            object_ids,
-            {
-                "showType": True,
-                "showOwner": True,
-                "showPreviousTransaction": False,
-                "showDisplay": False,
-                "showContent": False,
-                "showBcs": False,
-                "showStorageRebate": False
-            }
-        )
+        object_infos = cls.project().get_objects(object_ids)
         return {object_info["data"]["objectId"]: object_info["data"] for object_info in object_infos}
 
     @classmethod
@@ -589,15 +582,23 @@ class TransactionBuild:
             commands,
             gas_price: int,
             gas_budget,
+            payment=None,
     ) -> IntentMessage:
-        gas = cls.prepare_gas()
-        programmable_transaction = ProgrammableTransaction(inputs, commands)
 
-        payment = [ObjectRef(
-            ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
-            ObjectDigest(gas["digest"])
-        )]
+        programmable_transaction = ProgrammableTransaction(inputs, commands)
+        if payment is None:
+            gases = cls.prepare_gas()
+            gas_amount = 0
+            for gas in gases:
+                if gas_amount >= gas_budget:
+                    break
+                payment = [ObjectRef(
+                    ObjectID(gas["coinObjectId"]),
+                    SequenceNumber(gas["version"]),
+                    ObjectDigest(gas["digest"])
+                )]
+                gas_amount += gas["balance"]
+
         owner = SuiAddress(sender)
         price = U64(gas_price)
         budget = U64(gas_budget)
@@ -673,11 +674,27 @@ class TransactionBuild:
     def pay_sui(
             cls,
             sender,
+            input_coins,
             recipients,
             amounts,
             gas_price,
             gas_budget
     ) -> IntentMessage:
+        assert len(input_coins) > 0
+        if isinstance(input_coins, list):
+            all_coins = {v["coinObjectId"]: v for v in cls.get_account_sui(sender)}
+            input_coins_info = {}
+            for object_id in input_coins:
+                if object_id not in all_coins:
+                    raise ValueError(f"{object_id} not found in {sender}")
+                input_coins_info[object_id] = all_coins[object_id]
+        else:
+            input_coins_info = input_coins
+        payment = [ObjectRef(
+            ObjectID(gas["coinObjectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
+        ) for gas in input_coins_info.values()]
 
         # generate inputs
         inputs = [CallArg(
@@ -703,7 +720,7 @@ class TransactionBuild:
                     Argument("Input", U16(len(inputs) - 1))
                 ))
             )
-        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, payment=payment)
 
     @classmethod
     def pay(
@@ -915,10 +932,27 @@ class TransactionBuild:
     def pay_all_sui(
             cls,
             sender,
+            input_coins,
             recipient,
             gas_price,
             gas_budget
     ) -> IntentMessage:
+        assert len(input_coins) > 0
+        if isinstance(input_coins, list):
+            all_coins = {v["coinObjectId"]: v for v in cls.get_account_sui(sender)}
+            input_coins_info = {}
+            for object_id in input_coins:
+                if object_id not in all_coins:
+                    raise ValueError(f"{object_id} not found in {sender}")
+                input_coins_info[object_id] = all_coins[object_id]
+        else:
+            input_coins_info = input_coins
+        payment = [ObjectRef(
+            ObjectID(gas["coinObjectId"]),
+            SequenceNumber(gas["version"]),
+            ObjectDigest(gas["digest"])
+        ) for gas in input_coins_info.values()]
+
         # generate inputs
         inputs = [CallArg(
             "Pure", Pure(
@@ -930,6 +964,80 @@ class TransactionBuild:
                 Argument("Input", U16(0))
             ))
         ]
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, payment=payment)
+
+    @classmethod
+    def move_call_with_gas_coin(
+            cls,
+            sender,
+            package_id,
+            abi,
+            type_args,
+            call_args,
+            gas_price: int,
+            gas_budget,
+    ) -> IntentMessage:
+        """
+        The function conforms to the following format, with sui coins and amounts:
+            public entry fun withdraw_remote(
+                relay_fee_coins: vector<Coin<SUI>>,
+                relay_fee_amount: u64,
+                ctx: &mut TxContext
+            )
+        """
+        """The param of move call with gas coin"""
+        call_args, type_args = cls.check_args(abi, call_args, type_args)
+        # format param
+        abi = cls.format_abi_param(abi, type_args)
+
+        # Prepare object
+        object_infos = cls.prepare_object_info(call_args, abi["parameters"][:len(call_args)])
+
+        # generate inputs
+        inputs = []
+        commands = []
+        arguments = []
+        for i in range(len(call_args)):
+            call_arg_result = cls.generate_call_arg(abi["parameters"][i], call_args[i], object_infos)
+            if isinstance(call_arg_result, list):
+                if len(call_args[i]) and object_infos[call_args[i][0]]["type"] == "0x2::coin::Coin<0x2::sui::SUI>":
+                    gas_budget += call_args[i + 1]
+                    commands.append(
+                        Command("SplitCoins", SplitCoins(
+                            Argument("GasCoin", NONE()),
+                            [Argument("Input", U16(len(inputs)))]
+                        )))
+                    commands.append(Command("MakeMoveVec", MakeMoveVec(
+                        OptionTypeTag("NONE", NONE()),
+                        [Argument("NestedResult", NestedResult(U16(len(commands) - 1), U16(0)))]
+                    )))
+                    arguments.append(Argument("Result", U16(len(commands) - 1)))
+                else:
+                    child_command_start_index = len(inputs)
+                    inputs.extend(call_arg_result)
+                    child_command_arguments = [Argument("Input", U16(i))
+                                               for i in range(child_command_start_index, len(inputs))]
+
+                    commands.append(Command("MakeMoveVec", MakeMoveVec(OptionTypeTag("NONE", NONE()),
+                                                                       child_command_arguments)))
+                    arguments.append(Argument("Result", U16(len(commands) - 1)))
+            else:
+                inputs.append(call_arg_result)
+                arguments.append(Argument("Input", U16(len(inputs) - 1)))
+
+        # generate commands
+        type_arguments = [
+            cls.generate_type_arg(v) for v in type_args
+        ]
+        commands.append(
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(package_id),
+                Identifier(abi["module_name"]),
+                Identifier(abi["func_name"]),
+                type_arguments,
+                arguments
+            )))
+
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
 
@@ -986,18 +1094,20 @@ class SuiPackage:
         else:
             self.package_path = self.package_path
 
+    @retry(stop_max_attempt_number=10, wait_random_min=3000, wait_random_max=5000)
+    def get_abi(self):
+        try:
+            result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
+        except Exception as e:
+            print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+            raise ValueError
+        return result
+
     def update_abi(self):
         if self.package_id is None:
             return
 
-        result = None
-        for i in range(10):
-            time.sleep(3)
-            try:
-                result = self.project.client.sui_getNormalizedMoveModulesByPackage(self.package_id)
-                break
-            except Exception as e:
-                print(f"Warning not found package:{self.package_id} info, err:{e}, retry")
+        result = self.get_abi()
 
         self.abi = result
         for module_name in result:
@@ -1327,7 +1437,8 @@ class SuiProject:
             self.project_path = self.project_path
         else:
             self.project_path = Path(self.project_path)
-        assert self.project_path.joinpath("brownie-config.yaml").exists(), "Project not found brownie-config.yaml"
+        assert self.project_path.joinpath("brownie-config.yaml").exists(), f"Project not found brownie-config.yaml " \
+                                                                           f"for {self.project_path.absolute()}"
 
         # Read config
         with self.project_path.joinpath("brownie-config.yaml").open() as fp:
@@ -1344,7 +1455,10 @@ class SuiProject:
         for account_name, env_name in self.config["sui_wallets"]["from_mnemonic"].items():
             env_name = env_name.replace("$", "").replace("{", "").replace("}", "")
             assert env_name in env, f"{env_name} env not exist"
-            self.accounts[account_name] = Account(mnemonic=env[env_name])
+            if env[env_name][:2] == "0x":
+                self.accounts[account_name] = Account(private_key=env[env_name])
+            else:
+                self.accounts[account_name] = Account(mnemonic=env[env_name])
 
         # Create client
         assert "node_url" in self.network_config, "Endpoint not config"
@@ -1545,6 +1659,23 @@ class SuiProject:
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
 
+    @retry(stop_max_attempt_number=5, wait_random_min=3000, wait_random_max=5000)
+    def get_objects(self, object_ids):
+        object_infos = self.client.sui_multiGetObjects(object_ids, {
+            "showType": True,
+            "showOwner": True,
+            "showPreviousTransaction": False,
+            "showDisplay": False,
+            "showContent": False,
+            "showBcs": False,
+            "showStorageRebate": False
+        })
+        for k, object_info in enumerate(object_infos):
+            if "error" in object_info:
+                print(f"Warning:get {object_ids[k]} info err: {object_info['error']}, retry...")
+                raise ValueError
+        return object_infos
+
     def update_object_index(self, result):
         """
         Update Object cache after contract deployment and transaction execution
@@ -1576,19 +1707,8 @@ class SuiProject:
                 if "reference" in d and "objectId" in d["reference"]:
                     object_ids.append(d["reference"]["objectId"])
         if len(object_ids):
-            sui_object_infos = self.client.sui_multiGetObjects(object_ids, {
-                "showType": True,
-                "showOwner": True,
-                "showPreviousTransaction": False,
-                "showDisplay": False,
-                "showContent": False,
-                "showBcs": False,
-                "showStorageRebate": False
-            })
-            for k, sui_object_info in enumerate(sui_object_infos):
-                if "error" in sui_object_info:
-                    print(f"Warning:get {object_ids[k]} info err: {sui_object_info['error']}")
-                    continue
+            sui_object_infos = self.get_objects(object_ids)
+            for sui_object_info in sui_object_infos:
                 sui_object_id = sui_object_info["data"]["objectId"]
                 if sui_object_info["data"]["type"] == "package":
                     continue
@@ -1599,12 +1719,14 @@ class SuiProject:
                     elif "AddressOwner" in sui_object_info["data"]["owner"]:
                         owner = sui_object_info["data"]["owner"]["AddressOwner"]
                         self.add_object_to_cache(sui_object, owner, sui_object_id)
+                    elif "ObjectOwner" in sui_object_info["data"]["owner"]:
+                        pass
                     else:
-                        raise ValueError(str(sui_object_info["data"]["owner"]))
+                        raise ValueError(f'{str(sui_object_info["data"]["owner"])},{sui_object_id}')
 
     def get_account_sui(self):
         result = self.client.suix_getCoins(self.account.account_address, "0x2::sui::SUI", None, None)
-        return {v["coinObjectId"]: v["balance"] for v in result["data"]}
+        return {v["coinObjectId"]: v for v in result["data"]}
 
     def construct_transaction(
             self,
@@ -1622,7 +1744,7 @@ class SuiProject:
                 arguments[k] = str(arguments[k])
 
         object_ids = self.get_account_sui()
-        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x])
+        gas_object = max(list(object_ids.keys()), key=lambda x: object_ids[x]["balance"])
         result = self.client.unsafe_moveCall(
             self.account.account_address,
             package_id,
@@ -1683,10 +1805,11 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, recipient=None, gas_budget=10000000):
+    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
-        input_coins = list(self.get_account_sui().keys())
+        if input_coins is None:
+            input_coins = list(self.get_account_sui().keys())
         result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, gas_budget)
 
         # Simulate before execute
@@ -1706,12 +1829,15 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def pay_all_sui(self, recipient=None, gas_price=1000, gas_budget=10000000):
+    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=1000, gas_budget=10000000):
         if recipient is None:
             recipient = self.account.account_address
+        if input_coins is None:
+            input_coins = self.get_account_sui()
         msg = TransactionBuild.pay_all_sui(
             self.account.account_address,
-            recipient,
+            input_coins=input_coins,
+            recipient=recipient,
             gas_price=gas_price,
             gas_budget=gas_budget
         )
@@ -1730,10 +1856,11 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def unsafe_pay_sui(self, amounts, recipients=None, gas_budget=10000000):
+    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=10000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
-        input_coins = list(self.get_account_sui().keys())
+        if input_coins is None:
+            input_coins = list(self.get_account_sui().keys())
         amounts = [str(v) for v in amounts]
         result = self.client.unsafe_paySui(
             self.account.account_address,
@@ -1755,11 +1882,14 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def pay_sui(self, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=1000, gas_budget=10000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
+        if input_coins is None:
+            input_coins = self.get_account_sui()
         msg = TransactionBuild.pay_sui(
             self.account.account_address,
+            input_coins,
             recipients,
             amounts,
             gas_price=gas_price,
@@ -1922,3 +2052,33 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction batch::transactions, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")
+
+    def with_gas_coin(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=1000,
+            gas_budget=10000000,
+    ):
+        # Construct
+        msg = TransactionBuild.move_call_with_gas_coin(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])

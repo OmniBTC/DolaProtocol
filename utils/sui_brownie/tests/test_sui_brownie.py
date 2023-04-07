@@ -1,7 +1,6 @@
 # @Time    : 2023/3/29 13:07
 # @Author  : WeiDai
 # @FileName: test_sui_brownie.py
-import time
 import unittest
 from pathlib import Path
 
@@ -47,10 +46,10 @@ class TestSuiBrownie(unittest.TestCase):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
-        # basics = SuiPackage(package_id=sui_project.Basics[-1],
-        #                     package_name="Basics"
-        #                     )
-        # print(basics.counter.test_data_type)
+        basics = SuiPackage(package_id=sui_project.Basics[-1],
+                            package_name="Basics"
+                            )
+        print(basics.counter.test_data_type)
 
         dola_portal = SuiPackage(package_id="0x420d506a6bc1b6b2530ebcbda785f684de0ea7ff8c66644a334bf3fd662b050b",
                                  package_name="DolaPortal"
@@ -81,7 +80,14 @@ class TestSuiBrownie(unittest.TestCase):
                             package_name="Basics"
                             )
         basics.counter.create.unsafe()
-        # basics.counter.increment.unsafe(basics.counter.Counter[-1])
+        basics.counter.increment.unsafe(basics.counter.Counter[-1])
+
+    def test_pay(self):
+        sui_project = self.load_project()
+        sui_project.active_account("Relayer")
+        sui_project.pay_all_sui()
+
+        sui_project.pay_sui(amounts=[0])
 
     def test_package_call(self):
         sui_project = self.load_project()
@@ -90,25 +96,31 @@ class TestSuiBrownie(unittest.TestCase):
         basics = SuiPackage(package_id=sui_project.Basics[-1],
                             package_name="Basics"
                             )
-        # basics.counter.create()
-        # sui_project.batch_transaction(
-        #     actual_params=[basics.counter.Counter[-1], 2],
-        #     transactions=[
-        #         [basics.counter.increment, [Argument("Input", U16(0))], []],
-        #         [basics.counter.assert_value, [Argument("Input", U16(0)), Argument("Input", U16(1))], []],
-        #     ]
-        # )
-        # basics.counter.test_param(basics.counter.Counter[-1],
-        #                           [10089869, 234567],
-        #                           1,
-        #                           8,
-        #                           [9],
-        #                           [[9, 9]],
-        #                           [[9, 8]],
-        #                           type_arguments=["U64"]
-        #                           )
+        basics.counter.create()
+        sui_project.batch_transaction(
+            actual_params=[basics.counter.Counter[-1], 2],
+            transactions=[
+                [basics.counter.increment, [Argument("Input", U16(0))], []],
+                [basics.counter.assert_value, [Argument("Input", U16(0)), Argument("Input", U16(1))], []],
+            ]
+        )
+        basics.counter.test_param(basics.counter.Counter[-1],
+                                  [10089869, 234567],
+                                  1,
+                                  8,
+                                  [9],
+                                  [[9, 9]],
+                                  [[9, 8]],
+                                  type_arguments=["U64"]
+                                  )
 
         basics.counter.test_vec_object(
             ["0x543a78751e8f24bfabc089020c4bdd425c25ef38648a0131b9906fe19c9b1fdb"],
             type_arguments=["0xe6ea734a94c6edb3c6f964a5ab880f1773fd5f58fb1b7fb4be4e521ce94078d7::counter::USDT"]
+        )
+
+        basics.counter.test_vec_object.with_gas_coin(
+            ["0x009e62a155ad5f89ef78b01ca2772b429e141438ab70661730f4be154c3efb63"],
+            1,
+            type_arguments=["0x2::sui::SUI"]
         )

@@ -9,7 +9,7 @@ from brownie import (
     accounts,
     config,
     project,
-    web3
+    web3,
 )
 from brownie.network.web3 import Web3
 from dotenv import load_dotenv

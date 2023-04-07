@@ -93,7 +93,6 @@ module lending_core::logic_tests {
         oracle::init_for_testing(ctx);
         app_manager::init_for_testing(ctx);
         pool_manager::init_for_testing(ctx);
-        storage::init_for_testing(ctx);
     }
 
     public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, ctx: &mut TxContext) {
@@ -116,13 +115,13 @@ module lending_core::logic_tests {
         oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
     }
 
-    public fun init_app(storage: &mut Storage, total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
+    public fun init_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
         // app_id 0 for system core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
         app_manager::destroy_app_cap(app_cap);
         // app_id 1 for lending core
         let app_cap = app_manager::register_app_for_testing(total_app_info, ctx);
-        storage::transfer_app_cap(storage, app_cap);
+        storage::init_for_testing(app_cap, ctx);
     }
 
     public fun init_pools(pool_manager_info: &mut PoolManagerInfo, ctx: &mut TxContext) {
@@ -197,7 +196,7 @@ module lending_core::logic_tests {
     }
 
     public fun init_reserves(storage: &mut Storage, clock: &Clock, ctx: &mut TxContext) {
-        let cap = storage::register_storage_cap_for_testing();
+        let cap = genesis::register_governance_cap_for_testing();
         // register btc reserve
         storage::register_new_reserve(
             &cap,
@@ -297,6 +296,7 @@ module lending_core::logic_tests {
             OPTIMAL_UTILIZATION,
             ctx
         );
+        genesis::destroy(cap);
     }
 
     public fun init_test_scenario(creator: address): Scenario {
@@ -317,12 +317,10 @@ module lending_core::logic_tests {
         };
         test_scenario::next_tx(scenario, creator);
         {
-            let storage = test_scenario::take_shared<Storage>(scenario);
             let total_app_info = test_scenario::take_shared<TotalAppInfo>(scenario);
 
-            init_app(&mut storage, &mut total_app_info, test_scenario::ctx(scenario));
+            init_app(&mut total_app_info, test_scenario::ctx(scenario));
 
-            test_scenario::return_shared(storage);
             test_scenario::return_shared(total_app_info);
         };
         test_scenario::next_tx(scenario, creator);
@@ -492,6 +490,58 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = logic::ENOT_HEALTH)]
+    public fun test_cancel_as_collateral_with_not_health() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 5000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                BTC_POOL_ID
+            );
+            assert!(logic::is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 202);
+            assert!(logic::user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 203);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_cancel_as_collateral_in_isolation() {
         let creator = @0xA;
 
@@ -529,6 +579,56 @@ module lending_core::logic_tests {
             assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 203);
             assert!(!logic::is_isolation_mode(&mut storage, 0), 204);
             assert!(logic::user_health_collateral_value(&mut storage, &mut oracle, 0) == 0, 205);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::ENOT_HEALTH)]
+    public fun test_cancel_as_collateral_with_not_health_in_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_isolate_amount = ONE;
+        let supply_usdt_amount = 1000 * ONE;
+        let borrow_usdt_amount = 50 * ONE;
+
+        // User 0 supply 1 isolate
+        supply_scenario(scenario, creator, isolate_pool, ISOLATE_POOL_ID, 0, supply_isolate_amount);
+        // User 1 supply 1000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 50 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                ISOLATE_POOL_ID
+            );
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -608,6 +708,117 @@ module lending_core::logic_tests {
                 BTC_POOL_ID
             );
             assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 302);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::EIN_ISOLATION)]
+    public fun test_as_collateral_in_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        supply_scenario(
+            scenario,
+            creator,
+            isolate_pool,
+            ISOLATE_POOL_ID,
+            0,
+            ONE
+        );
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            ONE
+        );
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 301);
+            logic::as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                BTC_POOL_ID
+            );
+            assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 302);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::EIS_ISOLATED_ASSET)]
+    public fun test_as_collateral_with_isolated_asset() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            ONE
+        );
+
+        supply_scenario(
+            scenario,
+            creator,
+            isolate_pool,
+            ISOLATE_POOL_ID,
+            0,
+            ONE
+        );
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 301);
+            logic::as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                ISOLATE_POOL_ID
+            );
+            assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 302);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -761,6 +972,34 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = logic::EIS_LOAN)]
+    public fun test_supply_with_loan_asset() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 5000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        // User 0 supply usdt
+        supply_scenario(scenario, creator, btc_pool, USDT_POOL_ID, 0, supply_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_execute_withdraw() {
         let creator = @0xA;
 
@@ -816,6 +1055,146 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    public fun test_withdraw_max_amount() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let supply_amount = ONE;
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_amount);
+        supply_scenario(scenario, creator, isolate_pool, ISOLATE_POOL_ID, 0, supply_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let withdraw_amount = U256_MAX;
+
+            assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
+
+            // Withdraw max amount
+            let actual_amount = logic::execute_withdraw(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                BTC_POOL_ID,
+                withdraw_amount
+            );
+            assert!(actual_amount == supply_amount, 202);
+            assert!(!logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 203);
+
+            pool_manager::remove_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                btc_pool,
+                LENDING_APP_ID,
+                actual_amount
+            );
+
+            assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 204);
+
+            // Withdraw max amount
+            let actual_amount = logic::execute_withdraw(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                ISOLATE_POOL_ID,
+                withdraw_amount
+            );
+            assert!(actual_amount == supply_amount, 205);
+            assert!(!logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 206);
+
+            pool_manager::remove_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                isolate_pool,
+                LENDING_APP_ID,
+                actual_amount
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            pool_manager::destroy_manager(pool_manager_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::ENOT_HEALTH)]
+    public fun test_withdraw_with_not_health() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 5000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let withdraw_amount = supply_btc_amount;
+
+            // Withdraw
+            logic::execute_withdraw(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                BTC_POOL_ID,
+                withdraw_amount
+            );
+            pool_manager::remove_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                btc_pool,
+                LENDING_APP_ID,
+                withdraw_amount
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            pool_manager::destroy_manager(pool_manager_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_execute_borrow() {
         let creator = @0xA;
 
@@ -835,6 +1214,61 @@ module lending_core::logic_tests {
 
         // User 0 borrow 5000 usdt
         borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::ECOLLATERAL_AS_LOAN)]
+    public fun test_borrow_with_collateral() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 5000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 0 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, supply_usdt_amount);
+
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::ELIQUID_AS_LOAN)]
+    public fun test_borrow_with_liquid_asset() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let supply_btc_amount = ONE;
+
+        // User 0 supply 1 isolate
+        supply_scenario(scenario, creator, isolate_pool, ISOLATE_POOL_ID, 0, supply_btc_amount);
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+
+        // User 1 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 1, supply_btc_amount);
+
+        // User 0 borrow 1 btc
+        borrow_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
 
         test_scenario::end(scenario_val);
     }
@@ -1024,6 +1458,172 @@ module lending_core::logic_tests {
     }
 
     #[test]
+    public fun test_repay_with_excess_amount() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 5000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 5000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            let repay_usdt_amount = 6000 * ONE;
+
+            assert!(logic::is_loan(&mut storage, 0, USDT_POOL_ID), 201);
+
+            // User 0 repay 6000 usdt
+            pool_manager::add_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                usdt_pool,
+                LENDING_APP_ID,
+                repay_usdt_amount,
+            );
+            logic::execute_repay(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                USDT_POOL_ID,
+                repay_usdt_amount
+            );
+
+            // The excess balance of the user repaying the debt will become a liquid asset.
+            assert!(logic::is_liquid_asset(&mut storage, 0, USDT_POOL_ID), 202);
+            assert!(
+                storage::get_user_scaled_otoken(
+                    &mut storage,
+                    0,
+                    USDT_POOL_ID
+                ) == (repay_usdt_amount - borrow_usdt_amount),
+                203
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            pool_manager::destroy_manager(pool_manager_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_repay_in_isolation() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let isolate_pool = dola_address::create_dola_address(0, b"ISOLATE");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_isolate_amount = ONE;
+        let supply_usdt_amount = 1000 * ONE;
+        let borrow_usdt_amount = 50 * ONE;
+
+        // User 0 supply 1 isolate
+        supply_scenario(scenario, creator, isolate_pool, ISOLATE_POOL_ID, 0, supply_isolate_amount);
+        // User 1 supply 1000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 50 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_isolation_mode(&mut storage, 0), 201);
+            assert!(storage::get_isolate_debt(&mut storage, ISOLATE_POOL_ID) == borrow_usdt_amount, 202);
+
+            let repay_usdt_amount = 10 * ONE;
+
+            // User 0 repay 10 usdt
+            pool_manager::add_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                usdt_pool,
+                LENDING_APP_ID,
+                repay_usdt_amount,
+            );
+            logic::execute_repay(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                USDT_POOL_ID,
+                repay_usdt_amount
+            );
+
+            assert!(
+                storage::get_isolate_debt(&mut storage, ISOLATE_POOL_ID) == (borrow_usdt_amount - repay_usdt_amount),
+                203
+            );
+
+            let repay_usdt_amount = 100 * ONE;
+
+            // User 0 repay 10 usdt
+            pool_manager::add_liquidity(
+                &pool_manager_cap,
+                &mut pool_manager_info,
+                usdt_pool,
+                LENDING_APP_ID,
+                repay_usdt_amount,
+            );
+            logic::execute_repay(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                USDT_POOL_ID,
+                repay_usdt_amount
+            );
+
+            assert!(storage::get_isolate_debt(&mut storage, ISOLATE_POOL_ID) == 0, 204);
+            assert!(logic::is_liquid_asset(&mut storage, 0, USDT_POOL_ID), 205);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            pool_manager::destroy_manager(pool_manager_cap);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_repay_exit_isolation() {
         let creator = @0xA;
 
@@ -1141,12 +1741,12 @@ module lending_core::logic_tests {
             let clock = test_scenario::take_shared<Clock>(scenario);
 
             // Check user HF > 1
-            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 104);
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
 
             // Simulate BTC price drop
             oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
 
-            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 105);
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
@@ -1163,8 +1763,309 @@ module lending_core::logic_tests {
 
             assert!(
                 logic::user_health_factor(&mut storage, &mut oracle, 0) * 100 / RAY == TARGET_HEALTH_FACTOR * 100 / RAY,
-                106
+                203
             );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::EIS_HEALTH)]
+    public fun test_liquidate_with_health() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 50000 * ONE;
+
+        let borrow_usdt_amount = 1000;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 0 borrow max usdt - 1
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            // Check user HF > 1
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 202);
+
+            // User 1 liquidate user 0 usdt debt to get btc
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = logic::ENOT_COLLATERAL)]
+    public fun test_liquidate_with_violator_liquid_asset() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 50000 * ONE;
+
+        let user_btc_value = 20000 * ONE;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 0 supply 1000 usdc as liquid asset
+        supply_scenario(scenario, creator, usdt_pool, USDC_POOL_ID, 0, 1000 * ONE);
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            assert!(logic::is_collateral(&mut storage, 0, USDC_POOL_ID), 201);
+            logic::cancel_as_collateral(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                USDC_POOL_ID
+            );
+            assert!(logic::is_liquid_asset(&mut storage, 0, USDC_POOL_ID), 202);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+
+        // User 0 borrow max usdt - 1
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount - 1);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            // Check user HF > 1
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 203);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 204);
+
+            // User 1 liquidate user 0 usdt debt to get usdc
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                1,
+                0,
+                USDC_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_with_deficit() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 50000 * ONE;
+
+        let user_btc_value = 20000 * ONE;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 0 borrow max usdt - 1
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount - 1);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            // Check user HF > 1
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
+
+            // Simulate BTC price has fallen sharply
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1000000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
+
+            // User 1 liquidate user 0 usdt debt to get btc
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            // The violator's collateral is fined, but there is still debt, and eventually
+            // the treasury takes over the debt, resulting in a systematic deficit.
+            assert!(storage::get_user_scaled_otoken(&mut storage, 0, BTC_POOL_ID) == 0, 203);
+            assert!(storage::get_user_scaled_dtoken(&mut storage, 0, USDT_POOL_ID) == 0, 204);
+
+            let treasury = storage::get_reserve_treasury(&mut storage, USDT_POOL_ID);
+            assert!(storage::get_user_scaled_dtoken(&mut storage, treasury, USDT_POOL_ID) >= 0, 205);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_liquidate_cover_liquidator_debt() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 50000 * ONE;
+
+        let user_btc_value = 20000 * ONE;
+        // btc_value * BTC_CF = usdt_value * USDT_BF
+        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
+        let borrow_usdt_amount = borrow_usdt_value;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 50000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+        // User 0 borrow max usdt - 1
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount - 1);
+        // User 1 borrow 0.1 btc
+        borrow_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 1, ONE / 10);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            // Check user HF > 1
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
+
+            // Simulate BTC price drop
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
+            // User 1 exist btc debt
+            assert!(logic::is_loan(&mut storage, 1, BTC_POOL_ID), 203);
+            assert!(storage::get_user_scaled_dtoken(&mut storage, 1, BTC_POOL_ID) > 0, 204);
+
+            // User 1 liquidate user 0 usdt debt to get btc
+            logic::execute_liquidate(
+                &storage_cap,
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                1,
+                0,
+                BTC_POOL_ID,
+                USDT_POOL_ID
+            );
+
+            assert!(
+                logic::user_health_factor(&mut storage, &mut oracle, 0) * 100 / RAY == TARGET_HEALTH_FACTOR * 100 / RAY,
+                205
+            );
+            // User 1's btc debt is cleared
+            assert!(logic::is_liquid_asset(&mut storage, 1, BTC_POOL_ID), 206);
+            assert!(storage::get_user_scaled_dtoken(&mut storage, 1, BTC_POOL_ID) == 0, 207);
+
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -1502,25 +2403,17 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
 
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
+            let average_liquidity_0 = storage::get_user_average_liquidity(&mut storage, 0);
             // The initial average liquidity is 0
-            assert!(average_liquidity == 0, 201);
+            assert!(average_liquidity_0 == 0, 201);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
             logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            // The average liquidity of the first update must also be 0.
-            // This update mainly updates the user's most recent timestamp.
-            assert!(average_liquidity == 0, 202);
-
-            clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-
-            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            let average_liquidity_1 = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value_1 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // [average_liquidity = health_value = collateral_value - loan_value]
-            assert!(average_liquidity == health_value, 203);
+            assert!(average_liquidity_1 == health_value_1, 202);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY / 2);
 
@@ -1535,10 +2428,10 @@ module lending_core::logic_tests {
                 ONE
             );
 
-            let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
-            let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
+            let average_liquidity_2 = storage::get_user_average_liquidity(&mut storage, 0);
+            let health_value_2 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // Average liquidity accumulates if a user performs an operation in a day.
-            assert!(average_liquidity > health_value, 204);
+            assert!(average_liquidity_2 == average_liquidity_1 / 2 + health_value_2 / 2, 203);
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
@@ -1556,8 +2449,7 @@ module lending_core::logic_tests {
             let average_liquidity = storage::get_user_average_liquidity(&mut storage, 0);
             let health_value = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // If the user operates in the protocol for more than one day, the accumulated average liquidity will return to zero.
-            assert!(average_liquidity == health_value, 205);
-
+            assert!(average_liquidity == health_value, 204);
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
@@ -1680,6 +2572,127 @@ module lending_core::logic_tests {
             // borrow rate 199.9% , liquidity rate 143.93%
             assert!(after_borrow_index < 10 * RAY, 203);
             assert!(after_liquidity_index < 10 * RAY, 204);
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_system_normal_profit_with_low_utilization() {
+        // 30% utilization
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 3000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 3000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            let total_supply = supply_usdt_amount;
+            let total_borrow = borrow_usdt_amount;
+
+            let day = 0;
+
+            while (day < 365) {
+                clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                day = day + 1;
+
+                let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);
+                let current_debt = logic::total_dtoken_supply(&mut storage, USDT_POOL_ID);
+
+                let user_profit = current_supply - total_supply;
+                let system_profit = current_debt - total_borrow;
+                assert!(system_profit >= user_profit, 201);
+            };
+
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+            test_scenario::return_to_sender(scenario, oracle_cap);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_system_normal_profit_with_high_utilization() {
+        // utilization 80%
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_btc_amount = ONE;
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 8000 * ONE;
+
+        // User 0 supply 1 btc
+        supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
+
+        // User 0 borrow 7000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let storage_cap = storage::register_storage_cap_for_testing();
+            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+
+            let total_supply = supply_usdt_amount;
+            let total_borrow = borrow_usdt_amount;
+
+
+            let day = 0;
+
+            while (day < 365) {
+                clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
+                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                day = day + 1;
+
+                let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);
+                let current_debt = logic::total_dtoken_supply(&mut storage, USDT_POOL_ID);
+
+                let user_profit = current_supply - total_supply;
+                let system_profit = current_debt - total_borrow;
+                assert!(system_profit >= user_profit, 201);
+            };
+
 
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);

@@ -8,6 +8,8 @@ module lending_core::rates {
 
     const SECONDS_PER_DAY: u256 = 86400;
 
+    /// Calculating utilization using liquidity and debt. Liquidity is the current liquidity plus the
+    /// liquidity of the current operation
     public fun calculate_utilization(storage: &mut Storage, dola_pool_id: u16, liquidity: u256): u256 {
         let scale_balance = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         let cur_borrow_index = storage::get_borrow_index(storage, dola_pool_id);
@@ -53,11 +55,9 @@ module lending_core::rates {
         health_value: u256
     ): u256 {
         let delta_time = current_timestamp - last_update_timestamp;
-        if (delta_time >= SECONDS_PER_DAY) {
-            health_value
-        } else {
-            average_liquidity * delta_time / SECONDS_PER_DAY + health_value
-        }
+        let cur_duration = math::min(delta_time, SECONDS_PER_DAY);
+        let pre_duration = SECONDS_PER_DAY - cur_duration;
+        (average_liquidity * pre_duration + health_value * cur_duration) / SECONDS_PER_DAY
     }
 
     public fun calculate_compounded_interest(
