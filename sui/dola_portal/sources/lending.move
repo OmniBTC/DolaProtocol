@@ -9,10 +9,8 @@ module dola_portal::lending {
     use dola_types::dola_address;
     use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
     use governance::genesis::GovernanceCap;
-    use lending_core::lending_codec;
     use lending_core::storage::{Self, StorageCap, Storage};
     use omnipool::dola_pool::{Self, Pool, PoolApproval};
-    use omnipool::wormhole_adapter_pool::{Self, PoolState};
     use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
     use sui::clock::Clock;
@@ -37,6 +35,10 @@ module dola_portal::lending {
     const ENOT_ENOUGH_LIQUIDITY: u64 = 3;
 
     const ENOT_RELAYER: u64 = 4;
+
+    const ENOT_ENOUGH_WORMHOLE_FEE: u64 = 5;
+
+    const EAMOUNT_NOT_ZERO: u64 = 6;
 
     /// App ID
     const LENDING_APP_ID: u16 = 1;
@@ -226,6 +228,7 @@ module dola_portal::lending {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
+        assert!(deposit_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
@@ -362,8 +365,8 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
-        relay_fee_coins: vector<Coin<SUI>>,
-        relay_fee_amount: u64,
+        bridge_fee_coins: vector<Coin<SUI>>,
+        bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
@@ -402,6 +405,13 @@ module dola_portal::lending {
             (actual_amount as u256)
         );
 
+        // Bridge fee = relay fee + wormhole feee
+        let bridge_fee = merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
+        let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
+        assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
+        let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
+        let relay_fee_amount = coin::value(&bridge_fee);
+
         let nonce = get_nonce(lending_portal);
         // Cross-chain withdraw
         wormhole_adapter_core::send_withdraw(
@@ -414,14 +424,12 @@ module dola_portal::lending {
             dola_address::get_native_dola_chain_id(),
             nonce,
             withdraw_amount,
-            coin::zero<SUI>(ctx)
+            wormhole_fee
         );
-        let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
-        let fee_amount = coin::value(&relay_fee);
-        transfer::public_transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
-            amount: fee_amount,
+            amount: relay_fee_amount,
             call_type: lending_core::lending_codec::get_withdraw_type()
         });
 
@@ -518,8 +526,8 @@ module dola_portal::lending {
         receiver_addr: vector<u8>,
         dst_chain: u16,
         amount: u64,
-        relay_fee_coins: vector<Coin<SUI>>,
-        relay_fee_amount: u64,
+        bridge_fee_coins: vector<Coin<SUI>>,
+        bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
@@ -556,6 +564,13 @@ module dola_portal::lending {
             (amount as u256)
         );
 
+        // Bridge fee = relay fee + wormhole feee
+        let bridge_fee = merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
+        let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
+        assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
+        let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
+        let relay_fee_amount = coin::value(&bridge_fee);
+
         let nonce = get_nonce(lending_portal);
         // Cross-chain borrow
         wormhole_adapter_core::send_withdraw(
@@ -568,15 +583,13 @@ module dola_portal::lending {
             dola_address::get_native_dola_chain_id(),
             nonce,
             withdraw_amount,
-            coin::zero<SUI>(ctx)
+            wormhole_fee
         );
 
-        let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
-        let fee_amount = coin::value(&relay_fee);
-        transfer::public_transfer(relay_fee, lending_portal.relayer);
+        transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             nonce,
-            amount: fee_amount,
+            amount: relay_fee_amount,
             call_type: lending_core::lending_codec::get_borrow_type()
         });
 
@@ -604,6 +617,7 @@ module dola_portal::lending {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
+        assert!(repay_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
@@ -656,63 +670,69 @@ module dola_portal::lending {
     }
 
     public entry fun liquidate<DebtCoinType>(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
+        user_manager_info: &mut UserManagerInfo,
+        pool_manager_info: &mut PoolManagerInfo,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
+        debt_amount: u64,
         liquidate_chain_id: u16,
         liquidate_pool_address: vector<u8>,
-        debt_amount: u64,
         liquidate_user_id: u64,
-        relay_fee_coins: vector<Coin<SUI>>,
-        relay_fee_amount: u64,
         ctx: &mut TxContext
     ) {
-        let debt_coin = merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-        let debt_pool_address = dola_address::convert_pool_to_dola<DebtCoinType>();
-        let receiver = dola_address::convert_address_to_dola(tx_context::sender(ctx));
-
+        // Sender
+        let sender = tx_context::sender(ctx);
+        let liquidator_address = dola_address::convert_address_to_dola(sender);
+        // Pool
+        let deposit_pool = dola_address::convert_pool_to_dola<DebtCoinType>();
         let withdraw_pool = dola_address::create_dola_address(liquidate_chain_id, liquidate_pool_address);
+        let deposit_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, deposit_pool);
+        let withdraw_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, withdraw_pool);
 
         let nonce = get_nonce(lending_portal);
-        let app_payload = lending_codec::encode_liquidate_payload(
-            dola_address::get_native_dola_chain_id(),
-            nonce,
-            withdraw_pool,
-            liquidate_user_id
+
+        // Deposit the token into the pool
+        if (debt_amount > 0) {
+            supply<DebtCoinType>(
+                storage,
+                oracle,
+                clock,
+                lending_portal,
+                user_manager_info,
+                pool_manager_info,
+                debt_pool,
+                debt_coins,
+                debt_amount,
+                ctx
+            );
+        }else {
+            vector::destroy_empty(debt_coins);
+        };
+
+        let liquidator = user_manager::get_dola_user_id(user_manager_info, liquidator_address);
+        lending_core::logic::execute_liquidate(
+            &lending_portal.storage_cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            clock,
+            liquidator,
+            liquidate_user_id,
+            withdraw_dola_pool_id,
+            deposit_dola_pool_id,
         );
 
-        wormhole_adapter_pool::send_deposit<DebtCoinType>(
-            pool_state,
-            wormhole_state,
-            coin::zero<SUI>(ctx),
-            debt_pool,
-            debt_coin,
-            LENDING_APP_ID,
-            app_payload,
-            ctx
-        );
-
-        let relay_fee = merge_coin(relay_fee_coins, relay_fee_amount, ctx);
-        let fee_amount = coin::value(&relay_fee);
-        transfer::public_transfer(relay_fee, lending_portal.relayer);
-        emit(RelayEvent {
-            nonce: wormhole_adapter_pool::vaa_nonce(pool_state),
-            amount: fee_amount,
-            call_type: lending_core::lending_codec::get_liquidate_type()
-        });
-
-        emit(LendingPortalEvent {
+        emit(LendingLocalEvent {
             nonce,
-            sender: tx_context::sender(ctx),
-            dola_pool_address: dola_address::get_dola_address(&debt_pool_address),
-            source_chain_id: dola_address::get_native_dola_chain_id(),
-            dst_chain_id: dola_address::get_dola_chain_id(&receiver),
-            receiver: dola_address::get_dola_address(&receiver),
+            sender,
+            dola_pool_address: liquidate_pool_address,
             amount: debt_amount,
             call_type: lending_core::lending_codec::get_liquidate_type()
-        })
+        });
     }
 }
