@@ -13,20 +13,17 @@ module lending_core::storage {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    const EONLY_ONE_ADMIN: u64 = 0;
+    /// Errors
 
-    const EALREADY_EXIST_RESERVE: u64 = 1;
+    const EALREADY_EXIST_RESERVE: u64 = 0;
 
-    const EMUST_NONE: u64 = 2;
-
-    const EMUST_SOME: u64 = 3;
-
-    const EAMOUNT_NOT_ENOUGH: u64 = 4;
+    const EAMOUNT_NOT_ENOUGH: u64 = 1;
 
     struct Storage has key {
         id: UID,
+        /// Used in representative lending app
         app_cap: AppCap,
-        // Token category -> reserve data
+        // Dola pool id -> reserve data
         reserves: Table<u16, ReserveData>,
         // Dola user id -> user info
         user_infos: Table<u64, UserInfo>
@@ -35,8 +32,8 @@ module lending_core::storage {
     struct UserInfo has store {
         // Average liquidity
         average_liquidity: u256,
-        // Timestamp of last update
-        last_update_timestamp: u256,
+        // Timestamp of last update average
+        last_average_update: u256,
         // Tokens as liquid assets, they can still capture the yield but won't be able to use it as collateral
         liquid_assets: vector<u16>,
         // Tokens as collateral, such as ETH, BTC etc. Represent by dola_pool_id.
@@ -53,7 +50,6 @@ module lending_core::storage {
         // Accumulated isolate debt
         isolate_debt: u256,
         // Timestamp of last update
-        // todo: use sui timestamp
         last_update_timestamp: u256,
         // Treasury (dola_user_id)
         treasury: u64,
@@ -97,38 +93,27 @@ module lending_core::storage {
 
     struct StorageCap has store, drop {}
 
+    /// initialize
+
     public fun initialize_cap_with_governance(
-        cap: &GovernanceCap,
+        governance: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,
         ctx: &mut TxContext
     ) {
         transfer::share_object(Storage {
             id: object::new(ctx),
-            app_cap: app_manager::register_cap_with_governance(cap, total_app_info, ctx),
+            app_cap: app_manager::register_cap_with_governance(governance, total_app_info, ctx),
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
-        })
+        });
     }
 
     public fun register_cap_with_governance(_: &GovernanceCap): StorageCap {
         StorageCap {}
     }
 
-    public fun get_app_id(
-        storage: &mut Storage
-    ): u16 {
-        app_manager::get_app_id(&storage.app_cap)
-    }
-
-    public fun get_app_cap(
-        _: &StorageCap,
-        storage: &mut Storage
-    ): &AppCap {
-        &storage.app_cap
-    }
-
     public fun register_new_reserve(
-        _: &StorageCap,
+        _: &GovernanceCap,
         storage: &mut Storage,
         clock: &Clock,
         dola_pool_id: u16,
@@ -177,6 +162,97 @@ module lending_core::storage {
         });
     }
 
+    public fun set_is_isolated_asset(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        is_isolated_asset: bool
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.is_isolated_asset = is_isolated_asset;
+    }
+
+    public fun set_borrowable_in_isolation(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        borrowable_in_isolation: bool
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.borrowable_in_isolation = borrowable_in_isolation;
+    }
+
+    public fun set_treasury_factor(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        treasury_factor: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.treasury_factor = treasury_factor;
+    }
+
+    public fun set_borrow_cap_ceiling(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        borrow_cap_ceiling: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.borrow_cap_ceiling = borrow_cap_ceiling;
+    }
+
+    public fun set_collateral_coefficient(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        collateral_coefficient: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.collateral_coefficient = collateral_coefficient;
+    }
+
+    public fun set_borrow_coefficient(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        borrow_coefficient: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.borrow_coefficient = borrow_coefficient;
+    }
+
+    public fun set_borrow_rate_factors(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        base_borrow_rate: u256,
+        borrow_rate_slope1: u256,
+        borrow_rate_slope2: u256,
+        optimal_utilization: u256
+    ) {
+        let borrow_rate_factors = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).borrow_rate_factors;
+        borrow_rate_factors.base_borrow_rate = base_borrow_rate;
+        borrow_rate_factors.borrow_rate_slope1 = borrow_rate_slope1;
+        borrow_rate_factors.borrow_rate_slope2 = borrow_rate_slope2;
+        borrow_rate_factors.optimal_utilization = optimal_utilization;
+    }
+
+    /// Getter
+
+    public fun get_app_id(
+        storage: &mut Storage
+    ): u16 {
+        app_manager::get_app_id(&storage.app_cap)
+    }
+
+    public fun get_app_cap(
+        _: &StorageCap,
+        storage: &mut Storage
+    ): &AppCap {
+        &storage.app_cap
+    }
+
     public fun is_isolated_asset(storage: &mut Storage, dola_pool_id: u16): bool {
         table::borrow(&storage.reserves, dola_pool_id).is_isolated_asset
     }
@@ -198,18 +274,13 @@ module lending_core::storage {
     }
 
     public fun get_user_last_timestamp(storage: &mut Storage, dola_user_id: u64): u256 {
-        if (exist_user_info(storage, dola_user_id)) {
-            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
-            user_info.last_update_timestamp
-        } else { 0 }
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+        user_info.last_average_update
     }
 
     public fun get_user_average_liquidity(storage: &mut Storage, dola_user_id: u64): u256 {
-        if (exist_user_info(storage, dola_user_id)) {
-            let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
-            user_info.average_liquidity
-        }
-        else { 0 }
+        let user_info = table::borrow(&mut storage.user_infos, dola_user_id);
+        user_info.average_liquidity
     }
 
     public fun get_user_liquid_assets(storage: &mut Storage, dola_user_id: u64): vector<u16> {
@@ -275,8 +346,7 @@ module lending_core::storage {
     }
 
     public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u256 {
-        let borrow_cap_ceiling = table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling;
-        borrow_cap_ceiling
+        table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling
     }
 
     public fun get_borrow_coefficient(storage: &mut Storage, dola_pool_id: u16): u256 {
@@ -343,6 +413,8 @@ module lending_core::storage {
         let borrow_rate_factors = &table::borrow(&storage.reserves, dola_pool_id).borrow_rate_factors;
         (borrow_rate_factors.base_borrow_rate, borrow_rate_factors.borrow_rate_slope1, borrow_rate_factors.borrow_rate_slope2, borrow_rate_factors.optimal_utilization)
     }
+
+    /// Setter
 
     public fun mint_otoken_scaled(
         _: &StorageCap,
@@ -430,7 +502,7 @@ module lending_core::storage {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_update_timestamp: oracle::get_timestamp(clock),
+                last_average_update: oracle::get_timestamp(clock),
                 liquid_assets: vector::empty(),
                 collaterals: vector::empty(),
                 loans: vector::empty()
@@ -461,7 +533,7 @@ module lending_core::storage {
         let (exist, index) = vector::index_of(&user_info.liquid_assets, &dola_pool_id);
 
         if (exist) {
-            let _ = vector::remove(&mut user_info.liquid_assets, index);
+            vector::remove(&mut user_info.liquid_assets, index);
         }
     }
 
@@ -487,7 +559,7 @@ module lending_core::storage {
 
         let (exist, index) = vector::index_of(&user_info.collaterals, &dola_pool_id);
         if (exist) {
-            let _ = vector::remove(&mut user_info.collaterals, index);
+            vector::remove(&mut user_info.collaterals, index);
         }
     }
 
@@ -513,54 +585,8 @@ module lending_core::storage {
 
         let (exist, index) = vector::index_of(&user_info.loans, &dola_pool_id);
         if (exist) {
-            let _ = vector::remove(&mut user_info.loans, index);
+            vector::remove(&mut user_info.loans, index);
         }
-    }
-
-    public fun set_reserve_isolated(
-        _: &StorageCap,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        isolated: bool
-    ) {
-        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.is_isolated_asset = isolated;
-    }
-
-    public fun set_borrowable_in_isolation(
-        _: &StorageCap,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        can_borrow: bool
-    ) {
-        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.borrowable_in_isolation = can_borrow;
-    }
-
-    public fun update_reserve_ceilings(
-        _: &StorageCap,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        borrow_cap_ceiling: u256
-    ) {
-        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
-        reserve.borrow_cap_ceiling = borrow_cap_ceiling;
-    }
-
-    public fun update_borrow_rate_factors(
-        _: &StorageCap,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        base_borrow_rate: u256,
-        borrow_rate_slope1: u256,
-        borrow_rate_slope2: u256,
-        optimal_utilization: u256
-    ) {
-        let borrow_rate_factors = &mut table::borrow_mut(&mut storage.reserves, dola_pool_id).borrow_rate_factors;
-        borrow_rate_factors.base_borrow_rate = base_borrow_rate;
-        borrow_rate_factors.borrow_rate_slope1 = borrow_rate_slope1;
-        borrow_rate_factors.borrow_rate_slope2 = borrow_rate_slope2;
-        borrow_rate_factors.optimal_utilization = optimal_utilization;
     }
 
     public fun update_user_average_liquidity(
@@ -571,7 +597,7 @@ module lending_core::storage {
         average_liquidity: u256
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.last_update_timestamp = oracle::get_timestamp(clock);
+        user_info.last_average_update = oracle::get_timestamp(clock);
         user_info.average_liquidity = average_liquidity;
     }
 
@@ -600,12 +626,12 @@ module lending_core::storage {
         reserve.last_update_timestamp = last_update_timestamp;
 
         // Mint to treasury
-        let dola_user_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
+        let dola_treasury_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
         mint_otoken_scaled(
             cap,
             storage,
             dola_pool_id,
-            dola_user_id,
+            dola_treasury_id,
             mint_to_treasury_scaled
         );
     }

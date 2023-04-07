@@ -13,6 +13,7 @@ dependencies = [
   { name = "PoolManager" },
   { name = "Serde" },
   { name = "Sui" },
+  { name = "SystemCore" },
   { name = "UserManager" },
   { name = "Wormhole" },
   { name = "WormholeAdapterCore" },
@@ -127,6 +128,21 @@ dependencies = [
 ]
 
 [[move.package]]
+name = "SystemCore"
+source = { local = "../system_core" }
+
+dependencies = [
+  { name = "AppManager" },
+  { name = "DolaTypes" },
+  { name = "Governance" },
+  { name = "Serde" },
+  { name = "Sui" },
+  { name = "UserManager" },
+  { name = "Wormhole" },
+  { name = "WormholeAdapterCore" },
+]
+
+[[move.package]]
 name = "UserManager"
 source = { local = "../user_manager" }
 
@@ -139,7 +155,7 @@ dependencies = [
 
 [[move.package]]
 name = "Wormhole"
-source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "6fd072e39c386ab00fae9f9321ef14ab2c144e14", subdir = "sui/wormhole" }
+source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "0a92c428ec511225bcc2a880c8b395b4af4ed0b6", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },

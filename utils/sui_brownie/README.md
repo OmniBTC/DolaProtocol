@@ -1,6 +1,6 @@
 # Overview
 
-This is an sui python tool to quickly implement sui calls.
+This is an sui python tool to quickly implement sui deployment, call and etc.
 
 
 
@@ -26,13 +26,9 @@ pip install sui_brownie
 
 ~~~python
 import sui_brownie
-
-package = sui_brownie.SuiPackage(
-				 				 brownie_config: Union[Path, str] = Path.cwd(),
-                 network: str = "sui-devnet",
-                 is_compile: bool = True,
-                 package_id: str = None,
-                 package_path: Union[Path, str] = None)
+sui_project = self.load_project()
+sui_project.active_account("Relayer")
+math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
 ~~~
 
 
@@ -40,7 +36,9 @@ package = sui_brownie.SuiPackage(
 # Publish
 
 ~~~python
-package.publish_package(replace_address=dict(serde="0x1234", wormhole="0x2345"))
+math.publish_package(replace_address=dict())
+# or 
+math.program_publish_package(replace_address=dict())
 ~~~
 
 
@@ -48,34 +46,32 @@ package.publish_package(replace_address=dict(serde="0x1234", wormhole="0x2345"))
 # Simulate
 
 ~~~
-package.{module_name}.{func_name}.simulate(10)
+{package_name}.{module_name}.{func_name}.simulate(10)
 ~~~
 
 
 
 # Call
 
-~~~python
-package.{module_name}.{func_name}(10)
+~~~
+{package_name}.{module_name}.{func_name}(10)
 ~~~
 
 
 
-# CacheObject
+# Cache
 
 1. From package
 
-~~~python
+~~~
 # list
-package.{module_name}.{struct_name}
+{package_name}.{module_name}.{struct_name}
 ~~~
 
-2. From global
+2. From project
 
 ~~~
-from sui_brownie import CacheObject
-
-# dict, ObjectType --> list
-CacheObject.{module_name}.{struct_name}
+# dict, SuiObject --> list
+sui_projcet.{package_name}
 ~~~
 

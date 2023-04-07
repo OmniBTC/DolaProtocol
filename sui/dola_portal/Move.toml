@@ -6,6 +6,7 @@ version = "0.0.1"
 dola_portal = "0x0"
 serde = "0x0"
 lending_core = "0x1"
+system_core = "0x0"
 oracle = "0x0"
 dola_types = "0x0"
 app_manager = "0x0"
@@ -25,13 +26,16 @@ rev = "82c9c80c11488858f1d3930f47ec9f335a566683"
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "6fd072e39c386ab00fae9f9321ef14ab2c144e14"
+rev = "0a92c428ec511225bcc2a880c8b395b4af4ed0b6"
 
 [dependencies.OmniPool]
 local = "../omnipool"
 
 [dependencies.LendingCore]
 local = "../lending_core"
+
+[dependencies.SystemCore]
+local = "../system_core"
 
 [dependencies.Oracle]
 local = "../oracle"

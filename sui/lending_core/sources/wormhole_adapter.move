@@ -5,8 +5,6 @@ module lending_core::wormhole_adapter {
     use std::vector;
 
     use dola_types::dola_address;
-    use dola_types::dola_contract::{Self, DolaContract, DolaContractRegistry};
-    use governance::genesis::{Self, GovernanceCap, GovernanceContracts};
     use lending_core::lending_codec;
     use lending_core::logic;
     use lending_core::storage::{Self, StorageCap, Storage};
@@ -16,26 +14,23 @@ module lending_core::wormhole_adapter {
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};
-    use sui::package::UpgradeCap;
     use sui::sui::SUI;
     use sui::transfer;
     use sui::tx_context::TxContext;
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
+    use governance::genesis::GovernanceCap;
 
     /// Errors
-    const EMUST_SOME: u64 = 1;
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 0;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 2;
+    const EINVALID_CALL_TYPE: u64 = 1;
 
-    const EINVALID_LENGTH: u64 = 3;
-
-    const EINVALID_CALL_TYPE: u64 = 4;
+    const ENOT_FIND_POOL: u64 = 2;
 
     struct WormholeAdapter has key {
         id: UID,
-        dola_contract: DolaContract,
         storage_cap: StorageCap
     }
 
@@ -53,20 +48,16 @@ module lending_core::wormhole_adapter {
 
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
-        gov_contracts: &mut GovernanceContracts,
-        dola_contract_registry: &mut DolaContractRegistry,
-        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
-        let dola_contract = dola_contract::create_dola_contract();
-        dola_contract::register_dola_contract(dola_contract_registry, &mut dola_contract);
-        genesis::join_dola_contract(gov_contracts, &dola_contract, upgrade_cap);
-
         transfer::share_object(WormholeAdapter {
             id: object::new(ctx),
-            dola_contract,
-            storage_cap: storage::register_cap_with_governance(governance)
+            storage_cap: storage::register_cap_with_governance(governance),
         })
+    }
+
+    fun get_storage_cap(wormhole_adapter: &WormholeAdapter): &StorageCap {
+        &wormhole_adapter.storage_cap
     }
 
     public entry fun supply(
@@ -81,10 +72,11 @@ module lending_core::wormhole_adapter {
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         let (pool, user, amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa,
             pool_manager_info,
             user_manager_info,
@@ -93,7 +85,7 @@ module lending_core::wormhole_adapter {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         logic::execute_supply(
-            &wormhole_adapter.storage_cap,
+            storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -131,10 +123,11 @@ module lending_core::wormhole_adapter {
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         let (user, app_payload) = wormhole_adapter_core::receive_withdraw(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa,
             ctx
         );
@@ -147,12 +140,12 @@ module lending_core::wormhole_adapter {
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
         let dst_chain = dola_address::get_dola_chain_id(&receiver);
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
 
         // If the withdrawal exceeds the user's balance, use the maximum withdrawal
         let actual_amount = logic::execute_withdraw(
-            &wormhole_adapter.storage_cap,
+            storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -169,7 +162,7 @@ module lending_core::wormhole_adapter {
         wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -205,10 +198,11 @@ module lending_core::wormhole_adapter {
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         let (user, app_payload) = wormhole_adapter_core::receive_withdraw(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa,
             ctx
         );
@@ -217,32 +211,23 @@ module lending_core::wormhole_adapter {
         );
         assert!(call_type == lending_codec::get_borrow_type(), EINVALID_CALL_TYPE);
         let amount = (amount as u256);
-
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
-
         let dst_chain = dola_address::get_dola_chain_id(&receiver);
         let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), EMUST_SOME);
+        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
+
+        logic::execute_borrow(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, dola_pool_id, amount);
+
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
-        logic::execute_borrow(
-            &wormhole_adapter.storage_cap,
-            pool_manager_info,
-            storage,
-            oracle,
-            clock,
-            dola_user_id,
-            dola_pool_id,
-            amount
-        );
         wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -277,10 +262,11 @@ module lending_core::wormhole_adapter {
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         let (pool, user, amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa,
             pool_manager_info,
             user_manager_info,
@@ -288,16 +274,7 @@ module lending_core::wormhole_adapter {
         );
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
-        logic::execute_repay(
-            &wormhole_adapter.storage_cap,
-            pool_manager_info,
-            storage,
-            oracle,
-            clock,
-            dola_user_id,
-            dola_pool_id,
-            amount
-        );
+        logic::execute_repay(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, dola_pool_id, amount);
 
         // emit event
         let (source_chain_id, nonce, receiver, call_type) = lending_codec::decode_deposit_payload(app_payload);
@@ -327,10 +304,11 @@ module lending_core::wormhole_adapter {
         vaa: vector<u8>,
         ctx: &mut TxContext
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         let (deposit_pool, deposit_user, deposit_amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa,
             pool_manager_info,
             user_manager_info,
@@ -344,7 +322,7 @@ module lending_core::wormhole_adapter {
         let deposit_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, deposit_pool);
         let withdraw_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, withdraw_pool);
         logic::execute_supply(
-            &wormhole_adapter.storage_cap,
+            storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -355,7 +333,7 @@ module lending_core::wormhole_adapter {
         );
 
         logic::execute_liquidate(
-            &wormhole_adapter.storage_cap,
+            storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -390,11 +368,12 @@ module lending_core::wormhole_adapter {
         clock: &Clock,
         vaa: vector<u8>
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa
         );
         let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
@@ -405,15 +384,7 @@ module lending_core::wormhole_adapter {
         let i = 0;
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
-            logic::as_collateral(
-                &wormhole_adapter.storage_cap,
-                pool_manager_info,
-                storage,
-                oracle,
-                clock,
-                dola_user_id,
-                *dola_pool_id
-            );
+            logic::as_collateral(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, *dola_pool_id);
             i = i + 1;
         };
     }
@@ -429,11 +400,12 @@ module lending_core::wormhole_adapter {
         clock: &Clock,
         vaa: vector<u8>
     ) {
+        let storage_cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage_cap, storage),
             vaa
         );
         let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
@@ -445,15 +417,7 @@ module lending_core::wormhole_adapter {
         let i = 0;
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
-            logic::cancel_as_collateral(
-                &wormhole_adapter.storage_cap,
-                pool_manager_info,
-                storage,
-                oracle,
-                clock,
-                dola_user_id,
-                *dola_pool_id
-            );
+            logic::cancel_as_collateral(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, *dola_pool_id);
             i = i + 1;
         };
     }

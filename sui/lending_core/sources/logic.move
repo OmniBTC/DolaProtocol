@@ -4,9 +4,10 @@ module lending_core::logic {
     use std::vector;
 
     use governance::genesis::GovernanceCap;
+    use lending_core::lending_codec;
     use lending_core::rates;
     use lending_core::scaled_balance;
-    use lending_core::storage::{Self, StorageCap, Storage};
+    use lending_core::storage::{Self, StorageCap, Storage, is_isolated_asset};
     use oracle::oracle::{Self, PriceOracle};
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
@@ -21,36 +22,22 @@ module lending_core::logic {
     /// HF 1.25
     const TARGET_HEALTH_FACTOR: u256 = 1250000000000000000000000000;
 
-    const SUPPLY: u8 = 0;
-
-    const WITHDRAW: u8 = 1;
-
-    const BORROW: u8 = 2;
-
-    const REPAY: u8 = 3;
-
-    const LIQUIDATE: u8 = 4;
-
-    const AS_COLLATERAL: u8 = 7;
-
-    const CANCEL_AS_COLLATERAL: u8 = 8;
-
     /// Errors
     const ECOLLATERAL_AS_LOAN: u64 = 0;
 
-    const ENOT_HEALTH: u64 = 1;
+    const ELIQUID_AS_LOAN: u64 = 1;
 
-    const EIS_HEALTH: u64 = 2;
+    const ENOT_HEALTH: u64 = 2;
 
-    const ENOT_COLLATERAL: u64 = 3;
+    const EIS_HEALTH: u64 = 3;
 
-    const ENOT_LOAN: u64 = 4;
+    const ENOT_COLLATERAL: u64 = 4;
 
-    const EINVALID_POOL_ID: u64 = 5;
+    const ENOT_LOAN: u64 = 5;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 6;
+    const EINVALID_POOL_ID: u64 = 6;
 
-    const EREACH_SUPPLY_CEILING: u64 = 7;
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 7;
 
     const EREACH_BORROW_CEILING: u64 = 8;
 
@@ -62,9 +49,11 @@ module lending_core::logic {
 
     const EIN_ISOLATION: u64 = 12;
 
-    const EHAS_DEBT_ISOLATION: u64 = 13;
+    const ENOT_USER: u64 = 13;
 
-    const ENOT_DEFICIT: u64 = 14;
+    const EIS_ISOLATED_ASSET: u64 = 14;
+
+    const EIS_LOAN: u64 = 15;
 
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
@@ -74,6 +63,8 @@ module lending_core::logic {
         violator_id: u64,
         call_type: u8
     }
+
+    /// Operate
 
     public fun execute_liquidate(
         cap: &StorageCap,
@@ -125,8 +116,9 @@ module lending_core::logic {
         burn_dtoken(cap, storage, violator, loan, actual_liquidable_debt);
         burn_otoken(cap, storage, violator, collateral, actual_liquidable_collateral);
         // For liquidator
-        mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
         burn_otoken(cap, storage, liquidator, loan, actual_liquidable_debt);
+        // For treasury
+        mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
 
         // Check if violator cause a lending deficit, use treasury to cover the deficit.
         if (has_deficit(storage, oracle, violator)) {
@@ -163,7 +155,7 @@ module lending_core::logic {
             amount: actual_liquidable_collateral,
             pool_id: collateral,
             violator_id: violator,
-            call_type: LIQUIDATE
+            call_type: lending_codec::get_liquidate_type()
         })
     }
 
@@ -179,7 +171,7 @@ module lending_core::logic {
     ) {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
-        assert!(!is_loan(storage, dola_user_id, dola_pool_id), ENOT_LOAN);
+        assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
 
         update_state(cap, storage, clock, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
@@ -215,7 +207,7 @@ module lending_core::logic {
             amount: supply_amount,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: SUPPLY
+            call_type: lending_codec::get_supply_type()
         })
     }
 
@@ -255,7 +247,7 @@ module lending_core::logic {
             amount: actual_amount,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: WITHDRAW
+            call_type: lending_codec::get_withdraw_type()
         });
 
         actual_amount
@@ -277,6 +269,7 @@ module lending_core::logic {
         update_state(cap, storage, clock, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
+        assert!(!is_liquid_asset(storage, dola_user_id, borrow_pool_id), ELIQUID_AS_LOAN);
         assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
 
         // In isolation mode, can only borrow the allowed assets
@@ -301,7 +294,7 @@ module lending_core::logic {
             amount: borrow_amount,
             pool_id: borrow_pool_id,
             violator_id: 0,
-            call_type: BORROW
+            call_type: lending_codec::get_borrow_type()
         });
     }
 
@@ -324,7 +317,7 @@ module lending_core::logic {
         burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
 
         if (is_isolation_mode(storage, dola_user_id)) {
-            reduce_isolate_debt(cap, storage, dola_user_id, repay_amount);
+            reduce_isolate_debt(cap, storage, dola_user_id, repay_debt);
         };
 
         // Debt is paid off, moving asset out of the user's debt assets
@@ -346,7 +339,7 @@ module lending_core::logic {
             amount: repay_debt,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: REPAY
+            call_type: lending_codec::get_repay_type()
         });
     }
 
@@ -365,6 +358,11 @@ module lending_core::logic {
         // No other assets can be added as collateral in isolation mode.
         assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
 
+        if (has_collateral(storage, dola_user_id)) {
+            // When there is collateral, isolated assets are not allowed to become collateral.
+            assert!(!is_isolated_asset(storage, dola_pool_id), EIS_ISOLATED_ASSET);
+        };
+
         storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
         storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
 
@@ -376,7 +374,7 @@ module lending_core::logic {
             amount: 0,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: AS_COLLATERAL
+            call_type: lending_codec::get_as_colleteral_type()
         });
     }
 
@@ -393,11 +391,6 @@ module lending_core::logic {
         update_state(cap, storage, clock, dola_pool_id);
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
 
-        // The isolation mode requires no debt to turn the isolated asset into liquid asset.
-        if (is_isolation_mode(storage, dola_user_id)) {
-            assert!(user_total_loan_value(storage, oracle, dola_user_id) == 0, EHAS_DEBT_ISOLATION);
-        };
-
         storage::remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
         storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
 
@@ -410,7 +403,7 @@ module lending_core::logic {
             amount: 0,
             pool_id: dola_pool_id,
             violator_id: 0,
-            call_type: CANCEL_AS_COLLATERAL
+            call_type: lending_codec::get_cancel_as_colleteral_type()
         });
     }
 
@@ -667,21 +660,19 @@ module lending_core::logic {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         liquidator: u64,
-        violator: u64,
-        collateral: u16,
-        loan: u16
+        violator: u64
     ): u256 {
+        assert!(storage::exist_user_info(storage, violator), ENOT_USER);
+        assert!(storage::exist_user_info(storage, liquidator), ENOT_USER);
         let base_discount = calculate_liquidation_base_discount(storage, oracle, violator);
         let average_liquidity = storage::get_user_average_liquidity(storage, liquidator);
         let health_loan_value = user_health_loan_value(storage, oracle, violator);
-        let borrow_coefficient = storage::get_borrow_coefficient(storage, loan);
         let discount_booster = math::ray_div(
-            (average_liquidity),
-            5 * math::ray_mul((health_loan_value), borrow_coefficient)
+            average_liquidity,
+            5 * health_loan_value
         );
         discount_booster = math::min(discount_booster, math::ray()) + math::ray();
-        let treasury_factor = storage::get_treasury_factor(storage, collateral);
-        let liquidation_discount = math::ray_mul(base_discount, discount_booster) + treasury_factor;
+        let liquidation_discount = math::ray_mul(base_discount, discount_booster);
         math::min(liquidation_discount, MAX_DISCOUNT)
     }
 
@@ -703,8 +694,6 @@ module lending_core::logic {
             oracle,
             liquidator,
             violator,
-            collateral,
-            loan
         );
 
         let health_collateral_value = user_health_collateral_value(storage, oracle, violator);
@@ -915,7 +904,7 @@ module lending_core::logic {
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
-            if (health_collateral_value > health_loan_value && last_update_timestamp > 0) {
+            if (health_collateral_value > health_loan_value) {
                 let health_value = health_collateral_value - health_loan_value;
                 let average_liquidity = storage::get_user_average_liquidity(storage, dola_user_id);
                 let new_average_liquidity = rates::calculate_average_liquidity(
@@ -951,20 +940,24 @@ module lending_core::logic {
         let treasury_factor = storage::get_treasury_factor(storage, dola_pool_id);
 
         let new_borrow_index = math::ray_mul(rates::calculate_compounded_interest(
-            (current_timestamp),
-            (last_update_timestamp),
+            current_timestamp,
+            last_update_timestamp,
             storage::get_borrow_rate(storage, dola_pool_id)
         ), current_borrow_index);
 
         let new_liquidity_index = math::ray_mul(rates::calculate_linear_interest(
-            (current_timestamp),
-            (last_update_timestamp),
+            current_timestamp,
+            last_update_timestamp,
             storage::get_liquidity_rate(storage, dola_pool_id)
         ), current_liquidity_index);
 
         let mint_to_treasury = math::ray_mul(
-            math::ray_mul((dtoken_scaled_total_supply), (new_borrow_index - current_borrow_index)),
+            math::ray_mul(dtoken_scaled_total_supply, (new_borrow_index - current_borrow_index)),
             treasury_factor
+        );
+        let mint_to_treasury_scaled = scaled_balance::mint_scaled(
+            mint_to_treasury,
+            new_liquidity_index
         );
         storage::update_state(
             cap,
@@ -973,7 +966,7 @@ module lending_core::logic {
             new_borrow_index,
             new_liquidity_index,
             current_timestamp,
-            mint_to_treasury
+            mint_to_treasury_scaled
         );
     }
 

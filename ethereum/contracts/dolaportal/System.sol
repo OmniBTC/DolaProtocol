@@ -42,7 +42,7 @@ contract SystemPortal {
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
             bindDolaChainId,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, bindAddress),
+            LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress),
             LibSystemCodec.BINDING
         );
         IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
@@ -52,10 +52,7 @@ contract SystemPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(
-            nonce,
-            fee
-        );
+        emit RelayEvent(nonce, fee);
 
         emit SystemPortalEvent(
             nonce,
@@ -78,7 +75,7 @@ contract SystemPortal {
         bytes memory appPayload = LibSystemCodec.encodeBindPayload(
             unbindDolaChainId,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, unbindAddress),
+            LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress),
             LibSystemCodec.UNBINDING
         );
         IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
@@ -88,10 +85,7 @@ contract SystemPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(
-            nonce,
-            fee
-        );
+        emit RelayEvent(nonce, fee);
 
         emit SystemPortalEvent(
             nonce,

@@ -11,10 +11,6 @@ module dola_portal::system {
     use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
     use governance::genesis::GovernanceCap;
 
-    const BINDING: u8 = 0;
-
-    const UNBINDING: u8 = 1;
-
     struct SystemPortal has key {
         id: UID,
         // Allow modification of user_manager storage through UserManagerCap
@@ -81,7 +77,7 @@ module dola_portal::system {
             sender,
             user_chain_id: dola_chain_id,
             user_address: binded_address,
-            call_type: BINDING
+            call_type: system_core::system_codec::get_binding_type()
         })
     }
 
@@ -107,7 +103,7 @@ module dola_portal::system {
             sender,
             user_chain_id: dola_chain_id,
             user_address: unbinded_address,
-            call_type: UNBINDING
+            call_type: system_core::system_codec::get_unbinding_type()
         })
     }
 }
