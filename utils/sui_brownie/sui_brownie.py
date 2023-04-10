@@ -1334,6 +1334,7 @@ class SuiPackage:
                 first_part_end = result.find("}") + 1
                 digest = list(bytes.fromhex(result[first_part_end:]))
                 result = json.loads(result[first_part_start:first_part_end])
+                print(f"Upgrade digest: {digest}")
             except:
                 pprint(f"Build error:\n{result}")
                 raise
