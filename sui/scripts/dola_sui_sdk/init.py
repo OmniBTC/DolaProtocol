@@ -219,6 +219,34 @@ def create_proposal():
         governance.governance_v1.GovernanceInfo[-1])
 
 
+def upgrade_create_proposal():
+    """
+    public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
+    :return:
+    """
+    upgrade_proposal_template = load.upgrade_proposal_template_package()
+    governance = load.governance_package()
+    upgrade_proposal_template.upgrade_proposal.create_proposal(
+        governance.governance_v1.GovernanceInfo[-1])
+
+
+def dola_upgrade():
+    upgrade_proposal_template = load.upgrade_proposal_template_package()
+    governance = load.governance_package()
+    app_manager = load.app_manager_package()
+
+    cur_proposal = f"{sui_project.Governance[-1]}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
+                   f"::upgrade_proposal::Certificate>"
+
+    app_manager.program_dola_upgrade_package(
+        upgrade_proposal_template.package_id,
+        governance.governance_v1.GovernanceInfo[-1],
+        governance.genesis.GovernanceContracts[-1],
+        sui_project[SuiObject.from_type(cur_proposal)][-1],
+        replace_address=dict(governance=None)
+    )
+
+
 def vote_init_wormhole_adapter_core():
     """
     public entry fun vote_init_wormhole_adapter_core(
@@ -279,6 +307,29 @@ def vote_init_system_core():
         governance.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
         app_manager.app_manager.TotalAppInfo[-1],
+    )
+
+
+def vote_init_app_manager():
+    """
+    public entry fun vote_init_app_manager(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        governance_contracts: &mut GovernanceContracts,
+        upgrade_cap: UpgradeCap,
+        ctx: &mut TxContext
+    )
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    app_manager = load.app_manager_package()
+    governance = load.governance_package()
+
+    genesis_proposal.genesis_proposal.vote_init_app_manager(
+        governance.governance_v1.GovernanceInfo[-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
+        governance.genesis.GovernanceContracts[-1],
+        load.get_upgrade_cap_by_package_id(app_manager.package_id)
     )
 
 
@@ -674,15 +725,24 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
         "data"]
 
 
+def dola_upgrade_test():
+    upgrade_create_proposal()
+    dola_upgrade()
+
+
 def main():
     # 1. activate governance
     active_governance_v1()
 
-    # 2. init wormhole adapter core
+    # 2. init app manager
+    create_proposal()
+    vote_init_app_manager()
+
+    # 3. init wormhole adapter core
     create_proposal()
     vote_init_wormhole_adapter_core()
 
-    # 3. init omnipool
+    # 4. init omnipool
     init_wormhole_adapter_pool()
 
     create_pool(btc())
@@ -690,7 +750,7 @@ def main():
     create_pool(usdc())
     create_pool(sui())
 
-    # 4. init oracle
+    # 5. init oracle
     register_token_price(0, 2300000, 2)
     register_token_price(1, 100, 2)
     register_token_price(2, 100, 2)
@@ -700,7 +760,7 @@ def main():
     register_token_price(6, 28500, 2)
     register_token_price(7, 100, 2)
 
-    # 5. init pool manager
+    # 6. init pool manager
     create_proposal()
     vote_register_new_pool(0, b"BTC", btc())
 
@@ -713,15 +773,15 @@ def main():
     create_proposal()
     vote_register_new_pool(7, b"SUI", sui())
 
-    # 6. init system core
+    # 7. init system core
     create_proposal()
     vote_init_system_core()
 
-    # 7. init lending_core
+    # 8. init lending_core
     create_proposal()
     vote_init_lending_core()
 
-    # 8. init dola portal
+    # 9. init dola portal
     create_proposal()
 
     vote_init_dola_portal()
@@ -733,12 +793,12 @@ def main():
     (vaa, _) = bridge_core_read_vaa()
     register_spender(vaa)
 
-    # 9. register evm chain group
+    # 10. register evm chain group
     create_proposal()
 
     vote_init_chain_group_id(2, [4, 5, 7])
 
-    # 10. register reserves
+    # 11. register reserves
 
     create_proposal()
 

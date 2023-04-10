@@ -23,7 +23,7 @@ def get_upgrade_cap_info(upgrade_cap_ids: tuple):
             "showStorageRebate": False
         }
     )
-    return {v["data"]["content"]["fields"]["package"]: v["data"] for v in result}
+    return {v["data"]["content"]["fields"]["package"]: v["data"] for v in result if "error" not in v}
 
 
 def get_upgrade_cap_by_package_id(package_id: str):
@@ -133,6 +133,12 @@ def genesis_proposal_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.GenesisProposal[-1]
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/genesis_proposal"))
+
+
+def upgrade_proposal_template_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = sui_project.UpgradeProposalTemplate[-1]
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/upgrade_proposal_template"))
 
 
 def test_coins_package(package_id: str = None):
