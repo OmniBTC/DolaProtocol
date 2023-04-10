@@ -79,35 +79,36 @@ module governance::genesis {
 
     /// Add the upgrade capability of the contract to governance.
     public fun add_upgrade_cap(
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         upgrade_cap: UpgradeCap
     ) {
         let package_id = object::id_to_address(&package::upgrade_package(&upgrade_cap));
-        assert!(table::contains(&gov_contracts.packages, package_id), E_EXIST_PACKAGE);
-        table::add(&mut gov_contracts.packages, package_id, upgrade_cap);
+        assert!(!table::contains(&governance_contracts.packages, package_id), E_EXIST_PACKAGE);
+        table::add(&mut governance_contracts.packages, package_id, upgrade_cap);
     }
 
     /// Get the governance_cap through the proposal, return to the UpgradeTicket after
     /// the proposal is passed, and upgrade the contract in the programmable transaction.
     public fun authorize_upgrade(
         _: &GovernanceCap,
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         package_id: address,
         policy: u8,
         digest: vector<u8>
     ): UpgradeTicket {
-        let cap = table::borrow_mut(&mut gov_contracts.packages, package_id);
+        let cap = table::borrow_mut(&mut governance_contracts.packages, package_id);
         package::authorize_upgrade(cap, policy, digest)
     }
 
     /// Consume an `UpgradeReceipt` to update its `UpgradeCap`, finalizing
     /// the upgrade.
     public fun commit_upgrade(
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
+        package_id: address,
         receipt: UpgradeReceipt,
     ) {
-        let package_id = object::id_to_address(&package::receipt_cap(&receipt));
-        let cap = table::borrow_mut(&mut gov_contracts.packages, package_id);
+        // let package_id = object::id_to_address(&package::receipt_package(&receipt));
+        let cap = table::borrow_mut(&mut governance_contracts.packages, package_id);
         package::commit_upgrade(cap, receipt)
     }
 
