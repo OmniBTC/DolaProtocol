@@ -359,7 +359,7 @@ module governance::governance_v1 {
     }
 
     /// Destory governance cap
-    public fun destory_governance_cap(
+    public fun destroy_governance_cap(
         governance_cap: GovernanceCap
     ) {
         genesis::destroy(governance_cap);
@@ -431,7 +431,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             add_member(&governance_cap, &mut governance_info, governance_second_member);
             assert!(vector::length(&governance_info.members) == 2, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -479,7 +479,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             remove_member(&governance_cap, &mut governance_info, governance_second_member);
             assert!(vector::length(&governance_info.members) == 1, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -517,7 +517,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             update_delay(&governance_cap, &mut governance_info, 1, 1, 3);
             assert!(governance_info.max_delay == 3, 0);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);
@@ -585,7 +585,7 @@ module governance::governance_v1 {
             let governance_cap = option::destroy_some(governance_cap);
             let governance_manager_cap = upgrade(&governance_cap, &mut governance_info);
             genesis::destroy_manager(&mut governance_genesis, governance_manager_cap);
-            destory_governance_cap(governance_cap);
+            destroy_governance_cap(governance_cap);
 
             test_scenario::return_shared(proposal);
             test_scenario::return_shared(governance_info);

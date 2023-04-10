@@ -46,7 +46,7 @@ module genesis_proposal::genesis_proposal {
             // init wormhole adapter
             lending_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -69,7 +69,7 @@ module genesis_proposal::genesis_proposal {
             // init wormhole adapter
             system_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -92,7 +92,7 @@ module genesis_proposal::genesis_proposal {
             // init system portal
             dola_portal::system::initialize_cap_with_governance(&governance_cap, ctx);
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -118,7 +118,7 @@ module genesis_proposal::genesis_proposal {
                 i = i + 1;
             };
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -137,7 +137,7 @@ module genesis_proposal::genesis_proposal {
 
             wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, wormhole_state, ctx);
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -173,7 +173,7 @@ module genesis_proposal::genesis_proposal {
             pool_manager::register_pool(&governance_cap, pool_manager_info, pool, dola_pool_id);
             pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, weight);
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -199,7 +199,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_emitter_address
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -223,7 +223,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_emitter_chain
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -253,7 +253,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_message_fee
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         } else {
             transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
@@ -285,7 +285,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_message_fee
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         } else {
             transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
@@ -317,7 +317,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_message_fee
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         } else {
             transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
@@ -349,7 +349,7 @@ module genesis_proposal::genesis_proposal {
                 wormhole_message_fee
             );
 
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         } else {
             transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
         };
@@ -398,7 +398,7 @@ module genesis_proposal::genesis_proposal {
                 optimal_utilization,
                 ctx
             );
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
@@ -430,7 +430,7 @@ module genesis_proposal::genesis_proposal {
                 dola_user_id,
                 (amount as u256)
             );
-            governance_v1::destory_governance_cap(governance_cap);
+            governance_v1::destroy_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);
