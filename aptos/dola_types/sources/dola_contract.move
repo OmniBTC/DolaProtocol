@@ -27,7 +27,7 @@ module dola_types::dola_contract {
     }
 
     /// Used to represent the contract address in the Dola protocol
-    struct DolaContract has key, store {
+    struct DolaContract has store {
         dola_contract: u256,
     }
 

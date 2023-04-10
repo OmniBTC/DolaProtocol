@@ -43,6 +43,7 @@ dependencies = [
   { name = "PoolManager" },
   { name = "Serde" },
   { name = "Sui" },
+  { name = "SystemCore" },
   { name = "UserManager" },
   { name = "Wormhole" },
   { name = "WormholeAdapterCore" },

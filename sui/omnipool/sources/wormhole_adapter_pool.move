@@ -128,7 +128,7 @@ module omnipool::wormhole_adapter_pool {
         );
 
         // Register owner and spender in dola pool
-        let dola_contract = dola_contract::create_dola_contract(dola_contract_registry, ctx);
+        let dola_contract = dola_contract::create_dola_contract(dola_contract_registry);
         dola_pool::register_basic_bridge(pool_approval, &dola_contract);
 
         let pool_state = PoolState {
