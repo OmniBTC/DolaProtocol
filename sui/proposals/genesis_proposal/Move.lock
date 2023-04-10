@@ -43,6 +43,7 @@ dependencies = [
   { name = "PoolManager" },
   { name = "Serde" },
   { name = "Sui" },
+  { name = "SystemCore" },
   { name = "UserManager" },
   { name = "Wormhole" },
   { name = "WormholeAdapterCore" },
@@ -94,6 +95,7 @@ source = { local = "../../omnipool" }
 
 dependencies = [
   { name = "DolaTypes" },
+  { name = "Governance" },
   { name = "Serde" },
   { name = "Sui" },
   { name = "Wormhole" },

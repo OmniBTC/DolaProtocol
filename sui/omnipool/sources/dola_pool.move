@@ -11,6 +11,7 @@ module omnipool::dola_pool {
 
     use dola_types::dola_address::{Self, DolaAddress};
     use dola_types::dola_contract::{Self, DolaContract};
+    use governance::genesis::GovernanceCap;
     use omnipool::pool_codec;
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
@@ -21,6 +22,8 @@ module omnipool::dola_pool {
 
     #[test_only]
     use dola_types::dola_contract::DolaContractRegistry;
+    #[test_only]
+    use governance::genesis;
     #[test_only]
     use sui::sui::SUI;
     #[test_only]
@@ -155,9 +158,9 @@ module omnipool::dola_pool {
         vector::remove(&mut pool_approval.spenders, index);
     }
 
-    /// Create pool by anyone
-    /// todo! How to prevent users from setting decimal indiscriminately
-    public entry fun create_pool<CoinType>(decimal: u8, ctx: &mut TxContext) {
+    /// Create pool by governance
+    /// Prevent someone from creating the pool maliciously.
+    public fun create_pool<CoinType>(_: &GovernanceCap, decimal: u8, ctx: &mut TxContext) {
         transfer::share_object(Pool<CoinType> {
             id: object::new(ctx),
             balance: zero<CoinType>(),
@@ -286,8 +289,10 @@ module omnipool::dola_pool {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
+            let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
-            create_pool<SUI>(9, ctx);
+            create_pool<SUI>(&gov_cap, 9, ctx);
+            genesis::destroy(gov_cap);
         };
         test_scenario::next_tx(scenario, manager);
         {
@@ -316,6 +321,7 @@ module omnipool::dola_pool {
         test_scenario::next_tx(scenario, manager);
         {
             let dola_contract_registry = test_scenario::take_shared<DolaContractRegistry>(scenario);
+            let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
             let dola_contract = dola_contract::create_dola_contract(&mut dola_contract_registry, ctx);
             let spenders = vector::empty();
@@ -329,8 +335,9 @@ module omnipool::dola_pool {
 
             transfer::public_transfer(dola_contract, manager);
 
-            create_pool<SUI>(9, ctx);
+            create_pool<SUI>(&gov_cap, 9, ctx);
             return_shared(dola_contract_registry);
+            genesis::destroy(gov_cap);
         };
         test_scenario::next_tx(scenario, manager);
         {
