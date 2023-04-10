@@ -20,6 +20,8 @@ module genesis_proposal::genesis_proposal {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
+    use governance::genesis::GovernanceContracts;
+    use sui::package::UpgradeCap;
 
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
@@ -127,6 +129,8 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_wormhole_adapter_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
+        gov_contracts: &mut GovernanceContracts,
+        upgrade_cap: UpgradeCap,
         wormhole_state: &mut State,
         ctx: &mut TxContext
     ) {
@@ -135,7 +139,7 @@ module genesis_proposal::genesis_proposal {
         if (option::is_some(&governance_cap)) {
             let governance_cap = option::extract(&mut governance_cap);
 
-            wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, wormhole_state, ctx);
+            wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, wormhole_state, gov_contracts, upgrade_cap, ctx);
 
             governance_v1::destroy_governance_cap(governance_cap);
         };

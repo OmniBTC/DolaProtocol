@@ -7,7 +7,7 @@
 module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::dola_address::DolaAddress;
-    use governance::genesis::GovernanceCap;
+    use governance::genesis::{GovernanceCap, GovernanceContracts};
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
@@ -25,6 +25,9 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use wormhole::state::{Self, State};
     use wormhole_adapter_core::pool_codec;
     use wormhole_adapter_core::wormhole_adapter_verify::Unit;
+    use sui::package::UpgradeCap;
+    use governance::genesis;
+    use sui::package;
 
     /// Errors
     // Bridge is not registered
@@ -35,6 +38,9 @@ module wormhole_adapter_core::wormhole_adapter_core {
 
     // Invalid App
     const EINVALID_APP: u64 = 2;
+
+    // Invalid upgrade cap
+    const EINVALID_UPGRADE_CAP: u64 = 3;
 
     /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
     /// For VAA data, the following validations are required.
@@ -108,8 +114,13 @@ module wormhole_adapter_core::wormhole_adapter_core {
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut State,
+        gov_contracts: &mut GovernanceContracts,
+        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
+        let package_id = object::id_to_address(&package::upgrade_package(&upgrade_cap));
+        assert!(package_id==@wormhole_adapter_core, EINVALID_UPGRADE_CAP);
+        genesis::add_upgrade_cap(gov_contracts, upgrade_cap);
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
