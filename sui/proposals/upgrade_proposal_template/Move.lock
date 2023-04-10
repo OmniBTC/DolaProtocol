@@ -15,7 +15,6 @@ source = { local = "../../app_manager" }
 
 dependencies = [
   { name = "Governance" },
-  { name = "Serde" },
   { name = "Sui" },
 ]
 
@@ -24,21 +23,12 @@ name = "Governance"
 source = { local = "../../governance" }
 
 dependencies = [
-  { name = "Serde" },
   { name = "Sui" },
 ]
 
 [[move.package]]
 name = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "82c9c80c11488858f1d3930f47ec9f335a566683", subdir = "crates/sui-framework/packages/move-stdlib" }
-
-[[move.package]]
-name = "Serde"
-source = { local = "../../serde" }
-
-dependencies = [
-  { name = "Sui" },
-]
 
 [[move.package]]
 name = "Sui"
