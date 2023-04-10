@@ -34,7 +34,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_app_manager(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
@@ -44,7 +44,7 @@ module genesis_proposal::genesis_proposal {
             let governance_cap = option::extract(&mut governance_cap);
 
             // init storage
-            app_manager::app_manager::initialize_cap_with_governance(&governance_cap, gov_contracts, upgrade_cap, ctx);
+            app_manager::app_manager::initialize_cap_with_governance(&governance_cap, governance_contracts, upgrade_cap, ctx);
 
             governance_v1::destroy_governance_cap(governance_cap);
         }else {
@@ -151,7 +151,7 @@ module genesis_proposal::genesis_proposal {
     public entry fun vote_init_wormhole_adapter_core(
         governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         upgrade_cap: UpgradeCap,
         wormhole_state: &mut State,
         ctx: &mut TxContext
@@ -164,7 +164,7 @@ module genesis_proposal::genesis_proposal {
             wormhole_adapter_core::initialize_cap_with_governance(
                 &governance_cap,
                 wormhole_state,
-                gov_contracts,
+                governance_contracts,
                 upgrade_cap,
                 ctx
             );
