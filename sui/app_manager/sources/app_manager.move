@@ -7,13 +7,8 @@ module app_manager::app_manager {
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::package;
     use sui::package::UpgradeCap;
     use governance::genesis;
-
-    /// Errors
-    const EINVALID_UPGRADE_CAP: u64 = 0;
-
 
     /// Record all App information
     struct TotalAppInfo has key, store {
@@ -30,13 +25,11 @@ module app_manager::app_manager {
     /// Initializing caps of PoolManager and UserManager through governance
     public fun initialize_cap_with_governance(
         _: &GovernanceCap,
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
-        let package_id = object::id_to_address(&package::upgrade_package(&upgrade_cap));
-        assert!(package_id == @app_manager, EINVALID_UPGRADE_CAP);
-        genesis::add_upgrade_cap(gov_contracts, upgrade_cap);
+        genesis::add_upgrade_cap(governance_contracts, upgrade_cap);
         transfer::share_object(TotalAppInfo {
             id: object::new(ctx),
             app_caps: vector::empty()

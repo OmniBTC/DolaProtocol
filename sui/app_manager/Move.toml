@@ -5,16 +5,12 @@ version = "0.0.1"
 [addresses]
 app_manager = "0x0"
 governance = "0x0"
-serde = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "82c9c80c11488858f1d3930f47ec9f335a566683"
-
-[dependencies.Serde]
-local = "../serde"
 
 [dependencies.Governance]
 local = "../governance"

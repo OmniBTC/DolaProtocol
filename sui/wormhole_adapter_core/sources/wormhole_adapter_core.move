@@ -39,9 +39,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
     // Invalid App
     const EINVALID_APP: u64 = 2;
 
-    // Invalid upgrade cap
-    const EINVALID_UPGRADE_CAP: u64 = 3;
-
     /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
     /// For VAA data, the following validations are required.
     /// For wormhole official library: 1) verify the signature.
@@ -114,13 +111,11 @@ module wormhole_adapter_core::wormhole_adapter_core {
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut State,
-        gov_contracts: &mut GovernanceContracts,
+        governance_contracts: &mut GovernanceContracts,
         upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
-        let package_id = object::id_to_address(&package::upgrade_package(&upgrade_cap));
-        assert!(package_id==@wormhole_adapter_core, EINVALID_UPGRADE_CAP);
-        genesis::add_upgrade_cap(gov_contracts, upgrade_cap);
+        genesis::add_upgrade_cap(governance_contracts, upgrade_cap);
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
