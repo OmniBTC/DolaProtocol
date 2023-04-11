@@ -840,6 +840,7 @@ class TransactionBuild:
         batch_commands = []
         batch_call_args = []
         batch_parameters = []
+        batch_call_args_index = {}
         has_actual_params = DefaultDict(False)
         for (package_id, abi, type_args, call_args) in transactions:
             call_args, type_args = cls.check_args(abi, call_args, type_args)
@@ -851,6 +852,7 @@ class TransactionBuild:
                 assert isinstance(call_arg, Argument), f"Not support:{call_arg}"
                 actual_params_index = call_arg.value.v0
                 if call_arg.key == "Input" and not has_actual_params[actual_params_index]:
+                    batch_call_args_index[len(batch_call_args)] = actual_params_index
                     batch_call_args.append(actual_params[actual_params_index])
                     batch_parameters.append(abi["parameters"][i])
                     has_actual_params[actual_params_index] = True
@@ -873,8 +875,10 @@ class TransactionBuild:
         object_infos = cls.prepare_object_info(batch_call_args, batch_parameters)
         batch_inputs = []
         for i in range(len(batch_call_args)):
-            batch_inputs.append(cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos))
-
+            batch_inputs.append((batch_call_args_index[i],
+                                 cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos)))
+        batch_inputs.sort(key=lambda x: x[0])
+        batch_inputs = [v[1] for v in batch_inputs]
         return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget)
 
     @classmethod
@@ -1950,7 +1954,7 @@ class SuiProject:
             recipient = self.account.account_address
         if input_coins is None:
             input_coins = list(self.get_account_sui().keys())
-        result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, gas_budget)
+        result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, str(gas_budget))
 
         # Simulate before execute
         tx_bytes = result["txBytes"]
