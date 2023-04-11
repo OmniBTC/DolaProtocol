@@ -26,6 +26,10 @@ def get_upgrade_cap_info(upgrade_cap_ids: tuple):
     return {v["data"]["content"]["fields"]["package"]: v["data"] for v in result if "error" not in v}
 
 
+def get_upgrade_cap_ids():
+    return list(tuple(list(sui_project["0x2::package::UpgradeCap"])))
+
+
 def get_upgrade_cap_by_package_id(package_id: str):
     upgrade_cap_ids = tuple(list(sui_project["0x2::package::UpgradeCap"]))
     info = get_upgrade_cap_info(upgrade_cap_ids)

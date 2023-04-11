@@ -948,21 +948,21 @@ class TransactionBuild:
                                         SharedObject(
                                             ObjectID(governance_info),
                                             SequenceNumber(int(object_infos[governance_info]["owner"]["Shared"]
-                                                           ["initial_shared_version"])),
+                                                               ["initial_shared_version"])),
                                             Bool(False)
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
                                             ObjectID(governance_contracts),
                                             SequenceNumber(int(object_infos[governance_contracts]["owner"]["Shared"]
-                                                           ["initial_shared_version"])),
+                                                               ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
                                             ObjectID(proposal),
                                             SequenceNumber(int(object_infos[proposal]["owner"]["Shared"]
-                                                           ["initial_shared_version"])),
+                                                               ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
         ]
@@ -1428,6 +1428,23 @@ class SuiPackage:
             traceback.print_exc()
             raise
         return result
+
+    def generate_digest(
+            self,
+            replace_address: dict = None,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-package-digest " \
+                  f"--path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            return result
+        except:
+            traceback.print_exc()
+
+        for k in replace_tomls:
+            replace_tomls[k].restore()
 
     def program_dola_upgrade_package(
             self,

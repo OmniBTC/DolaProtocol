@@ -1,10 +1,31 @@
 import sui_brownie
 from dola_sui_sdk import DOLA_CONFIG, sui_project, load
-from sui_brownie import SuiObject
+from sui_brownie import SuiObject, SuiPackage
 
 net = "sui-testnet"
 
 sui_project.active_account("Relayer1")
+
+
+def batch_add_upgrade():
+    """
+    public entry fun batch_add_upgrade_cap(
+        governance_contracts: &mut GovernanceContracts,
+        upgrade_caps: vector<UpgradeCap>
+    )
+    :return:
+    """
+    governance = load.governance_package()
+    governance.genesis.batch_add_upgrade_cap(
+        governance.genesis.GovernanceContracts[-1],
+        load.get_upgrade_cap_ids()
+    )
+
+
+def generate_package_info(package, replace_address: dict = None):
+    package: SuiPackage = getattr(load, f"{package}_package")()
+    digest = package.generate_digest(replace_address=replace_address)
+    print(f"Package id:{package.package_id}, digest:{digest}")
 
 
 def deploy():
@@ -50,5 +71,6 @@ def dola_upgrade_test():
 
 
 if __name__ == "__main__":
+    batch_add_upgrade()
     deploy()
     dola_upgrade_test()
