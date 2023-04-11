@@ -202,13 +202,6 @@ test_coins_package = sui_brownie.SuiPackage(
 
 test_coins_package.program_publish_package()
 
-upgrade_proposal_template_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/upgrade_proposal_template")
-)
-
-upgrade_proposal_template_package.program_publish_package(
-    replace_address=dict(governance=None))
-
 print("---------------------------Deployed Package ID-------------------------------------\n")
 print(f"serde={sui_project.Serde[-1]}")
 print(f"dola_types={sui_project.DolaTypes[-1]}")
