@@ -3,12 +3,10 @@
 module app_manager::app_manager {
     use std::vector;
 
-    use governance::genesis::{GovernanceCap, GovernanceContracts};
+    use governance::genesis::GovernanceCap;
     use sui::object::{Self, UID, ID};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::package::UpgradeCap;
-    use governance::genesis;
 
     /// Record all App information
     struct TotalAppInfo has key, store {
@@ -22,18 +20,11 @@ module app_manager::app_manager {
         app_id: u16
     }
 
-    /// Initializing caps of PoolManager and UserManager through governance
-    public fun initialize_cap_with_governance(
-        _: &GovernanceCap,
-        governance_contracts: &mut GovernanceContracts,
-        upgrade_cap: UpgradeCap,
-        ctx: &mut TxContext
-    ) {
-        genesis::add_upgrade_cap(governance_contracts, upgrade_cap);
+    fun init(ctx: &mut TxContext) {
         transfer::share_object(TotalAppInfo {
             id: object::new(ctx),
             app_caps: vector::empty()
-        });
+        })
     }
 
     /// Register app cap for application
@@ -73,10 +64,7 @@ module app_manager::app_manager {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        transfer::share_object(TotalAppInfo {
-            id: object::new(ctx),
-            app_caps: vector::empty()
-        });
+        init(ctx)
     }
 
     #[test_only]

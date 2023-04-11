@@ -7,7 +7,7 @@
 module wormhole_adapter_core::wormhole_adapter_core {
     use app_manager::app_manager::{Self, AppCap};
     use dola_types::dola_address::DolaAddress;
-    use governance::genesis::{GovernanceCap, GovernanceContracts};
+    use governance::genesis::GovernanceCap;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
     use sui::coin::Coin;
     use sui::event;
@@ -25,9 +25,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use wormhole::state::{Self, State};
     use wormhole_adapter_core::pool_codec;
     use wormhole_adapter_core::wormhole_adapter_verify::Unit;
-    use sui::package::UpgradeCap;
-    use governance::genesis;
-    use sui::package;
 
     /// Errors
     // Bridge is not registered
@@ -111,11 +108,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         wormhole_state: &mut State,
-        governance_contracts: &mut GovernanceContracts,
-        upgrade_cap: UpgradeCap,
         ctx: &mut TxContext
     ) {
-        genesis::add_upgrade_cap(governance_contracts, upgrade_cap);
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),

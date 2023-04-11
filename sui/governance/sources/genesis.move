@@ -77,6 +77,18 @@ module governance::genesis {
         object::delete(id);
     }
 
+    /// Batch add the upgrade capability of the contract to governance.
+    public entry fun batch_add_upgrade_cap(
+        governance_contracts: &mut GovernanceContracts,
+        upgrade_caps: vector<UpgradeCap>
+    ) {
+        while (!vector::is_empty(&upgrade_caps)){
+            let upgrade_cap = vector::pop_back(&mut upgrade_caps);
+            add_upgrade_cap(governance_contracts, upgrade_cap);
+        };
+        vector::destroy_empty(upgrade_caps);
+    }
+
     /// Add the upgrade capability of the contract to governance.
     public fun add_upgrade_cap(
         governance_contracts: &mut GovernanceContracts,
