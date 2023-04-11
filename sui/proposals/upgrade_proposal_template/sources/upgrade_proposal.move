@@ -6,8 +6,9 @@ module upgrade_proposal_template::upgrade_proposal {
     use sui::package::{UpgradeTicket, UpgradeReceipt};
     use sui::tx_context::TxContext;
 
-    const PACKAGE_ID: address = @0x4d24960e8247212dbb7b28156ba6753b1b5f180a3b321a9dc3d69a1e8fcf5ba7;
-    const DIGEST: vector<u8> = x"a58e1d08924bd5fe9379e04c3958005aa03a71feea935be08516c461714e97dd";
+    const PACKAGE_NAME: vector<u8> = b"Serde";
+    const PACKAGE_ID: address = @0x6a7c03a2911856faf91387c55ffba34a1fc1b4707980c06a40a3f53c86bf3d64;
+    const DIGEST: vector<u8> = x"86733bdce774f439ff87b006955a11c6500c793276bffc20d5520f4e4670f72d";
     const POLICY: u8 = 0;
 
     /// Errors
