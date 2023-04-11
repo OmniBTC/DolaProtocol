@@ -31,8 +31,7 @@ governance_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("governance")
 )
 
-governance_package.program_publish_package(
-    replace_address=dict(serde=None))
+governance_package.program_publish_package()
 
 user_manager_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("user_manager")
@@ -48,8 +47,7 @@ app_manager_package = sui_brownie.SuiPackage(
 )
 
 app_manager_package.program_publish_package(
-    replace_address=dict(serde=None,
-                         governance=None))
+    replace_address=dict(governance=None))
 
 oracle_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("oracle")

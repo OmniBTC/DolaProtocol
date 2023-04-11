@@ -1,6 +1,3 @@
-# @Time    : 2022/12/7 17:21
-# @Author  : WeiDai
-# @FileName: relayer.py
 import contextlib
 import functools
 import json

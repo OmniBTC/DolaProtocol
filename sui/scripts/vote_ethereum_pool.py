@@ -1,6 +1,3 @@
-# @Time    : 2022/12/16 18:24
-# @Author  : WeiDai
-# @FileName: init_ethereum_pool.py
 from pathlib import Path
 
 import dola_ethereum_sdk

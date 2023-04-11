@@ -100,7 +100,7 @@ module dola_portal::lending {
     ) {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
-            dola_contract: dola_contract::create_dola_contract(dola_contract_registry, ctx),
+            dola_contract: dola_contract::create_dola_contract(dola_contract_registry),
             user_manager_cap: user_manager::register_cap_with_governance(governance),
             pool_manager_cap: pool_manager::register_cap_with_governance(governance),
             storage_cap: storage::register_cap_with_governance(governance),

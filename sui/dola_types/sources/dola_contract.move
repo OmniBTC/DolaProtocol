@@ -15,8 +15,7 @@ module dola_types::dola_contract {
     }
 
     /// Used to represent the contract address in the Dola protocol
-    struct DolaContract has key, store {
-        id: UID,
+    struct DolaContract has store {
         dola_contract: u256,
     }
 
@@ -36,14 +35,13 @@ module dola_types::dola_contract {
     /// New dola contract address
     public fun create_dola_contract(
         dola_contract_registry: &mut DolaContractRegistry,
-        ctx: &mut TxContext
     ): DolaContract {
         let dola_contract = dola_contract_registry.next_id;
         dola_contract_registry.next_id = dola_contract + 1;
 
         event::emit(CreateDolaContract { dola_contract });
 
-        DolaContract { id: object::new(ctx), dola_contract }
+        DolaContract { dola_contract }
     }
 
     /// Get dola contract

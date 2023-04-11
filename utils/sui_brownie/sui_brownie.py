@@ -454,14 +454,14 @@ class TransactionBuild:
             return ObjectArg("SharedObject",
                              SharedObject(
                                  ObjectID(data["objectId"]),
-                                 SequenceNumber(initial_shared_version),
+                                 SequenceNumber(int(initial_shared_version)),
                                  mutable
                              ))
         else:
             return ObjectArg("ImmOrOwnedObject",
                              ObjectRef(
                                  ObjectID(data["objectId"]),
-                                 SequenceNumber(data["version"]),
+                                 SequenceNumber(int(data["version"])),
                                  ObjectDigest(data["digest"])
                              ))
 
@@ -594,10 +594,10 @@ class TransactionBuild:
                     break
                 payment = [ObjectRef(
                     ObjectID(gas["coinObjectId"]),
-                    SequenceNumber(gas["version"]),
+                    SequenceNumber(int(gas["version"])),
                     ObjectDigest(gas["digest"])
                 )]
-                gas_amount += gas["balance"]
+                gas_amount += int(gas["balance"])
 
         owner = SuiAddress(sender)
         price = U64(gas_price)
@@ -656,7 +656,7 @@ class TransactionBuild:
             CallArg("Object", ObjectArg("ImmOrOwnedObject",
                                         ObjectRef(
                                             ObjectID(data["objectId"]),
-                                            SequenceNumber(data["version"]),
+                                            SequenceNumber(int(data["version"])),
                                             ObjectDigest(data["digest"])
                                         )))
         ]
@@ -692,7 +692,7 @@ class TransactionBuild:
             input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
+            SequenceNumber(int(gas["version"])),
             ObjectDigest(gas["digest"])
         ) for gas in input_coins_info.values()]
 
@@ -739,7 +739,7 @@ class TransactionBuild:
                 "ImmOrOwnedObject",
                 ObjectRef(
                     ObjectID(input_coin),
-                    SequenceNumber(input_coins_info[input_coin]["version"]),
+                    SequenceNumber(int(input_coins_info[input_coin]["version"])),
                     ObjectDigest(input_coins_info[input_coin]["digest"])
                 ))) for input_coin in input_coins]
         arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
@@ -812,19 +812,19 @@ class TransactionBuild:
     def prepare_upgrade_capability(cls, upgrade_capability):
         data = cls.get_objects([upgrade_capability])[upgrade_capability]
         if "Shared" in data["owner"]:
-            mutable = True
+            mutable = Bool(True)
             initial_shared_version = data["owner"]["Shared"]["initial_shared_version"]
             return CallArg("Object", ObjectArg("SharedObject",
                                                SharedObject(
                                                    ObjectID(data["objectId"]),
-                                                   SequenceNumber(initial_shared_version),
+                                                   SequenceNumber(int(initial_shared_version)),
                                                    mutable
                                                )))
         else:
             return CallArg("Object", ObjectArg("ImmOrOwnedObject",
                                                ObjectRef(
                                                    ObjectID(data["objectId"]),
-                                                   SequenceNumber(data["version"]),
+                                                   SequenceNumber(int(data["version"])),
                                                    ObjectDigest(data["digest"])
                                                )))
 
@@ -929,6 +929,70 @@ class TransactionBuild:
         return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
 
     @classmethod
+    def dola_upgrade(
+            cls,
+            package_id,
+            proposal_package_id,
+            sender,
+            governance_info: str,
+            governance_contracts: str,
+            proposal: str,
+            compiled_modules: list,
+            dep_ids,
+            gas_price,
+            gas_budget
+    ):
+        object_infos = cls.get_objects([governance_info, governance_contracts, proposal])
+        inputs = [
+            CallArg("Object", ObjectArg("SharedObject",
+                                        SharedObject(
+                                            ObjectID(governance_info),
+                                            SequenceNumber(int(object_infos[governance_info]["owner"]["Shared"]
+                                                               ["initial_shared_version"])),
+                                            Bool(False)
+                                        ))),
+            CallArg("Object", ObjectArg("SharedObject",
+                                        SharedObject(
+                                            ObjectID(governance_contracts),
+                                            SequenceNumber(int(object_infos[governance_contracts]["owner"]["Shared"]
+                                                               ["initial_shared_version"])),
+                                            Bool(True)
+                                        ))),
+            CallArg("Object", ObjectArg("SharedObject",
+                                        SharedObject(
+                                            ObjectID(proposal),
+                                            SequenceNumber(int(object_infos[proposal]["owner"]["Shared"]
+                                                               ["initial_shared_version"])),
+                                            Bool(True)
+                                        ))),
+        ]
+        arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
+        commands = [
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(proposal_package_id),
+                Identifier("upgrade_proposal"),
+                Identifier("vote_proposal_final"),
+                [],
+                arguments
+            )),
+            Command("Upgrade", Upgrade(
+                compiled_modules,
+                [ObjectID(dep_id) for dep_id in dep_ids],
+                ObjectID(package_id),
+                Argument("Result", U16(0))
+            )),
+            Command("MoveCall", ProgrammableMoveCall(
+                ObjectID(proposal_package_id),
+                Identifier("upgrade_proposal"),
+                Identifier("commit_upgrade"),
+                [],
+                [Argument("Input", U16(1)), Argument("Result", U16(1))]
+            )),
+        ]
+
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+
+    @classmethod
     def pay_all_sui(
             cls,
             sender,
@@ -949,7 +1013,7 @@ class TransactionBuild:
             input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
+            SequenceNumber(int(gas["version"])),
             ObjectDigest(gas["digest"])
         ) for gas in input_coins_info.values()]
 
@@ -1231,7 +1295,7 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=10000000,
+            gas_budget=100000000,
             replace_address: dict = None,
             skip_dependency_verification=True
     ):
@@ -1276,7 +1340,7 @@ class SuiPackage:
             self,
             replace_address: dict = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         try:
@@ -1321,7 +1385,7 @@ class SuiPackage:
             upgrade_policy: int,
             replace_address: dict = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         try:
@@ -1332,10 +1396,12 @@ class SuiPackage:
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                digest = list(bytes.fromhex(result[first_part_end:]))
+                hex_digest = result[first_part_end:]
+                digest = list(bytes.fromhex(hex_digest))
                 result = json.loads(result[first_part_start:first_part_end])
+                print(f"Upgrade digest: {hex_digest}")
             except:
-                pprint(f"Build error:\n{result}")
+                print(f"Build error:\n{cmd}\n{result}")
                 raise
             move_modules = []
             for m in result["modules"]:
@@ -1348,6 +1414,80 @@ class SuiPackage:
                                           upgrade_policy, digest,
                                           gas_price, gas_budget,
                                           )
+            self.update_abi()
+            result = self.format_result(result)
+            pprint(result)
+            assert self.package_id is not None, f"Package id not found"
+            print("-" * (100 + len(view)))
+            print("\n")
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+        except:
+            for k in replace_tomls:
+                replace_tomls[k].restore()
+            traceback.print_exc()
+            raise
+        return result
+
+    def generate_digest(
+            self,
+            replace_address: dict = None,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-package-digest " \
+                  f"--path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            return result
+        except:
+            traceback.print_exc()
+
+        for k in replace_tomls:
+            replace_tomls[k].restore()
+
+    def program_dola_upgrade_package(
+            self,
+            proposal_package_id,
+            governance_info: str,
+            governance_contracts: str,
+            proposal: str,
+            replace_address: dict = None,
+            gas_price=1000,
+            gas_budget=100000000,
+    ):
+        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        try:
+            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+                  f"--path {self.package_path.absolute()}"
+            with os.popen(cmd) as f:
+                result = f.read()
+            try:
+                first_part_start = result.find("{")
+                first_part_end = result.find("}") + 1
+                hex_digest = result[first_part_end:]
+                result = json.loads(result[first_part_start:first_part_end])
+                print(f"Upgrade digest: {hex_digest}")
+            except:
+                pprint(f"Build error:\n{result}")
+                raise
+            move_modules = []
+            for m in result["modules"]:
+                move_modules.append(list(base64.b64decode(m)))
+            dep_ids = result["dependencies"]
+            view = f"Dola Upgrade {self.package_name}"
+            print("\n" + "-" * 50 + view + "-" * 50)
+            result = self.project.dola_upgrade(
+                self.package_id,
+                proposal_package_id,
+                move_modules,
+                dep_ids,
+                governance_info,
+                governance_contracts,
+                proposal,
+                gas_price,
+                gas_budget,
+            )
             self.update_abi()
             result = self.format_result(result)
             pprint(result)
@@ -1606,7 +1746,7 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         result = self.construct_transaction(
             package_id=package_id,
@@ -1636,7 +1776,7 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         # Construct
         msg = TransactionBuild.move_call(
@@ -1734,7 +1874,7 @@ class SuiProject:
             abi: dict,
             arguments: list,
             type_arguments: List[str] = None,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
@@ -1765,7 +1905,7 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         msg = TransactionBuild.move_call(
             self.account.account_address,
@@ -1786,7 +1926,7 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         msg = TransactionBuild.move_call(
             self.account.account_address,
@@ -1805,7 +1945,7 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=10000000):
+    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=100000000):
         if recipient is None:
             recipient = self.account.account_address
         if input_coins is None:
@@ -1829,7 +1969,7 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=1000, gas_budget=10000000):
+    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=1000, gas_budget=100000000):
         if recipient is None:
             recipient = self.account.account_address
         if input_coins is None:
@@ -1856,7 +1996,7 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=10000000):
+    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=100000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
         if input_coins is None:
@@ -1882,7 +2022,7 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=1000, gas_budget=10000000):
+    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=1000, gas_budget=100000000):
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
         if input_coins is None:
@@ -1906,7 +2046,7 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def unsafe_transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+    def unsafe_transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=100000000):
         result = self.client.unsafe_transferObject(
             self.account.account_address,
             object_id,
@@ -1926,7 +2066,7 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=10000000):
+    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=100000000):
         msg = TransactionBuild.transfer_object(
             self.account.account_address,
             object_id,
@@ -1945,7 +2085,7 @@ class SuiProject:
         print(f'\nExecute transaction transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
 
-    def pay(self, input_coins: list, amounts, recipients=None, gas_price=1000, gas_budget=10000000):
+    def pay(self, input_coins: list, amounts, recipients=None, gas_price=1000, gas_budget=100000000):
         msg = TransactionBuild.pay(
             self.account.account_address,
             input_coins,
@@ -1970,7 +2110,7 @@ class SuiProject:
             compiled_modules,
             dep_ids,
             gas_price=1000,
-            gas_budget=10000000
+            gas_budget=100000000
     ):
         msg = TransactionBuild.publish(
             self.account.account_address,
@@ -1999,7 +2139,7 @@ class SuiProject:
             upgrade_policy: int,
             digest: Union[str, list],
             gas_price=1000,
-            gas_budget=10000000
+            gas_budget=100000000
     ):
         msg = TransactionBuild.upgrade(
             package_id=package_id,
@@ -2023,12 +2163,47 @@ class SuiProject:
         print(f'\nExecute transaction publish::package, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="publish", function="package")
 
+    def dola_upgrade(
+            self,
+            package_id,
+            proposal_package_id,
+            compiled_modules,
+            dep_ids,
+            governance_info: str,
+            governance_contracts: str,
+            proposal: str,
+            gas_price=1000,
+            gas_budget=100000000
+    ):
+        msg = TransactionBuild.dola_upgrade(
+            package_id=package_id,
+            proposal_package_id=proposal_package_id,
+            sender=self.account.account_address,
+            compiled_modules=compiled_modules,
+            dep_ids=dep_ids,
+            governance_info=governance_info,
+            governance_contracts=governance_contracts,
+            proposal=proposal,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        # simulate
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+        # Sig
+        serialized_sig_base64 = self.generate_signature(msg.encode)
+
+        # Execute
+        print(f'\nExecute transaction dola_upgrade::upgrade, waiting...')
+        return self._execute(tx_bytes, [serialized_sig_base64], module="dola_upgrade", function="upgrade")
+
     def batch_transaction(
             self,
             actual_params,
             transactions,
             gas_price=1000,
-            gas_budget=10000000
+            gas_budget=100000000
     ):
         inputs = []
         for module_function, arguments, type_arguments in transactions:
@@ -2060,7 +2235,7 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=1000,
-            gas_budget=10000000,
+            gas_budget=100000000,
     ):
         # Construct
         msg = TransactionBuild.move_call_with_gas_coin(

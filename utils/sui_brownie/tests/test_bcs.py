@@ -1,6 +1,3 @@
-# @Time    : 2023/3/31 01:04
-# @Author  : WeiDai
-# @FileName: test_bcs.py
 import unittest
 from bcs import *
 

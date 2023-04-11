@@ -1,16 +1,16 @@
 [package]
-name = "AppManager"
+name = "UpgradeProposalTemplate"
 version = "0.0.1"
 
 [addresses]
-app_manager = "0x0"
+upgrade_proposal_template = "0x0"
 governance = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "a63f425b9999c7fdfe483598720a9effc0acdc9e"
+rev = "82c9c80c11488858f1d3930f47ec9f335a566683"
 
 [dependencies.Governance]
-local = "../governance"
+local = "../../governance"

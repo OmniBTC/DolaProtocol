@@ -1,6 +1,3 @@
-# @Time    : 2023/3/29 15:39
-# @Author  : WeiDai
-# @FileName: test_client.py
 import unittest
 
 from sui_client import SuiClient
