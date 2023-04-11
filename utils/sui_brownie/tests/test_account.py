@@ -1,6 +1,3 @@
-# @Time    : 2023/3/29 13:07
-# @Author  : WeiDai
-# @FileName: test_sui_brownie.py
 import unittest
 
 from sui_brownie import Account

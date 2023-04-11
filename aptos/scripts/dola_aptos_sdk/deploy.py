@@ -1,7 +1,3 @@
-# @Time    : 2022/12/15 18:39
-# @Author  : WeiDai
-# @FileName: deploy.py
-
 import aptos_brownie
 
 from dola_aptos_sdk import DOLA_CONFIG

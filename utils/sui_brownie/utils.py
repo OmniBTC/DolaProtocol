@@ -1,8 +1,3 @@
-# @Time    : 2022/11/24 13:50
-# @Author  : WeiDai
-# @FileName: utils.py
-
-
 def get_bytes(string: str) -> bytes:
     if isinstance(string, bytes):
         byte = string

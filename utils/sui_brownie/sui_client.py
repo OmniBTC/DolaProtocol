@@ -1,6 +1,3 @@
-# @Time    : 2023/3/28 20:03
-# @Author  : WeiDai
-# @FileName: sui_client.py
 from retrying import retry
 import httpx
 
