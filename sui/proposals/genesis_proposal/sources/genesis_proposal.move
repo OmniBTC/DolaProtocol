@@ -11,6 +11,7 @@ module genesis_proposal::genesis_proposal {
     use dola_types::dola_contract::DolaContractRegistry;
     use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::storage::Storage;
+    use omnipool::dola_pool;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::clock::Clock;
     use sui::coin::Coin;
@@ -351,6 +352,23 @@ module genesis_proposal::genesis_proposal {
             governance_v1::destroy_governance_cap(governance_cap);
         } else {
             transfer::public_transfer(wormhole_message_fee, tx_context::sender(ctx));
+        };
+
+        option::destroy_none(governance_cap);
+    }
+
+    public entry fun vote_create_omnipool<CoinType>(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        decimals: u8,
+        ctx: &mut TxContext
+    ) {
+        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
+
+        if (option::is_some(&governance_cap)) {
+            let governance_cap = option::extract(&mut governance_cap);
+            dola_pool::create_pool<CoinType>(&governance_cap, decimals, ctx);
+            governance_v1::destory_governance_cap(governance_cap);
         };
 
         option::destroy_none(governance_cap);

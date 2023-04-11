@@ -11,9 +11,27 @@ RAY = 1000000000000000000000000000
 net = "sui-testnet"
 
 
-def create_pool(coin_type):
-    omnipool = load.omnipool_package()
-    omnipool.dola_pool.create_pool(8, type_arguments=[coin_type])
+def vote_create_pool(coin_type, decimal=8):
+    """
+    public entry fun vote_create_omnipool<CoinType>(
+        governance_info: &mut GovernanceInfo,
+        proposal: &mut Proposal<Certificate>,
+        decimals: u8,
+        ctx: &mut TxContext
+    )
+    :param decimal:
+    :param coin_type:
+    :return:
+    """
+    genesis_proposal = load.genesis_proposal_package()
+    governance = load.governance_package()
+
+    genesis_proposal.genesis_proposal.vote_create_omnipool(
+        governance.governance_v1.GovernanceInfo[-1],
+        sui_project[SuiObject.from_type(proposal())][-1],
+        decimal,
+        type_arguments=[coin_type]
+    )
 
 
 def get_upgrade_cap_info(upgrade_cap_ids: tuple):
@@ -685,10 +703,14 @@ def main():
     # 3. init omnipool
     init_wormhole_adapter_pool()
 
-    create_pool(btc())
-    create_pool(usdt())
-    create_pool(usdc())
-    create_pool(sui())
+    create_proposal()
+    vote_create_pool(btc())
+    create_proposal()
+    vote_create_pool(usdt())
+    create_proposal()
+    vote_create_pool(usdc())
+    create_proposal()
+    vote_create_pool(sui())
 
     # 4. init oracle
     register_token_price(0, 2300000, 2)

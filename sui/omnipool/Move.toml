@@ -7,20 +7,24 @@ wormhole = "0x0"
 serde = "0x0"
 omnipool = "0x0"
 dola_types = "0x0"
+governance = "0x0"
 sui = "0x2"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "82c9c80c11488858f1d3930f47ec9f335a566683"
+rev = "a63f425b9999c7fdfe483598720a9effc0acdc9e"
 
 [dependencies.Wormhole]
 git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
-rev = "0a92c428ec511225bcc2a880c8b395b4af4ed0b6"
+rev = "d0e0d1743df2430d874459bd870f590f660f0ae8"
 
 [dependencies.DolaTypes]
 local = "../dola_types"
 
 [dependencies.Serde]
 local = "../serde"
+
+[dependencies.Governance]
+local = "../governance"
