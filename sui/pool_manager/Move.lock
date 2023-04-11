@@ -25,7 +25,6 @@ name = "Governance"
 source = { local = "../governance" }
 
 dependencies = [
-  { name = "Serde" },
   { name = "Sui" },
 ]
 

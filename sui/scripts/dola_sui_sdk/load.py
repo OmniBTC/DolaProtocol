@@ -6,7 +6,7 @@ import sui_brownie
 
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
-sui_project.active_account("Relayer1")
+sui_project.active_account("TestAccount")
 
 
 @functools.lru_cache()

@@ -4,9 +4,11 @@ import sui_brownie
 
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
-net = "sui-testnet"
+net = "sui-devnet"
 
-sui_project.active_account("Relayer1")
+sui_project.active_account("TestAccount")
+
+sui_project.pay_all_sui()
 
 serde_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde")
@@ -68,7 +70,7 @@ wormhole_package = sui_brownie.SuiPackage(
         ".move/https___github_com_OmniBTC_wormhole_git_d0e0d1743df2430d874459bd870f590f660f0ae8/sui/wormhole")),
 )
 
-wormhole_package.program_publish_package()
+wormhole_package.program_publish_package(gas_budget=1000000000)
 
 omnipool_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnipool")
@@ -77,7 +79,8 @@ omnipool_package = sui_brownie.SuiPackage(
 omnipool_package.program_publish_package(replace_address=dict(
     serde=None,
     dola_types=None,
-    wormhole=None
+    wormhole=None,
+    governance=None,
 )
 )
 
@@ -102,7 +105,7 @@ lending_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_core")
 )
 
-lending_core_package.program_publish_package(replace_address=dict(
+lending_core_package.program_publish_package(gas_budget=1000000000, replace_address=dict(
     lending_core="0x0",
     serde=None,
     dola_types=None,
@@ -115,7 +118,7 @@ lending_core_package.program_publish_package(replace_address=dict(
     wormhole_adapter_core=None,
     governance=None
 )
-)
+                                             )
 
 system_core_package = sui_brownie.SuiPackage(
     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("system_core")
