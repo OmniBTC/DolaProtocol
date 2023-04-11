@@ -454,14 +454,14 @@ class TransactionBuild:
             return ObjectArg("SharedObject",
                              SharedObject(
                                  ObjectID(data["objectId"]),
-                                 SequenceNumber(initial_shared_version),
+                                 SequenceNumber(int(initial_shared_version)),
                                  mutable
                              ))
         else:
             return ObjectArg("ImmOrOwnedObject",
                              ObjectRef(
                                  ObjectID(data["objectId"]),
-                                 SequenceNumber(data["version"]),
+                                 SequenceNumber(int(data["version"])),
                                  ObjectDigest(data["digest"])
                              ))
 
@@ -594,10 +594,10 @@ class TransactionBuild:
                     break
                 payment = [ObjectRef(
                     ObjectID(gas["coinObjectId"]),
-                    SequenceNumber(gas["version"]),
+                    SequenceNumber(int(gas["version"])),
                     ObjectDigest(gas["digest"])
                 )]
-                gas_amount += gas["balance"]
+                gas_amount += int(gas["balance"])
 
         owner = SuiAddress(sender)
         price = U64(gas_price)
@@ -656,7 +656,7 @@ class TransactionBuild:
             CallArg("Object", ObjectArg("ImmOrOwnedObject",
                                         ObjectRef(
                                             ObjectID(data["objectId"]),
-                                            SequenceNumber(data["version"]),
+                                            SequenceNumber(int(data["version"])),
                                             ObjectDigest(data["digest"])
                                         )))
         ]
@@ -692,7 +692,7 @@ class TransactionBuild:
             input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
+            SequenceNumber(int(gas["version"])),
             ObjectDigest(gas["digest"])
         ) for gas in input_coins_info.values()]
 
@@ -739,7 +739,7 @@ class TransactionBuild:
                 "ImmOrOwnedObject",
                 ObjectRef(
                     ObjectID(input_coin),
-                    SequenceNumber(input_coins_info[input_coin]["version"]),
+                    SequenceNumber(int(input_coins_info[input_coin]["version"])),
                     ObjectDigest(input_coins_info[input_coin]["digest"])
                 ))) for input_coin in input_coins]
         arguments = [Argument("Input", U16(i)) for i in range(len(inputs))]
@@ -817,14 +817,14 @@ class TransactionBuild:
             return CallArg("Object", ObjectArg("SharedObject",
                                                SharedObject(
                                                    ObjectID(data["objectId"]),
-                                                   SequenceNumber(initial_shared_version),
+                                                   SequenceNumber(int(initial_shared_version)),
                                                    mutable
                                                )))
         else:
             return CallArg("Object", ObjectArg("ImmOrOwnedObject",
                                                ObjectRef(
                                                    ObjectID(data["objectId"]),
-                                                   SequenceNumber(data["version"]),
+                                                   SequenceNumber(int(data["version"])),
                                                    ObjectDigest(data["digest"])
                                                )))
 
@@ -947,22 +947,22 @@ class TransactionBuild:
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
                                             ObjectID(governance_info),
-                                            SequenceNumber(object_infos[governance_info]["owner"]["Shared"]
-                                                           ["initial_shared_version"]),
+                                            SequenceNumber(int(object_infos[governance_info]["owner"]["Shared"]
+                                                           ["initial_shared_version"])),
                                             Bool(False)
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
                                             ObjectID(governance_contracts),
-                                            SequenceNumber(object_infos[governance_contracts]["owner"]["Shared"]
-                                                           ["initial_shared_version"]),
+                                            SequenceNumber(int(object_infos[governance_contracts]["owner"]["Shared"]
+                                                           ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
                                             ObjectID(proposal),
-                                            SequenceNumber(object_infos[proposal]["owner"]["Shared"]
-                                                           ["initial_shared_version"]),
+                                            SequenceNumber(int(object_infos[proposal]["owner"]["Shared"]
+                                                           ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
         ]
@@ -1013,7 +1013,7 @@ class TransactionBuild:
             input_coins_info = input_coins
         payment = [ObjectRef(
             ObjectID(gas["coinObjectId"]),
-            SequenceNumber(gas["version"]),
+            SequenceNumber(int(gas["version"])),
             ObjectDigest(gas["digest"])
         ) for gas in input_coins_info.values()]
 
