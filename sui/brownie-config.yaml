@@ -17,3 +17,4 @@ sui_wallets:
     Relayer1: ${RELAYER1_MNEMONIC}
     Relayer2: ${RELAYER2_MNEMONIC}
     Relayer3: ${RELAYER3_MNEMONIC}
+    TestAccount: ${TEST_ACCOUNT_MNEMONIC}

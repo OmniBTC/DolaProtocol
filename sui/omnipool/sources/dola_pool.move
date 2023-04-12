@@ -323,7 +323,7 @@ module omnipool::dola_pool {
             let dola_contract_registry = test_scenario::take_shared<DolaContractRegistry>(scenario);
             let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
-            let dola_contract = dola_contract::create_dola_contract(&mut dola_contract_registry, ctx);
+            let dola_contract = dola_contract::create_dola_contract_for_testing(1);
             let spenders = vector::empty();
             vector::push_back(&mut spenders, dola_contract::get_dola_contract(&dola_contract));
 
@@ -333,17 +333,16 @@ module omnipool::dola_pool {
                 spenders
             });
 
-            transfer::public_transfer(dola_contract, manager);
-
             create_pool<SUI>(&gov_cap, 9, ctx);
             return_shared(dola_contract_registry);
             genesis::destroy(gov_cap);
+            dola_contract::destroy_for_testing(dola_contract);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_approval = test_scenario::take_shared<PoolApproval>(scenario);
-            let dola_contract = test_scenario::take_from_sender<DolaContract>(scenario);
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
+            let dola_contract = dola_contract::create_dola_contract_for_testing(1);
 
             let user_address = dola_address::convert_address_to_dola(@0xB);
             let amount = 1000;
@@ -370,8 +369,8 @@ module omnipool::dola_pool {
             assert!(balance::value(&pool.balance) == 0, 0);
 
             test_scenario::return_shared(pool_approval);
-            test_scenario::return_to_sender(scenario, dola_contract);
             test_scenario::return_shared(pool);
+            dola_contract::destroy_for_testing(dola_contract);
         };
         test_scenario::end(scenario_val);
     }

@@ -56,5 +56,19 @@ module dola_types::dola_contract {
             next_id: 0
         });
     }
+
+    #[test_only]
+    public fun create_dola_contract_for_testing(
+        dola_contract: u256
+    ): DolaContract {
+        DolaContract {
+            dola_contract
+        }
+    }
+
+    #[test_only]
+    public fun destroy_for_testing(dola_contract: DolaContract) {
+        let DolaContract { dola_contract: _ } = dola_contract;
+    }
 }
 

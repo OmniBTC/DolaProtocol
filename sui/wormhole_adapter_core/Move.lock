@@ -20,7 +20,6 @@ source = { local = "../app_manager" }
 
 dependencies = [
   { name = "Governance" },
-  { name = "Serde" },
   { name = "Sui" },
 ]
 
@@ -38,7 +37,6 @@ name = "Governance"
 source = { local = "../governance" }
 
 dependencies = [
-  { name = "Serde" },
   { name = "Sui" },
 ]
 
