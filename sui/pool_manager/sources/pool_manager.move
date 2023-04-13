@@ -10,18 +10,18 @@ module pool_manager::pool_manager {
     use dola_types::dola_address::{Self, DolaAddress};
     use governance::genesis::GovernanceCap;
     use pool_manager::equilibrium_fee;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
     #[test_only]
+    use governance::genesis;
+    #[test_only]
     use std::ascii::string;
     #[test_only]
     use sui::test_scenario;
-    #[test_only]
-    use governance::genesis;
-    use sui::event;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
@@ -221,7 +221,7 @@ module pool_manager::pool_manager {
         let pool_info = table::borrow_mut(pool_infos, dola_pool_id);
         table::add(&mut pool_info.pools, pool_address, PoolLiquidity {
             value: 0,
-            lambda_1: DEFAULT_ALPHA_1,
+            lambda_1: DEFAULT_LAMBDA_1,
             equilibrium_fee: 0,
             weight: 0
         });
