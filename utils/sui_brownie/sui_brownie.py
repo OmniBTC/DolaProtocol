@@ -1897,7 +1897,7 @@ class SuiProject:
             type_arguments,
             arguments,
             gas_object,
-            gas_budget,
+            str(gas_budget),
             None
         )
         return result
