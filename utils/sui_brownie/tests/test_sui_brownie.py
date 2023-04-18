@@ -19,7 +19,7 @@ class TestSuiBrownie(unittest.TestCase):
         sui_project = self.load_project()
         sui_project.active_account("Relayer")
 
-        sui_project.unsafe_pay_all_sui()
+        # sui_project.pay_all_sui()
 
         math = SuiPackage(package_path=Path.cwd().joinpath("TestProject/math"))
         math.publish_package(replace_address=dict(math="0x0"))
@@ -121,3 +121,14 @@ class TestSuiBrownie(unittest.TestCase):
             1,
             type_arguments=["0x2::sui::SUI"]
         )
+
+    def test_package_inspect(self):
+        sui_project = self.load_project()
+        sui_project.active_account("Relayer")
+
+        basics = SuiPackage(package_id=sui_project.Basics[-1],
+                            package_name="Basics"
+                            )
+        # basics.counter.create()
+        result = basics.counter.get_value.inspect(basics.counter.Counter[-1])
+        print(result)

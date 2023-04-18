@@ -77,6 +77,10 @@ module basics::counter {
         })
     }
 
+    public fun get_value(counter: &Counter): u64 {
+        counter.value
+    }
+
     public fun get_counter(counter: Counter): Counter {
         counter
     }
