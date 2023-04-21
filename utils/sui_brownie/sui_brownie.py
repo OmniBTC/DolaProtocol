@@ -2353,7 +2353,7 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        tx_bytes = base64.b64encode(msg.value.value.kind.encode).decode("ascii")
         return self.client.sui_devInspectTransactionBlock(
             self.account.account_address,
             tx_bytes,
