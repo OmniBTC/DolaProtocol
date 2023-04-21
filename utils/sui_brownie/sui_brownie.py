@@ -1299,10 +1299,12 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=100000000,
+            gas_budget=None,
             replace_address: dict = None,
             skip_dependency_verification=True
     ):
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
@@ -1344,8 +1346,10 @@ class SuiPackage:
             self,
             replace_address: dict = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1391,8 +1395,10 @@ class SuiPackage:
             upgrade_policy: int,
             replace_address: dict = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1462,8 +1468,10 @@ class SuiPackage:
             proposal: str,
             replace_address: dict = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
@@ -1522,6 +1530,7 @@ class SuiProject:
     ):
         self.project_path = project_path
         self.network = network
+        self.gas_budget = 500000000
 
         self.config = {}
         self.network_config = {}
@@ -1542,6 +1551,10 @@ class SuiProject:
         self.reload_cache()
 
         _load_project.append(self)
+
+    def set_gas_budget(self, gas_budget):
+        """Set global gas budget"""
+        self.gas_budget = gas_budget
 
     def read_item_from_cache(self, item: Union[str, SuiObject]):
         if item in self.cache_objects:
@@ -1756,8 +1769,10 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         result = self.construct_transaction(
             package_id=package_id,
             abi=abi,
@@ -1786,8 +1801,10 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         # Construct
@@ -1885,8 +1902,10 @@ class SuiProject:
             abi: dict,
             arguments: list,
             type_arguments: List[str] = None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
         for k in range(len(arguments)):
@@ -1916,8 +1935,10 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.move_call(
@@ -1944,8 +1965,10 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.move_call(
@@ -1965,7 +1988,9 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=100000000):
+    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if recipient is None:
             recipient = self.account.account_address
         if input_coins is None:
@@ -1988,7 +2013,9 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=None, gas_budget=100000000):
+    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         if recipient is None:
@@ -2017,7 +2044,9 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=100000000):
+    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
         if input_coins is None:
@@ -2043,7 +2072,9 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=None, gas_budget=100000000):
+    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         if recipients is None:
@@ -2069,7 +2100,9 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def unsafe_transfer_object(self, object_id, recipient, gas_price=None, gas_budget=100000000):
+    def unsafe_transfer_object(self, object_id, recipient, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         result = self.client.unsafe_transferObject(
@@ -2091,7 +2124,9 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def transfer_object(self, object_id, recipient, gas_price=None, gas_budget=100000000):
+    def transfer_object(self, object_id, recipient, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.transfer_object(
@@ -2111,7 +2146,9 @@ class SuiProject:
         print(f'\nExecute transaction transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
 
-    def pay(self, input_coins: list, amounts, recipients=None, gas_price=None, gas_budget=100000000):
+    def pay(self, input_coins: list, amounts, recipients=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.pay(
@@ -2137,8 +2174,10 @@ class SuiProject:
             compiled_modules,
             dep_ids,
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.publish(
@@ -2167,8 +2206,10 @@ class SuiProject:
             upgrade_policy: int,
             digest: Union[str, list],
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.upgrade(
@@ -2202,8 +2243,10 @@ class SuiProject:
             governance_contracts: str,
             proposal: str,
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         msg = TransactionBuild.dola_upgrade(
@@ -2233,8 +2276,10 @@ class SuiProject:
             actual_params,
             transactions,
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         inputs = []
@@ -2264,8 +2309,10 @@ class SuiProject:
             actual_params,
             transactions,
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         inputs = []
@@ -2288,8 +2335,10 @@ class SuiProject:
             actual_params,
             transactions,
             gas_price=None,
-            gas_budget=100000000
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         inputs = []
@@ -2319,8 +2368,10 @@ class SuiProject:
             *arguments,
             type_arguments: List[str] = None,
             gas_price=None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if gas_price is None:
             gas_price = self.estimate_gas_price()
         # Construct
