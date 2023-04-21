@@ -1758,9 +1758,9 @@ class SuiProject:
             arguments=arguments,
             type_arguments=type_arguments,
             gas_budget=gas_budget)
-        # Simulate before execute
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -1792,9 +1792,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -1923,6 +1922,11 @@ class SuiProject:
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
         return self.client.sui_dryRunTransactionBlock(tx_bytes)
 
+    def simulate_fail_abort(self, tx_bytes):
+        result = self.client.sui_dryRunTransactionBlock(tx_bytes)
+        assert result["effects"]["status"]["status"] == "success", result
+        return result
+
     def inspect(
             self,
             package_id,
@@ -1956,9 +1960,8 @@ class SuiProject:
             input_coins = list(self.get_account_sui().keys())
         result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, str(gas_budget))
 
-        # Simulate before execute
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -1987,7 +1990,7 @@ class SuiProject:
         )
         # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2013,9 +2016,9 @@ class SuiProject:
             amounts,
             gas_budget=gas_budget
         )
-        # simulate
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -2039,9 +2042,9 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
+
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2057,9 +2060,9 @@ class SuiProject:
             gas=None,
             gas_budget=gas_budget,
             recipient=recipient)
-        # simulate
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -2078,9 +2081,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2098,9 +2100,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2123,9 +2124,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2156,9 +2156,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2191,9 +2190,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2221,9 +2219,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2231,6 +2228,55 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction batch::transactions, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")
+
+    def batch_transaction_simulate(
+            self,
+            actual_params,
+            transactions,
+            gas_price=1000,
+            gas_budget=100000000
+    ):
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            actual_params=actual_params,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        return self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+    def batch_transaction_inspect(
+            self,
+            actual_params,
+            transactions,
+            gas_price=1000,
+            gas_budget=100000000
+    ):
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            actual_params=actual_params,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            tx_bytes,
+            None,
+            None
+        )
 
     def with_gas_coin(
             self,
@@ -2251,9 +2297,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
