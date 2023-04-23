@@ -1428,7 +1428,12 @@ class SuiPackage:
                                           upgrade_policy, digest,
                                           gas_price, gas_budget,
                                           )
-            self.update_abi()
+            for d in result.get("objectChanges", []):
+                if d["type"] == "published":
+                    self.package_id = d["packageId"]
+                    self.project.add_package(self)
+                    self.update_abi()
+                    break
             result = self.format_result(result)
             pprint(result)
             assert self.package_id is not None, f"Package id not found"
