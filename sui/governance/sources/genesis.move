@@ -4,12 +4,10 @@ module governance::genesis {
     use std::vector;
 
     use sui::object::{Self, UID, ID};
+    use sui::package::{Self, UpgradeCap, UpgradeTicket, UpgradeReceipt};
+    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
-    use sui::table::Table;
-    use sui::package::{UpgradeCap, UpgradeTicket, UpgradeReceipt};
-    use sui::table;
-    use sui::package;
 
     friend governance::governance_v1;
 
@@ -82,7 +80,7 @@ module governance::genesis {
         governance_contracts: &mut GovernanceContracts,
         upgrade_caps: vector<UpgradeCap>
     ) {
-        while (!vector::is_empty(&upgrade_caps)){
+        while (!vector::is_empty(&upgrade_caps)) {
             let upgrade_cap = vector::pop_back(&mut upgrade_caps);
             add_upgrade_cap(governance_contracts, upgrade_cap);
         };
@@ -119,9 +117,10 @@ module governance::genesis {
         package_id: address,
         receipt: UpgradeReceipt,
     ) {
-        // let package_id = object::id_to_address(&package::receipt_package(&receipt));
-        let cap = table::borrow_mut(&mut governance_contracts.packages, package_id);
-        package::commit_upgrade(cap, receipt)
+        let cap = table::remove(&mut governance_contracts.packages, package_id);
+        let new_package_id = object::id_to_address(&package::receipt_package(&receipt));
+        package::commit_upgrade(&mut cap, receipt);
+        table::add(&mut governance_contracts.packages, new_package_id, cap);
     }
 
     #[test_only]
