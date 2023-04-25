@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import sui_brownie
-
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 net = "sui-devnet"
@@ -67,7 +66,7 @@ pool_manager_package.program_publish_package(
 
 wormhole_package = sui_brownie.SuiPackage(
     package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_d0e0d1743df2430d874459bd870f590f660f0ae8/sui/wormhole")),
+        ".move/https___github_com_OmniBTC_wormhole_git_32eba0fce9b98214a861ba29ca3590921628a3d8/sui/wormhole")),
 )
 
 wormhole_package.program_publish_package(gas_budget=1000000000)

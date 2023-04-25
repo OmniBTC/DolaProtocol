@@ -9,6 +9,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use dola_types::dola_address::DolaAddress;
     use governance::genesis::GovernanceCap;
     use pool_manager::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
+    use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::event;
     use sui::object::{Self, UID};
@@ -19,10 +20,11 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
     use user_manager::user_manager::{Self, UserManagerInfo, UserManagerCap};
-    use wormhole::emitter::EmitterCap;
+    use wormhole::bytes32;
+    use wormhole::emitter::{Self, EmitterCap};
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::publish_message;
-    use wormhole::state::{Self, State};
+    use wormhole::state::State;
     use wormhole_adapter_core::pool_codec;
     use wormhole_adapter_core::wormhole_adapter_verify::Unit;
 
@@ -115,7 +117,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
                 id: object::new(ctx),
                 user_manager_cap: user_manager::register_cap_with_governance(governance),
                 pool_manager_cap: pool_manager::register_cap_with_governance(governance),
-                wormhole_emitter: state::new_emitter(wormhole_state, ctx),
+                wormhole_emitter: emitter::new(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
                 cache_vaas: table::new(ctx)
@@ -140,7 +142,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         vec_map::insert(
             &mut core_state.registered_emitters,
             wormhole_emitter_chain,
-            external_address::from_bytes(wormhole_emitter_address)
+            external_address::new(bytes32::new(wormhole_emitter_address))
         );
         event::emit(RegisterBridge { wormhole_emitter_chain, wormhole_emitter_address });
     }
@@ -170,6 +172,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ) {
         let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
@@ -181,7 +184,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
             &mut core_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
 
@@ -197,6 +201,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ) {
         let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
@@ -208,7 +213,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
             &mut core_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
 
@@ -224,6 +230,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
     ) {
         let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
@@ -235,7 +242,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
             &mut core_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
 
@@ -251,6 +259,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
     ) {
         let msg = pool_codec::encode_manage_pool_payload(
             dola_chain_id,
@@ -262,7 +271,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
             &mut core_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
 
@@ -373,6 +383,7 @@ module wormhole_adapter_core::wormhole_adapter_core {
         nonce: u64,
         amount: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
     ) {
         let (actual_amount, _) = pool_manager::remove_liquidity(
             &core_state.pool_manager_cap,
@@ -393,7 +404,8 @@ module wormhole_adapter_core::wormhole_adapter_core {
             &mut core_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
 
         let index = table::length(&core_state.cache_vaas) + 1;

@@ -424,7 +424,8 @@ module dola_portal::lending {
             dola_address::get_native_dola_chain_id(),
             nonce,
             withdraw_amount,
-            wormhole_fee
+            wormhole_fee,
+            clock
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
@@ -583,7 +584,8 @@ module dola_portal::lending {
             dola_address::get_native_dola_chain_id(),
             nonce,
             withdraw_amount,
-            wormhole_fee
+            wormhole_fee,
+            clock
         );
 
         transfer::public_transfer(bridge_fee, lending_portal.relayer);

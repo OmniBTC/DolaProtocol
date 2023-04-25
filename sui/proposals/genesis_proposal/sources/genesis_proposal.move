@@ -198,6 +198,7 @@ module genesis_proposal::genesis_proposal {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::remote_register_owner(
             &governance_cap,
@@ -205,7 +206,8 @@ module genesis_proposal::genesis_proposal {
             core_state,
             dola_chain_id,
             dola_contract,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         (governance_cap, certificate)
     }
@@ -218,6 +220,7 @@ module genesis_proposal::genesis_proposal {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::remote_register_spender(
             &governance_cap,
@@ -225,7 +228,8 @@ module genesis_proposal::genesis_proposal {
             core_state,
             dola_chain_id,
             dola_contract,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         (governance_cap, certificate)
     }
@@ -238,6 +242,7 @@ module genesis_proposal::genesis_proposal {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::remote_delete_owner(
             &governance_cap,
@@ -245,7 +250,8 @@ module genesis_proposal::genesis_proposal {
             core_state,
             dola_chain_id,
             dola_contract,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         (governance_cap, certificate)
     }
@@ -258,6 +264,7 @@ module genesis_proposal::genesis_proposal {
         dola_chain_id: u16,
         dola_contract: u256,
         wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::remote_delete_spender(
             &governance_cap,
@@ -265,7 +272,8 @@ module genesis_proposal::genesis_proposal {
             core_state,
             dola_chain_id,
             dola_contract,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         (governance_cap, certificate)
     }
