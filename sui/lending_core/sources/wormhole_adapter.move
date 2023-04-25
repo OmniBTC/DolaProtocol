@@ -5,6 +5,7 @@ module lending_core::wormhole_adapter {
     use std::vector;
 
     use dola_types::dola_address;
+    use governance::genesis::GovernanceCap;
     use lending_core::lending_codec;
     use lending_core::logic;
     use lending_core::storage::{Self, StorageCap, Storage};
@@ -20,7 +21,6 @@ module lending_core::wormhole_adapter {
     use user_manager::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State as WormholeState;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
-    use governance::genesis::GovernanceCap;
 
     /// Errors
     const ENOT_ENOUGH_LIQUIDITY: u64 = 0;
@@ -169,7 +169,8 @@ module lending_core::wormhole_adapter {
             source_chain_id,
             nonce,
             actual_amount,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
 
         event::emit(LendingCoreEvent {
@@ -218,7 +219,16 @@ module lending_core::wormhole_adapter {
         assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
         let dst_pool = option::destroy_some(dst_pool);
 
-        logic::execute_borrow(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, dola_pool_id, amount);
+        logic::execute_borrow(
+            storage_cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            clock,
+            dola_user_id,
+            dola_pool_id,
+            amount
+        );
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
@@ -234,7 +244,8 @@ module lending_core::wormhole_adapter {
             source_chain_id,
             nonce,
             amount,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
 
         event::emit(LendingCoreEvent {
@@ -274,7 +285,16 @@ module lending_core::wormhole_adapter {
         );
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
-        logic::execute_repay(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, dola_pool_id, amount);
+        logic::execute_repay(
+            storage_cap,
+            pool_manager_info,
+            storage,
+            oracle,
+            clock,
+            dola_user_id,
+            dola_pool_id,
+            amount
+        );
 
         // emit event
         let (source_chain_id, nonce, receiver, call_type) = lending_codec::decode_deposit_payload(app_payload);
@@ -417,7 +437,15 @@ module lending_core::wormhole_adapter {
         let i = 0;
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
-            logic::cancel_as_collateral(storage_cap, pool_manager_info, storage, oracle, clock, dola_user_id, *dola_pool_id);
+            logic::cancel_as_collateral(
+                storage_cap,
+                pool_manager_info,
+                storage,
+                oracle,
+                clock,
+                dola_user_id,
+                *dola_pool_id
+            );
             i = i + 1;
         };
     }

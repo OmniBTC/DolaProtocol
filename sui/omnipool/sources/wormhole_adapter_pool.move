@@ -11,6 +11,7 @@ module omnipool::wormhole_adapter_pool {
     use omnipool::dola_pool::{Self, Pool, PoolApproval};
     use omnipool::pool_codec;
     use omnipool::wormhole_adapter_verify::Unit;
+    use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::event::{Self, emit};
     use sui::object::{Self, UID};
@@ -20,10 +21,11 @@ module omnipool::wormhole_adapter_pool {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
-    use wormhole::emitter::EmitterCap;
+    use wormhole::bytes32;
+    use wormhole::emitter::{Self, EmitterCap};
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::publish_message;
-    use wormhole::state::{Self, State as WormholeState};
+    use wormhole::state::State as WormholeState;
 
     /// Errors
 
@@ -117,14 +119,14 @@ module omnipool::wormhole_adapter_pool {
         assert!(!pool_genesis.is_init, EHAS_INIT);
 
         // Register wormhole emitter for this module
-        let wormhole_emitter = state::new_emitter(wormhole_state, ctx);
+        let wormhole_emitter = emitter::new(wormhole_state, ctx);
 
         // Register for wormhole adpter core emitter
         let registered_emitters = vec_map::empty();
         vec_map::insert(
             &mut registered_emitters,
             sui_wormhole_chain,
-            external_address::from_bytes(sui_wormhole_address)
+            external_address::new(bytes32::new(sui_wormhole_address))
         );
 
         // Register owner and spender in dola pool
@@ -232,6 +234,7 @@ module omnipool::wormhole_adapter_pool {
         deposit_coin: Coin<CoinType>,
         app_id: u16,
         app_payload: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let msg = dola_pool::deposit<CoinType>(
@@ -246,7 +249,8 @@ module omnipool::wormhole_adapter_pool {
             &mut pool_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
@@ -259,6 +263,7 @@ module omnipool::wormhole_adapter_pool {
         wormhole_message_fee: Coin<SUI>,
         app_id: u16,
         app_payload: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let msg = dola_pool::send_message(
@@ -271,7 +276,8 @@ module omnipool::wormhole_adapter_pool {
             &mut pool_state.wormhole_emitter,
             0,
             msg,
-            wormhole_message_fee
+            wormhole_message_fee,
+            clock
         );
         let index = table::length(&pool_state.cache_vaas) + 1;
         table::add(&mut pool_state.cache_vaas, index, msg);
