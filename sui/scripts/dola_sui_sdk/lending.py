@@ -183,7 +183,7 @@ def core_supply(vaa, relay_fee=0):
     return gas, executed
 
 
-def portal_withdraw_local(coin_type, amount):
+def portal_withdraw_local(coin_type):
     """
     public entry fun withdraw_local<CoinType>(
         pool_approval: &PoolApproval,
@@ -216,7 +216,7 @@ def portal_withdraw_local(coin_type, amount):
         user_manager.user_manager.UserManagerInfo[-1],
         sui_project[SuiObject.from_type(
             pool(coin_type))][-1],
-        int(amount),
+        U64_MAX,
         type_arguments=[coin_type]
     )
 
@@ -504,7 +504,8 @@ def portal_repay(coin_type):
     public entry fun repay<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        dola_portal: &DolaPortal,
+        clock: &Clock,
+        lending_portal: &mut LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -519,17 +520,17 @@ def portal_repay(coin_type):
     oracle = load.oracle_package()
     user_manager = load.user_manager_package()
     pool_manager = load.pool_manager_package()
-    account_address = dola_portal.account.account_address
 
     dola_portal.lending.repay(
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         dola_portal.lending.LendingPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        sui_project[SuiObject.from_type(pool(coin_type))]["Shared"][-1],
+        sui_project[SuiObject.from_type(pool(coin_type))][-1],
         [sui_project[SuiObject.from_type(
-            coin(coin_type))][account_address][-1]],
+            coin(coin_type))][-1]],
         U64_MAX,
         type_arguments=[coin_type]
     )
