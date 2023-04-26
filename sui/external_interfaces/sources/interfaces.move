@@ -149,6 +149,10 @@ module external_interfaces::interfaces {
         token_prices: vector<TokenPrice>
     }
 
+    struct LiquidationDiscount has copy, drop {
+        discount: u256
+    }
+
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
         let token_liquidity = pool_manager::get_token_liquidity(pool_manager_info, dola_pool_id);
         emit(TokenLiquidityInfo {
@@ -577,6 +581,18 @@ module external_interfaces::interfaces {
         };
         emit(AllTokenPrice {
             token_prices
+        })
+    }
+
+    public entry fun get_liquidation_discount(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        liquidator: u64,
+        violator: u64
+    ) {
+        let discount = logic::calculate_liquidation_discount(storage, oracle, liquidator, violator);
+        emit(LiquidationDiscount {
+            discount
         })
     }
 
