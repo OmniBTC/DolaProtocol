@@ -36,7 +36,6 @@ def get_dola_user_id(user_address, dola_chain_id=0):
         dola_chain_id,
         list(bytes.fromhex(user_address))
     )
-    pprint.pp(result)
     return result['events'][-1]['parsedJson']
 
 
