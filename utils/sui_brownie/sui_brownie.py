@@ -282,7 +282,8 @@ class ModuleFunction:
         return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
-        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin"], f"{item} attribute not found"
+        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin",
+                        "with_gas_coin_inspect"], f"{item} attribute not found"
         return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
@@ -1527,6 +1528,10 @@ class SuiPackage:
         return result
 
 
+def get_project() -> List[SuiObject]:
+    return _load_project
+
+
 class SuiProject:
     def __init__(
             self,
@@ -2398,6 +2403,37 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
+
+    def with_gas_coin_inspect(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=None,
+            gas_budget=None,
+    ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
+        # Construct
+        msg = TransactionBuild.move_call_with_gas_coin(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.value.kind.encode).decode("ascii")
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            tx_bytes,
+            None,
+            None
+        )
 
     def estimate_gas_price(self):
         try:
