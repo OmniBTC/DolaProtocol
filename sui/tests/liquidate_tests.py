@@ -1,11 +1,31 @@
 from dola_sui_sdk import lending, init, interfaces, load, sui_project
 
 
+# Dola pools id:
+#  - 0: BTC
+#  - 1: USDT
+#  - 2: USDC
+
+# There 4 actor in this test:
+#  - Saver: Providing liquidity to the pool, ensuring that there are tokens to borrow.
+#  - Violator: Borrowing tokens from the pool, health factor below 1 is liquidated.
+#  - Liquidator: Liquidating the violator, getting a discount on the collateral.
+#  - Deployer: Have capability to manipulate oracle prices in test.
+
 def parse_u256(data: list):
     output = 0
     for i in range(32):
         output = (output << 8) + int(data[31 - i])
     return output
+
+
+def get_pool_address(pool_id):
+    if pool_id == 0:
+        return init.btc()
+    elif pool_id == 1:
+        return init.usdt()
+    else:
+        return init.usdc()
 
 
 def get_liquidation_discount(liquidator_id, violator_id):
@@ -20,20 +40,58 @@ def get_liquidation_discount(liquidator_id, violator_id):
     return parse_u256(result['results'][0]['returnValues'][0][0])
 
 
+def get_treasury_debt(token):
+    lending_core = load.lending_core_package()
+    oracle = load.oracle_package()
+
+    result = lending_core.logic.user_loan_value.inspect(
+        lending_core.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        0,
+        int(token)
+    )
+    return parse_u256(result['results'][0]['returnValues'][0][0])
+
+
+def get_treasury_collateral(token):
+    lending_core = load.lending_core_package()
+    oracle = load.oracle_package()
+
+    result = lending_core.logic.user_collateral_value.inspect(
+        lending_core.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        0,
+        int(token)
+    )
+    return parse_u256(result['results'][0]['returnValues'][0][0])
+
+
+def get_faucet_admins():
+    test_coins = load.test_coins_package()
+    result = sui_project.client.sui_getObject(test_coins.faucet.Faucet[-1], {
+        "showType": False,
+        "showOwner": False,
+        "showPreviousTransaction": False,
+        "showDisplay": False,
+        "showContent": True,
+        "showBcs": False,
+        "showStorageRebate": False
+    })
+    return result['data']['content']['fields']['admins']['fields']['contents']
+
+
 def set_mint_cap(user):
     sui_project.active_account("TestAccount")
     admin = sui_project.accounts[user].account_address
     init.add_test_coins_admin(admin)
 
 
-def supply_token(account, token, amount):
-    sui_project.active_account(account)
+def supply_token(token, amount):
     init.force_claim_test_coin(token, amount)
     lending.portal_supply(token)
 
 
-def borrow_token(account, token, amount):
-    sui_project.active_account(account)
+def borrow_token(token, amount):
     lending.portal_borrow_local(token, amount)
 
 
@@ -43,17 +101,15 @@ def repay_token(token, repay_amount):
     lending.portal_withdraw_local(token)
 
 
-def liquidate_user(liquidator, violator, collateral, debt, deposit_amount):
-    sui_project.active_account(liquidator)
-    violator = sui_project.accounts[violator].account_address
+def liquidate_user(violator, collateral, debt, deposit_amount):
+    violator_address = sui_project.accounts[violator].account_address
     # get violator user id
-    violator_id = interfaces.get_dola_user_id(violator.replace('0x', ''))['dola_user_id']
+    violator_id = interfaces.get_dola_user_id(violator_address.replace('0x', ''))['dola_user_id']
     init.force_claim_test_coin(debt, deposit_amount / 1e8)
     lending.portal_liquidate(debt, deposit_amount, collateral, 0, violator_id)
 
 
-def manipulate_oracle(deployer, pool_id, price):
-    sui_project.active_account(deployer)
+def manipulate_oracle(pool_id, price):
     oracle = load.oracle_package()
     oracle.oracle.update_token_price(
         oracle.oracle.OracleCap[-1],
@@ -63,57 +119,68 @@ def manipulate_oracle(deployer, pool_id, price):
     )
 
 
-def reset_lending_info(deployer, liquidator, violator):
+def saver_supply(saver):
+    sui_project.active_account(saver)
+
+    # supply 100 btc
+    init.force_claim_test_coin(init.btc(), 100)
+    lending.portal_supply(init.btc())
+
+    # supply 100000 usdt
+    init.force_claim_test_coin(init.usdt(), 100000)
+    lending.portal_supply(init.usdt())
+
+    # supply 100000 usdc
+    init.force_claim_test_coin(init.usdc(), 100000)
+    lending.portal_supply(init.usdc())
+
+
+def reset_oracle_price(deployer):
     sui_project.active_account(deployer)
     # reset btc price
-    manipulate_oracle(deployer, 0, 30000)
-
-    sui_project.active_account(violator)
-    violator = sui_project.accounts[violator].account_address
-    # get violator user id
-    violator_id = interfaces.get_dola_user_id(violator.replace('0x', ''))['dola_user_id']
-    lending_info = interfaces.get_user_lending_info(int(violator_id))
-    if len(lending_info['debt_infos']) > 0:
-        #  violator repay all debt
-        debt_amount = int(lending_info['debt_infos'][0]['debt_amount']) * 2
-        repay_token(init.usdc(), debt_amount)
-
-    #  violator withdraw all collateral
-    if len(lending_info['collateral_infos']) > 0:
-        lending.portal_withdraw_local(init.btc())
-
-    # liquidator withdraw all reward
-    sui_project.active_account(liquidator)
-    liquidator = sui_project.accounts[liquidator].account_address
-    # get liquidator user id
-    liquidator_id = interfaces.get_dola_user_id(liquidator.replace('0x', ''))['dola_user_id']
-    lending_info = interfaces.get_user_lending_info(int(liquidator_id))
-    if len(lending_info['collateral_infos']) > 0:
-        lending.portal_withdraw_local(init.usdc())
-
-    if len(lending_info['liquid_asset_infos']) > 0:
-        lending.portal_withdraw_local(init.btc())
+    manipulate_oracle(0, 30000)
 
 
-def basic_liquidate(liquidator, violator):
+def reset_lending_info(user):
+    sui_project.active_account(user)
+    user_address = sui_project.accounts[user].account_address
+    user_id = interfaces.get_dola_user_id(user_address.replace('0x', ''))['dola_user_id']
+    lending_info = interfaces.get_user_lending_info(int(user_id))
+
+    for debt_info in lending_info['debt_infos']:
+        dola_pool_id = int(debt_info['dola_pool_id'])
+        token = get_pool_address(dola_pool_id)
+        repay_token(token, int(debt_info['debt_amount']) * 2)
+
+    for collateral_info in lending_info['collateral_infos']:
+        dola_pool_id = int(collateral_info['dola_pool_id'])
+        token = get_pool_address(dola_pool_id)
+        lending.portal_withdraw_local(token)
+
+    for liquid_info in lending_info['liquid_asset_infos']:
+        dola_pool_id = int(liquid_info['dola_pool_id'])
+        token = get_pool_address(dola_pool_id)
+        lending.portal_withdraw_local(token)
+
+
+def basic_liquidate(deployer, liquidator, violator):
     # violator supply 1 btc
-    supply_token(violator, init.btc(), 1)
-
-    # liquidator supply 100000 usdc
-    supply_token(liquidator, init.usdc(), 100000)
+    sui_project.active_account(violator)
+    supply_token(init.btc(), 1)
 
     # violator borrow 20000 usdc
-    borrow_token(violator, init.usdc(), int(20000 * 1e8))
+    borrow_token(init.usdc(), int(20000 * 1e8))
 
     # current btc price is 30000 usd
     # manipulate oracle to make btc goes down by 5000
-    manipulate_oracle(violator, 0, 25000)
+    sui_project.active_account(deployer)
+    manipulate_oracle(0, 25000)
 
     # check lending info before liquidation
-    liquidator_addr = sui_project.accounts[liquidator].account_address
-    violator_addr = sui_project.accounts[violator].account_address
-    liquidator_id = interfaces.get_dola_user_id(liquidator_addr.replace('0x', ''))['dola_user_id']
-    violator_id = interfaces.get_dola_user_id(violator_addr.replace('0x', ''))['dola_user_id']
+    liquidator_address = sui_project.accounts[liquidator].account_address
+    violator_address = sui_project.accounts[violator].account_address
+    liquidator_id = interfaces.get_dola_user_id(liquidator_address.replace('0x', ''))['dola_user_id']
+    violator_id = interfaces.get_dola_user_id(violator_address.replace('0x', ''))['dola_user_id']
     liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
     violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
 
@@ -123,7 +190,9 @@ def basic_liquidate(liquidator, violator):
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
 
     # liquidate user
-    liquidate_user(liquidator, violator, init.btc(), init.usdc(), int(1 * 1e8))
+    sui_project.active_account(liquidator)
+    # liquidator use 10000 usdc to liquidate violator
+    liquidate_user(violator, init.btc(), init.usdc(), int(10000 * 1e8))
 
     # check after lending info after liquidation
     liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
@@ -141,23 +210,85 @@ def basic_liquidate(liquidator, violator):
     print("Liquidation Info")
     print(f"Liquidator: {liquidator} -- Violator: {violator}")
     print(f"Liquidator repaid debt value: {repaid_debt} $")
-    print(f"Liquidator harvested value of the collateral: {harvested_collateral}$ ")
+    print(f"Liquidator harvested value of the collateral: {harvested_collateral} $ ")
     print(f"Liquidator reward: {harvested_collateral - repaid_debt} $")
     print(f"Liquidation ratio: {liquidation_ratio} %")
     print(f"Liquidation discount: {liquidation_discount} % ")
 
 
-# def test_basic_liquidate():
-#     liquidator = "Oracle"
-#     deployer = violator = "TestAccount"
-#
-#     reset_lending_info(deployer, liquidator, violator)
-#     basic_liquidate(liquidator, violator)
-#     reset_lending_info(deployer, liquidator, violator)
+def liquidate_violator_multi_asset():
+    pass
 
 
-if __name__ == '__main__':
+def liquidate_liquidator_not_enough_asset():
+    pass
+
+
+def liquidate_cover_liquidator_debt():
+    pass
+
+
+def liquidate_with_deficit():
+    pass
+
+
+def check_faucet_admins(saver, liquidator, violator):
+    faucet_admins = get_faucet_admins()
+    saver_address = sui_project.accounts[saver].account_address
+    if saver_address not in faucet_admins:
+        set_mint_cap(saver)
+
+    liquidator_address = sui_project.accounts[liquidator].account_address
+    if liquidator_address not in faucet_admins:
+        set_mint_cap(liquidator)
+
+    violator_address = sui_project.accounts[violator].account_address
+    if violator_address not in faucet_admins:
+        set_mint_cap(violator)
+
+
+def check_saver_supply(saver):
+    saver_address = sui_project.accounts[saver].account_address
+    try:
+        saver_id = interfaces.get_dola_user_id(saver_address.replace('0x', ''))['dola_user_id']
+        saver_lending_info = interfaces.get_user_lending_info(int(saver_id))
+        if len(saver_lending_info['collateral_infos']) != 3:
+            saver_supply(saver)
+    except Exception:
+        print("Saver not exist")
+        saver_supply(saver)
+
+
+def check_user_init_state(user):
+    user_address = sui_project.accounts[user].account_address
+    user_id = interfaces.get_dola_user_id(user_address.replace('0x', ''))['dola_user_id']
+    user_lending_info = interfaces.get_user_lending_info(int(user_id))
+
+    if len(user_lending_info['collateral_infos']) != 0 or len(user_lending_info['debt_infos']) != 0 \
+            or len(user_lending_info['liquid_asset_infos']) != 0:
+        reset_lending_info(user)
+
+
+def check_oracle_price(deployer):
+    oracle = load.oracle_package()
+    result = oracle.oracle.get_token_price.inspect(
+        oracle.oracle.PriceOracle[-1],
+        0
+    )
+    price = int(parse_u256(result['results'][0]['returnValues'][0][0]) / 100)
+    if price != 30000:
+        reset_oracle_price(deployer)
+
+
+def test_basic_liquidate():
     liquidator = "Oracle"
     deployer = violator = "TestAccount"
-    reset_lending_info(deployer, liquidator, violator)
-    basic_liquidate(liquidator, violator)
+    saver = "Relayer1"
+
+    check_faucet_admins(saver, liquidator, violator)
+    check_saver_supply(saver)
+    check_oracle_price(deployer)
+    check_user_init_state(liquidator)
+    check_user_init_state(violator)
+
+    basic_liquidate(deployer, liquidator, violator)
