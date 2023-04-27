@@ -37,8 +37,8 @@ def borrow_token(account, token, amount):
     lending.portal_borrow_local(token, amount)
 
 
-def repay_token(account, token):
-    sui_project.active_account(account)
+def repay_token(token, repay_amount):
+    init.force_claim_test_coin(token, int(repay_amount / 1e8))
     lending.portal_repay(token)
     lending.portal_withdraw_local(token)
 
@@ -48,7 +48,7 @@ def liquidate_user(liquidator, violator, collateral, debt, deposit_amount):
     violator = sui_project.accounts[violator].account_address
     # get violator user id
     violator_id = interfaces.get_dola_user_id(violator.replace('0x', ''))['dola_user_id']
-    # init.force_claim_test_coin(debt, deposit_amount / 1e8)
+    init.force_claim_test_coin(debt, deposit_amount / 1e8)
     lending.portal_liquidate(debt, deposit_amount, collateral, 0, violator_id)
 
 
@@ -75,7 +75,8 @@ def reset_lending_info(deployer, liquidator, violator):
     lending_info = interfaces.get_user_lending_info(int(violator_id))
     if len(lending_info['debt_infos']) > 0:
         #  violator repay all debt
-        repay_token(violator, init.usdc())
+        debt_amount = int(lending_info['debt_infos'][0]['debt_amount']) * 2
+        repay_token(init.usdc(), debt_amount)
 
     #  violator withdraw all collateral
     if len(lending_info['collateral_infos']) > 0:
@@ -109,38 +110,39 @@ def basic_liquidate(liquidator, violator):
     manipulate_oracle(violator, 0, 25000)
 
     # check lending info before liquidation
-    liquidator = sui_project.accounts[liquidator].account_address
-    violator = sui_project.accounts[violator].account_address
-    liquidator_id = interfaces.get_dola_user_id(liquidator.replace('0x', ''))['dola_user_id']
-    violator_id = interfaces.get_dola_user_id(violator.replace('0x', ''))['dola_user_id']
+    liquidator_addr = sui_project.accounts[liquidator].account_address
+    violator_addr = sui_project.accounts[violator].account_address
+    liquidator_id = interfaces.get_dola_user_id(liquidator_addr.replace('0x', ''))['dola_user_id']
+    violator_id = interfaces.get_dola_user_id(violator_addr.replace('0x', ''))['dola_user_id']
     liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
     violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
 
     liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
-    before_total_collateral_value = liquidator_lending_info['total_collateral_value']
-    before_violator_collateral = violator_lending_info['total_collateral_value']
-    before_total_liquid_asset_value = liquidator_lending_info['total_liquid_value']
+    before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
 
     # liquidate user
     liquidate_user(liquidator, violator, init.btc(), init.usdc(), int(1 * 1e8))
 
     # check after lending info after liquidation
-    lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
 
-    after_total_collateral_value = lending_info['total_collateral_value']
-    after_violator_collateral = violator_lending_info['total_collateral_value']
-    after_total_liquid_asset_value = lending_info['total_liquid_value']
+    after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
 
     liquidation_ratio = round(
-        (before_violator_collateral - after_violator_collateral) / before_total_collateral_value * 100, 2)
+        ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
     repaid_debt = round((before_total_collateral_value - after_total_collateral_value) / 1e8, 2)
     harvested_collateral = round((after_total_liquid_asset_value - before_total_liquid_asset_value) / 1e8, 2)
 
     print("Liquidation Info")
     print(f"Liquidator: {liquidator} -- Violator: {violator}")
-    print(f"Liquidator repaid debt value: $ {repaid_debt} ")
-    print(f"Liquidator harvested value of the collateral: $ {harvested_collateral} ")
-    print(f"Liquidator reward: $ {harvested_collateral - repaid_debt} ")
+    print(f"Liquidator repaid debt value: {repaid_debt} $")
+    print(f"Liquidator harvested value of the collateral: {harvested_collateral}$ ")
+    print(f"Liquidator reward: {harvested_collateral - repaid_debt} $")
     print(f"Liquidation ratio: {liquidation_ratio} %")
     print(f"Liquidation discount: {liquidation_discount} % ")
 
@@ -157,4 +159,5 @@ def basic_liquidate(liquidator, violator):
 if __name__ == '__main__':
     liquidator = "Oracle"
     deployer = violator = "TestAccount"
+    reset_lending_info(deployer, liquidator, violator)
     basic_liquidate(liquidator, violator)
