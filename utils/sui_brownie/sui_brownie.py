@@ -1397,6 +1397,7 @@ class SuiPackage:
             replace_address: dict = None,
             gas_price=None,
             gas_budget=None,
+            hex_digest=None
     ):
         if gas_budget is None:
             gas_budget = self.project.gas_budget
@@ -1411,7 +1412,10 @@ class SuiPackage:
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                hex_digest = result[first_part_end:]
+                if hex_digest is None:
+                    hex_digest = result[first_part_end:]
+                else:
+                    hex_digest = hex_digest.replace("0x", "")
                 digest = list(bytes.fromhex(hex_digest))
                 result = json.loads(result[first_part_start:first_part_end])
                 print(f"Upgrade digest: {hex_digest}")
