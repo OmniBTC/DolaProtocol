@@ -185,14 +185,14 @@ def basic_liquidate(deployer, liquidator, violator):
     violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
 
     liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
-    before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
     before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
 
     # liquidate user
     sui_project.active_account(liquidator)
-    # liquidator use 10000 usdc to liquidate violator
-    liquidate_user(violator, init.btc(), init.usdc(), int(10000 * 1e8))
+    # liquidator use 20000 usdc to liquidate violator
+    repay_amount = int(20000 * 1e8)
+    liquidate_user(violator, init.btc(), init.usdc(), repay_amount)
 
     # check after lending info after liquidation
     liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
@@ -204,7 +204,7 @@ def basic_liquidate(deployer, liquidator, violator):
 
     liquidation_ratio = round(
         ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
-    repaid_debt = round((before_total_collateral_value - after_total_collateral_value) / 1e8, 2)
+    repaid_debt = round((repay_amount - after_total_collateral_value) / 1e8, 2)
     harvested_collateral = round((after_total_liquid_asset_value - before_total_liquid_asset_value) / 1e8, 2)
 
     print("Liquidation Info")
