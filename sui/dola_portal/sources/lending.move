@@ -712,8 +712,11 @@ module dola_portal::lending {
                 debt_amount,
                 ctx
             );
-        }else {
-            vector::destroy_empty(debt_coins);
+        } else {
+            // Vec<Object> cannot be null, so there might be a zero coin here.
+            // It's also possible to pass in tokens by mistake but the debt_amount is 0.
+            let zero_coin = merge_coin(debt_coins, debt_amount, ctx);
+            coin::destroy_zero(zero_coin);
         };
 
         let liquidator = user_manager::get_dola_user_id(user_manager_info, liquidator_address);

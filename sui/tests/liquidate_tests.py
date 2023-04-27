@@ -105,8 +105,8 @@ def liquidate_user(violator, collateral, debt, deposit_amount):
     violator_address = sui_project.accounts[violator].account_address
     # get violator user id
     violator_id = interfaces.get_dola_user_id(violator_address.replace('0x', ''))['dola_user_id']
-    init.force_claim_test_coin(debt, deposit_amount / 1e8)
-    lending.portal_liquidate(debt, deposit_amount, collateral, 0, violator_id)
+    init.force_claim_test_coin(debt, deposit_amount)
+    lending.portal_liquidate(debt, int(deposit_amount * 1e8), collateral, 0, violator_id)
 
 
 def manipulate_oracle(pool_id, price):
@@ -164,6 +164,10 @@ def reset_lending_info(user):
 
 
 def basic_liquidate(deployer, liquidator, violator):
+    # liquidator supply 20000 usdc
+    sui_project.active_account(liquidator)
+    supply_token(init.usdc(), 20000)
+
     # violator supply 1 btc
     sui_project.active_account(violator)
     supply_token(init.btc(), 1)
@@ -187,12 +191,12 @@ def basic_liquidate(deployer, liquidator, violator):
     liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
     before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
 
     # liquidate user
-    sui_project.active_account(liquidator)
     # liquidator use 20000 usdc to liquidate violator
-    repay_amount = int(20000 * 1e8)
-    liquidate_user(violator, init.btc(), init.usdc(), repay_amount)
+    liquidate_user(violator, init.btc(), init.usdc(), 0)
 
     # check after lending info after liquidation
     liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
@@ -201,10 +205,11 @@ def basic_liquidate(deployer, liquidator, violator):
     after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
     after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
 
     liquidation_ratio = round(
         ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
-    repaid_debt = round((repay_amount - after_total_collateral_value) / 1e8, 2)
+    repaid_debt = round((before_total_collateral_value - after_total_collateral_value) / 1e8, 2)
     harvested_collateral = round((after_total_liquid_asset_value - before_total_liquid_asset_value) / 1e8, 2)
 
     print("Liquidation Info")
@@ -214,13 +219,127 @@ def basic_liquidate(deployer, liquidator, violator):
     print(f"Liquidator reward: {harvested_collateral - repaid_debt} $")
     print(f"Liquidation ratio: {liquidation_ratio} %")
     print(f"Liquidation discount: {liquidation_discount} % ")
+    print(f"Violator health factor: {before_violator_hf} -> {after_violator_hf}")
 
 
-def liquidate_violator_multi_asset():
-    pass
+def liquidate_with_temporarily_collateral(deployer, liquidator, violator):
+    # violator supply 1 btc
+    sui_project.active_account(violator)
+    supply_token(init.btc(), 1)
+
+    # violator borrow 20000 usdc
+    borrow_token(init.usdc(), int(20000 * 1e8))
+
+    # current btc price is 30000 usd
+    # manipulate oracle to make btc goes down by 5000
+    sui_project.active_account(deployer)
+    manipulate_oracle(0, 25000)
+
+    # check lending info before liquidation
+    liquidator_address = sui_project.accounts[liquidator].account_address
+    violator_address = sui_project.accounts[violator].account_address
+    liquidator_id = interfaces.get_dola_user_id(liquidator_address.replace('0x', ''))['dola_user_id']
+    violator_id = interfaces.get_dola_user_id(violator_address.replace('0x', ''))['dola_user_id']
+    liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
+
+    liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
+    before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+
+    # liquidate user
+    sui_project.active_account(liquidator)
+    # liquidator use 20000 usdc to liquidate violator
+    repay_amount = 20000
+    liquidate_user(violator, init.btc(), init.usdc(), repay_amount)
+
+    # check after lending info after liquidation
+    liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
+
+    after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+
+    liquidation_ratio = round(
+        ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
+
+    repay_value = int(repay_amount * 1e8)
+    repaid_debt = round((repay_value - after_total_collateral_value) / 1e8, 2)
+    harvested_collateral = round((after_total_liquid_asset_value - before_total_liquid_asset_value) / 1e8, 2)
+
+    print("Liquidation Info")
+    print(f"Liquidator: {liquidator} -- Violator: {violator}")
+    print(f"Liquidator repaid debt value: {repaid_debt} $")
+    print(f"Liquidator harvested value of the collateral: {harvested_collateral} $ ")
+    print(f"Liquidator reward: {harvested_collateral - repaid_debt} $")
+    print(f"Liquidation ratio: {liquidation_ratio} %")
+    print(f"Liquidation discount: {liquidation_discount} % ")
+    print(f"Violator health factor: {before_violator_hf} -> {after_violator_hf}")
 
 
-def liquidate_liquidator_not_enough_asset():
+def liquidate_partial_collateral(deployer, liquidator, violator):
+    # liquidator supply 10000 usdc
+    sui_project.active_account(liquidator)
+    supply_token(init.usdc(), 10000)
+
+    # violator supply 1 btc
+    sui_project.active_account(violator)
+    supply_token(init.btc(), 1)
+
+    # violator borrow 20000 usdc
+    borrow_token(init.usdc(), int(20000 * 1e8))
+
+    # current btc price is 30000 usd
+    # manipulate oracle to make btc goes down by 5000
+    sui_project.active_account(deployer)
+    manipulate_oracle(0, 25000)
+
+    # check lending info before liquidation
+    liquidator_address = sui_project.accounts[liquidator].account_address
+    violator_address = sui_project.accounts[violator].account_address
+    liquidator_id = interfaces.get_dola_user_id(liquidator_address.replace('0x', ''))['dola_user_id']
+    violator_id = interfaces.get_dola_user_id(violator_address.replace('0x', ''))['dola_user_id']
+    liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
+
+    liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
+    before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+
+    # liquidate user
+    # liquidator use 10000 usdc to liquidate violator
+    liquidate_user(violator, init.btc(), init.usdc(), 0)
+
+    # check after lending info after liquidation
+    liquidator_lending_info = interfaces.get_user_lending_info(int(liquidator_id))
+    violator_lending_info = interfaces.get_user_lending_info(int(violator_id))
+
+    after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
+    after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
+    after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
+    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+
+    liquidation_ratio = round(
+        ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
+    repaid_debt = round((before_total_collateral_value - after_total_collateral_value) / 1e8, 2)
+    harvested_collateral = round((after_total_liquid_asset_value - before_total_liquid_asset_value) / 1e8, 2)
+
+    print("Liquidation Info")
+    print(f"Liquidator: {liquidator} -- Violator: {violator}")
+    print(f"Liquidator repaid debt value: {repaid_debt} $")
+    print(f"Liquidator harvested value of the collateral: {harvested_collateral} $ ")
+    print(f"Liquidator reward: {harvested_collateral - repaid_debt} $")
+    print(f"Liquidation ratio: {liquidation_ratio} %")
+    print(f"Liquidation discount: {liquidation_discount} % ")
+    print(f"Violator health factor: {before_violator_hf} -> {after_violator_hf}")
+
+
+def liquidate_multi_asset():
     pass
 
 
@@ -280,15 +399,53 @@ def check_oracle_price(deployer):
         reset_oracle_price(deployer)
 
 
-def test_basic_liquidate():
-    liquidator = "Oracle"
-    deployer = violator = "TestAccount"
-    saver = "Relayer1"
+def check_account_balance(account):
+    sui_project.active_account(account)
+    sui_coins = sui_project.get_account_sui()
+    if len(sui_coins) > 1:
+        sui_project.pay_all_sui()
+        sui_coins = sui_project.get_account_sui()
+    assert int(list(sui_coins.values())[0]['balance']) > int(1e9)
 
+
+def check_accounts_balance(deployer, saver, liquidator, violator):
+    check_account_balance(deployer)
+    check_account_balance(saver)
+    check_account_balance(liquidator)
+    check_account_balance(violator)
+
+
+def liquidate_init_checks(deployer, saver, liquidator, violator):
+    check_accounts_balance(deployer, saver, liquidator, violator)
     check_faucet_admins(saver, liquidator, violator)
     check_saver_supply(saver)
     check_oracle_price(deployer)
     check_user_init_state(liquidator)
     check_user_init_state(violator)
 
+
+liquidator = "Oracle"
+deployer = violator = "TestAccount"
+saver = "Relayer1"
+
+
+def test_basic_liquidate():
+    liquidate_init_checks(deployer, saver, liquidator, violator)
     basic_liquidate(deployer, liquidator, violator)
+
+
+def test_liquidate_with_temporarily_collateral():
+    liquidate_init_checks(deployer, saver, liquidator, violator)
+    liquidate_with_temporarily_collateral(deployer, liquidator, violator)
+
+
+def test_liquidate_partial_collateral():
+    liquidate_init_checks(deployer, saver, liquidator, violator)
+    liquidate_partial_collateral(deployer, liquidator, violator)
+
+
+if __name__ == '__main__':
+    liquidator = "Oracle"
+    deployer = violator = "TestAccount"
+    saver = "Relayer1"
+    init.force_claim_test_coin(init.btc(), 0)
