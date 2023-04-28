@@ -434,9 +434,9 @@ module lending_core::logic {
     }
 
     public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u256): bool {
-        let borrow_ceiling = storage::get_reserve_borrow_ceiling(storage, dola_pool_id);
+        let supply_ceiling = storage::get_reserve_supply_ceiling(storage, dola_pool_id);
         let total_supply = total_otoken_supply(storage, dola_pool_id);
-        total_supply + supply_amount < borrow_ceiling
+        supply_ceiling == 0 || total_supply + supply_amount < supply_ceiling
     }
 
     /// Check whether the maximum borrow limit has been reached
