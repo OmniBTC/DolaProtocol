@@ -55,6 +55,8 @@ module lending_core::storage {
         treasury: u64,
         // Treasury interest factor [math::ray]
         treasury_factor: u256,
+        // Supply cap ceiling, 0 means there is no ceiling
+        supply_cap_ceiling: u256,
         // Borrow cap ceiling, 0 means there is no ceiling
         borrow_cap_ceiling: u256,
         // Current borrow rate [math::ray]
@@ -121,6 +123,7 @@ module lending_core::storage {
         borrowable_in_isolation: bool,
         treasury: u64,
         treasury_factor: u256,
+        supply_cap_ceiling: u256,
         borrow_cap_ceiling: u256,
         collateral_coefficient: u256,
         borrow_coefficient: u256,
@@ -138,6 +141,7 @@ module lending_core::storage {
             last_update_timestamp: oracle::get_timestamp(clock),
             treasury,
             treasury_factor,
+            supply_cap_ceiling,
             borrow_cap_ceiling,
             current_borrow_rate: 0,
             current_liquidity_rate: 0,
@@ -190,6 +194,16 @@ module lending_core::storage {
     ) {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.treasury_factor = treasury_factor;
+    }
+
+    public fun set_supply_cap_ceiling(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        supply_cap_ceiling: u256
+    ) {
+        let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
+        reserve.supply_cap_ceiling = supply_cap_ceiling;
     }
 
     public fun set_borrow_cap_ceiling(
@@ -345,7 +359,11 @@ module lending_core::storage {
         table::borrow(&storage.reserves, dola_pool_id).treasury_factor
     }
 
-    public fun get_reserve_ceilings(storage: &mut Storage, dola_pool_id: u16): u256 {
+    public fun get_reserve_supply_ceiling(storage: &mut Storage, dola_pool_id: u16): u256 {
+        table::borrow(&storage.reserves, dola_pool_id).supply_cap_ceiling
+    }
+
+    public fun get_reserve_borrow_ceiling(storage: &mut Storage, dola_pool_id: u16): u256 {
         table::borrow(&storage.reserves, dola_pool_id).borrow_cap_ceiling
     }
 
