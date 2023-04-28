@@ -97,7 +97,7 @@ module lending_core::logic_tests {
 
     public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle) {
         // register btc oracle
-        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 2000000, 2);
+        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 3000000, 2);
 
         // register usdt oracle
         oracle::register_token_price(cap, oracle, USDT_POOL_ID, 100, 2);
@@ -106,7 +106,7 @@ module lending_core::logic_tests {
         oracle::register_token_price(cap, oracle, USDC_POOL_ID, 100, 2);
 
         // register eth oracle
-        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 150000, 2);
+        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 200000, 2);
 
         // register isolate oracle
         oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
@@ -1760,18 +1760,14 @@ module lending_core::logic_tests {
         let usdt_pool = dola_address::create_dola_address(0, b"USDT");
         let supply_btc_amount = ONE;
         let supply_usdt_amount = 50000 * ONE;
-
-        let user_btc_value = 20000 * ONE;
-        // btc_value * BTC_CF = usdt_value * USDT_BF
-        let borrow_usdt_value = math::ray_div(math::ray_mul(user_btc_value, BTC_CF), USDT_BF);
-        let borrow_usdt_amount = borrow_usdt_value;
+        let borrow_usdt_amount = 20000 * ONE;
 
         // User 0 supply 1 btc
         supply_scenario(scenario, creator, btc_pool, BTC_POOL_ID, 0, supply_btc_amount);
         // User 1 supply 50000 usdt
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
-        // User 0 borrow max usdt - 1
-        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount - 1);
+        // User 0 borrow 20000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
 
         test_scenario::next_tx(scenario, creator);
         {
@@ -1782,13 +1778,28 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
-            // Check user HF > 1
-            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
+            // Check detailed state
 
-            // Simulate BTC price drop
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+            // Check treasury state
+            let treasury = storage::get_reserve_treasury(&mut storage, BTC_POOL_ID);
+            let before_treasury_reserved = logic::user_collateral_balance(&mut storage, treasury, BTC_POOL_ID);
 
-            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
+            // Check user 0 state
+            assert!(logic::user_collateral_balance(&mut storage, 0, BTC_POOL_ID) == supply_btc_amount, 201);
+            assert!(logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID) == borrow_usdt_amount, 202);
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 203);
+            let before_user0_btc_balance = logic::user_collateral_balance(&mut storage, 0, BTC_POOL_ID);
+            let before_user0_usdt_debt = logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID);
+
+            // Check user 1 state
+            assert!(logic::user_collateral_balance(&mut storage, 1, USDT_POOL_ID) == supply_usdt_amount, 204);
+            assert!(logic::user_collateral_balance(&mut storage, 1, BTC_POOL_ID) == 0, 205);
+            let before_user1_usdt_balance = logic::user_collateral_balance(&mut storage, 1, USDT_POOL_ID);
+
+            // Simulate BTC price drop to 20000
+            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 2500000);
+
+            assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 206);
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
@@ -1803,9 +1814,31 @@ module lending_core::logic_tests {
                 USDT_POOL_ID
             );
 
+            // Check treasury state
+            let after_treasury_reserved = logic::user_collateral_balance(&mut storage, treasury, BTC_POOL_ID);
+            let liquidation_reserved = after_treasury_reserved - before_treasury_reserved;
+
+            // Check user 0 state
+            let user0_btc_balance = logic::user_collateral_balance(&mut storage, 0, BTC_POOL_ID);
+            let after_user0_usdt_debt = logic::user_loan_balance(&mut storage, 0, USDT_POOL_ID);
+
+            // Check user 1 state
+            let user1_btc_balance = logic::user_collateral_balance(&mut storage, 1, BTC_POOL_ID);
+            let after_user1_usdt_balance = logic::user_collateral_balance(&mut storage, 1, USDT_POOL_ID);
+
+            // Check user 0 btc_balance + user 1 btc_balance + liquidation_reserved = supply_btc_amount
+            assert!(user0_btc_balance + user1_btc_balance + liquidation_reserved == before_user0_btc_balance, 207);
+            // Check that the USDT debt reduced by user 0 equals the USDT balance decreased by user 1
             assert!(
-                logic::user_health_factor(&mut storage, &mut oracle, 0) * 100 / RAY == TARGET_HEALTH_FACTOR * 100 / RAY,
-                203
+                before_user0_usdt_debt - after_user0_usdt_debt == before_user1_usdt_balance - after_user1_usdt_balance,
+                208
+            );
+            // Check user 0 heath factor == 1.25
+            assert!(
+                get_percentage(logic::user_health_factor(&mut storage, &mut oracle, 0)) == get_percentage(
+                    RAY + RAY / 4
+                ),
+                209
             );
 
             test_scenario::return_shared(pool_manager_info);
@@ -2003,7 +2036,7 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
-            // Check user HF > 1
+            // Check user 0 HF > 1
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
 
             // Simulate BTC price has fallen sharply

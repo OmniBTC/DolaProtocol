@@ -444,16 +444,8 @@ module lending_core::logic {
         let user_collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let isolate_asset = vector::borrow(&user_collaterals, 0);
         let borrow_ceiling = storage::get_reserve_borrow_ceiling(storage, *isolate_asset);
-        if (borrow_ceiling == 0) {
-            true
-        } else {
-            let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
-            if (isolate_debt + borrow_amount > borrow_ceiling) {
-                false
-            } else {
-                true
-            }
-        }
+        let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
+        borrow_ceiling == 0 || isolate_debt + borrow_amount < borrow_ceiling
     }
 
     public fun is_borrowable_asset(storage: &mut Storage, dola_pool_id: u16): bool {
