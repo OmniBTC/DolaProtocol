@@ -288,9 +288,9 @@ module lending_core::logic_tests {
             false,
             666,
             TREASURY_FACTOR,
+            0,
             1000 * ONE,
             ISOLATE_CF,
-            0,
             0,
             BASE_BORROW_RATE,
             BORROW_RATE_SLOPE1,
@@ -408,7 +408,6 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
-            // User 0 borrow 5000 usdt
             logic::execute_borrow(
                 &storage_cap,
                 &mut pool_manager_info,
@@ -1298,7 +1297,6 @@ module lending_core::logic_tests {
 
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
 
-        // User 0 borrow 5000 usdt
         borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
 
         test_scenario::end(scenario_val);
