@@ -32,33 +32,9 @@ def vote_create_pool(coin_type, decimal=8):
     )
 
 
-def get_upgrade_cap_info(upgrade_cap_ids: tuple):
-    result = sui_project.client.sui_multiGetObjects(
-        upgrade_cap_ids,
-        {
-            "showType": True,
-            "showOwner": True,
-            "showPreviousTransaction": False,
-            "showDisplay": False,
-            "showContent": True,
-            "showBcs": False,
-            "showStorageRebate": False
-        }
-    )
-
-    return {v['data']['content']['fields']['package']: v['data'] for v in result if 'data' in v}
-
-
-def get_upgrade_cap_by_package_id(package_id: str):
-    upgrade_cap_ids = tuple(list(sui_project["0x2::package::UpgradeCap"]))
-    info = get_upgrade_cap_info(upgrade_cap_ids)
-    if package_id in info:
-        return info[package_id]["objectId"]
-
-
 def init_wormhole():
     """
-    public entry fun init_and_share_state(
+    public entry fun complete(
         deployer: DeployerCap,
         upgrade_cap: UpgradeCap,
         governance_chain: u16,
@@ -71,9 +47,9 @@ def init_wormhole():
     :return:
     """
     wormhole = load.wormhole_package()
-    upgrade_cap = get_upgrade_cap_by_package_id(wormhole.package_id)
+    upgrade_cap = load.get_upgrade_cap_by_package_id(wormhole.package_id)
 
-    wormhole.setup.init_and_share_state(
+    wormhole.setup.complete(
         wormhole.setup.DeployerCap[-1],
         upgrade_cap,
         0,
@@ -692,9 +668,7 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
         }
     )
 
-    return [int(s) for s in
-            result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["addr"]["fields"]["value"]["fields"][
-                "data"]]
+    return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
 
 
 def batch_execute_proposal():
@@ -924,7 +898,7 @@ def batch_execute_proposal():
     lending_contract_id = int(lending_portal_contract_id())
     result = sui_project.pay_sui([0])
     register_spender_fee = result['objectChanges'][-1]['objectId']
-    register_spender_param = [0, lending_contract_id, register_spender_fee]
+    register_spender_param = [0, lending_contract_id, register_spender_fee, clock()]
 
     create_proposal()
     sui_project.batch_transaction(
@@ -935,6 +909,7 @@ def batch_execute_proposal():
                        register_spender_param[0],  # 4
                        register_spender_param[1],  # 5
                        register_spender_param[2],  # 6
+                       register_spender_param[3],  # 7
                        ],
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -950,6 +925,7 @@ def batch_execute_proposal():
                  Argument("Input", U16(4)),
                  Argument("Input", U16(5)),
                  Argument("Input", U16(6)),
+                 Argument("Input", U16(7))
                  ],
                 []
             ],  # 1. remote_register_spender
@@ -1342,7 +1318,7 @@ def batch_init_oracle():
     matic_token_param = [4, 100, 2]
     apt_token_param = [5, 1830, 2]
     bnb_token_param = [6, 28500, 2]
-    sui_token_param = [7, 10000, 2]
+    sui_token_param = [7, 100, 2]
 
     sui_project.batch_transaction(
         actual_params=[oracle.oracle.OracleCap[-1],  # 0

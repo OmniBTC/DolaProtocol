@@ -4,7 +4,7 @@ from sui_brownie import SuiObject
 
 from dola_sui_sdk import load
 from dola_sui_sdk.init import btc, usdt, usdc, sui, clock
-from dola_sui_sdk.init import coin, pool, bridge_pool_read_vaa
+from dola_sui_sdk.init import coin, pool
 from dola_sui_sdk.load import sui_project
 
 U64_MAX = 18446744073709551615
@@ -183,12 +183,13 @@ def core_supply(vaa, relay_fee=0):
     return gas, executed
 
 
-def portal_withdraw_local(coin_type, amount):
+def portal_withdraw_local(coin_type):
     """
     public entry fun withdraw_local<CoinType>(
         pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -204,18 +205,18 @@ def portal_withdraw_local(coin_type, amount):
     user_manager = load.user_manager_package()
     pool_manager = load.pool_manager_package()
     omnipool = load.omnipool_package()
-    account_address = dola_portal.account.account_address
 
     dola_portal.lending.withdraw_local(
         omnipool.dola_pool.PoolApproval[-1],
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         dola_portal.lending.LendingPortal[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         sui_project[SuiObject.from_type(
-            pool(coin_type))][account_address][-1],
-        int(amount),
+            pool(coin_type))][-1],
+        U64_MAX,
         type_arguments=[coin_type]
     )
 
@@ -363,6 +364,7 @@ def portal_borrow_local(coin_type, amount):
         pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
+        clock: &Clock,
         lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
@@ -378,17 +380,17 @@ def portal_borrow_local(coin_type, amount):
     user_manager = load.user_manager_package()
     pool_manager = load.pool_manager_package()
     omnipool = load.omnipool_package()
-    account_address = dola_portal.account.account_address
 
     dola_portal.lending.borrow_local(
         omnipool.dola_pool.PoolApproval[-1],
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         dola_portal.lending.LendingPortal[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         sui_project[SuiObject.from_type(
-            pool(coin_type))][account_address][-1],
+            pool(coin_type))][-1],
         int(amount),
         type_arguments=[coin_type]
     )
@@ -502,7 +504,8 @@ def portal_repay(coin_type):
     public entry fun repay<CoinType>(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
-        dola_portal: &DolaPortal,
+        clock: &Clock,
+        lending_portal: &mut LendingPortal,
         user_manager_info: &mut UserManagerInfo,
         pool_manager_info: &mut PoolManagerInfo,
         pool: &mut Pool<CoinType>,
@@ -517,17 +520,17 @@ def portal_repay(coin_type):
     oracle = load.oracle_package()
     user_manager = load.user_manager_package()
     pool_manager = load.pool_manager_package()
-    account_address = dola_portal.account.account_address
 
     dola_portal.lending.repay(
         lending_core.storage.Storage[-1],
         oracle.oracle.PriceOracle[-1],
+        clock(),
         dola_portal.lending.LendingPortal[-1],
         user_manager.user_manager.UserManagerInfo[-1],
         pool_manager.pool_manager.PoolManagerInfo[-1],
-        sui_project[SuiObject.from_type(pool(coin_type))]["Shared"][-1],
+        sui_project[SuiObject.from_type(pool(coin_type))][-1],
         [sui_project[SuiObject.from_type(
-            coin(coin_type))][account_address][-1]],
+            coin(coin_type))][-1]],
         U64_MAX,
         type_arguments=[coin_type]
     )
@@ -585,47 +588,49 @@ def core_repay(vaa, relay_fee=0):
     return gas, executed
 
 
-def portal_liquidate(debt_coin_type, collateral_coin_type, dst_chain=0, receiver=None):
+def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id):
     """
-    public entry fun liquidate<DebtCoinType, CollateralCoinType>(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        receiver: vector<u8>,
-        dst_chain: u16,
-        wormhole_message_coins: vector<Coin<SUI>>,
-        wormhole_message_amount: u64,
+    public entry fun liquidate<DebtCoinType>(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        clock: &Clock,
+        lending_portal: &mut LendingPortal,
+        user_manager_info: &mut UserManagerInfo,
+        pool_manager_info: &mut PoolManagerInfo,
         debt_pool: &mut Pool<DebtCoinType>,
         // liquidators repay debts to obtain collateral
         debt_coins: vector<Coin<DebtCoinType>>,
         debt_amount: u64,
+        liquidate_chain_id: u16,
+        liquidate_pool_address: vector<u8>,
         liquidate_user_id: u64,
         ctx: &mut TxContext
     )
     :return:
     """
     dola_portal = load.dola_portal_package()
-    omnipool = load.omnipool_package()
-    wormhole = load.wormhole_package()
-    account_address = dola_portal.account.account_address
-    if receiver is None:
-        receiver = account_address
+    lending_core = load.lending_core_package()
+    oracle = load.oracle_package()
+    user_manager = load.user_manager_package()
+    pool_manager = load.pool_manager_package()
 
     dola_portal.lending.liquidate(
-        omnipool.wormhole_adapter_pool.PoolState[-1],
-        wormhole.state.State[-1],
-        receiver,
-        dst_chain,
-        [],
-        0,
+        lending_core.storage.Storage[-1],
+        oracle.oracle.PriceOracle[-1],
+        clock(),
+        dola_portal.lending.LendingPortal[-1],
+        user_manager.user_manager.UserManagerInfo[-1],
+        pool_manager.pool_manager.PoolManagerInfo[-1],
         sui_project[SuiObject.from_type(
-            pool(debt_coin_type))][account_address][-1],
+            pool(debt_coin_type))][-1],
         [sui_project[SuiObject.from_type(
-            coin(debt_coin_type))][account_address][-1]],
-        U64_MAX,
-        0,
-        type_arguments=[debt_coin_type, collateral_coin_type]
+            coin(debt_coin_type))][-1]],
+        int(deposit_amount),
+        int(collateral_chain_id),
+        list(bytes(collateral_pool_address.replace('0x', ''), 'ascii')),
+        int(violator_id),
+        type_arguments=[debt_coin_type]
     )
-    return bridge_pool_read_vaa()[0]
 
 
 def core_liquidate(vaa, relay_fee=0):
