@@ -204,6 +204,7 @@ module lending_core::logic_tests {
             false,
             666,
             TREASURY_FACTOR,
+            10000 * ONE,
             0,
             BTC_CF,
             BTC_BF,
@@ -225,6 +226,7 @@ module lending_core::logic_tests {
             666,
             TREASURY_FACTOR,
             0,
+            0,
             USDT_CF,
             USDT_BF,
             BASE_BORROW_RATE,
@@ -244,6 +246,7 @@ module lending_core::logic_tests {
             true,
             666,
             TREASURY_FACTOR,
+            0,
             0,
             USDC_CF,
             USDC_BF,
@@ -265,6 +268,7 @@ module lending_core::logic_tests {
             666,
             TREASURY_FACTOR,
             0,
+            0,
             ETH_CF,
             ETH_BF,
             BASE_BORROW_RATE,
@@ -284,6 +288,7 @@ module lending_core::logic_tests {
             false,
             666,
             TREASURY_FACTOR,
+            0,
             1000 * ONE,
             ISOLATE_CF,
             0,
@@ -374,6 +379,7 @@ module lending_core::logic_tests {
                 supply_pool_id,
                 supply_amount
             );
+
             // check user otoken
             assert!(logic::user_collateral_balance(&mut storage, supply_user_id, supply_pool_id) == supply_amount, 101);
 
@@ -402,7 +408,6 @@ module lending_core::logic_tests {
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
-            // User 0 borrow 5000 usdt
             logic::execute_borrow(
                 &storage_cap,
                 &mut pool_manager_info,
@@ -1292,15 +1297,55 @@ module lending_core::logic_tests {
 
         supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 1, supply_usdt_amount);
 
-        // User 0 borrow 5000 usdt
         borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+
+    #[test]
+    #[expected_failure(abort_code = logic::EREACH_SUPPLY_CEILING)]
+    public fun test_supply_reach_ceiling() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        let btc_pool = dola_address::create_dola_address(0, b"BTC");
+        let supply_btc_amount = 5000 * ONE;
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            supply_btc_amount
+        );
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            supply_btc_amount
+        );
+
+        supply_scenario(
+            scenario,
+            creator,
+            btc_pool,
+            BTC_POOL_ID,
+            0,
+            supply_btc_amount
+        );
 
         test_scenario::end(scenario_val);
     }
 
     #[test]
     #[expected_failure(abort_code = logic::EREACH_BORROW_CEILING)]
-    public fun test_borrow_ceiling_in_isolation() {
+    public fun test_borrow_reach_ceiling() {
         let creator = @0xA;
 
         let scenario_val = init_test_scenario(creator);
