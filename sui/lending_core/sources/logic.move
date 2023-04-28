@@ -101,7 +101,7 @@ module lending_core::logic {
         // Use the user's existing collateral to liquidate the debt.
         let repay_debt = user_collateral_balance(storage, liquidator, loan);
 
-        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, _) = calculate_actual_liquidation(
+        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral) = calculate_actual_liquidation(
             oracle,
             collateral,
             max_liquidable_collateral,
@@ -748,17 +748,14 @@ module lending_core::logic {
         max_liquidable_debt: u256,
         repay_debt: u256,
         treasury_factor: u256
-    ): (u256, u256, u256, u256, u256) {
-        let excess_repay_amount;
+    ): (u256, u256, u256, u256) {
         let actual_liquidable_collateral;
         let actual_liquidable_debt;
 
         if (repay_debt >= max_liquidable_debt) {
-            excess_repay_amount = repay_debt - max_liquidable_debt;
             actual_liquidable_debt = max_liquidable_debt;
             actual_liquidable_collateral = max_liquidable_collateral;
         } else {
-            excess_repay_amount = 0;
             actual_liquidable_debt = repay_debt;
             actual_liquidable_collateral = math::ray_mul(
                 (max_liquidable_collateral),
@@ -766,13 +763,13 @@ module lending_core::logic {
             );
         };
 
-        let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
-        let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
+        let collateral_value = calculate_value(oracle, collateral, actual_liquidable_collateral);
+        let loan_value = calculate_value(oracle, loan, actual_liquidable_debt);
         let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
         // the treasury keeps a portion of the discount incentive
         let treasury_reserved_collateral = math::ray_mul(reward, treasury_factor);
-        let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
-        (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
+        let liquidator_acquired_collateral = actual_liquidable_collateral - treasury_reserved_collateral;
+        (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral)
     }
 
     public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {

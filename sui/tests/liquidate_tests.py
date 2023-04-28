@@ -192,10 +192,10 @@ def basic_liquidate(deployer, liquidator, violator):
     before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
     before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
-    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    before_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
-    # liquidate user
     # liquidator use 20000 usdc to liquidate violator
+    sui_project.active_account(liquidator)
     liquidate_user(violator, init.btc(), init.usdc(), 0)
 
     # check after lending info after liquidation
@@ -205,7 +205,7 @@ def basic_liquidate(deployer, liquidator, violator):
     after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
     after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
-    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    after_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
     liquidation_ratio = round(
         ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
@@ -246,11 +246,10 @@ def liquidate_with_temporarily_collateral(deployer, liquidator, violator):
     liquidation_discount = round(get_liquidation_discount(liquidator_id, violator_id) / 1e25, 2)
     before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
-    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    before_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
-    # liquidate user
-    sui_project.active_account(liquidator)
     # liquidator use 20000 usdc to liquidate violator
+    sui_project.active_account(liquidator)
     repay_amount = 20000
     liquidate_user(violator, init.btc(), init.usdc(), repay_amount)
 
@@ -261,7 +260,7 @@ def liquidate_with_temporarily_collateral(deployer, liquidator, violator):
     after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
     after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
-    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    after_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
     liquidation_ratio = round(
         ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
@@ -309,10 +308,10 @@ def liquidate_partial_collateral(deployer, liquidator, violator):
     before_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     before_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
     before_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
-    before_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    before_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
-    # liquidate user
     # liquidator use 10000 usdc to liquidate violator
+    sui_project.active_account(liquidator)
     liquidate_user(violator, init.btc(), init.usdc(), 0)
 
     # check after lending info after liquidation
@@ -322,7 +321,7 @@ def liquidate_partial_collateral(deployer, liquidator, violator):
     after_total_collateral_value = int(liquidator_lending_info['total_collateral_value'])
     after_violator_collateral = int(violator_lending_info['collateral_infos'][0]['collateral_amount'])
     after_total_liquid_asset_value = int(liquidator_lending_info['total_liquid_value'])
-    after_violator_hf = (int(violator_lending_info['health_factor']) / 1e27, 2)
+    after_violator_hf = round(int(violator_lending_info['health_factor']) / 1e27, 2)
 
     liquidation_ratio = round(
         ((before_violator_collateral - after_violator_collateral) / before_violator_collateral) * 100, 2)
@@ -380,12 +379,15 @@ def check_saver_supply(saver):
 
 def check_user_init_state(user):
     user_address = sui_project.accounts[user].account_address
-    user_id = interfaces.get_dola_user_id(user_address.replace('0x', ''))['dola_user_id']
-    user_lending_info = interfaces.get_user_lending_info(int(user_id))
+    try:
+        user_id = interfaces.get_dola_user_id(user_address.replace('0x', ''))['dola_user_id']
+        user_lending_info = interfaces.get_user_lending_info(int(user_id))
 
-    if len(user_lending_info['collateral_infos']) != 0 or len(user_lending_info['debt_infos']) != 0 \
-            or len(user_lending_info['liquid_asset_infos']) != 0:
-        reset_lending_info(user)
+        if len(user_lending_info['collateral_infos']) != 0 or len(user_lending_info['debt_infos']) != 0 \
+                or len(user_lending_info['liquid_asset_infos']) != 0:
+            reset_lending_info(user)
+    except Exception as e:
+        print(f"User not exist? {e}")
 
 
 def check_oracle_price(deployer):
