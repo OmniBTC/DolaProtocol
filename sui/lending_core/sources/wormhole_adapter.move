@@ -68,8 +68,8 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        clock: &Clock,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
@@ -80,6 +80,7 @@ module lending_core::wormhole_adapter {
             vaa,
             pool_manager_info,
             user_manager_info,
+            clock,
             ctx
         );
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
@@ -118,9 +119,9 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
@@ -129,6 +130,7 @@ module lending_core::wormhole_adapter {
             core_state,
             storage::get_app_cap(storage_cap, storage),
             vaa,
+            clock,
             ctx
         );
         let (source_chain_id, nonce, amount, pool, receiver, call_type) = lending_codec::decode_withdraw_payload(
@@ -194,9 +196,9 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        clock: &Clock,
         wormhole_message_fee: Coin<SUI>,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
@@ -205,6 +207,7 @@ module lending_core::wormhole_adapter {
             core_state,
             storage::get_app_cap(storage_cap, storage),
             vaa,
+            clock,
             ctx
         );
         let (source_chain_id, nonce, amount, pool, receiver, call_type) = lending_codec::decode_withdraw_payload(
@@ -269,8 +272,8 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        clock: &Clock,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
@@ -281,6 +284,7 @@ module lending_core::wormhole_adapter {
             vaa,
             pool_manager_info,
             user_manager_info,
+            clock,
             ctx
         );
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
@@ -320,8 +324,8 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
-        clock: &Clock,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
@@ -332,6 +336,7 @@ module lending_core::wormhole_adapter {
             vaa,
             pool_manager_info,
             user_manager_info,
+            clock,
             ctx
         );
         let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, call_type) = lending_codec::decode_liquidate_payload(
@@ -385,8 +390,9 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        vaa: vector<u8>,
         clock: &Clock,
-        vaa: vector<u8>
+        ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
@@ -394,7 +400,9 @@ module lending_core::wormhole_adapter {
             wormhole_state,
             core_state,
             storage::get_app_cap(storage_cap, storage),
-            vaa
+            vaa,
+            clock,
+            ctx
         );
         let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
         assert!(call_type == lending_codec::get_as_colleteral_type(), EINVALID_CALL_TYPE);
@@ -417,8 +425,9 @@ module lending_core::wormhole_adapter {
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
+        vaa: vector<u8>,
         clock: &Clock,
-        vaa: vector<u8>
+        ctx: &mut TxContext
     ) {
         let storage_cap = get_storage_cap(wormhole_adapter);
         // Verify that a message is valid using the wormhole
@@ -426,7 +435,9 @@ module lending_core::wormhole_adapter {
             wormhole_state,
             core_state,
             storage::get_app_cap(storage_cap, storage),
-            vaa
+            vaa,
+            clock,
+            ctx
         );
         let (dola_pool_ids, call_type) = lending_codec::decode_manage_collateral_payload(app_payload);
         assert!(call_type == lending_codec::get_cancel_as_colleteral_type(), EINVALID_CALL_TYPE);

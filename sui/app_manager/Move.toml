@@ -10,7 +10,7 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "f65b02ccc0de97e815abe0afed0ff69c4571d265"
+rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
 
 [dependencies.Governance]
 local = "../governance"
