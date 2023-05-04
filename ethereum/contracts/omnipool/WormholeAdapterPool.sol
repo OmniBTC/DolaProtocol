@@ -27,10 +27,6 @@ contract WormholeAdapterPool {
     // Used to verify that the VAA has been processed
     mapping(bytes32 => bool) consumedVaas;
 
-    // todo! Delete after wormhole running
-    mapping(uint64 => bytes) public cachedVAA;
-    uint64 vaaNonce;
-
     event PoolWithdrawEvent(
         uint64 nonce,
         uint16 sourceChainId,
@@ -49,19 +45,6 @@ contract WormholeAdapterPool {
         dolaChainId = _dolaChainId;
         dolaPool = new DolaPool(_dolaChainId, address(this));
         wormholeFinality = _wormholeFinality;
-    }
-
-    // todo! Delete after wormhole running
-    function getNonce() public view returns (uint64) {
-        return vaaNonce;
-    }
-
-    function getLatestVAA() public view returns (bytes memory) {
-        return cachedVAA[getNonce() - 1];
-    }
-
-    function increaseNonce() internal {
-        vaaNonce += 1;
     }
 
     /// Call by governance
@@ -170,9 +153,6 @@ contract WormholeAdapterPool {
             payload,
             wormholeFinality
         );
-
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
@@ -184,8 +164,6 @@ contract WormholeAdapterPool {
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
         wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
     }
 
     /// Receive withdraw

@@ -13,11 +13,10 @@ module omnipool::wormhole_adapter_pool {
     use omnipool::wormhole_adapter_verify::Unit;
     use sui::clock::Clock;
     use sui::coin::Coin;
-    use sui::event::{Self, emit};
+    use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
-    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
     use sui::vec_map::{Self, VecMap};
@@ -64,8 +63,6 @@ module omnipool::wormhole_adapter_pool {
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
         registered_emitters: VecMap<u16, ExternalAddress>,
-        // todo! Delete after wormhole running
-        cache_vaas: Table<u64, vector<u8>>
     }
 
     /// Events
@@ -139,7 +136,6 @@ module omnipool::wormhole_adapter_pool {
             wormhole_emitter,
             consumed_vaas: object_table::new(ctx),
             registered_emitters,
-            cache_vaas: table::new(ctx)
         };
         transfer::share_object(pool_state);
         pool_genesis.is_init = true;
@@ -252,8 +248,6 @@ module omnipool::wormhole_adapter_pool {
             wormhole_message_fee,
             clock
         );
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
@@ -279,8 +273,6 @@ module omnipool::wormhole_adapter_pool {
             wormhole_message_fee,
             clock
         );
-        let index = table::length(&pool_state.cache_vaas) + 1;
-        table::add(&mut pool_state.cache_vaas, index, msg);
     }
 
     /// Receive withdraw
@@ -320,36 +312,6 @@ module omnipool::wormhole_adapter_pool {
             pool_address: dola_address::get_dola_address(&pool_address),
             receiver: dola_address::get_dola_address(&receiver),
             amount
-        })
-    }
-
-    public fun vaa_nonce(pool_state: &PoolState): u64 {
-        table::length(&pool_state.cache_vaas)
-    }
-
-    /// todo! Delete
-    public entry fun read_vaa(pool_state: &PoolState, index: u64) {
-        if (index == 0) {
-            index = table::length(&pool_state.cache_vaas);
-        };
-        event::emit(VaaEvent {
-            vaa: *table::borrow(&pool_state.cache_vaas, index),
-            nonce: index
-        })
-    }
-
-    /// todo! Delete
-    public entry fun decode_withdraw_payload(vaa: vector<u8>) {
-        let (source_chain_id, nonce, pool_address, user_address, amount, call_type) =
-            pool_codec::decode_withdraw_payload(vaa);
-
-        event::emit(VaaReciveWithdrawEvent {
-            source_chain_id,
-            nonce,
-            pool_address,
-            user_address,
-            amount,
-            call_type
         })
     }
 }

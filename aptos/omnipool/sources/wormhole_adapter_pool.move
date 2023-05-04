@@ -14,7 +14,7 @@ module omnipool::wormhole_adapter_pool {
     use aptos_framework::coin::Coin;
     use aptos_framework::event::{Self, EventHandle};
 
-    use dola_types::dola_address::{Self, DolaAddress};
+    use dola_types::dola_address;
     use dola_types::dola_contract::{Self, DolaContract};
     use omnipool::dola_pool;
     use omnipool::pool_codec;
@@ -58,9 +58,6 @@ module omnipool::wormhole_adapter_pool {
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
         registered_emitters: Table<u16, ExternalAddress>,
         pool_withdraw_handle: EventHandle<PoolWithdrawEvent>,
-        // todo! Delete after wormhole running
-        cache_vaas: Table<u64, vector<u8>>,
-        nonce: u64
     }
 
     /// Events
@@ -73,19 +70,6 @@ module omnipool::wormhole_adapter_pool {
         pool_address: vector<u8>,
         receiver: vector<u8>,
         amount: u64
-    }
-
-    /// todo! Delete after wormhole running
-    struct VaaReciveWithdrawEvent has key, copy, drop {
-        pool_address: DolaAddress,
-        user_address: DolaAddress,
-        amount: u64
-    }
-
-    /// todo! Delete after wormhole running
-    struct VaaEvent has key, copy, drop {
-        vaa: vector<u8>,
-        nonce: u64
     }
 
     public fun ensure_admin(sender: &signer): bool {
@@ -128,8 +112,6 @@ module omnipool::wormhole_adapter_pool {
             consumed_vaas: set::new<vector<u8>>(),
             registered_emitters: table::new(),
             pool_withdraw_handle: account::new_event_handle(&resource_signer),
-            cache_vaas: table::new(),
-            nonce: 0
         };
         table::add(
             &mut pool_state.registered_emitters,
@@ -230,8 +212,6 @@ module omnipool::wormhole_adapter_pool {
         );
 
         wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
@@ -249,8 +229,6 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
         );
         wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
     }
 
     /// Receive withdraw
@@ -280,32 +258,6 @@ module omnipool::wormhole_adapter_pool {
             dst_chain_id: dola_address::get_dola_chain_id(&pool_address),
             pool_address: dola_address::get_dola_address(&pool_address),
             receiver: dola_address::get_dola_address(&receiver),
-            amount
-        })
-    }
-
-    public fun next_vaa_nonce(): u64 acquires PoolState {
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        pool_state.nonce + 1
-    }
-
-    public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        if (index == 0) {
-            index = pool_state.nonce;
-        };
-        move_to(sender, VaaEvent {
-            vaa: *table::borrow(&pool_state.cache_vaas, index),
-            nonce: index
-        });
-    }
-
-    public entry fun decode_withdraw_payload(sender: &signer, vaa: vector<u8>) {
-        let (_, _, pool_address, user_address, amount, _) =
-            pool_codec::decode_withdraw_payload(vaa);
-        move_to(sender, VaaReciveWithdrawEvent {
-            pool_address,
-            user_address,
             amount
         })
     }

@@ -15,7 +15,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
-    use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
@@ -57,8 +56,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
         consumed_vaas: object_table::ObjectTable<vector<u8>, Unit>,
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
         registered_emitters: VecMap<u16, ExternalAddress>,
-        // todo! Delete after wormhole running
-        cache_vaas: Table<u64, vector<u8>>
     }
 
     /// Events
@@ -120,7 +117,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
                 wormhole_emitter: emitter::new(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty(),
-                cache_vaas: table::new(ctx)
             }
         );
     }
@@ -188,9 +184,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
             clock
         );
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
-
-        let index = table::length(&core_state.cache_vaas) + 1;
-        table::add(&mut core_state.cache_vaas, index, msg);
     }
 
     /// Register spender for remote bridge through governance
@@ -217,9 +210,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
             clock
         );
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
-
-        let index = table::length(&core_state.cache_vaas) + 1;
-        table::add(&mut core_state.cache_vaas, index, msg);
     }
 
     /// Delete owner for remote bridge through governance
@@ -246,9 +236,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
             clock
         );
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
-
-        let index = table::length(&core_state.cache_vaas) + 1;
-        table::add(&mut core_state.cache_vaas, index, msg);
     }
 
     /// Delete spender for remote bridge through governance
@@ -275,9 +262,6 @@ module wormhole_adapter_core::wormhole_adapter_core {
             clock
         );
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
-
-        let index = table::length(&core_state.cache_vaas) + 1;
-        table::add(&mut core_state.cache_vaas, index, msg);
     }
 
     /// Call by application
@@ -407,22 +391,5 @@ module wormhole_adapter_core::wormhole_adapter_core {
             wormhole_message_fee,
             clock
         );
-
-        let index = table::length(&core_state.cache_vaas) + 1;
-        table::add(&mut core_state.cache_vaas, index, msg);
-    }
-
-    public fun vaa_nonce(core_state: &CoreState): u64 {
-        table::length(&core_state.cache_vaas)
-    }
-
-    public entry fun read_vaa(core_state: &CoreState, index: u64) {
-        if (index == 0) {
-            index = table::length(&core_state.cache_vaas);
-        };
-        event::emit(VaaEvent {
-            vaa: *table::borrow(&core_state.cache_vaas, index),
-            nonce: index
-        })
     }
 }
