@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
+
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -97,7 +98,7 @@ def wormhole_package(package_id: str = None):
         package_id: str = sui_project.Wormhole[-1]
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_32eba0fce9b98214a861ba29ca3590921628a3d8/sui/wormhole")))
+                           ".move/https___github_com_OmniBTC_wormhole_git_ee0bd18ffca678b3598a0644a643aac0e77effc0/sui/wormhole")))
 
 
 def wormhole_adapter_core_package(package_id: str = None):

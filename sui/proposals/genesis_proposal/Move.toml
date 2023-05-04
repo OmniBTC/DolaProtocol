@@ -6,7 +6,7 @@ version = "0.0.1"
 genesis_proposal = "0x0"
 pool_manager = "0x0"
 user_manager = "0x0"
-wormhole = "0x0"
+wormhole = "0x15e1e51cb59fe1f987b037da12745a278855c8ac73050f4f194466096a0ca05b"
 wormhole_adapter_core = "0x1"
 system_core = "0x0"
 governance = "0x0"
@@ -21,12 +21,12 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "f65b02ccc0de97e815abe0afed0ff69c4571d265"
+rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
 
 [dependencies.Wormhole]
-git = "https://github.com/OmniBTC/wormhole.git"
+git = "https://github.com/wormhole-foundation/wormhole"
 subdir = "sui/wormhole"
-rev = "32eba0fce9b98214a861ba29ca3590921628a3d8"
+rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0"
 
 [dependencies.AppManager]
 local = "../../app_manager"

@@ -179,14 +179,20 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_register_owner_type()
         );
-        publish_message::publish_message(
-            wormhole_state,
+
+        let message_ticket = publish_message::prepare_message(
             &mut core_state.wormhole_emitter,
             0,
             msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
+
         event::emit(RegisterOwner { dola_chain_id, dola_contract });
 
         let index = table::length(&core_state.cache_vaas) + 1;
@@ -208,12 +214,16 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_register_spender_type()
         );
-        publish_message::publish_message(
-            wormhole_state,
+        let message_ticket = publish_message::prepare_message(
             &mut core_state.wormhole_emitter,
             0,
             msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
@@ -237,12 +247,16 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_delete_owner_type()
         );
-        publish_message::publish_message(
-            wormhole_state,
+        let message_ticket = publish_message::prepare_message(
             &mut core_state.wormhole_emitter,
             0,
             msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
         event::emit(DeleteOwner { dola_chain_id, dola_contract });
@@ -266,12 +280,16 @@ module wormhole_adapter_core::wormhole_adapter_core {
             dola_contract,
             pool_codec::get_delete_spender_type()
         );
-        publish_message::publish_message(
-            wormhole_state,
+        let message_ticket = publish_message::prepare_message(
             &mut core_state.wormhole_emitter,
             0,
             msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
@@ -399,12 +417,16 @@ module wormhole_adapter_core::wormhole_adapter_core {
             user_address,
             (actual_amount as u64)
         );
-        publish_message::publish_message(
-            wormhole_state,
+        let message_ticket = publish_message::prepare_message(
             &mut core_state.wormhole_emitter,
             0,
             msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
 

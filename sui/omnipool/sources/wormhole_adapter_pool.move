@@ -244,12 +244,17 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
             ctx
         );
-        publish_message::publish_message(
-            wormhole_state,
+
+        let message_ticket = publish_message::prepare_message(
             &mut pool_state.wormhole_emitter,
             0,
-            msg,
+            msg
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
         let index = table::length(&pool_state.cache_vaas) + 1;
@@ -271,12 +276,16 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
             ctx
         );
-        publish_message::publish_message(
-            wormhole_state,
+        let message_ticket = publish_message::prepare_message(
             &mut pool_state.wormhole_emitter,
             0,
-            msg,
+            msg
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
             wormhole_message_fee,
+            message_ticket,
             clock
         );
         let index = table::length(&pool_state.cache_vaas) + 1;
