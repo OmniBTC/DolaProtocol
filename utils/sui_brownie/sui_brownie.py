@@ -1196,11 +1196,11 @@ class SuiPackage:
 
     # ####### Publish
 
-    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None):
+    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None, replace_publish_at: dict = None):
         package_name = move_toml["package"]["name"]
-        if package_name in replace_address:
-            if replace_address[package_name] is not None:
-                move_toml["package"]["published-at"] = replace_address[package_name]
+        if package_name in replace_publish_at:
+            if replace_publish_at[package_name] is not None:
+                move_toml["package"]["published-at"] = replace_publish_at[package_name]
             elif self.project.search_package(package_name) is not None:
                 move_toml["package"]["published-at"] = self.project.search_package(package_name)
             else:
@@ -1218,23 +1218,30 @@ class SuiPackage:
     def replace_addresses(
             self,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             output: dict = None
     ) -> dict:
         if replace_address is None:
+            replace_address = {}
+        if replace_publish_at is None:
+            replace_publish_at = {}
+        if len(replace_address) == 0 and len(replace_publish_at) == 0:
             return output
         if output is None:
             output = dict()
         current_move_toml = MoveToml(str(self.move_toml_file))
         package_name = current_move_toml.package_name()
         package_address_name = current_move_toml.package_address_name()
-        if package_address_name in replace_address and package_name not in replace_address:
-            replace_address[package_name] = replace_address[package_address_name]
+        if package_address_name in replace_publish_at and package_name not in replace_publish_at:
+            replace_publish_at[package_name] = replace_publish_at[package_address_name]
+        if package_address_name in replace_address and package_name not in replace_publish_at:
+            replace_publish_at[package_name] = replace_address[package_address_name]
         if current_move_toml["package"]["name"] in output:
             return output
         output[current_move_toml["package"]["name"]] = current_move_toml
 
         # process current move toml
-        self.replace_toml(current_move_toml, replace_address)
+        self.replace_toml(current_move_toml, replace_address, replace_publish_at)
 
         # process dependencies move toml
         for k in list(current_move_toml.keys()):
@@ -1246,7 +1253,7 @@ class SuiPackage:
                             .joinpath(current_move_toml[k][d]["local"])
                         assert local_path.exists(), f"{local_path.absolute()} not found"
                         dep_move_toml = SuiPackage(package_path=local_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
+                        dep_move_toml.replace_addresses(replace_address, replace_publish_at, output)
                     # process remote
                     else:
                         git_index = current_move_toml[k][d]["git"].rfind("/")
@@ -1265,7 +1272,7 @@ class SuiPackage:
                             .joinpath(sub_dir)
                         assert remote_path.exists(), f"{remote_path.absolute()} not found"
                         dep_move_toml = SuiPackage(package_path=remote_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
+                        dep_move_toml.replace_addresses(replace_address, replace_publish_at, output)
 
         for k in output:
             output[k].store()
@@ -1302,11 +1309,14 @@ class SuiPackage:
             self,
             gas_budget=None,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             skip_dependency_verification=True
     ):
         if gas_budget is None:
             gas_budget = self.project.gas_budget
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
@@ -1346,6 +1356,7 @@ class SuiPackage:
     def program_publish_package(
             self,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             gas_price=None,
             gas_budget=None,
     ):
@@ -1353,7 +1364,9 @@ class SuiPackage:
             gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
             cmd = f"sui move build --dump-bytecode-as-base64 --path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
@@ -1395,6 +1408,7 @@ class SuiPackage:
             upgrade_capability: str,
             upgrade_policy: int,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             digest=None,
             gas_price=1000,
             gas_budget=100000000,
@@ -1403,7 +1417,9 @@ class SuiPackage:
             gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
             cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
@@ -1458,8 +1474,11 @@ class SuiPackage:
     def generate_digest(
             self,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
             cmd = f"sui move build --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
@@ -1479,6 +1498,7 @@ class SuiPackage:
             governance_contracts: str,
             proposal: str,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             gas_price=None,
             gas_budget=None,
     ):
@@ -1486,7 +1506,9 @@ class SuiPackage:
             gas_budget = self.project.gas_budget
         if gas_price is None:
             gas_price = self.project.estimate_gas_price()
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
             cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
