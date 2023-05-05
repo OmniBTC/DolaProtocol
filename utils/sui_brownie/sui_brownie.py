@@ -1395,9 +1395,9 @@ class SuiPackage:
             upgrade_capability: str,
             upgrade_policy: int,
             replace_address: dict = None,
-            gas_price=None,
-            gas_budget=None,
-            hex_digest=None
+            digest=None,
+            gas_price=1000,
+            gas_budget=100000000,
     ):
         if gas_budget is None:
             gas_budget = self.project.gas_budget
@@ -1405,19 +1405,21 @@ class SuiPackage:
             gas_price = self.project.estimate_gas_price()
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                if hex_digest is None:
-                    hex_digest = result[first_part_end:]
-                else:
-                    hex_digest = hex_digest.replace("0x", "")
-                digest = list(bytes.fromhex(hex_digest))
                 result = json.loads(result[first_part_start:first_part_end])
+                if digest is None:
+                    digest = result["digest"]
+                    hex_digest = bytes(digest).hex()
+                else:
+                    if isinstance(digest, str):
+                        digest = list(bytes.fromhex(digest.replace("0x", "")))
+                    hex_digest = bytes(digest).hex()
                 print(f"Upgrade digest: {hex_digest}")
             except:
                 print(f"Build error:\n{cmd}\n{result}")
@@ -1459,7 +1461,7 @@ class SuiPackage:
     ):
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         try:
-            cmd = f"sui move build --dump-package-digest " \
+            cmd = f"sui move build --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
@@ -1486,15 +1488,16 @@ class SuiPackage:
             gas_price = self.project.estimate_gas_price()
         replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                hex_digest = result[first_part_end:]
                 result = json.loads(result[first_part_start:first_part_end])
+                digest = result["digest"]
+                hex_digest = bytes(digest).hex()
                 print(f"Upgrade digest: {hex_digest}")
             except:
                 pprint(f"Build error:\n{result}")
