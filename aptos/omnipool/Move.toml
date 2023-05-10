@@ -19,7 +19,7 @@ rev = "cb4ba0a57c998c60cbab65af31a64875d2588ca5"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dependencies.Wormhole]
-git = "https://github.com/wormhole-foundation/wormhole"
+git = "https://github.com/wormhole-foundation/wormhole.git"
 rev = "9c2847d6e667851e9343227b5be4f0fa5c73ff6f"
 subdir = "aptos/wormhole"
 
