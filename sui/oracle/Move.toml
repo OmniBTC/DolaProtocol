@@ -21,4 +21,4 @@ rev = "d050ad1d67a5b7da9fb65030aad12ef5d774ccad"
 [dependencies.Pyth]
 git = "https://github.com/OmniBTC/pyth-crosschain.git"
 subdir = "target_chains/sui/contracts"
-rev = "cd89f9995ae3f23251c490378e01457ab33e5746"
+rev = "8601609d6f4f64fb9a42ec7704aae3cf3a47e140"

@@ -8,6 +8,14 @@ networks:
     node_url: "https://fullnode.testnet.sui.io:443"
     #  node_url: "https://suinode-testnet.belaunch.io:443"
     #  node_url: "https://sui-testnet-wave3.coming.chat:443"
+    objects:
+      WormholeState: "0x79ab4d569f7eb1efdcc1f25b532f8593cda84776206772e33b490694cb8fc07a"
+      PythState: "0x3fc17e66d5ced3bf62f3fe8289cb2cb78c311a1e1c9700727ecd278d242e9e88"
+    packages:
+      pyth: "0x7c017b047a3c9db5a8f4586d347c54869b761b6d6b0882a179823e8642faf7b9"
+      wormhole: "0x80c60bff35fe5026e319cf3d66ae671f2b4e12923c92c45df75eaf4de79e3ce7"
+    oracle:
+      BTC/USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b"
   sui-localnet:
     node_url: "http://127.0.0.1:9000"
 sui_wallets:

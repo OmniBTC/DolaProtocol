@@ -15,7 +15,7 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "09b2081498366df
 
 [[move.package]]
 name = "Pyth"
-source = { git = "https://github.com/OmniBTC/pyth-crosschain.git", rev = "cd89f9995ae3f23251c490378e01457ab33e5746", subdir = "target_chains/sui/contracts" }
+source = { git = "https://github.com/OmniBTC/pyth-crosschain.git", rev = "8601609d6f4f64fb9a42ec7704aae3cf3a47e140", subdir = "target_chains/sui/contracts" }
 
 dependencies = [
   { name = "Sui" },

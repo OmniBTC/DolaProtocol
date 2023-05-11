@@ -6,15 +6,27 @@
 ///
 /// Note: This module is currently only used for testing
 module oracle::oracle {
+    use pyth::i64;
+    use pyth::price_info::PriceInfoObject;
+    use pyth::pyth;
+    use pyth::state::State as PythState;
     use sui::clock::{Self, Clock};
+    use sui::coin::Coin;
     use sui::object::{Self, UID};
+    use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
+    use wormhole::state::State as WormholeState;
+    use wormhole::vaa;
+
+    const MAX_PRICE_AGE: u64 = 60;
 
     const ENONEXISTENT_ORACLE: u64 = 0;
 
     const EALREADY_EXIST_ORACLE: u64 = 1;
+
+    const ENOT_FRESH_PRICE: u64 = 2;
 
     struct OracleCap has key {
         id: UID
@@ -22,6 +34,7 @@ module oracle::oracle {
 
     struct PriceOracle has key {
         id: UID,
+        price_age: u64,
         // dola_pool_id => price
         price_oracles: Table<u16, Price>
     }
@@ -29,12 +42,15 @@ module oracle::oracle {
     struct Price has store {
         value: u256,
         // 2 decimals should be 100,
-        decimal: u8
+        decimal: u8,
+        // last update timestamp
+        last_update_timestamp: u64
     }
 
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
+            price_age: MAX_PRICE_AGE,
             price_oracles: table::new(ctx)
         });
         transfer::transfer(OracleCap {
@@ -42,18 +58,62 @@ module oracle::oracle {
         }, tx_context::sender(ctx))
     }
 
+    public fun feed_token_price_for_pyth(
+        wormhole_state: &WormholeState,
+        pyth_state: &PythState,
+        price_info_objects: &mut vector<PriceInfoObject>,
+        vaa: vector<u8>,
+        clock: &Clock,
+        fee: Coin<SUI>
+    ) {
+        let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        pyth::update_price_feeds_if_fresh(
+            vector[verified_vaa],
+            pyth_state,
+            price_info_objects,
+            vector[current_timestamp],
+            fee,
+            clock
+        );
+    }
+
+    public fun update_token_price_by_pyth(
+        price_info_object: &PriceInfoObject,
+        price_oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        clock: &Clock,
+    ) {
+        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MAX_PRICE_AGE);
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        let price_oracles = &mut price_oracle.price_oracles;
+        assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
+        let price = table::borrow_mut(price_oracles, dola_pool_id);
+
+        let price_value = pyth::price::get_price(&pyth_price);
+        let price_value = i64::get_magnitude_if_positive(&price_value);
+        let expo = pyth::price::get_expo(&pyth_price);
+        let expo = i64::get_magnitude_if_negative(&expo);
+
+        price.value = (price_value as u256);
+        price.decimal = (expo as u8);
+        price.last_update_timestamp = current_timestamp;
+    }
+
     public entry fun register_token_price(
         _: &OracleCap,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,
         token_price: u256,
-        price_decimal: u8
+        price_decimal: u8,
+        clock: &Clock
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, dola_pool_id), EALREADY_EXIST_ORACLE);
         table::add(price_oracles, dola_pool_id, Price {
             value: token_price,
-            decimal: price_decimal
+            decimal: price_decimal,
+            last_update_timestamp: clock::timestamp_ms(clock) / 1000
         })
     }
 
@@ -69,10 +129,12 @@ module oracle::oracle {
         price.value = token_price;
     }
 
-    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16): (u256, u8) {
+    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16, clock: &Clock): (u256, u8) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, dola_pool_id);
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        assert!(current_timestamp - price.last_update_timestamp < price_oracle.price_age, ENOT_FRESH_PRICE);
         (price.value, price.decimal)
     }
 
@@ -84,6 +146,7 @@ module oracle::oracle {
     public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
+            price_age: MAX_PRICE_AGE,
             price_oracles: table::new(ctx)
         });
         transfer::transfer(OracleCap {

@@ -1,8 +1,30 @@
 import time
+from pathlib import Path
+from pprint import pprint
 
 import ccxt
-
+import sui_brownie
 from dola_sui_sdk import load, sui_project
+
+
+def pyth_state():
+    return sui_project.network_config['objects']['PythState']
+
+
+def load_pyth():
+    return sui_brownie.SuiPackage(
+        package_id=sui_project.network_config['packages']['pyth'],
+        package_path=Path.home().joinpath(Path(
+            ".move/https___github_com_OmniBTC_pyth-crosschain_git_8601609d6f4f64fb9a42ec7704aae3cf3a47e140/target_chains/sui/contracts")),
+    )
+
+
+def get_pyth_price(symbol):
+    pyth = load_pyth()
+
+    feed_id = sui_project.network_config['oracle'][symbol].replace("0x", "")
+    price_info_object = pyth.pyth.price_feed_exists.inspect(pyth_state(), list(bytes.fromhex(feed_id)))
+    pprint(price_info_object)
 
 
 def get_pool_id(symbol):
@@ -61,4 +83,4 @@ def feed(symbols=("BTC/USDT", "ETH/USDT")):
 
 
 if __name__ == '__main__':
-    feed(("BTC/USDT", "ETH/USDT", "MATIC/USDT", "APT/USDT", "BNB/USDT"))
+    get_pyth_price("BTC/USD")
