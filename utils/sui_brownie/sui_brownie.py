@@ -282,7 +282,8 @@ class ModuleFunction:
         return self.package.project.execute(self.package.package_id, self.abi, *args, **kwargs)
 
     def __getattr__(self, item):
-        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin"], f"{item} attribute not found"
+        assert item in ["simulate", "inspect", "unsafe", "with_gas_coin",
+                        "with_gas_coin_inspect"], f"{item} attribute not found"
         return functools.partial(getattr(self.package.project, item), self.package.package_id, self.abi)
 
 
@@ -1207,11 +1208,11 @@ class SuiPackage:
 
     # ####### Publish
 
-    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None):
+    def replace_toml(self, move_toml: MoveToml, replace_address: dict = None, replace_publish_at: dict = None):
         package_name = move_toml["package"]["name"]
-        if package_name in replace_address:
-            if replace_address[package_name] is not None:
-                move_toml["package"]["published-at"] = replace_address[package_name]
+        if package_name in replace_publish_at:
+            if replace_publish_at[package_name] is not None:
+                move_toml["package"]["published-at"] = replace_publish_at[package_name]
             elif self.project.search_package(package_name) is not None:
                 move_toml["package"]["published-at"] = self.project.search_package(package_name)
             else:
@@ -1229,23 +1230,30 @@ class SuiPackage:
     def replace_addresses(
             self,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             output: dict = None
     ) -> dict:
         if replace_address is None:
+            replace_address = {}
+        if replace_publish_at is None:
+            replace_publish_at = {}
+        if len(replace_address) == 0 and len(replace_publish_at) == 0:
             return output
         if output is None:
             output = dict()
         current_move_toml = MoveToml(str(self.move_toml_file))
         package_name = current_move_toml.package_name()
         package_address_name = current_move_toml.package_address_name()
-        if package_address_name in replace_address and package_name not in replace_address:
-            replace_address[package_name] = replace_address[package_address_name]
+        if package_address_name in replace_publish_at and package_name not in replace_publish_at:
+            replace_publish_at[package_name] = replace_publish_at[package_address_name]
+        if package_address_name in replace_address and package_name not in replace_publish_at:
+            replace_publish_at[package_name] = replace_address[package_address_name]
         if current_move_toml["package"]["name"] in output:
             return output
         output[current_move_toml["package"]["name"]] = current_move_toml
 
         # process current move toml
-        self.replace_toml(current_move_toml, replace_address)
+        self.replace_toml(current_move_toml, replace_address, replace_publish_at)
 
         # process dependencies move toml
         for k in list(current_move_toml.keys()):
@@ -1257,7 +1265,7 @@ class SuiPackage:
                             .joinpath(current_move_toml[k][d]["local"])
                         assert local_path.exists(), f"{local_path.absolute()} not found"
                         dep_move_toml = SuiPackage(package_path=local_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
+                        dep_move_toml.replace_addresses(replace_address, replace_publish_at, output)
                     # process remote
                     else:
                         git_index = current_move_toml[k][d]["git"].rfind("/")
@@ -1276,7 +1284,7 @@ class SuiPackage:
                             .joinpath(sub_dir)
                         assert remote_path.exists(), f"{remote_path.absolute()} not found"
                         dep_move_toml = SuiPackage(package_path=remote_path)
-                        dep_move_toml.replace_addresses(replace_address, output)
+                        dep_move_toml.replace_addresses(replace_address, replace_publish_at, output)
 
         for k in output:
             output[k].store()
@@ -1311,11 +1319,16 @@ class SuiPackage:
     @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
     def publish_package(
             self,
-            gas_budget=100000000,
+            gas_budget=None,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
             skip_dependency_verification=True
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         view = f"Publish {self.package_name}"
         print("\n" + "-" * 50 + view + "-" * 50)
         try:
@@ -1355,10 +1368,17 @@ class SuiPackage:
     def program_publish_package(
             self,
             replace_address: dict = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            replace_publish_at: dict = None,
+            gas_price=None,
+            gas_budget=None,
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
+        if gas_price is None:
+            gas_price = self.project.estimate_gas_price()
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
             cmd = f"sui move build --dump-bytecode-as-base64 --path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
@@ -1400,21 +1420,34 @@ class SuiPackage:
             upgrade_capability: str,
             upgrade_policy: int,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
+            digest=None,
             gas_price=1000,
             gas_budget=100000000,
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
+        if gas_price is None:
+            gas_price = self.project.estimate_gas_price()
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                hex_digest = result[first_part_end:]
-                digest = list(bytes.fromhex(hex_digest))
                 result = json.loads(result[first_part_start:first_part_end])
+                if digest is None:
+                    digest = result["digest"]
+                    hex_digest = bytes(digest).hex()
+                else:
+                    if isinstance(digest, str):
+                        digest = list(bytes.fromhex(digest.replace("0x", "")))
+                    hex_digest = bytes(digest).hex()
                 print(f"Upgrade digest: {hex_digest}")
             except:
                 print(f"Build error:\n{cmd}\n{result}")
@@ -1430,7 +1463,12 @@ class SuiPackage:
                                           upgrade_policy, digest,
                                           gas_price, gas_budget,
                                           )
-            self.update_abi()
+            for d in result.get("objectChanges", []):
+                if d["type"] == "published":
+                    self.package_id = d["packageId"]
+                    self.project.add_package(self)
+                    self.update_abi()
+                    break
             result = self.format_result(result)
             pprint(result)
             assert self.package_id is not None, f"Package id not found"
@@ -1448,10 +1486,13 @@ class SuiPackage:
     def generate_digest(
             self,
             replace_address: dict = None,
+            replace_publish_at: dict = None,
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
-            cmd = f"sui move build --dump-package-digest " \
+            cmd = f"sui move build --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
@@ -1469,20 +1510,28 @@ class SuiPackage:
             governance_contracts: str,
             proposal: str,
             replace_address: dict = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            replace_publish_at: dict = None,
+            gas_price=None,
+            gas_budget=None,
     ):
-        replace_tomls = self.replace_addresses(replace_address=replace_address, output=dict())
+        if gas_budget is None:
+            gas_budget = self.project.gas_budget
+        if gas_price is None:
+            gas_price = self.project.estimate_gas_price()
+        replace_tomls = self.replace_addresses(replace_address=replace_address,
+                                               replace_publish_at=replace_publish_at,
+                                               output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --dump-package-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
             try:
                 first_part_start = result.find("{")
                 first_part_end = result.find("}") + 1
-                hex_digest = result[first_part_end:]
                 result = json.loads(result[first_part_start:first_part_end])
+                digest = result["digest"]
+                hex_digest = bytes(digest).hex()
                 print(f"Upgrade digest: {hex_digest}")
             except:
                 pprint(f"Build error:\n{result}")
@@ -1520,6 +1569,10 @@ class SuiPackage:
         return result
 
 
+def get_project() -> List[SuiObject]:
+    return _load_project
+
+
 class SuiProject:
     def __init__(
             self,
@@ -1528,6 +1581,7 @@ class SuiProject:
     ):
         self.project_path = project_path
         self.network = network
+        self.gas_budget = 500000000
 
         self.config = {}
         self.network_config = {}
@@ -1548,6 +1602,10 @@ class SuiProject:
         self.reload_cache()
 
         _load_project.append(self)
+
+    def set_gas_budget(self, gas_budget):
+        """Set global gas budget"""
+        self.gas_budget = gas_budget
 
     def read_item_from_cache(self, item: Union[str, SuiObject]):
         if item in self.cache_objects:
@@ -1762,17 +1820,19 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         result = self.construct_transaction(
             package_id=package_id,
             abi=abi,
             arguments=arguments,
             type_arguments=type_arguments,
             gas_budget=gas_budget)
-        # Simulate before execute
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -1791,9 +1851,13 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            gas_price=None,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         # Construct
         msg = TransactionBuild.move_call(
             self.account.account_address,
@@ -1804,9 +1868,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -1890,8 +1953,10 @@ class SuiProject:
             abi: dict,
             arguments: list,
             type_arguments: List[str] = None,
-            gas_budget=100000000,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         arguments, type_arguments = TransactionBuild.check_args(abi, arguments, type_arguments)
 
         for k in range(len(arguments)):
@@ -1920,9 +1985,13 @@ class SuiProject:
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            gas_price=None,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.move_call(
             self.account.account_address,
             package_id,
@@ -1935,15 +2004,24 @@ class SuiProject:
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
         return self.client.sui_dryRunTransactionBlock(tx_bytes)
 
+    def simulate_fail_abort(self, tx_bytes):
+        result = self.client.sui_dryRunTransactionBlock(tx_bytes)
+        assert result["effects"]["status"]["status"] == "success", result
+        return result
+
     def inspect(
             self,
             package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            gas_price=None,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.move_call(
             self.account.account_address,
             package_id,
@@ -1961,16 +2039,17 @@ class SuiProject:
             None
         )
 
-    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=100000000):
+    def unsafe_pay_all_sui(self, input_coins=None, recipient=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if recipient is None:
             recipient = self.account.account_address
         if input_coins is None:
             input_coins = list(self.get_account_sui().keys())
         result = self.client.unsafe_payAllSui(self.account.account_address, input_coins, recipient, str(gas_budget))
 
-        # Simulate before execute
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -1985,7 +2064,11 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=1000, gas_budget=100000000):
+    def pay_all_sui(self, input_coins=None, recipient=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         if recipient is None:
             recipient = self.account.account_address
         if input_coins is None:
@@ -1999,7 +2082,7 @@ class SuiProject:
         )
         # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2012,7 +2095,9 @@ class SuiProject:
                              function="pay_all_sui"
                              )
 
-    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=100000000):
+    def unsafe_pay_sui(self, amounts, input_coins=None, recipients=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
         if input_coins is None:
@@ -2025,9 +2110,9 @@ class SuiProject:
             amounts,
             gas_budget=gas_budget
         )
-        # simulate
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -2038,7 +2123,11 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=1000, gas_budget=100000000):
+    def pay_sui(self, amounts, input_coins=None, recipients=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         if recipients is None:
             recipients = [self.account.account_address] * len(amounts)
         if input_coins is None:
@@ -2051,9 +2140,9 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
+
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2062,16 +2151,20 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def unsafe_transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=100000000):
+    def unsafe_transfer_object(self, object_id, recipient, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         result = self.client.unsafe_transferObject(
             self.account.account_address,
             object_id,
             gas=None,
             gas_budget=gas_budget,
             recipient=recipient)
-        # simulate
+
         tx_bytes = result["txBytes"]
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         msg = bytes([IntentScope.TransactionData[1], IntentVersion.V0[1], AppId.Sui[1]]
@@ -2082,7 +2175,11 @@ class SuiProject:
         print(f'\nExecute transaction unsafe_transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="unsafe_transfer", function="transfer_object")
 
-    def transfer_object(self, object_id, recipient, gas_price=1000, gas_budget=100000000):
+    def transfer_object(self, object_id, recipient, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.transfer_object(
             self.account.account_address,
             object_id,
@@ -2090,9 +2187,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2101,7 +2197,11 @@ class SuiProject:
         print(f'\nExecute transaction transfer::transfer_object, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="transfer", function="transfer_object")
 
-    def pay(self, input_coins: list, amounts, recipients=None, gas_price=1000, gas_budget=100000000):
+    def pay(self, input_coins: list, amounts, recipients=None, gas_price=None, gas_budget=None):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.pay(
             self.account.account_address,
             input_coins,
@@ -2110,9 +2210,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2125,9 +2224,13 @@ class SuiProject:
             self,
             compiled_modules,
             dep_ids,
-            gas_price=1000,
-            gas_budget=100000000
+            gas_price=None,
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.publish(
             self.account.account_address,
             compiled_modules,
@@ -2135,9 +2238,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2154,9 +2256,13 @@ class SuiProject:
             upgrade_capability: str,
             upgrade_policy: int,
             digest: Union[str, list],
-            gas_price=1000,
-            gas_budget=100000000
+            gas_price=None,
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.upgrade(
             package_id=package_id,
             sender=self.account.account_address,
@@ -2168,9 +2274,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2188,9 +2293,13 @@ class SuiProject:
             governance_info: str,
             governance_contracts: str,
             proposal: str,
-            gas_price=1000,
-            gas_budget=100000000
+            gas_price=None,
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         msg = TransactionBuild.dola_upgrade(
             package_id=package_id,
             proposal_package_id=proposal_package_id,
@@ -2203,9 +2312,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2218,9 +2326,13 @@ class SuiProject:
             self,
             actual_params,
             transactions,
-            gas_price=1000,
-            gas_budget=100000000
+            gas_price=None,
+            gas_budget=None
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         inputs = []
         for module_function, arguments, type_arguments in transactions:
             package_id = module_function.package.package_id
@@ -2233,9 +2345,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget)
 
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2244,15 +2355,76 @@ class SuiProject:
         print(f'\nExecute transaction batch::transactions, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module="batch", function="transactions")
 
+    def batch_transaction_simulate(
+            self,
+            actual_params,
+            transactions,
+            gas_price=None,
+            gas_budget=None
+    ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            actual_params=actual_params,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
+        return self.client.sui_dryRunTransactionBlock(tx_bytes)
+
+    def batch_transaction_inspect(
+            self,
+            actual_params,
+            transactions,
+            gas_price=None,
+            gas_budget=None
+    ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
+        inputs = []
+        for module_function, arguments, type_arguments in transactions:
+            package_id = module_function.package.package_id
+            abi = module_function.abi
+            inputs.append([package_id, abi, type_arguments, arguments])
+        msg = TransactionBuild.batch_transaction(
+            sender=self.account.account_address,
+            actual_params=actual_params,
+            transactions=inputs,
+            gas_price=gas_price,
+            gas_budget=gas_budget)
+
+        tx_bytes = base64.b64encode(msg.value.value.kind.encode).decode("ascii")
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            tx_bytes,
+            None,
+            None
+        )
+
     def with_gas_coin(
             self,
             package_id,
             abi: dict,
             *arguments,
             type_arguments: List[str] = None,
-            gas_price=1000,
-            gas_budget=100000000,
+            gas_price=None,
+            gas_budget=None,
     ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
         # Construct
         msg = TransactionBuild.move_call_with_gas_coin(
             self.account.account_address,
@@ -2263,9 +2435,8 @@ class SuiProject:
             gas_price=gas_price,
             gas_budget=gas_budget
         )
-        # simulate
         tx_bytes = base64.b64encode(msg.value.encode).decode("ascii")
-        self.client.sui_dryRunTransactionBlock(tx_bytes)
+        self.simulate_fail_abort(tx_bytes)
 
         # Sig
         serialized_sig_base64 = self.generate_signature(msg.encode)
@@ -2273,3 +2444,42 @@ class SuiProject:
         # Execute
         print(f'\nExecute transaction {abi["module_name"]}::{abi["func_name"]}, waiting...')
         return self._execute(tx_bytes, [serialized_sig_base64], module=abi["module_name"], function=abi["func_name"])
+
+    def with_gas_coin_inspect(
+            self,
+            package_id,
+            abi: dict,
+            *arguments,
+            type_arguments: List[str] = None,
+            gas_price=None,
+            gas_budget=None,
+    ):
+        if gas_budget is None:
+            gas_budget = self.gas_budget
+        if gas_price is None:
+            gas_price = self.estimate_gas_price()
+        # Construct
+        msg = TransactionBuild.move_call_with_gas_coin(
+            self.account.account_address,
+            package_id,
+            abi,
+            type_arguments,
+            arguments,
+            gas_price=gas_price,
+            gas_budget=gas_budget
+        )
+        tx_bytes = base64.b64encode(msg.value.value.kind.encode).decode("ascii")
+        return self.client.sui_devInspectTransactionBlock(
+            self.account.account_address,
+            tx_bytes,
+            None,
+            None
+        )
+
+    def estimate_gas_price(self):
+        try:
+            result = self.client.suix_getReferenceGasPrice()
+            return int(result)
+        except Exception as e:
+            print(f"Estimate gas price fail:{e}, using default 1000")
+            return 1000
