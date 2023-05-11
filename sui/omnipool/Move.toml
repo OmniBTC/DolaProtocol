@@ -3,7 +3,7 @@ name = "OmniPool"
 version = "0.0.1"
 
 [addresses]
-wormhole = "0x0"
+wormhole = "0x15e1e51cb59fe1f987b037da12745a278855c8ac73050f4f194466096a0ca05b"
 serde = "0x0"
 omnipool = "0x0"
 dola_types = "0x0"
@@ -13,12 +13,12 @@ sui = "0x2"
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "a63f425b9999c7fdfe483598720a9effc0acdc9e"
+rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
 
 [dependencies.Wormhole]
-git = "https://github.com/OmniBTC/wormhole.git"
+git = "https://github.com/wormhole-foundation/wormhole"
 subdir = "sui/wormhole"
-rev = "d0e0d1743df2430d874459bd870f590f660f0ae8"
+rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0"
 
 [dependencies.DolaTypes]
 local = "../dola_types"

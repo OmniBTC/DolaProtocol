@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0
 module system_core::wormhole_adapter {
 
-    use governance::genesis::GovernanceCap;
-
     use dola_types::dola_address;
+    use governance::genesis::GovernanceCap;
+    use sui::clock::Clock;
     use sui::event;
     use sui::object::{Self, UID};
     use sui::transfer;
@@ -50,13 +50,17 @@ module system_core::wormhole_adapter {
         wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         storage: &Storage,
-        vaa: vector<u8>
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
     ) {
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
             storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
-            vaa
+            vaa,
+            clock,
+            ctx
         );
         let (source_chain_id, nonce, binded_address, call_type) = system_codec::decode_bind_payload(app_payload);
         assert!(call_type == system_codec::get_binding_type(), EINVALID_CALLTYPE);
@@ -91,13 +95,17 @@ module system_core::wormhole_adapter {
         wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         storage: &Storage,
-        vaa: vector<u8>
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
     ) {
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
             storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
-            vaa
+            vaa,
+            clock,
+            ctx
         );
         let (source_chain_id, nonce, unbinded_address, call_type) = system_codec::decode_bind_payload(app_payload);
         assert!(call_type == system_codec::get_unbinding_type(), EINVALID_CALLTYPE);

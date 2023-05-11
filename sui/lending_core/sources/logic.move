@@ -55,6 +55,8 @@ module lending_core::logic {
 
     const EIS_LOAN: u64 = 15;
 
+    const EREACH_SUPPLY_CEILING: u64 = 16;
+
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
         user_id: u64,
@@ -101,7 +103,7 @@ module lending_core::logic {
         // Use the user's existing collateral to liquidate the debt.
         let repay_debt = user_collateral_balance(storage, liquidator, loan);
 
-        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, _) = calculate_actual_liquidation(
+        let (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral) = calculate_actual_liquidation(
             oracle,
             collateral,
             max_liquidable_collateral,
@@ -172,6 +174,7 @@ module lending_core::logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
+        assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
 
         update_state(cap, storage, clock, dola_pool_id);
         mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
@@ -430,21 +433,19 @@ module lending_core::logic {
         update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
     }
 
+    public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u256): bool {
+        let supply_ceiling = storage::get_reserve_supply_ceiling(storage, dola_pool_id);
+        let total_supply = total_otoken_supply(storage, dola_pool_id);
+        supply_ceiling == 0 || total_supply + supply_amount < supply_ceiling
+    }
+
     /// Check whether the maximum borrow limit has been reached
     public fun not_reach_borrow_ceiling(storage: &mut Storage, dola_user_id: u64, borrow_amount: u256): bool {
         let user_collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let isolate_asset = vector::borrow(&user_collaterals, 0);
-        let borrow_ceiling = storage::get_reserve_ceilings(storage, *isolate_asset);
-        if (borrow_ceiling == 0) {
-            true
-        } else {
-            let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
-            if (isolate_debt + borrow_amount > borrow_ceiling) {
-                false
-            } else {
-                true
-            }
-        }
+        let borrow_ceiling = storage::get_reserve_borrow_ceiling(storage, *isolate_asset);
+        let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
+        borrow_ceiling == 0 || isolate_debt + borrow_amount < borrow_ceiling
     }
 
     public fun is_borrowable_asset(storage: &mut Storage, dola_pool_id: u16): bool {
@@ -748,17 +749,14 @@ module lending_core::logic {
         max_liquidable_debt: u256,
         repay_debt: u256,
         treasury_factor: u256
-    ): (u256, u256, u256, u256, u256) {
-        let excess_repay_amount;
+    ): (u256, u256, u256, u256) {
         let actual_liquidable_collateral;
         let actual_liquidable_debt;
 
         if (repay_debt >= max_liquidable_debt) {
-            excess_repay_amount = repay_debt - max_liquidable_debt;
             actual_liquidable_debt = max_liquidable_debt;
             actual_liquidable_collateral = max_liquidable_collateral;
         } else {
-            excess_repay_amount = 0;
             actual_liquidable_debt = repay_debt;
             actual_liquidable_collateral = math::ray_mul(
                 (max_liquidable_collateral),
@@ -766,13 +764,13 @@ module lending_core::logic {
             );
         };
 
-        let collateral_value = calculate_value(oracle, collateral, max_liquidable_collateral);
-        let loan_value = calculate_value(oracle, loan, max_liquidable_debt);
+        let collateral_value = calculate_value(oracle, collateral, actual_liquidable_collateral);
+        let loan_value = calculate_value(oracle, loan, actual_liquidable_debt);
         let reward = calculate_amount(oracle, collateral, collateral_value - loan_value);
         // the treasury keeps a portion of the discount incentive
         let treasury_reserved_collateral = math::ray_mul(reward, treasury_factor);
-        let liquidator_acquired_collateral = max_liquidable_collateral - treasury_reserved_collateral;
-        (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral, excess_repay_amount)
+        let liquidator_acquired_collateral = actual_liquidable_collateral - treasury_reserved_collateral;
+        (actual_liquidable_collateral, actual_liquidable_debt, liquidator_acquired_collateral, treasury_reserved_collateral)
     }
 
     public fun total_otoken_supply(storage: &mut Storage, dola_pool_id: u16): u256 {

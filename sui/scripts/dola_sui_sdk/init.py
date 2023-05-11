@@ -32,33 +32,9 @@ def vote_create_pool(coin_type, decimal=8):
     )
 
 
-def get_upgrade_cap_info(upgrade_cap_ids: tuple):
-    result = sui_project.client.sui_multiGetObjects(
-        upgrade_cap_ids,
-        {
-            "showType": True,
-            "showOwner": True,
-            "showPreviousTransaction": False,
-            "showDisplay": False,
-            "showContent": True,
-            "showBcs": False,
-            "showStorageRebate": False
-        }
-    )
-
-    return {v['data']['content']['fields']['package']: v['data'] for v in result if 'data' in v}
-
-
-def get_upgrade_cap_by_package_id(package_id: str):
-    upgrade_cap_ids = tuple(list(sui_project["0x2::package::UpgradeCap"]))
-    info = get_upgrade_cap_info(upgrade_cap_ids)
-    if package_id in info:
-        return info[package_id]["objectId"]
-
-
 def init_wormhole():
     """
-    public entry fun init_and_share_state(
+    public entry fun complete(
         deployer: DeployerCap,
         upgrade_cap: UpgradeCap,
         governance_chain: u16,
@@ -71,9 +47,9 @@ def init_wormhole():
     :return:
     """
     wormhole = load.wormhole_package()
-    upgrade_cap = get_upgrade_cap_by_package_id(wormhole.package_id)
+    upgrade_cap = load.get_upgrade_cap_by_package_id(wormhole.package_id)
 
-    wormhole.setup.init_and_share_state(
+    wormhole.setup.complete(
         wormhole.setup.DeployerCap[-1],
         upgrade_cap,
         0,
@@ -692,9 +668,7 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
         }
     )
 
-    return [int(s) for s in
-            result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["addr"]["fields"]["value"]["fields"][
-                "data"]]
+    return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
 
 
 def batch_execute_proposal():
@@ -924,7 +898,7 @@ def batch_execute_proposal():
     lending_contract_id = int(lending_portal_contract_id())
     result = sui_project.pay_sui([0])
     register_spender_fee = result['objectChanges'][-1]['objectId']
-    register_spender_param = [0, lending_contract_id, register_spender_fee]
+    register_spender_param = [0, lending_contract_id, register_spender_fee, clock()]
 
     create_proposal()
     sui_project.batch_transaction(
@@ -935,6 +909,7 @@ def batch_execute_proposal():
                        register_spender_param[0],  # 4
                        register_spender_param[1],  # 5
                        register_spender_param[2],  # 6
+                       register_spender_param[3],  # 7
                        ],
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -950,6 +925,7 @@ def batch_execute_proposal():
                  Argument("Input", U16(4)),
                  Argument("Input", U16(5)),
                  Argument("Input", U16(6)),
+                 Argument("Input", U16(7))
                  ],
                 []
             ],  # 1. remote_register_spender
@@ -973,6 +949,7 @@ def batch_execute_proposal():
     btc_reserve_params = [0, False, False, 0,
                           int(0.1 * RAY),
                           0,
+                          0,
                           int(0.8 * RAY),
                           int(1.1 * RAY),
                           int(0.02 * RAY),
@@ -981,6 +958,7 @@ def batch_execute_proposal():
                           int(0.45 * RAY)]
     usdt_reserve_params = [1, False, True, 0,
                            int(0.1 * RAY),
+                           0,
                            0,
                            int(0.8 * RAY),
                            int(1.1 * RAY),
@@ -991,6 +969,7 @@ def batch_execute_proposal():
     usdc_reserve_params = [2, False, True, 0,
                            int(0.1 * RAY),
                            0,
+                           0,
                            int(0.8 * RAY),
                            int(1.1 * RAY),
                            int(0.02 * RAY),
@@ -999,6 +978,7 @@ def batch_execute_proposal():
                            int(0.45 * RAY)]
     eth_reserve_params = [3, False, False, 0,
                           int(0.1 * RAY),
+                          0,
                           0,
                           int(0.8 * RAY),
                           int(1.1 * RAY),
@@ -1009,6 +989,7 @@ def batch_execute_proposal():
     matic_reserve_params = [4, False, False, 0,
                             int(0.1 * RAY),
                             0,
+                            0,
                             int(0.8 * RAY),
                             int(1.1 * RAY),
                             int(0.02 * RAY),
@@ -1017,6 +998,7 @@ def batch_execute_proposal():
                             int(0.45 * RAY)]
     apt_reserve_params = [5, True, False, 0,
                           int(0.1 * RAY),
+                          0,
                           0,
                           int(0.8 * RAY),
                           int(1.1 * RAY),
@@ -1027,6 +1009,7 @@ def batch_execute_proposal():
     bnb_reserve_params = [6, False, False, 0,
                           int(0.1 * RAY),
                           0,
+                          0,
                           int(0.8 * RAY),
                           int(1.1 * RAY),
                           int(0.02 * RAY),
@@ -1036,6 +1019,7 @@ def batch_execute_proposal():
     sui_reserve_param = [7, False, False, 0,
                          int(0.1 * RAY),
                          0,
+                         0,
                          int(0.8 * RAY),
                          int(1.1 * RAY),
                          int(0.02 * RAY),
@@ -1043,109 +1027,26 @@ def batch_execute_proposal():
                          int(3 * RAY),
                          int(0.45 * RAY)]
 
+    base_params = [
+        governance.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        lending_core.storage.Storage[-1],  # 2
+        clock()  # 3
+    ]
+    reserve_params = [
+        btc_reserve_params,  # 4 - 16
+        usdt_reserve_params,  # 17 - 29
+        usdc_reserve_params,  # 30 - 42
+        eth_reserve_params,  # 43 - 55
+        matic_reserve_params,  # 56 - 68
+        apt_reserve_params,  # 69 - 81
+        bnb_reserve_params,  # 82 - 94
+        sui_reserve_param  # 95 - 107
+    ]
+
     create_proposal()
     sui_project.batch_transaction(
-        actual_params=[governance.governance_v1.GovernanceInfo[-1],  # 0
-                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       lending_core.storage.Storage[-1],  # 2
-                       clock(),  # 3
-                       btc_reserve_params[0],  # 4
-                       btc_reserve_params[1],  # 5
-                       btc_reserve_params[2],  # 6
-                       btc_reserve_params[3],  # 7
-                       btc_reserve_params[4],  # 8
-                       btc_reserve_params[5],  # 9
-                       btc_reserve_params[6],  # 10
-                       btc_reserve_params[7],  # 11
-                       btc_reserve_params[8],  # 12
-                       btc_reserve_params[9],  # 13
-                       btc_reserve_params[10],  # 14
-                       btc_reserve_params[11],  # 15
-                       usdt_reserve_params[0],  # 16
-                       usdt_reserve_params[1],  # 17
-                       usdt_reserve_params[2],  # 18
-                       usdt_reserve_params[3],  # 19
-                       usdt_reserve_params[4],  # 20
-                       usdt_reserve_params[5],  # 21
-                       usdt_reserve_params[6],  # 22
-                       usdt_reserve_params[7],  # 23
-                       usdt_reserve_params[8],  # 24
-                       usdt_reserve_params[9],  # 25
-                       usdt_reserve_params[10],  # 26
-                       usdt_reserve_params[11],  # 27
-                       usdc_reserve_params[0],  # 28
-                       usdc_reserve_params[1],  # 29
-                       usdc_reserve_params[2],  # 30
-                       usdc_reserve_params[3],  # 31
-                       usdc_reserve_params[4],  # 32
-                       usdc_reserve_params[5],  # 33
-                       usdc_reserve_params[6],  # 34
-                       usdc_reserve_params[7],  # 35
-                       usdc_reserve_params[8],  # 36
-                       usdc_reserve_params[9],  # 37
-                       usdc_reserve_params[10],  # 38
-                       usdc_reserve_params[11],  # 39
-                       eth_reserve_params[0],  # 40
-                       eth_reserve_params[1],  # 41
-                       eth_reserve_params[2],  # 42
-                       eth_reserve_params[3],  # 43
-                       eth_reserve_params[4],  # 44
-                       eth_reserve_params[5],  # 45
-                       eth_reserve_params[6],  # 46
-                       eth_reserve_params[7],  # 47
-                       eth_reserve_params[8],  # 48
-                       eth_reserve_params[9],  # 49
-                       eth_reserve_params[10],  # 50
-                       eth_reserve_params[11],  # 51
-                       matic_reserve_params[0],  # 52
-                       matic_reserve_params[1],  # 53
-                       matic_reserve_params[2],  # 54
-                       matic_reserve_params[3],  # 55
-                       matic_reserve_params[4],  # 56
-                       matic_reserve_params[5],  # 57
-                       matic_reserve_params[6],  # 58
-                       matic_reserve_params[7],  # 59
-                       matic_reserve_params[8],  # 60
-                       matic_reserve_params[9],  # 61
-                       matic_reserve_params[10],  # 62
-                       matic_reserve_params[11],  # 63
-                       apt_reserve_params[0],  # 64
-                       apt_reserve_params[1],  # 65
-                       apt_reserve_params[2],  # 66
-                       apt_reserve_params[3],  # 67
-                       apt_reserve_params[4],  # 68
-                       apt_reserve_params[5],  # 69
-                       apt_reserve_params[6],  # 70
-                       apt_reserve_params[7],  # 71
-                       apt_reserve_params[8],  # 72
-                       apt_reserve_params[9],  # 73
-                       apt_reserve_params[10],  # 74
-                       apt_reserve_params[11],  # 75
-                       bnb_reserve_params[0],  # 76
-                       bnb_reserve_params[1],  # 77
-                       bnb_reserve_params[2],  # 78
-                       bnb_reserve_params[3],  # 79
-                       bnb_reserve_params[4],  # 80
-                       bnb_reserve_params[5],  # 81
-                       bnb_reserve_params[6],  # 82
-                       bnb_reserve_params[7],  # 83
-                       bnb_reserve_params[8],  # 84
-                       bnb_reserve_params[9],  # 85
-                       bnb_reserve_params[10],  # 86
-                       bnb_reserve_params[11],  # 87
-                       sui_reserve_param[0],  # 88
-                       sui_reserve_param[1],  # 89
-                       sui_reserve_param[2],  # 90
-                       sui_reserve_param[3],  # 91
-                       sui_reserve_param[4],  # 92
-                       sui_reserve_param[5],  # 93
-                       sui_reserve_param[6],  # 94
-                       sui_reserve_param[7],  # 95
-                       sui_reserve_param[8],  # 96
-                       sui_reserve_param[9],  # 97
-                       sui_reserve_param[10],  # 98
-                       sui_reserve_param[11],  # 99
-                       ],
+        actual_params=base_params + reserve_params,
         transactions=[
             [
                 genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -1170,6 +1071,7 @@ def batch_execute_proposal():
                  Argument("Input", U16(13)),
                  Argument("Input", U16(14)),
                  Argument("Input", U16(15)),
+                 Argument("Input", U16(16)),
                  ],
                 []
             ],  # 1. register_new_reserve 0 btc
@@ -1179,7 +1081,6 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(1), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(16)),
                  Argument("Input", U16(17)),
                  Argument("Input", U16(18)),
                  Argument("Input", U16(19)),
@@ -1191,6 +1092,8 @@ def batch_execute_proposal():
                  Argument("Input", U16(25)),
                  Argument("Input", U16(26)),
                  Argument("Input", U16(27)),
+                 Argument("Input", U16(28)),
+                 Argument("Input", U16(29)),
                  ],
                 []
             ],  # 2. register_new_reserve 1 usdt
@@ -1200,8 +1103,6 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(2), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(28)),
-                 Argument("Input", U16(29)),
                  Argument("Input", U16(30)),
                  Argument("Input", U16(31)),
                  Argument("Input", U16(32)),
@@ -1212,6 +1113,9 @@ def batch_execute_proposal():
                  Argument("Input", U16(37)),
                  Argument("Input", U16(38)),
                  Argument("Input", U16(39)),
+                 Argument("Input", U16(40)),
+                 Argument("Input", U16(41)),
+                 Argument("Input", U16(42)),
                  ],
                 []
             ],  # 3. register_new_reserve 2 usdc
@@ -1221,9 +1125,6 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(3), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(40)),
-                 Argument("Input", U16(41)),
-                 Argument("Input", U16(42)),
                  Argument("Input", U16(43)),
                  Argument("Input", U16(44)),
                  Argument("Input", U16(45)),
@@ -1233,6 +1134,10 @@ def batch_execute_proposal():
                  Argument("Input", U16(49)),
                  Argument("Input", U16(50)),
                  Argument("Input", U16(51)),
+                 Argument("Input", U16(52)),
+                 Argument("Input", U16(53)),
+                 Argument("Input", U16(54)),
+                 Argument("Input", U16(55)),
                  ],
                 []
             ],  # 4. register_new_reserve 3 eth
@@ -1242,10 +1147,6 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(4), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(52)),
-                 Argument("Input", U16(53)),
-                 Argument("Input", U16(54)),
-                 Argument("Input", U16(55)),
                  Argument("Input", U16(56)),
                  Argument("Input", U16(57)),
                  Argument("Input", U16(58)),
@@ -1254,6 +1155,11 @@ def batch_execute_proposal():
                  Argument("Input", U16(61)),
                  Argument("Input", U16(62)),
                  Argument("Input", U16(63)),
+                 Argument("Input", U16(64)),
+                 Argument("Input", U16(65)),
+                 Argument("Input", U16(66)),
+                 Argument("Input", U16(67)),
+                 Argument("Input", U16(68)),
                  ],
                 []
             ],  # 5. register_new_reserve 4 matic
@@ -1263,11 +1169,6 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(5), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(64)),
-                 Argument("Input", U16(65)),
-                 Argument("Input", U16(66)),
-                 Argument("Input", U16(67)),
-                 Argument("Input", U16(68)),
                  Argument("Input", U16(69)),
                  Argument("Input", U16(70)),
                  Argument("Input", U16(71)),
@@ -1275,6 +1176,12 @@ def batch_execute_proposal():
                  Argument("Input", U16(73)),
                  Argument("Input", U16(74)),
                  Argument("Input", U16(75)),
+                 Argument("Input", U16(76)),
+                 Argument("Input", U16(77)),
+                 Argument("Input", U16(78)),
+                 Argument("Input", U16(79)),
+                 Argument("Input", U16(80)),
+                 Argument("Input", U16(81)),
                  ],
                 []
             ],  # 6. register_new_reserve 5 apt
@@ -1284,18 +1191,19 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(6), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(76)),
-                 Argument("Input", U16(77)),
-                 Argument("Input", U16(78)),
-                 Argument("Input", U16(79)),
-                 Argument("Input", U16(80)),
-                 Argument("Input", U16(81)),
                  Argument("Input", U16(82)),
                  Argument("Input", U16(83)),
                  Argument("Input", U16(84)),
                  Argument("Input", U16(85)),
                  Argument("Input", U16(86)),
                  Argument("Input", U16(87)),
+                 Argument("Input", U16(88)),
+                 Argument("Input", U16(89)),
+                 Argument("Input", U16(90)),
+                 Argument("Input", U16(91)),
+                 Argument("Input", U16(92)),
+                 Argument("Input", U16(93)),
+                 Argument("Input", U16(94)),
                  ],
                 []
             ],  # 7. register_new_reserve 6 bnb
@@ -1305,18 +1213,19 @@ def batch_execute_proposal():
                  Argument("NestedResult", NestedResult(U16(7), U16(1))),
                  Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
-                 Argument("Input", U16(88)),
-                 Argument("Input", U16(89)),
-                 Argument("Input", U16(90)),
-                 Argument("Input", U16(91)),
-                 Argument("Input", U16(92)),
-                 Argument("Input", U16(93)),
-                 Argument("Input", U16(94)),
                  Argument("Input", U16(95)),
                  Argument("Input", U16(96)),
                  Argument("Input", U16(97)),
                  Argument("Input", U16(98)),
                  Argument("Input", U16(99)),
+                 Argument("Input", U16(100)),
+                 Argument("Input", U16(101)),
+                 Argument("Input", U16(102)),
+                 Argument("Input", U16(103)),
+                 Argument("Input", U16(104)),
+                 Argument("Input", U16(105)),
+                 Argument("Input", U16(106)),
+                 Argument("Input", U16(107)),
                  ],
                 []
             ],  # 8. register_new_reserve 7 sui
@@ -1342,7 +1251,7 @@ def batch_init_oracle():
     matic_token_param = [4, 100, 2]
     apt_token_param = [5, 1830, 2]
     bnb_token_param = [6, 28500, 2]
-    sui_token_param = [7, 10000, 2]
+    sui_token_param = [7, 100, 2]
 
     sui_project.batch_transaction(
         actual_params=[oracle.oracle.OracleCap[-1],  # 0

@@ -6,6 +6,7 @@
 module omnipool::wormhole_adapter_verify {
     use std::option::{Self, Option};
 
+    use sui::clock::Clock;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::tx_context::TxContext;
@@ -53,9 +54,9 @@ module omnipool::wormhole_adapter_verify {
         wormhole_state: &mut WormholeState,
         registered_emitters: &VecMap<u16, ExternalAddress>,
         vaa: vector<u8>,
-        ctx: &mut TxContext
+        clock: &Clock
     ): VAA {
-        let vaa = vaa::parse_and_verify(wormhole_state, vaa, ctx);
+        let vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
         assert_known_emitter(registered_emitters, &vaa);
         vaa
     }
@@ -80,9 +81,10 @@ module omnipool::wormhole_adapter_verify {
         registered_emitters: &VecMap<u16, ExternalAddress>,
         consumed_vaas: &mut object_table::ObjectTable<Bytes32, Unit>,
         vaa: vector<u8>,
+        clock: &Clock,
         ctx: &mut TxContext
     ): VAA {
-        let vaa = parse_and_verify(wormhole_state, registered_emitters, vaa, ctx);
+        let vaa = parse_and_verify(wormhole_state, registered_emitters, vaa, clock);
         replay_protect(consumed_vaas, &vaa, ctx);
         vaa
     }
