@@ -6,6 +6,7 @@ networks:
     node_url: "https://fullnode.devnet.sui.io:443"
   sui-testnet:
     node_url: "https://fullnode.testnet.sui.io:443"
+    pyth_service_url: "https://xc-testnet.pyth.network"
     #  node_url: "https://suinode-testnet.belaunch.io:443"
     #  node_url: "https://sui-testnet-wave3.coming.chat:443"
     objects:
@@ -14,6 +15,7 @@ networks:
     packages:
       pyth: "0x7c017b047a3c9db5a8f4586d347c54869b761b6d6b0882a179823e8642faf7b9"
       wormhole: "0x80c60bff35fe5026e319cf3d66ae671f2b4e12923c92c45df75eaf4de79e3ce7"
+      oracle: "0x4060e2ced89835e5af3d56ea2ad08d313ed4cb9adc53d9bf705aff4bd0259023"
     oracle:
       BTC/USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b"
   sui-localnet:
