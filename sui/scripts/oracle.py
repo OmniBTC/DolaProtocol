@@ -153,4 +153,5 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 
 
 if __name__ == '__main__':
+    # deploy_oracle()
     feed_token_price_for_pyth('BTC/USD')

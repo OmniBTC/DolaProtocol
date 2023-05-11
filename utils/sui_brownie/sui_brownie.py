@@ -421,6 +421,9 @@ class TransactionBuild:
                 if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
                         and isinstance(call_arg[i], str):
                     object_ids.append(call_arg[i])
+                if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
+                        and isinstance(call_arg[i], list):
+                    object_ids.extend(call_arg[i])
                 elif "Vector" in param_type and "Struct" in param_type["Vector"]:
                     assert isinstance(call_arg[i], list)
                     object_ids.extend(call_arg[i])
@@ -471,7 +474,16 @@ class TransactionBuild:
                 ("MutableReference" in param_type or
                  "Reference" in param_type or
                  "Struct" in param_type):
-            return CallArg("Object", cls.generate_object_arg(data, object_infos, param_type))
+            if "Vector" in param_type.get("MutableReference", {}) or "Vector" in param_type.get("Reference",
+                                                                                                {}) or "Vector" in param_type.get(
+                    "Struct", {}):
+                assert isinstance(data, list)
+                call_args = []
+                for object_id in data:
+                    call_args.append(CallArg("Object", cls.generate_object_arg(object_id, object_infos, param_type)))
+                return call_args
+            else:
+                return CallArg("Object", cls.generate_object_arg(data, object_infos, param_type))
         elif isinstance(param_type, dict) and "Vector" in param_type and "Struct" in param_type["Vector"]:
             assert isinstance(data, list)
             call_args = []
