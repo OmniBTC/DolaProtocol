@@ -52,11 +52,13 @@ def get_feed_vaa(symbol):
 def get_price_info_object(symbol):
     result = sui_project.client.suix_getDynamicFields(
         pyth_state(),
+        None,
+        None
     )
     name = list(b"price_info")
     price_inentifier_table = [field['objectId'] for field in result['data'] if field['name']['value'] == name][0]
 
-    result = sui_project.client.suix_getDynamicFields(price_inentifier_table)
+    result = sui_project.client.suix_getDynamicFields(price_inentifier_table, None, None)
     feed_id = sui_project.network_config['oracle'][symbol].replace("0x", "")
     if price_info_object_field := [
         field['objectId']
