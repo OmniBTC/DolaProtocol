@@ -8,6 +8,7 @@ networks:
       ExternalInterfaces: '0x6f1c4d06cd7243502d7869695326af563a86119a93957ae12049d3617221339f'
       GenesisProposal: '0x2c504467eddd56974524d1f372ff4b134cfded7d079560daa09bfcffc1c9676a'
       TestCoins: '0x359914b8d1ba70483351dd973588d63be63b055549c790826c5c1d3e7087f6fe'
+      Wormhole: '0xa799ed12eb76079797d051a09289294451543f6ade7cbd967f5c3659ee7e0bd3'
   sui-localnet:
     node_url: http://127.0.0.1:9000
   sui-testnet:

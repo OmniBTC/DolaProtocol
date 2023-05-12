@@ -21,6 +21,9 @@ def export_to_config():
     config["networks"][current_network]["packages"]["GenesisProposal"] = sui_project.GenesisProposal[-1]
     config["networks"][current_network]["packages"]["TestCoins"] = sui_project.TestCoins[-1]
 
+    if "Wormhole" not in config["networks"][current_network]["packages"]:
+        config["networks"][current_network]["packages"]["Wormhole"] = sui_project.Wormhole[-1]
+
     with open(path, "w") as f:
         yaml.safe_dump(config, f)
 

@@ -75,11 +75,11 @@ def register_token_price(dola_pool_id, price, decimal):
     )
     :return:
     """
-    oracle = load.oracle_package()
+    dola_protocol = load.dola_protocol_package()
 
-    oracle.oracle.register_token_price(
-        oracle.oracle.OracleCap[-1],
-        oracle.oracle.PriceOracle[-1],
+    dola_protocol.oracle.register_token_price(
+        dola_protocol.oracle.OracleCap[-1],
+        dola_protocol.oracle.PriceOracle[-1],
         dola_pool_id,
         price,
         decimal
@@ -95,10 +95,10 @@ def active_governance_v1():
     )
     :return:
     """
-    governance = load.governance_package()
-    governance.governance_v1.activate_governance(
-        governance.genesis.GovernanceGenesis[-1],
-        governance.governance_v1.GovernanceInfo[-1],
+    dola_protocol = load.dola_protocol_package()
+    dola_protocol.governance_v1.activate_governance(
+        dola_protocol.genesis.GovernanceGenesis[-1],
+        dola_protocol.governance_v1.GovernanceInfo[-1],
     )
 
 
@@ -115,16 +115,15 @@ def init_wormhole_adapter_pool():
     )
     :return:
     """
-    omnipool = load.omnipool_package()
+    dola_protocol = load.dola_protocol_package()
     wormhole = load.wormhole_package()
-    dola_types = load.dola_types_package()
 
-    omnipool.wormhole_adapter_pool.initialize(
-        omnipool.wormhole_adapter_pool.PoolGenesis[-1],
+    dola_protocol.wormhole_adapter_pool.initialize(
+        dola_protocol.wormhole_adapter_pool.PoolGenesis[-1],
         0,
         get_wormhole_adapter_core_emitter(),
-        omnipool.dola_pool.PoolApproval[-1],
-        dola_types.dola_contract.DolaContractRegistry[-1],
+        dola_protocol.dola_pool.PoolApproval[-1],
+        dola_protocol.dola_contract.DolaContractRegistry[-1],
         wormhole.state.State[-1]
     )
 
@@ -174,11 +173,11 @@ def register_spender(vaa):
     )
     :return:
     """
-    omnipool = load.omnipool_package()
+    dola_protocol = load.dola_protocol_package()
 
-    omnipool.wormhole_adapter_pool.register_spender(
-        omnipool.wormhole_adapter_pool.PoolState[-1],
-        omnipool.dola_pool.PoolApproval[-1],
+    dola_protocol.wormhole_adapter_pool.register_spender(
+        dola_protocol.wormhole_adapter_pool.PoolState[-1],
+        dola_protocol.dola_pool.PoolApproval[-1],
         list(bytes.fromhex(vaa.replace("0x", "")))
     )
 
@@ -207,9 +206,9 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
+    dola_protocol = load.dola_protocol_package()
     genesis_proposal.genesis_proposal.create_proposal(
-        governance.governance_v1.GovernanceInfo[-1])
+        dola_protocol.governance_v1.GovernanceInfo[-1])
 
 
 def vote_init_wormhole_adapter_core():
@@ -395,18 +394,17 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
     wormhole = load.wormhole_package()
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    dola_protocol = load.dola_protocol_package()
 
     result = sui_project.pay_sui([0])
     zero_coin = result['objectChanges'][-1]['objectId']
 
     genesis_proposal.genesis_proposal.vote_remote_register_spender(
-        governance.governance_v1.GovernanceInfo[-1],
+        dola_protocol.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
-        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_protocol.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
         dola_contract,
         zero_coin
@@ -608,11 +606,11 @@ def balance(coin_type):
 
 
 def pool(coin_type):
-    return f"{sui_project.OmniPool[-1]}::dola_pool::Pool<{coin_type}>"
+    return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<{coin_type}>"
 
 
 def proposal():
-    return f"{sui_project.Governance[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
+    return f"{sui_project.DolaProtocol[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
            f"::genesis_proposal::Certificate>"
 
 
@@ -625,16 +623,16 @@ def bridge_pool_read_vaa(index=0):
 
 
 def bridge_core_read_vaa(index=0):
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
-    result = wormhole_adapter_core.wormhole_adapter_core.read_vaa.simulate(
-        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1], index
+    dola_protocol = load.dola_protocol_package()
+    result = dola_protocol.wormhole_adapter_core.read_vaa.simulate(
+        dola_protocol.wormhole_adapter_core.CoreState[-1], index
     )["events"][0]["parsedJson"]
     return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
 
 
 def lending_portal_contract_id():
-    dola_portal = load.dola_portal_package()
-    lending_portal_info = sui_project.client.sui_multiGetObjects([dola_portal.lending.LendingPortal[-1]], {
+    dola_protocol = load.dola_protocol_package()
+    lending_portal_info = sui_project.client.sui_multiGetObjects([dola_protocol.lending_portal.LendingPortal[-1]], {
         "showType": False,
         "showOwner": False,
         "showPreviousTransaction": False,
@@ -654,9 +652,9 @@ def query_relay_event(limit=5):
 
 @functools.lru_cache()
 def get_wormhole_adapter_core_emitter() -> List[int]:
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    dola_protocol = load.dola_protocol_package()
     result = sui_project.client.sui_getObject(
-        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_protocol.wormhole_adapter_core.CoreState[-1],
         {
             "showType": True,
             "showOwner": True,
@@ -673,14 +671,8 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
 
 def batch_execute_proposal():
     genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
-    pool_manager = load.pool_manager_package()
-    app_manager = load.app_manager_package()
-    dola_types = load.dola_types_package()
     wormhole = load.wormhole_package()
-    user_manager = load.user_manager_package()
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
-    lending_core = load.lending_core_package()
+    dola_protocol = load.dola_protocol_package()
 
     # Execute genesis proposal
 
@@ -689,7 +681,7 @@ def batch_execute_proposal():
 
     create_proposal()
     sui_project.batch_transaction(
-        actual_params=[governance.governance_v1.GovernanceInfo[-1],  # 0
+        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
                        wormhole.state.State[-1],  # 2
                        decimals,  # 3
@@ -752,9 +744,9 @@ def batch_execute_proposal():
 
     create_proposal()
     sui_project.batch_transaction(
-        actual_params=[governance.governance_v1.GovernanceInfo[-1],  # 0
+        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       pool_manager.pool_manager.PoolManagerInfo[-1],  # 2
+                       dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
                        btc_pool_params[0],  # 3
                        btc_pool_params[1],  # 4
                        btc_pool_params[2],  # 5
@@ -843,11 +835,11 @@ def batch_execute_proposal():
 
     create_proposal()
     sui_project.batch_transaction(
-        actual_params=[governance.governance_v1.GovernanceInfo[-1],  # 0
+        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       app_manager.app_manager.TotalAppInfo[-1],  # 2
-                       dola_types.dola_contract.DolaContractRegistry[-1],  # 3
-                       user_manager.user_manager.UserManagerInfo[-1],  # 4
+                       dola_protocol.app_manager.TotalAppInfo[-1],  # 2
+                       dola_protocol.dola_contract.DolaContractRegistry[-1],  # 3
+                       dola_protocol.user_manager.UserManagerInfo[-1],  # 4
                        chain_group_id,  # 5
                        group_chain_ids,  # 6
                        ],
@@ -902,10 +894,10 @@ def batch_execute_proposal():
 
     create_proposal()
     sui_project.batch_transaction(
-        actual_params=[governance.governance_v1.GovernanceInfo[-1],  # 0
+        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
                        wormhole.state.State[-1],  # 2
-                       wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],  # 3
+                       dola_protocol.wormhole_adapter_core.CoreState[-1],  # 3
                        register_spender_param[0],  # 4
                        register_spender_param[1],  # 5
                        register_spender_param[2],  # 6
@@ -937,8 +929,9 @@ def batch_execute_proposal():
         ]
     )
 
-    (vaa, _) = bridge_core_read_vaa()
-    register_spender(vaa)
+    # (vaa, _) = bridge_core_read_vaa()
+    # todo: register spender
+    # register_spender(vaa)
 
     # Init lending reserve
 
@@ -1028,21 +1021,12 @@ def batch_execute_proposal():
                          int(0.45 * RAY)]
 
     base_params = [
-        governance.governance_v1.GovernanceInfo[-1],  # 0
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
         sui_project[SuiObject.from_type(proposal())][-1],  # 1
-        lending_core.storage.Storage[-1],  # 2
+        dola_protocol.lending_core_storage.Storage[-1],  # 2
         clock()  # 3
     ]
-    reserve_params = [
-        btc_reserve_params,  # 4 - 16
-        usdt_reserve_params,  # 17 - 29
-        usdc_reserve_params,  # 30 - 42
-        eth_reserve_params,  # 43 - 55
-        matic_reserve_params,  # 56 - 68
-        apt_reserve_params,  # 69 - 81
-        bnb_reserve_params,  # 82 - 94
-        sui_reserve_param  # 95 - 107
-    ]
+    reserve_params = btc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + apt_reserve_params + bnb_reserve_params + sui_reserve_param
 
     create_proposal()
     sui_project.batch_transaction(
@@ -1240,7 +1224,7 @@ def batch_execute_proposal():
 
 
 def batch_init_oracle():
-    oracle = load.oracle_package()
+    dola_protocol = load.dola_protocol_package()
 
     # Token price params
     # [dola_pool_id, price, price_decimal]
@@ -1254,8 +1238,8 @@ def batch_init_oracle():
     sui_token_param = [7, 100, 2]
 
     sui_project.batch_transaction(
-        actual_params=[oracle.oracle.OracleCap[-1],  # 0
-                       oracle.oracle.PriceOracle[-1],  # 1
+        actual_params=[dola_protocol.oracle.OracleCap[-1],  # 0
+                       dola_protocol.oracle.PriceOracle[-1],  # 1
                        btc_token_param[0],  # 2
                        btc_token_param[1],  # 3
                        btc_token_param[2],  # 4
@@ -1283,7 +1267,7 @@ def batch_init_oracle():
                        ],
         transactions=[
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1294,7 +1278,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1305,7 +1289,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1316,7 +1300,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1327,7 +1311,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1338,7 +1322,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1349,7 +1333,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
@@ -1360,7 +1344,7 @@ def batch_init_oracle():
                 []
             ],
             [
-                oracle.oracle.register_token_price,
+                dola_protocol.oracle.register_token_price,
                 [
                     Argument("Input", U16(0)),
                     Argument("Input", U16(1)),
