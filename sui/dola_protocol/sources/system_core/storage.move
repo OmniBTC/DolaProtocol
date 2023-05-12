@@ -9,14 +9,14 @@ module dola_protocol::system_core_storage {
     use dola_protocol::app_manager::{Self, AppCap, TotalAppInfo};
     use dola_protocol::genesis::GovernanceCap;
 
+    friend dola_protocol::system_core_wormhole_adapter;
+
     struct Storage has key {
         id: UID,
         /// Used in representative system app
         app_cap: AppCap,
     }
 
-    /// Used to remove app_cap and user_manager_cap from Storage
-    struct StorageCap has store, drop {}
 
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
@@ -29,13 +29,8 @@ module dola_protocol::system_core_storage {
         })
     }
 
-    public fun register_cap_with_governance(_: &GovernanceCap): StorageCap {
-        StorageCap {}
-    }
-
     /// Get app cap
-    public fun get_app_cap(
-        _: &StorageCap,
+    public(friend) fun get_app_cap(
         storage: &Storage
     ): &AppCap {
         &storage.app_cap

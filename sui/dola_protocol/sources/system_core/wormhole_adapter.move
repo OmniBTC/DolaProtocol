@@ -4,25 +4,17 @@ module dola_protocol::system_core_wormhole_adapter {
 
     use sui::clock::Clock;
     use sui::event;
-    use sui::object::{Self, UID};
-    use sui::transfer;
     use sui::tx_context::TxContext;
 
     use dola_protocol::dola_address;
-    use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::system_codec;
-    use dola_protocol::system_core_storage::{Self as storage, StorageCap, Storage};
+    use dola_protocol::system_core_storage::{Self as storage, Storage};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use wormhole::state::State as WormholeState;
 
     /// Errors
     const EINVALID_CALLTYPE: u64 = 0;
-
-    struct WormholeAdapter has key {
-        id: UID,
-        storage_cap: StorageCap
-    }
 
     /// Events
 
@@ -35,20 +27,9 @@ module dola_protocol::system_core_wormhole_adapter {
         call_type: u8
     }
 
-    public fun initialize_cap_with_governance(
-        governance: &GovernanceCap,
-        ctx: &mut TxContext
-    ) {
-        transfer::share_object(WormholeAdapter {
-            id: object::new(ctx),
-            storage_cap: storage::register_cap_with_governance(governance),
-        })
-    }
-
     public entry fun bind_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
-        wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         storage: &Storage,
         vaa: vector<u8>,
@@ -58,7 +39,7 @@ module dola_protocol::system_core_wormhole_adapter {
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage),
             vaa,
             clock,
             ctx
@@ -91,7 +72,6 @@ module dola_protocol::system_core_wormhole_adapter {
     public entry fun unbind_user_address(
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
-        wormhole_adapter: &mut WormholeAdapter,
         core_state: &mut CoreState,
         storage: &Storage,
         vaa: vector<u8>,
@@ -101,7 +81,7 @@ module dola_protocol::system_core_wormhole_adapter {
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
-            storage::get_app_cap(&wormhole_adapter.storage_cap, storage),
+            storage::get_app_cap(storage),
             vaa,
             clock,
             ctx

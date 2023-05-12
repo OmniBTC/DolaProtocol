@@ -16,6 +16,7 @@ module dola_protocol::oracle {
 
     const EALREADY_EXIST_ORACLE: u64 = 1;
 
+    /// todo: remove after using the official oracle
     struct OracleCap has key {
         id: UID
     }
