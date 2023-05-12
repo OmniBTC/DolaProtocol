@@ -9,14 +9,11 @@ module dola_protocol::system_portal {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::dola_address;
-    use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::system_codec;
-    use dola_protocol::user_manager::{Self, UserManagerInfo, UserManagerCap};
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
 
     struct SystemPortal has key {
         id: UID,
-        // Allow modification of user_manager storage through UserManagerCap
-        user_manager_cap: UserManagerCap,
         // Next nonce
         next_nonce: u64
     }
@@ -34,12 +31,10 @@ module dola_protocol::system_portal {
     }
 
     public fun initialize_cap_with_governance(
-        governance: &GovernanceCap,
         ctx: &mut TxContext
     ) {
         transfer::share_object(SystemPortal {
             id: object::new(ctx),
-            user_manager_cap: user_manager::register_cap_with_governance(governance),
             next_nonce: 0
         })
     }
@@ -62,13 +57,11 @@ module dola_protocol::system_portal {
         let bind_dola_address = dola_address::create_dola_address(dola_chain_id, binded_address);
         if (user == bind_dola_address) {
             user_manager::register_dola_user_id(
-                &system_portal.user_manager_cap,
                 user_manager_info,
                 user
             );
         } else {
             user_manager::bind_user_address(
-                &system_portal.user_manager_cap,
                 user_manager_info,
                 user,
                 bind_dola_address
@@ -94,7 +87,6 @@ module dola_protocol::system_portal {
         let user = dola_address::convert_address_to_dola(sender);
         let unbind_dola_address = dola_address::create_dola_address(dola_chain_id, unbinded_address);
         user_manager::unbind_user_address(
-            &system_portal.user_manager_cap,
             user_manager_info,
             user,
             unbind_dola_address

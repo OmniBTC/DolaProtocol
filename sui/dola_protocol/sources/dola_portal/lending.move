@@ -23,7 +23,7 @@ module dola_protocol::lending_portal {
     use dola_protocol::lending_logic;
     use dola_protocol::oracle::PriceOracle;
     use dola_protocol::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
-    use dola_protocol::user_manager::{Self, UserManagerInfo, UserManagerCap};
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use wormhole::state::State as WormholeState;
 
@@ -52,8 +52,6 @@ module dola_protocol::lending_portal {
         id: UID,
         /// Used to represent the contract address of this module in the Dola protocol
         dola_contract: DolaContract,
-        // Allow modification of user_manager storage through UserManagerCap
-        user_manager_cap: UserManagerCap,
         // Allow modification of pool_manager storage via PoolManagerCap
         pool_manager_cap: PoolManagerCap,
         // Allow modification of lending storage
@@ -104,7 +102,6 @@ module dola_protocol::lending_portal {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
             dola_contract: dola_contract::create_dola_contract(dola_contract_registry),
-            user_manager_cap: user_manager::register_cap_with_governance(governance),
             pool_manager_cap: pool_manager::register_cap_with_governance(governance),
             storage_cap: storage::register_cap_with_governance(governance),
             relayer: tx_context::sender(ctx),
@@ -258,7 +255,6 @@ module dola_protocol::lending_portal {
         // Reigster user id for user
         if (!user_manager::is_dola_user(user_manager_info, user_address)) {
             user_manager::register_dola_user_id(
-                &lending_portal.user_manager_cap,
                 user_manager_info,
                 user_address
             );
@@ -397,7 +393,7 @@ module dola_protocol::lending_portal {
 
         // Check pool liquidity
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
-        assert!(pool_liquidity >= (actual_amount as u256), ENOT_ENOUGH_LIQUIDITY);
+        assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
         // Remove pool liquidity for dst ppol
         let (withdraw_amount, _) = pool_manager::remove_liquidity(
@@ -405,7 +401,7 @@ module dola_protocol::lending_portal {
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
-            (actual_amount as u256)
+            actual_amount
         );
 
         // Bridge fee = relay fee + wormhole feee
@@ -646,7 +642,6 @@ module dola_protocol::lending_portal {
         );
         if (!user_manager::is_dola_user(user_manager_info, user_address)) {
             user_manager::register_dola_user_id(
-                &lending_portal.user_manager_cap,
                 user_manager_info,
                 user_address
             );

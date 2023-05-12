@@ -20,7 +20,7 @@ module dola_protocol::wormhole_adapter_core {
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::pool_codec;
     use dola_protocol::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
-    use dola_protocol::user_manager::{Self, UserManagerInfo, UserManagerCap};
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_verify::{Self, Unit};
     use wormhole::bytes32::{Self, Bytes32};
     use wormhole::emitter::{Self, EmitterCap};
@@ -47,8 +47,6 @@ module dola_protocol::wormhole_adapter_core {
     /// application by app_id from pool payload.
     struct CoreState has key, store {
         id: UID,
-        // Allow modification of user_manager storage through UserManagerCap
-        user_manager_cap: UserManagerCap,
         // Allow modification of pool_manager storage via PoolManagerCap
         pool_manager_cap: PoolManagerCap,
         // Move does not have a contract address, Wormhole uses the emitter
@@ -107,7 +105,6 @@ module dola_protocol::wormhole_adapter_core {
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
-                user_manager_cap: user_manager::register_cap_with_governance(governance),
                 pool_manager_cap: pool_manager::register_cap_with_governance(governance),
                 wormhole_emitter: emitter::new(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
@@ -342,7 +339,7 @@ module dola_protocol::wormhole_adapter_core {
         );
 
         if (!user_manager::is_dola_user(user_manager_info, user_address)) {
-            user_manager::register_dola_user_id(&core_state.user_manager_cap, user_manager_info, user_address);
+            user_manager::register_dola_user_id(user_manager_info, user_address);
         };
 
         // myvaa::destroy(vaa);

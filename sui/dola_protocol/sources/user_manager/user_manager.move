@@ -17,6 +17,11 @@ module dola_protocol::user_manager {
     #[test_only]
     use sui::test_scenario;
 
+    friend dola_protocol::system_core_wormhole_adapter;
+    friend dola_protocol::lending_portal;
+    friend dola_protocol::system_portal;
+    friend dola_protocol::wormhole_adapter_core;
+
     /// Errors
     const EALREADY_USER: u64 = 0;
 
@@ -29,10 +34,6 @@ module dola_protocol::user_manager {
     const ENOT_GROUP: u64 = 4;
 
     const EINVALID_UNBINDING: u64 = 5;
-
-    /// Capability allowing user address status modification.
-    /// Owned by bridge adapters (wormhole, layerzero, etc).
-    struct UserManagerCap has store {}
 
     /// Manage user addresses of different chains, bound with user id.
     /// Also group the dola chain ids, such as evm chains into the same group,
@@ -78,10 +79,6 @@ module dola_protocol::user_manager {
         })
     }
 
-    /// Giving the bridge adapter the right to make changes to the `user_manager` module through governance
-    public fun register_cap_with_governance(_: &GovernanceCap): UserManagerCap {
-        UserManagerCap {}
-    }
 
     /// Register the chain ids that need to be grouped
     public fun register_dola_chain_id(
@@ -140,8 +137,7 @@ module dola_protocol::user_manager {
     }
 
     /// Register new DolaAddress
-    public fun register_dola_user_id(
-        _: &UserManagerCap,
+    public(friend) fun register_dola_user_id(
         user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress
     ) {
@@ -164,8 +160,7 @@ module dola_protocol::user_manager {
     }
 
     /// Bind a DolaAddress to an existing DolaAddress
-    public fun bind_user_address(
-        _: &UserManagerCap,
+    public(friend) fun bind_user_address(
         user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress,
         binded_address: DolaAddress
@@ -188,8 +183,7 @@ module dola_protocol::user_manager {
     }
 
     /// Unbind a DolaAddress to an existing DolaAddress
-    public fun unbind_user_address(
-        _: &UserManagerCap,
+    public(friend) fun unbind_user_address(
         user_manager_info: &mut UserManagerInfo,
         user_address: DolaAddress,
         unbinded_address: DolaAddress
@@ -212,11 +206,6 @@ module dola_protocol::user_manager {
             dola_user_address: unbinded_address,
             dola_user_id
         });
-    }
-
-    /// Destroy manager
-    public fun destroy_manager(user_manager_cap: UserManagerCap) {
-        let UserManagerCap {} = user_manager_cap;
     }
 
     #[test_only]

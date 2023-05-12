@@ -8,14 +8,11 @@ module dola_protocol::system_core_storage {
 
     use dola_protocol::app_manager::{Self, AppCap, TotalAppInfo};
     use dola_protocol::genesis::GovernanceCap;
-    use dola_protocol::user_manager::{Self, UserManagerCap};
 
     struct Storage has key {
         id: UID,
         /// Used in representative system app
         app_cap: AppCap,
-        // Allow modification of user_manager storage through UserManagerCap
-        user_manager_cap: UserManagerCap,
     }
 
     /// Used to remove app_cap and user_manager_cap from Storage
@@ -29,7 +26,6 @@ module dola_protocol::system_core_storage {
         transfer::share_object(Storage {
             id: object::new(ctx),
             app_cap: app_manager::register_cap_with_governance(governance, total_app_info, ctx),
-            user_manager_cap: user_manager::register_cap_with_governance(governance),
         })
     }
 
@@ -43,13 +39,5 @@ module dola_protocol::system_core_storage {
         storage: &Storage
     ): &AppCap {
         &storage.app_cap
-    }
-
-    /// Get user manager cap
-    public fun get_user_manager_cap(
-        _: &StorageCap,
-        storage: &Storage
-    ): &UserManagerCap {
-        &storage.user_manager_cap
     }
 }

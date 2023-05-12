@@ -68,13 +68,11 @@ module dola_protocol::system_core_wormhole_adapter {
 
         if (sender == binded_address) {
             user_manager::register_dola_user_id(
-                storage::get_user_manager_cap(&wormhole_adapter.storage_cap, storage),
                 user_manager_info,
                 sender
             );
         } else {
             user_manager::bind_user_address(
-                storage::get_user_manager_cap(&wormhole_adapter.storage_cap, storage),
                 user_manager_info,
                 sender,
                 binded_address
@@ -112,7 +110,6 @@ module dola_protocol::system_core_wormhole_adapter {
         assert!(call_type == system_codec::get_unbinding_type(), EINVALID_CALLTYPE);
 
         user_manager::unbind_user_address(
-            storage::get_user_manager_cap(&wormhole_adapter.storage_cap, storage),
             user_manager_info,
             sender,
             unbinded_address
