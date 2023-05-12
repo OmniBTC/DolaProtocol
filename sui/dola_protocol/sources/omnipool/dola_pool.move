@@ -7,7 +7,6 @@
 module dola_protocol::dola_pool {
     use std::ascii::{Self, String};
     use std::type_name;
-    use std::vector;
 
     use sui::balance::{Self, Balance, zero};
     use sui::coin::{Self, Coin};
@@ -17,7 +16,6 @@ module dola_protocol::dola_pool {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::dola_address::{Self, DolaAddress};
-    use dola_protocol::dola_contract::{Self, DolaContract};
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::pool_codec;
 
@@ -31,6 +29,7 @@ module dola_protocol::dola_pool {
     use sui::test_scenario::{Self, return_shared};
 
     friend dola_protocol::wormhole_adapter_pool;
+    friend dola_protocol::lending_portal;
 
     /// Errors
 
@@ -60,15 +59,6 @@ module dola_protocol::dola_pool {
         decimal: u8
     }
 
-    /// Give permission to the bridge for pool
-    struct PoolApproval has key {
-        id: UID,
-        // Save the dola contract address that allowns to manage spender
-        owners: vector<u256>,
-        // Save the dola contract address that allows withdrawals
-        spenders: vector<u256>
-    }
-
     /// Events
 
     /// Deposit coin
@@ -83,80 +73,6 @@ module dola_protocol::dola_pool {
         pool: String,
         receiver: address,
         amount: u64
-    }
-
-
-    fun init(ctx: &mut TxContext) {
-        transfer::share_object(PoolApproval {
-            id: object::new(ctx),
-            owners: vector::empty(),
-            spenders: vector::empty()
-        });
-    }
-
-    /// Register owner and spender for basic bridge
-    public(friend) fun register_basic_bridge(
-        pool_approval: &mut PoolApproval,
-        dola_contract: &DolaContract
-    ) {
-        let dola_contract = dola_contract::get_dola_contract(dola_contract);
-        assert!(!vector::contains(&pool_approval.owners, &dola_contract), EHAS_REGISTER_OWNER);
-        assert!(!vector::contains(&pool_approval.spenders, &dola_contract), EHAS_REGISTER_SPENDER);
-
-        vector::push_back(&mut pool_approval.owners, dola_contract);
-        vector::push_back(&mut pool_approval.spenders, dola_contract);
-    }
-
-    /// Call by governance
-
-    /// Register owner by owner
-    public fun register_owner(
-        pool_approval: &mut PoolApproval,
-        old_owner: &DolaContract,
-        new_owner: u256
-    ) {
-        let old_dola_contract = dola_contract::get_dola_contract(old_owner);
-        assert!(vector::contains(&pool_approval.owners, &old_dola_contract), ENOT_REGISTER_OWNER);
-        assert!(!vector::contains(&pool_approval.owners, &new_owner), EHAS_REGISTER_OWNER);
-
-        vector::push_back(&mut pool_approval.owners, new_owner);
-    }
-
-    /// Delete owner by owner
-    public fun delete_owner(
-        pool_approval: &mut PoolApproval,
-        owner: &DolaContract,
-        deleted_dola_contract: u256
-    ) {
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), ENOT_REGISTER_OWNER);
-        let (flag, index) = vector::index_of(&mut pool_approval.owners, &deleted_dola_contract);
-        assert!(flag, ENOT_REGISTER_OWNER);
-        vector::remove(&mut pool_approval.owners, index);
-    }
-
-    /// Register spender by owner
-    public fun register_spender(
-        pool_approval: &mut PoolApproval,
-        owner: &DolaContract,
-        spender: u256
-    ) {
-        let owner_dola_contract = dola_contract::get_dola_contract(owner);
-        assert!(vector::contains(&pool_approval.owners, &owner_dola_contract), ENOT_REGISTER_OWNER);
-        assert!(!vector::contains(&pool_approval.spenders, &spender), EHAS_REGISTER_SPENDER);
-
-        vector::push_back(&mut pool_approval.spenders, spender);
-    }
-
-    /// Delete spender by owner
-    public fun delete_spender(
-        pool_approval: &mut PoolApproval,
-        owner: &DolaContract,
-        deleted_dola_contract: u256
-    ) {
-        assert!(vector::contains(&pool_approval.owners, &dola_contract::get_dola_contract(owner)), ENOT_REGISTER_OWNER);
-        let (flag, index) = vector::index_of(&mut pool_approval.spenders, &deleted_dola_contract);
-        assert!(flag, ENOT_REGISTER_SPENDER);
-        vector::remove(&mut pool_approval.spenders, index);
     }
 
     /// Create pool by governance
@@ -236,19 +152,13 @@ module dola_protocol::dola_pool {
     }
 
     /// Withdraw from the pool. Only bridges that are registered spender are allowed to make calls
-    public fun withdraw<CoinType>(
-        pool_approval: &PoolApproval,
-        dola_contract: &DolaContract,
+    public(friend) fun withdraw<CoinType>(
         pool: &mut Pool<CoinType>,
         user_address: DolaAddress,
         amount: u64,
         pool_address: DolaAddress,
         ctx: &mut TxContext
     ) {
-        assert!(
-            vector::contains(&pool_approval.spenders, &dola_contract::get_dola_contract(dola_contract)),
-            ENOT_REGISTER_SPENDER
-        );
         assert!(
             dola_address::get_native_dola_chain_id() == dola_address::get_dola_chain_id(&pool_address),
             EINVALID_DST_CHAIN

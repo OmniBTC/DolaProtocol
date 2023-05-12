@@ -15,8 +15,7 @@ module dola_protocol::lending_portal {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::dola_address;
-    use dola_protocol::dola_contract::{Self, DolaContract, DolaContractRegistry};
-    use dola_protocol::dola_pool::{Self, Pool, PoolApproval};
+    use dola_protocol::dola_pool::{Self, Pool};
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self, Storage};
@@ -50,8 +49,6 @@ module dola_protocol::lending_portal {
 
     struct LendingPortal has key {
         id: UID,
-        /// Used to represent the contract address of this module in the Dola protocol
-        dola_contract: DolaContract,
         // Relayer
         relayer: address,
         // Next nonce
@@ -92,12 +89,10 @@ module dola_protocol::lending_portal {
 
     public fun initialize_cap_with_governance(
         _: &GovernanceCap,
-        dola_contract_registry: &mut DolaContractRegistry,
         ctx: &mut TxContext
     ) {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
-            dola_contract: dola_contract::create_dola_contract(dola_contract_registry),
             relayer: tx_context::sender(ctx),
             next_nonce: 0
         })
@@ -271,7 +266,6 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
     public entry fun withdraw_local<CoinType>(
-        pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -318,8 +312,6 @@ module dola_protocol::lending_portal {
 
         // Local withdraw
         dola_pool::withdraw(
-            pool_approval,
-            &lending_portal.dola_contract,
             pool,
             user_address,
             (withdraw_amount as u64),
@@ -430,7 +422,6 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
     public entry fun borrow_local<CoinType>(
-        pool_approval: &PoolApproval,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -476,8 +467,6 @@ module dola_protocol::lending_portal {
         );
         // Local borrow
         dola_pool::withdraw(
-            pool_approval,
-            &lending_portal.dola_contract,
             pool,
             user_address,
             (withdraw_amount as u64),

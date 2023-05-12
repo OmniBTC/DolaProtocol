@@ -65,7 +65,7 @@ module dola_protocol::wormhole_adapter_core {
     }
 
     /// Event for delete bridge
-    struct DeleteBridge  has copy, drop {
+    struct DeleteBridge has copy, drop {
         wormhole_emitter_chain: u16,
         wormhole_emitter_address: vector<u8>
     }
