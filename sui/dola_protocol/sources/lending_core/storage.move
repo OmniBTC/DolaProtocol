@@ -14,6 +14,10 @@ module dola_protocol::lending_core_storage {
     use dola_protocol::oracle;
     use dola_protocol::ray_math as math;
 
+    friend dola_protocol::lending_logic;
+    friend dola_protocol::lending_portal;
+    friend dola_protocol::lending_core_wormhole_adapter;
+
     /// Errors
 
     const EALREADY_EXIST_RESERVE: u64 = 0;
@@ -94,10 +98,7 @@ module dola_protocol::lending_core_storage {
         optimal_utilization: u256
     }
 
-    struct StorageCap has store, drop {}
-
     /// initialize
-
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,
@@ -109,10 +110,6 @@ module dola_protocol::lending_core_storage {
             reserves: table::new(ctx),
             user_infos: table::new(ctx)
         });
-    }
-
-    public fun register_cap_with_governance(_: &GovernanceCap): StorageCap {
-        StorageCap {}
     }
 
     public fun register_new_reserve(
@@ -261,8 +258,7 @@ module dola_protocol::lending_core_storage {
         app_manager::get_app_id(&storage.app_cap)
     }
 
-    public fun get_app_cap(
-        _: &StorageCap,
+    public(friend) fun get_app_cap(
         storage: &mut Storage
     ): &AppCap {
         &storage.app_cap
@@ -435,8 +431,7 @@ module dola_protocol::lending_core_storage {
 
     /// Setter
 
-    public fun mint_otoken_scaled(
-        _: &StorageCap,
+    public(friend) fun mint_otoken_scaled(
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
@@ -454,8 +449,7 @@ module dola_protocol::lending_core_storage {
         otoken_scaled.total_supply = otoken_scaled.total_supply + scaled_amount;
     }
 
-    public fun burn_otoken_scaled(
-        _: &StorageCap,
+    public(friend) fun burn_otoken_scaled(
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
@@ -474,8 +468,7 @@ module dola_protocol::lending_core_storage {
         otoken_scaled.total_supply = otoken_scaled.total_supply - scaled_amount;
     }
 
-    public fun mint_dtoken_scaled(
-        _: &StorageCap,
+    public(friend) fun mint_dtoken_scaled(
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
@@ -493,8 +486,7 @@ module dola_protocol::lending_core_storage {
         dtoken_scaled.total_supply = dtoken_scaled.total_supply + scaled_amount;
     }
 
-    public fun burn_dtoken_scaled(
-        _: &StorageCap,
+    public(friend) fun burn_dtoken_scaled(
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
@@ -529,8 +521,7 @@ module dola_protocol::lending_core_storage {
         };
     }
 
-    public fun add_user_liquid_asset(
-        _: &StorageCap,
+    public(friend) fun add_user_liquid_asset(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -541,8 +532,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun remove_user_liquid_asset(
-        _: &StorageCap,
+    public(friend) fun remove_user_liquid_asset(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -556,8 +546,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun add_user_collateral(
-        _: &StorageCap,
+    public(friend) fun add_user_collateral(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -568,8 +557,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun remove_user_collateral(
-        _: &StorageCap,
+    public(friend) fun remove_user_collateral(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -582,8 +570,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun add_user_loan(
-        _: &StorageCap,
+    public(friend) fun add_user_loan(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -594,8 +581,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun remove_user_loan(
-        _: &StorageCap,
+    public(friend) fun remove_user_loan(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
@@ -608,8 +594,7 @@ module dola_protocol::lending_core_storage {
         }
     }
 
-    public fun update_user_average_liquidity(
-        _: &StorageCap,
+    public(friend) fun update_user_average_liquidity(
         storage: &mut Storage,
         clock: &Clock,
         dola_user_id: u64,
@@ -620,8 +605,7 @@ module dola_protocol::lending_core_storage {
         user_info.average_liquidity = average_liquidity;
     }
 
-    public fun update_isolate_debt(
-        _: &StorageCap,
+    public(friend) fun update_isolate_debt(
         storage: &mut Storage,
         dola_pool_id: u16,
         isolate_debt: u256
@@ -630,8 +614,7 @@ module dola_protocol::lending_core_storage {
         reserve.isolate_debt = isolate_debt;
     }
 
-    public fun update_state(
-        cap: &StorageCap,
+    public(friend) fun update_state(
         storage: &mut Storage,
         dola_pool_id: u16,
         new_borrow_index: u256,
@@ -647,7 +630,6 @@ module dola_protocol::lending_core_storage {
         // Mint to treasury
         let dola_treasury_id = table::borrow(&storage.reserves, dola_pool_id).treasury;
         mint_otoken_scaled(
-            cap,
             storage,
             dola_pool_id,
             dola_treasury_id,
@@ -655,8 +637,7 @@ module dola_protocol::lending_core_storage {
         );
     }
 
-    public fun update_interest_rate(
-        _: &StorageCap,
+    public(friend) fun update_interest_rate(
         storage: &mut Storage,
         dola_pool_id: u16,
         new_borrow_rate: u256,

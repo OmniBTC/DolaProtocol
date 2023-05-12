@@ -8,12 +8,15 @@ module dola_protocol::lending_logic {
 
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
-    use dola_protocol::lending_core_storage::{Self as storage, StorageCap, Storage, is_isolated_asset};
+    use dola_protocol::lending_core_storage::{Self as storage, Storage, is_isolated_asset};
     use dola_protocol::oracle::{Self, PriceOracle};
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
     use dola_protocol::scaled_balance;
+
+    friend dola_protocol::lending_core_wormhole_adapter;
+    friend dola_protocol::lending_portal;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
@@ -69,8 +72,7 @@ module dola_protocol::lending_logic {
 
     /// Operate
 
-    public fun execute_liquidate(
-        cap: &StorageCap,
+    public(friend) fun execute_liquidate(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -84,10 +86,10 @@ module dola_protocol::lending_logic {
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
         assert!(is_collateral(storage, liquidator, loan), ENOT_COLLATERAL);
 
-        update_state(cap, storage, clock, loan);
-        update_state(cap, storage, clock, collateral);
+        update_state(storage, clock, loan);
+        update_state(storage, clock, collateral);
         // The most recent user contribution is required to calculate the liquidation discount.
-        update_average_liquidity(cap, storage, oracle, clock, liquidator);
+        update_average_liquidity(storage, oracle, clock, liquidator);
 
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
 
@@ -116,16 +118,16 @@ module dola_protocol::lending_logic {
 
         let treasury = storage::get_reserve_treasury(storage, collateral);
         // For violator
-        burn_dtoken(cap, storage, violator, loan, actual_liquidable_debt);
-        burn_otoken(cap, storage, violator, collateral, actual_liquidable_collateral);
+        burn_dtoken(storage, violator, loan, actual_liquidable_debt);
+        burn_otoken(storage, violator, collateral, actual_liquidable_collateral);
         // For liquidator
-        burn_otoken(cap, storage, liquidator, loan, actual_liquidable_debt);
+        burn_otoken(storage, liquidator, loan, actual_liquidable_debt);
         // For treasury
-        mint_otoken(cap, storage, treasury, collateral, treasury_reserved_collateral);
+        mint_otoken(storage, treasury, collateral, treasury_reserved_collateral);
 
         // Check if violator cause a lending deficit, use treasury to cover the deficit.
         if (has_deficit(storage, oracle, violator)) {
-            cover_deficit(cap, storage, violator);
+            cover_deficit(storage, violator);
         };
 
         // Give the collateral to the liquidator.
@@ -133,25 +135,25 @@ module dola_protocol::lending_logic {
             // If the liquidator has debt for the collateral, help the liquidator repay the debt first.
             let liquidator_debt = user_loan_balance(storage, liquidator, collateral);
             let liquidator_burned_debt = math::min(liquidator_debt, liquidator_acquired_collateral);
-            burn_dtoken(cap, storage, liquidator, collateral, liquidator_burned_debt);
+            burn_dtoken(storage, liquidator, collateral, liquidator_burned_debt);
             if (liquidator_acquired_collateral > liquidator_debt) {
                 // If the liquidator has paid off the debt and still has the collateral left over,
                 // the collateral is given to the user as a liquid asset.
-                storage::remove_user_loan(cap, storage, liquidator, collateral);
-                mint_otoken(cap, storage, liquidator, collateral, liquidator_acquired_collateral - liquidator_debt);
-                storage::add_user_liquid_asset(cap, storage, liquidator, collateral);
+                storage::remove_user_loan(storage, liquidator, collateral);
+                mint_otoken(storage, liquidator, collateral, liquidator_acquired_collateral - liquidator_debt);
+                storage::add_user_liquid_asset(storage, liquidator, collateral);
             }
         } else {
-            mint_otoken(cap, storage, liquidator, collateral, liquidator_acquired_collateral);
+            mint_otoken(storage, liquidator, collateral, liquidator_acquired_collateral);
             // If the user does not have such asset, the collateral is sent to the user as a liquid asset.
             if (!is_collateral(storage, liquidator, collateral) && !is_liquid_asset(storage, liquidator, collateral)) {
-                storage::add_user_liquid_asset(cap, storage, liquidator, collateral);
+                storage::add_user_liquid_asset(storage, liquidator, collateral);
             };
         };
 
-        update_interest_rate(cap, pool_manager_info, storage, collateral, 0);
-        update_interest_rate(cap, pool_manager_info, storage, loan, 0);
-        update_average_liquidity(cap, storage, oracle, clock, violator);
+        update_interest_rate(pool_manager_info, storage, collateral, 0);
+        update_interest_rate(pool_manager_info, storage, loan, 0);
+        update_average_liquidity(storage, oracle, clock, violator);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: liquidator,
@@ -162,8 +164,7 @@ module dola_protocol::lending_logic {
         })
     }
 
-    public fun execute_supply(
-        cap: &StorageCap,
+    public(friend) fun execute_supply(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -177,8 +178,8 @@ module dola_protocol::lending_logic {
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
         assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
 
-        update_state(cap, storage, clock, dola_pool_id);
-        mint_otoken(cap, storage, dola_user_id, dola_pool_id, supply_amount);
+        update_state(storage, clock, dola_pool_id);
+        mint_otoken(storage, dola_user_id, dola_pool_id, supply_amount);
 
         // Add asset type for the new asset
         if (!is_collateral(storage, dola_user_id, dola_pool_id) && !is_liquid_asset(
@@ -188,23 +189,23 @@ module dola_protocol::lending_logic {
         )) {
             if (is_isolation_mode(storage, dola_user_id)) {
                 // Users cannot pledge other tokens as collateral in isolated mode.
-                storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
             } else {
                 if (!has_collateral(storage, dola_user_id)) {
                     // Isolated assets as collateral and the user enters isolation mode.
-                    storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+                    storage::add_user_collateral(storage, dola_user_id, dola_pool_id);
                 } else {
                     if (storage::is_isolated_asset(storage, dola_pool_id)) {
                         // Isolated asset cannot be used as collateral when other collaterals are present.
-                        storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                        storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
                     } else {
-                        storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+                        storage::add_user_collateral(storage, dola_user_id, dola_pool_id);
                     }
                 }
             }
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -215,8 +216,7 @@ module dola_protocol::lending_logic {
         })
     }
 
-    public fun execute_withdraw(
-        cap: &StorageCap,
+    public(friend) fun execute_withdraw(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -228,23 +228,23 @@ module dola_protocol::lending_logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, clock, dola_pool_id);
+        update_state(storage, clock, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
         let actual_amount = math::min(withdraw_amount, otoken_amount);
 
-        burn_otoken(cap, storage, dola_user_id, dola_pool_id, actual_amount);
+        burn_otoken(storage, dola_user_id, dola_pool_id, actual_amount);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (actual_amount == otoken_amount) {
             // If the asset is all withdrawn, the asset type of the user is removed.
             if (is_collateral(storage, dola_user_id, dola_pool_id)) {
-                storage::remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+                storage::remove_user_collateral(storage, dola_user_id, dola_pool_id);
             } else {
-                storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                storage::remove_user_liquid_asset(storage, dola_user_id, dola_pool_id);
             }
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, actual_amount);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, actual_amount);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -257,8 +257,7 @@ module dola_protocol::lending_logic {
         actual_amount
     }
 
-    public fun execute_borrow(
-        cap: &StorageCap,
+    public(friend) fun execute_borrow(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -270,7 +269,7 @@ module dola_protocol::lending_logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, clock, borrow_pool_id);
+        update_state(storage, clock, borrow_pool_id);
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
         assert!(!is_liquid_asset(storage, dola_user_id, borrow_pool_id), ELIQUID_AS_LOAN);
@@ -280,18 +279,18 @@ module dola_protocol::lending_logic {
         if (is_isolation_mode(storage, dola_user_id)) {
             assert!(storage::can_borrow_in_isolation(storage, borrow_pool_id), EBORROW_UNISOLATED);
             assert!(not_reach_borrow_ceiling(storage, dola_user_id, borrow_amount), EREACH_BORROW_CEILING);
-            add_isolate_debt(cap, storage, dola_user_id, borrow_amount);
+            add_isolate_debt(storage, dola_user_id, borrow_amount);
         };
 
         if (!is_loan(storage, dola_user_id, borrow_pool_id)) {
-            storage::add_user_loan(cap, storage, dola_user_id, borrow_pool_id);
+            storage::add_user_loan(storage, dola_user_id, borrow_pool_id);
         };
 
-        mint_dtoken(cap, storage, dola_user_id, borrow_pool_id, borrow_amount);
+        mint_dtoken(storage, dola_user_id, borrow_pool_id, borrow_amount);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        update_interest_rate(cap, pool_manager_info, storage, borrow_pool_id, borrow_amount);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, borrow_pool_id, borrow_amount);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -302,8 +301,7 @@ module dola_protocol::lending_logic {
         });
     }
 
-    public fun execute_repay(
-        cap: &StorageCap,
+    public(friend) fun execute_repay(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -315,28 +313,28 @@ module dola_protocol::lending_logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
 
-        update_state(cap, storage, clock, dola_pool_id);
+        update_state(storage, clock, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
         let repay_debt = math::min(repay_amount, debt);
-        burn_dtoken(cap, storage, dola_user_id, dola_pool_id, repay_debt);
+        burn_dtoken(storage, dola_user_id, dola_pool_id, repay_debt);
 
         if (is_isolation_mode(storage, dola_user_id)) {
-            reduce_isolate_debt(cap, storage, dola_user_id, repay_debt);
+            reduce_isolate_debt(storage, dola_user_id, repay_debt);
         };
 
         // Debt is paid off, moving asset out of the user's debt assets
         if (repay_amount >= debt) {
-            storage::remove_user_loan(cap, storage, dola_user_id, dola_pool_id);
+            storage::remove_user_loan(storage, dola_user_id, dola_pool_id);
 
             let excess_repay_amount = repay_amount - debt;
             // If the user overpays the debt, the excess goes directly to the user's liquid assets.
             if (excess_repay_amount > 0) {
-                mint_otoken(cap, storage, dola_user_id, dola_pool_id, excess_repay_amount);
-                storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+                mint_otoken(storage, dola_user_id, dola_pool_id, excess_repay_amount);
+                storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
             };
         };
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -348,8 +346,7 @@ module dola_protocol::lending_logic {
     }
 
     /// Turn liquid asset into collateral
-    public fun as_collateral(
-        cap: &StorageCap,
+    public(friend) fun as_collateral(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -357,7 +354,7 @@ module dola_protocol::lending_logic {
         dola_user_id: u64,
         dola_pool_id: u16,
     ) {
-        update_state(cap, storage, clock, dola_pool_id);
+        update_state(storage, clock, dola_pool_id);
         assert!(is_liquid_asset(storage, dola_user_id, dola_pool_id), ENOT_LIQUID_ASSET);
         // No other assets can be added as collateral in isolation mode.
         assert!(!is_isolation_mode(storage, dola_user_id), EIN_ISOLATION);
@@ -367,11 +364,11 @@ module dola_protocol::lending_logic {
             assert!(!is_isolated_asset(storage, dola_pool_id), EIS_ISOLATED_ASSET);
         };
 
-        storage::remove_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
-        storage::add_user_collateral(cap, storage, dola_user_id, dola_pool_id);
+        storage::remove_user_liquid_asset(storage, dola_user_id, dola_pool_id);
+        storage::add_user_collateral(storage, dola_user_id, dola_pool_id);
 
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -383,8 +380,7 @@ module dola_protocol::lending_logic {
     }
 
     /// Turn collateral into liquid asset
-    public fun cancel_as_collateral(
-        cap: &StorageCap,
+    public(friend) fun cancel_as_collateral(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -392,15 +388,15 @@ module dola_protocol::lending_logic {
         dola_user_id: u64,
         dola_pool_id: u16,
     ) {
-        update_state(cap, storage, clock, dola_pool_id);
+        update_state(storage, clock, dola_pool_id);
         assert!(is_collateral(storage, dola_user_id, dola_pool_id), ENOT_COLLATERAL);
 
-        storage::remove_user_collateral(cap, storage, dola_user_id, dola_pool_id);
-        storage::add_user_liquid_asset(cap, storage, dola_user_id, dola_pool_id);
+        storage::remove_user_collateral(storage, dola_user_id, dola_pool_id);
+        storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
-        update_average_liquidity(cap, storage, oracle, clock, dola_user_id);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
+        update_average_liquidity(storage, oracle, clock, dola_user_id);
 
         event::emit(LendingCoreExecuteEvent {
             user_id: dola_user_id,
@@ -414,7 +410,6 @@ module dola_protocol::lending_logic {
     /// Extract funds from the Treasury through governance
     public fun claim_from_treasury(
         _: &GovernanceCap,
-        cap: &StorageCap,
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         clock: &Clock,
@@ -422,16 +417,16 @@ module dola_protocol::lending_logic {
         receiver_id: u64,
         withdraw_amount: u256
     ) {
-        update_state(cap, storage, clock, dola_pool_id);
+        update_state(storage, clock, dola_pool_id);
         let treasury_id = storage::get_reserve_treasury(storage, dola_pool_id);
         let treasury_amount = user_collateral_balance(storage, treasury_id, dola_pool_id);
         let deficit = user_loan_balance(storage, treasury_id, dola_pool_id);
         let treasury_avaliable_amount = if (treasury_amount > deficit) { treasury_amount - deficit } else { 0 };
         let amount = math::min(treasury_avaliable_amount, withdraw_amount);
-        burn_otoken(cap, storage, treasury_id, dola_pool_id, amount);
-        mint_otoken(cap, storage, receiver_id, dola_pool_id, amount);
+        burn_otoken(storage, treasury_id, dola_pool_id, amount);
+        mint_otoken(storage, receiver_id, dola_pool_id, amount);
 
-        update_interest_rate(cap, pool_manager_info, storage, dola_pool_id, 0);
+        update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
     }
 
     public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u256): bool {
@@ -500,7 +495,7 @@ module dola_protocol::lending_logic {
 
     /// If the user is liquidated and still has debts, transfer his debts to the Treasury,
     /// which will cover his debts.
-    public fun cover_deficit(cap: &StorageCap, storage: &mut Storage, dola_user_id: u64) {
+    public(friend) fun cover_deficit(storage: &mut Storage, dola_user_id: u64) {
         let loans = storage::get_user_loans(storage, dola_user_id);
         let length = vector::length(&loans);
         let i = 0;
@@ -509,8 +504,8 @@ module dola_protocol::lending_logic {
             let treasury = storage::get_reserve_treasury(storage, *loan);
             let debt = user_loan_balance(storage, dola_user_id, *loan);
             // Transfer deficits to treasury debt
-            burn_dtoken(cap, storage, dola_user_id, *loan, debt);
-            mint_dtoken(cap, storage, treasury, *loan, debt);
+            burn_dtoken(storage, dola_user_id, *loan, debt);
+            mint_dtoken(storage, treasury, *loan, debt);
             i = i + 1;
         };
     }
@@ -786,8 +781,7 @@ module dola_protocol::lending_logic {
         math::ray_mul((scaled_total_dtoken_supply), current_index)
     }
 
-    public fun mint_otoken(
-        cap: &StorageCap,
+    public(friend) fun mint_otoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -798,7 +792,6 @@ module dola_protocol::lending_logic {
             storage::get_liquidity_index(storage, dola_pool_id)
         );
         storage::mint_otoken_scaled(
-            cap,
             storage,
             dola_pool_id,
             dola_user_id,
@@ -806,8 +799,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public fun burn_otoken(
-        cap: &StorageCap,
+    public(friend) fun burn_otoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -818,7 +810,6 @@ module dola_protocol::lending_logic {
             storage::get_liquidity_index(storage, dola_pool_id)
         );
         storage::burn_otoken_scaled(
-            cap,
             storage,
             dola_pool_id,
             dola_user_id,
@@ -826,8 +817,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public fun mint_dtoken(
-        cap: &StorageCap,
+    public(friend) fun mint_dtoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -835,7 +825,6 @@ module dola_protocol::lending_logic {
     ) {
         let scaled_amount = scaled_balance::mint_scaled(token_amount, storage::get_borrow_index(storage, dola_pool_id));
         storage::mint_dtoken_scaled(
-            cap,
             storage,
             dola_pool_id,
             dola_user_id,
@@ -843,8 +832,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public fun burn_dtoken(
-        cap: &StorageCap,
+    public(friend) fun burn_dtoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -852,7 +840,6 @@ module dola_protocol::lending_logic {
     ) {
         let scaled_amount = scaled_balance::burn_scaled(token_amount, storage::get_borrow_index(storage, dola_pool_id));
         storage::burn_dtoken_scaled(
-            cap,
             storage,
             dola_pool_id,
             dola_user_id,
@@ -860,8 +847,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public fun add_isolate_debt(
-        cap: &StorageCap,
+    public(friend) fun add_isolate_debt(
         storage: &mut Storage,
         dola_user_id: u64,
         amount: u256,
@@ -870,11 +856,10 @@ module dola_protocol::lending_logic {
         let isolate_asset = vector::borrow(&user_collaterals, 0);
         let isolate_debt = storage::get_isolate_debt(storage, *isolate_asset);
         let new_isolate_debt = isolate_debt + amount;
-        storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
+        storage::update_isolate_debt(storage, *isolate_asset, new_isolate_debt)
     }
 
-    public fun reduce_isolate_debt(
-        cap: &StorageCap,
+    public(friend) fun reduce_isolate_debt(
         storage: &mut Storage,
         dola_user_id: u64,
         amount: u256,
@@ -887,12 +872,11 @@ module dola_protocol::lending_logic {
         } else {
             0
         };
-        storage::update_isolate_debt(cap, storage, *isolate_asset, new_isolate_debt)
+        storage::update_isolate_debt(storage, *isolate_asset, new_isolate_debt)
     }
 
     /// Update the average liquidity of user
-    public fun update_average_liquidity(
-        cap: &StorageCap,
+    public(friend) fun update_average_liquidity(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -912,9 +896,9 @@ module dola_protocol::lending_logic {
                     average_liquidity,
                     health_value
                 );
-                storage::update_user_average_liquidity(cap, storage, clock, dola_user_id, new_average_liquidity);
+                storage::update_user_average_liquidity(storage, clock, dola_user_id, new_average_liquidity);
             } else {
-                storage::update_user_average_liquidity(cap, storage, clock, dola_user_id, 0);
+                storage::update_user_average_liquidity(storage, clock, dola_user_id, 0);
             }
         }
     }
@@ -923,8 +907,7 @@ module dola_protocol::lending_logic {
     ///
     /// More details refer to:
     ///    [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
-    public fun update_state(
-        cap: &StorageCap,
+    public(friend) fun update_state(
         storage: &mut Storage,
         clock: &Clock,
         dola_pool_id: u16,
@@ -959,7 +942,6 @@ module dola_protocol::lending_logic {
             new_liquidity_index
         );
         storage::update_state(
-            cap,
             storage,
             dola_pool_id,
             new_borrow_index,
@@ -973,8 +955,7 @@ module dola_protocol::lending_logic {
     ///
     /// More details refer to:
     ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
-    public fun update_interest_rate(
-        cap: &StorageCap,
+    public(friend) fun update_interest_rate(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         dola_pool_id: u16,
@@ -990,6 +971,6 @@ module dola_protocol::lending_logic {
         let liquidity = liquidity - reduced_liquidity;
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
-        storage::update_interest_rate(cap, storage, dola_pool_id, borrow_rate, liquidity_rate);
+        storage::update_interest_rate(storage, dola_pool_id, borrow_rate, liquidity_rate);
     }
 }

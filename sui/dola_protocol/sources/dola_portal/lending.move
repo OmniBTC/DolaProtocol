@@ -19,7 +19,7 @@ module dola_protocol::lending_portal {
     use dola_protocol::dola_pool::{Self, Pool, PoolApproval};
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
-    use dola_protocol::lending_core_storage::{Self, Self as storage, StorageCap, Storage};
+    use dola_protocol::lending_core_storage::{Self, Storage};
     use dola_protocol::lending_logic;
     use dola_protocol::oracle::PriceOracle;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
@@ -52,8 +52,6 @@ module dola_protocol::lending_portal {
         id: UID,
         /// Used to represent the contract address of this module in the Dola protocol
         dola_contract: DolaContract,
-        // Allow modification of lending storage
-        storage_cap: StorageCap,
         // Relayer
         relayer: address,
         // Next nonce
@@ -93,19 +91,17 @@ module dola_protocol::lending_portal {
     }
 
     public fun initialize_cap_with_governance(
-        governance: &GovernanceCap,
+        _: &GovernanceCap,
         dola_contract_registry: &mut DolaContractRegistry,
         ctx: &mut TxContext
     ) {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
             dola_contract: dola_contract::create_dola_contract(dola_contract_registry),
-            storage_cap: storage::register_cap_with_governance(governance),
             relayer: tx_context::sender(ctx),
             next_nonce: 0
         })
     }
-
 
     fun get_nonce(lending_portal: &mut LendingPortal): u64 {
         let nonce = lending_portal.next_nonce;
@@ -155,7 +151,6 @@ module dola_protocol::lending_portal {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
-        lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         dola_pool_ids: vector<u16>,
@@ -170,7 +165,6 @@ module dola_protocol::lending_portal {
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
             lending_logic::as_collateral(
-                &lending_portal.storage_cap,
                 pool_manager_info,
                 storage,
                 oracle,
@@ -186,7 +180,6 @@ module dola_protocol::lending_portal {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
-        lending_portal: &mut LendingPortal,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         dola_pool_ids: vector<u16>,
@@ -201,7 +194,6 @@ module dola_protocol::lending_portal {
         while (i < pool_ids_length) {
             let dola_pool_id = vector::borrow(&dola_pool_ids, i);
             lending_logic::cancel_as_collateral(
-                &lending_portal.storage_cap,
                 pool_manager_info,
                 storage,
                 oracle,
@@ -259,7 +251,6 @@ module dola_protocol::lending_portal {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
         lending_logic::execute_supply(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -304,7 +295,6 @@ module dola_protocol::lending_portal {
 
         // Execute withdraw logic in lending_core app
         let actual_amount = lending_logic::execute_withdraw(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -376,7 +366,6 @@ module dola_protocol::lending_portal {
 
         // Execute withdraw logic in lending_core app
         let actual_amount = lending_logic::execute_withdraw(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -410,7 +399,7 @@ module dola_protocol::lending_portal {
         wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending_core_storage::get_app_cap(&lending_portal.storage_cap, storage),
+            lending_core_storage::get_app_cap(storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -469,7 +458,6 @@ module dola_protocol::lending_portal {
 
         // Execute borrow logic in lending_core app
         lending_logic::execute_borrow(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -539,7 +527,6 @@ module dola_protocol::lending_portal {
 
         // Execute borrow logic in lending_core app
         lending_logic::execute_borrow(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -568,7 +555,7 @@ module dola_protocol::lending_portal {
         wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
-            lending_core_storage::get_app_cap(&lending_portal.storage_cap, storage),
+            lending_core_storage::get_app_cap(storage),
             pool_manager_info,
             dst_pool,
             receiver,
@@ -641,7 +628,6 @@ module dola_protocol::lending_portal {
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool_address);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
         lending_logic::execute_repay(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
@@ -710,7 +696,6 @@ module dola_protocol::lending_portal {
 
         let liquidator = user_manager::get_dola_user_id(user_manager_info, liquidator_address);
         lending_logic::execute_liquidate(
-            &lending_portal.storage_cap,
             pool_manager_info,
             storage,
             oracle,
