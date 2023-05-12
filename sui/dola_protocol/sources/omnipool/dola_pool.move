@@ -20,13 +20,11 @@ module dola_protocol::dola_pool {
     use dola_protocol::pool_codec;
 
     #[test_only]
-    use dola_protocol::dola_contract::DolaContractRegistry;
-    #[test_only]
     use dola_protocol::genesis;
     #[test_only]
     use sui::sui::SUI;
     #[test_only]
-    use sui::test_scenario::{Self, return_shared};
+    use sui::test_scenario;
 
     friend dola_protocol::wormhole_adapter_pool;
     friend dola_protocol::lending_portal;
@@ -50,7 +48,6 @@ module dola_protocol::dola_pool {
 
     /// Invalid dst chain
     const EINVALID_DST_CHAIN: u64 = 4;
-
 
     /// The user_address's information is recorded in the protocol, and the pool only needs to record itself
     struct Pool<phantom CoinType> has key, store {
@@ -211,8 +208,7 @@ module dola_protocol::dola_pool {
             assert!(balance::value(&pool.balance) == 0, 0);
             let ctx = test_scenario::ctx(scenario);
             let coin = coin::mint_for_testing<SUI>(100, ctx);
-            let app_payload = vector::empty<u8>();
-            deposit<SUI>(&mut pool, coin, 0, app_payload, ctx);
+            deposit<SUI>(&mut pool, coin, 0, vector[], ctx);
             assert!(balance::value(&pool.balance) == 100, 0);
             test_scenario::return_shared(pool);
         };
@@ -226,35 +222,14 @@ module dola_protocol::dola_pool {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            let ctx = test_scenario::ctx(scenario);
-            dola_contract::create_for_testing(ctx);
-        };
-        test_scenario::next_tx(scenario, manager);
-        {
-            let dola_contract_registry = test_scenario::take_shared<DolaContractRegistry>(scenario);
             let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
-            let dola_contract = dola_contract::create_dola_contract_for_testing(1);
-            let spenders = vector::empty();
-            vector::push_back(&mut spenders, dola_contract::get_dola_contract(&dola_contract));
-
-            transfer::share_object(PoolApproval {
-                id: object::new(ctx),
-                owners: vector::empty(),
-                spenders
-            });
-
             create_pool<SUI>(&gov_cap, 9, ctx);
-            return_shared(dola_contract_registry);
             genesis::destroy(gov_cap);
-            dola_contract::destroy_for_testing(dola_contract);
         };
         test_scenario::next_tx(scenario, manager);
         {
-            let pool_approval = test_scenario::take_shared<PoolApproval>(scenario);
             let pool = test_scenario::take_shared<Pool<SUI>>(scenario);
-            let dola_contract = dola_contract::create_dola_contract_for_testing(1);
-
             let user_address = dola_address::convert_address_to_dola(@0xB);
             let amount = 1000;
             let pool_address = dola_address::convert_pool_to_dola<SUI>();
@@ -268,8 +243,6 @@ module dola_protocol::dola_pool {
 
             let withdraw_amount = normal_amount(&pool, amount);
             withdraw<SUI>(
-                &pool_approval,
-                &dola_contract,
                 &mut pool,
                 user_address,
                 withdraw_amount,
@@ -278,10 +251,7 @@ module dola_protocol::dola_pool {
             );
 
             assert!(balance::value(&pool.balance) == 0, 0);
-
-            test_scenario::return_shared(pool_approval);
             test_scenario::return_shared(pool);
-            dola_contract::destroy_for_testing(dola_contract);
         };
         test_scenario::end(scenario_val);
     }

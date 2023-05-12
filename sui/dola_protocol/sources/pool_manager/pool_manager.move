@@ -24,6 +24,9 @@ module dola_protocol::pool_manager {
     #[test_only]
     use sui::test_scenario;
 
+    #[test_only]
+    friend dola_protocol::logic_tests;
+
     friend dola_protocol::lending_portal;
     friend dola_protocol::wormhole_adapter_core;
 
@@ -576,16 +579,13 @@ module dola_protocol::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = register_manager_cap_for_testing();
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
             add_liquidity(
-                &cap,
                 &mut pool_manager_info,
                 pool,
                 0,
                 amount,
             );
-            destroy_manager(cap);
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
@@ -632,34 +632,28 @@ module dola_protocol::pool_manager {
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = register_manager_cap_for_testing();
             add_liquidity(
-                &cap,
                 &mut pool_manager_info,
                 pool,
                 0,
                 amount,
             );
-            destroy_manager(cap);
 
             test_scenario::return_shared(pool_manager_info);
         };
         test_scenario::next_tx(scenario, manager);
         {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
-            let cap = register_manager_cap_for_testing();
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == amount, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == amount, 0);
 
             remove_liquidity(
-                &cap,
                 &mut pool_manager_info,
                 pool,
                 0,
                 amount
             );
-            destroy_manager(cap);
 
             assert!(get_token_liquidity(&mut pool_manager_info, 0) == 0, 0);
             assert!(get_pool_liquidity(&mut pool_manager_info, pool) == 0, 0);

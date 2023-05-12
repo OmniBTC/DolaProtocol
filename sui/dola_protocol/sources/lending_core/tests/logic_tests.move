@@ -356,15 +356,12 @@ module dola_protocol::logic_tests {
     ) {
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 supply_pool,
                 LENDING_APP_ID,
@@ -374,7 +371,6 @@ module dola_protocol::logic_tests {
             let before_user_balance = logic::user_collateral_balance(&mut storage, supply_user_id, supply_pool_id);
 
             logic::execute_supply(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -392,7 +388,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
     }
 
@@ -406,8 +401,6 @@ module dola_protocol::logic_tests {
     ) {
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -416,7 +409,6 @@ module dola_protocol::logic_tests {
             let before_user_debt = logic::user_loan_balance(&mut storage, borrow_user_id, borrow_pool_id);
 
             logic::execute_borrow(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -427,7 +419,6 @@ module dola_protocol::logic_tests {
             );
 
             pool_manager::remove_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 borrow_pool,
                 LENDING_APP_ID,
@@ -442,7 +433,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
     }
 
@@ -472,7 +462,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -480,7 +469,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -524,7 +512,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -532,7 +519,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 201);
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -570,7 +556,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -579,7 +564,6 @@ module dola_protocol::logic_tests {
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
             assert!(logic::is_isolation_mode(&mut storage, 0), 202);
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -624,7 +608,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -632,7 +615,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_collateral(&mut storage, 0, ISOLATE_POOL_ID), 201);
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -678,14 +660,12 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -702,7 +682,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -710,7 +689,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 301);
             logic::as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -757,7 +735,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -765,7 +742,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_liquid_asset(&mut storage, 0, BTC_POOL_ID), 301);
             logic::as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -813,7 +789,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -821,7 +796,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 301);
             logic::as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1023,8 +997,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1033,7 +1005,6 @@ module dola_protocol::logic_tests {
 
             // Withdraw
             logic::execute_withdraw(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1043,7 +1014,6 @@ module dola_protocol::logic_tests {
                 withdraw_amount
             );
             pool_manager::remove_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 btc_pool,
                 LENDING_APP_ID,
@@ -1060,7 +1030,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1080,8 +1049,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1092,7 +1059,6 @@ module dola_protocol::logic_tests {
 
             // Withdraw max amount
             let actual_amount = logic::execute_withdraw(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1105,7 +1071,6 @@ module dola_protocol::logic_tests {
             assert!(!logic::is_collateral(&mut storage, 0, BTC_POOL_ID), 203);
 
             pool_manager::remove_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 btc_pool,
                 LENDING_APP_ID,
@@ -1116,7 +1081,6 @@ module dola_protocol::logic_tests {
 
             // Withdraw max amount
             let actual_amount = logic::execute_withdraw(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1129,7 +1093,6 @@ module dola_protocol::logic_tests {
             assert!(!logic::is_liquid_asset(&mut storage, 0, ISOLATE_POOL_ID), 206);
 
             pool_manager::remove_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 isolate_pool,
                 LENDING_APP_ID,
@@ -1140,7 +1103,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1169,8 +1131,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1179,7 +1139,6 @@ module dola_protocol::logic_tests {
 
             // Withdraw
             logic::execute_withdraw(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1189,7 +1148,6 @@ module dola_protocol::logic_tests {
                 withdraw_amount
             );
             pool_manager::remove_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 btc_pool,
                 LENDING_APP_ID,
@@ -1200,7 +1158,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1465,8 +1422,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1476,14 +1431,12 @@ module dola_protocol::logic_tests {
 
             // User 0 repay 1000 usdt
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
                 repay_usdt_amount,
             );
             logic::execute_repay(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1503,7 +1456,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1531,8 +1483,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1544,14 +1494,12 @@ module dola_protocol::logic_tests {
 
             // User 0 repay 6000 usdt
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
                 repay_usdt_amount,
             );
             logic::execute_repay(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1576,7 +1524,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1604,8 +1551,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1618,14 +1563,12 @@ module dola_protocol::logic_tests {
 
             // User 0 repay 10 usdt
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
                 repay_usdt_amount,
             );
             logic::execute_repay(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1644,14 +1587,12 @@ module dola_protocol::logic_tests {
 
             // User 0 repay 10 usdt
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
                 repay_usdt_amount,
             );
             logic::execute_repay(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1668,7 +1609,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -1697,8 +1637,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
-            let pool_manager_cap = pool_manager::register_manager_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1710,14 +1648,12 @@ module dola_protocol::logic_tests {
 
             // User 0 repay 1000 usdt
             pool_manager::add_liquidity(
-                &pool_manager_cap,
                 &mut pool_manager_info,
                 usdt_pool,
                 LENDING_APP_ID,
                 repay_usdt_amount,
             );
             logic::execute_repay(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1738,7 +1674,6 @@ module dola_protocol::logic_tests {
             assert!(logic::is_isolation_mode(&mut storage, 0), 204);
 
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1752,7 +1687,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            pool_manager::destroy_manager(pool_manager_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -1780,7 +1714,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -1812,7 +1745,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1883,7 +1815,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -1900,7 +1831,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1946,7 +1876,6 @@ module dola_protocol::logic_tests {
         supply_scenario(scenario, creator, usdt_pool, USDC_POOL_ID, 0, 1000 * ONE);
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1954,7 +1883,6 @@ module dola_protocol::logic_tests {
 
             assert!(logic::is_collateral(&mut storage, 0, USDC_POOL_ID), 201);
             logic::cancel_as_collateral(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -1975,7 +1903,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -1992,7 +1919,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get usdc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2038,7 +1964,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2055,7 +1980,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2111,7 +2035,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2131,7 +2054,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2196,7 +2118,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2217,7 +2138,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get eth
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2242,7 +2162,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdc debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2266,7 +2185,6 @@ module dola_protocol::logic_tests {
 
             // User 1 liquidate user 0 usdt debt to get btc
             logic::execute_liquidate(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2311,7 +2229,7 @@ module dola_protocol::logic_tests {
         test_scenario::next_tx(scenario, creator);
         {
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
-            let storage_cap = storage::register_storage_cap_for_testing();
+
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2323,7 +2241,7 @@ module dola_protocol::logic_tests {
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
-            logic::update_average_liquidity(&storage_cap, &mut storage, &mut oracle, &clock, 0);
+            logic::update_average_liquidity(&mut storage, &mut oracle, &clock, 0);
             let average_liquidity_1 = storage::get_user_average_liquidity(&mut storage, 0);
             let health_value_1 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // [average_liquidity = health_value = collateral_value - loan_value]
@@ -2332,7 +2250,6 @@ module dola_protocol::logic_tests {
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY / 2);
 
             logic::execute_supply(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2350,7 +2267,6 @@ module dola_protocol::logic_tests {
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
             logic::execute_supply(
-                &storage_cap,
                 &mut pool_manager_info,
                 &mut storage,
                 &mut oracle,
@@ -2399,7 +2315,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2415,7 +2330,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -2460,7 +2375,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2476,7 +2390,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -2521,7 +2435,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2535,7 +2448,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
 
                 let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);
@@ -2581,7 +2494,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let storage_cap = storage::register_storage_cap_for_testing();
             let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
@@ -2596,7 +2508,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&storage_cap, &mut storage, &clock, USDT_POOL_ID);
+                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
 
                 let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);

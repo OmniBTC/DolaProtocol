@@ -283,25 +283,23 @@ module dola_protocol::user_manager {
         {
             let governance_cap = genesis::register_governance_cap_for_testing();
             let user_manager_info = test_scenario::take_shared<UserManagerInfo>(scenario);
-            let user_manager_cap = UserManagerCap {};
 
             let user1 = dola_address::convert_address_to_dola(@11);
             let user2 = dola_address::update_dola_chain_id(user1, 2);
             let user3 = dola_address::update_dola_chain_id(user1, 3);
             let user4 = dola_address::update_dola_chain_id(user1, 5);
-            register_dola_user_id(&user_manager_cap, &mut user_manager_info, user1);
+            register_dola_user_id(&mut user_manager_info, user1);
             assert!(get_dola_user_id(&user_manager_info, user1) == 1, 0);
             assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);
-            register_dola_user_id(&user_manager_cap, &mut user_manager_info, user4);
+            register_dola_user_id(&mut user_manager_info, user4);
             assert!(get_dola_user_id(&user_manager_info, user2) == 2, 0);
-            bind_user_address(&user_manager_cap, &mut user_manager_info, user1, user3);
+            bind_user_address(&mut user_manager_info, user1, user3);
             assert!(get_dola_user_id(&user_manager_info, user3) == 1, 0);
-            unbind_user_address(&user_manager_cap, &mut user_manager_info, user3, user1);
+            unbind_user_address(&mut user_manager_info, user3, user1);
             assert!(!vector::contains(&get_user_addresses(&user_manager_info, 1), &user1), 0);
             assert!(vector::contains(&get_user_addresses(&user_manager_info, 1), &user3), 0);
 
             genesis::destroy(governance_cap);
-            destroy_manager(user_manager_cap);
 
             test_scenario::return_shared(user_manager_info);
         };

@@ -657,9 +657,4 @@ module dola_protocol::lending_core_storage {
             user_infos: table::new(ctx)
         });
     }
-
-    #[test_only]
-    public fun register_storage_cap_for_testing(): StorageCap {
-        StorageCap {}
-    }
 }
