@@ -8,8 +8,9 @@ module dola_portal::system {
     use aptos_framework::coin;
     use aptos_framework::event::{Self, EventHandle};
 
+    use dola_protocol::dola_address;
+
     use dola_portal::system_codec;
-    use dola_types::dola_address;
     use omnipool::wormhole_adapter_pool;
     use wormhole::state;
 

@@ -29,34 +29,34 @@ subdir = "sui/wormhole"
 rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0"
 
 [dependencies.AppManager]
-local = "../../app_manager"
+local = "../../dola_protocol/sources/app_manager"
 
 [dependencies.Governance]
-local = "../../governance"
+local = "../../dola_protocol/sources/governance"
 
 [dependencies.WormholeAdapterCore]
-local = "../../wormhole_adapter_core"
+local = "../../dola_protocol/sources/wormhole_adapter_core"
 
 [dependencies.PoolManager]
-local = "../../pool_manager"
+local = "../../dola_protocol/sources/pool_manager"
 
 [dependencies.LendingCore]
-local = "../../lending_core"
+local = "../../dola_protocol/sources/lending_core"
 
 [dependencies.SystemCore]
-local = "../../system_core"
+local = "../../dola_protocol/sources/system_core"
 
 [dependencies.DolaPortal]
-local = "../../dola_portal"
+local = "../../dola_protocol/sources/dola_portal"
 
 [dependencies.Oracle]
-local = "../../oracle"
+local = "../../dola_protocol/sources/oracle"
 
 [dependencies.UserManager]
-local = "../../user_manager"
+local = "../../dola_protocol/sources/user_manager"
 
 [dependencies.DolaTypes]
-local = "../../dola_types"
+local = "../../dola_protocol/sources/dola_types"
 
 [dependencies.OmniPool]
-local = "../../omnipool"
+local = "../../dola_protocol/sources/omnipool"

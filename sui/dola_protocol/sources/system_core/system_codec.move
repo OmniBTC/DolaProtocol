@@ -1,12 +1,12 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
-module dola_portal::system_codec {
+
+module dola_protocol::system_codec {
 
     use std::vector;
 
     use dola_protocol::dola_address::{Self, DolaAddress};
-
-    use serde::serde;
+    use dola_protocol::serde;
 
     /// Errors
     /// Invalid length of Payload

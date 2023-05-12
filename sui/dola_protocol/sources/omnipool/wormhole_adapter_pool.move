@@ -1,0 +1,334 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
+/// Wormhole bridge adapter, this module is responsible for adapting wormhole to transmit messages across chains
+/// for the Sui dola pool (distinct from the wormhole adapter core). The main purposes of this module are:
+/// 1) Receive AppPalod from the application portal, use dola pool encoding, and transmit messages;
+/// 2) Receive withdrawal messages from bridge core for withdrawal
+module dola_protocol::wormhole_adapter_pool {
+    use sui::clock::Clock;
+    use sui::coin::Coin;
+    use sui::event::emit;
+    use sui::object::{Self, UID};
+    use sui::object_table;
+    use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::vec_map::{Self, VecMap};
+
+    use dola_protocol::dola_address;
+    use dola_protocol::dola_contract::{Self, DolaContract, DolaContractRegistry};
+    use dola_protocol::dola_pool::{Self, Pool, PoolApproval};
+    use dola_protocol::pool_codec;
+    use dola_protocol::wormhole_adapter_verify::{Self, Unit};
+    use wormhole::bytes32::{Self, Bytes32};
+    use wormhole::emitter::{Self, EmitterCap};
+    use wormhole::external_address::{Self, ExternalAddress};
+    use wormhole::publish_message;
+    use wormhole::state::State as WormholeState;
+    use wormhole::vaa;
+
+    /// Errors
+
+    const EINVALIE_DOLA_CONTRACT: u64 = 0;
+
+    const EINVALIE_DOLA_CHAIN: u64 = 1;
+
+    const EINVLIAD_SENDER: u64 = 2;
+
+    const EHAS_INIT: u64 = 3;
+
+    const EINVALID_CALL_TYPE: u64 = 4;
+
+    /// Reocord genesis of this module
+    struct PoolGenesis has key {
+        id: UID,
+        // Record creator of this module
+        creator: address,
+        // Record whether is initialized
+        is_init: bool
+    }
+
+    /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
+    /// For VAA data, the following validations are required.
+    /// For wormhole official library: 1) verify the signature.
+    /// For wormhole_bridge_adapter itself: 1) make sure it comes from the correct (emitter_chain, wormhole_emitter_address) by
+    /// VAA; 2) make sure the data has not been processed by VAA hash;
+    struct PoolState has key {
+        id: UID,
+        /// Used to represent the contract address of this module in the Dola protocol
+        dola_contract: DolaContract,
+        // Move does not have a contract address, Wormhole uses the emitter
+        // in EmitterCapability to represent the send address of this contract
+        wormhole_emitter: EmitterCap,
+        // Used to verify that the VAA has been processed
+        consumed_vaas: object_table::ObjectTable<Bytes32, Unit>,
+        // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
+        registered_emitters: VecMap<u16, ExternalAddress>,
+    }
+
+    /// Events
+
+    /// Event for pool withdraw
+    struct PoolWithdrawEvent has drop, copy {
+        nonce: u64,
+        source_chain_id: u16,
+        dst_chain_id: u16,
+        pool_address: vector<u8>,
+        receiver: vector<u8>,
+        amount: u64
+    }
+
+    fun init(ctx: &mut TxContext) {
+        transfer::share_object(PoolGenesis {
+            id: object::new(ctx),
+            creator: tx_context::sender(ctx),
+            is_init: false
+        });
+    }
+
+
+    /// Initialize for remote bridge and dola pool
+    public entry fun initialize(
+        pool_genesis: &mut PoolGenesis,
+        sui_wormhole_chain: u16, // Represents the wormhole chain id of the wormhole adpter core on Sui
+        sui_wormhole_address: vector<u8>, // Represents the wormhole contract address of the wormhole adpter core on Sui
+        pool_approval: &mut PoolApproval,
+        dola_contract_registry: &mut DolaContractRegistry,
+        wormhole_state: &mut WormholeState,
+        ctx: &mut TxContext
+    ) {
+        assert!(pool_genesis.creator == tx_context::sender(ctx), EINVLIAD_SENDER);
+        assert!(!pool_genesis.is_init, EHAS_INIT);
+
+        // Register wormhole emitter for this module
+        let wormhole_emitter = emitter::new(wormhole_state, ctx);
+
+        // Register for wormhole adpter core emitter
+        let registered_emitters = vec_map::empty();
+        vec_map::insert(
+            &mut registered_emitters,
+            sui_wormhole_chain,
+            external_address::new(bytes32::new(sui_wormhole_address))
+        );
+
+        // Register owner and spender in dola pool
+        let dola_contract = dola_contract::create_dola_contract(dola_contract_registry);
+        dola_pool::register_basic_bridge(pool_approval, &dola_contract);
+
+        let pool_state = PoolState {
+            id: object::new(ctx),
+            dola_contract,
+            wormhole_emitter,
+            consumed_vaas: object_table::new(ctx),
+            registered_emitters
+        };
+        transfer::share_object(pool_state);
+        pool_genesis.is_init = true;
+    }
+
+    /// Call by governance
+
+    /// Register pool owner by governance
+    public entry fun register_owner(
+        wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx
+        );
+        let payload = vaa::take_payload(vaa);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
+        assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        dola_pool::register_owner(pool_approval, &pool_state.dola_contract, dola_contract);
+    }
+
+    /// Register pool spender by governance
+    public entry fun register_spender(
+        wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx
+        );
+        let payload = vaa::take_payload(vaa);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
+        assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        dola_pool::register_spender(pool_approval, &pool_state.dola_contract, dola_contract);
+    }
+
+    /// Delete pool owner by governance
+    public entry fun delete_owner(
+        wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx
+        );
+        let payload = vaa::take_payload(vaa);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
+        assert!(call_type == pool_codec::get_delete_owner_type(), EINVALID_CALL_TYPE);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        dola_pool::delete_owner(pool_approval, &pool_state.dola_contract, dola_contract);
+    }
+
+    /// Delete pool spender by governance
+    public entry fun delete_spender(
+        wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        pool_approval: &mut PoolApproval,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx
+        );
+        let payload = vaa::take_payload(vaa);
+        let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
+        assert!(call_type == pool_codec::get_delete_spender_type(), EINVALID_CALL_TYPE);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        dola_pool::delete_spender(pool_approval, &pool_state.dola_contract, dola_contract);
+    }
+
+    /// Call by application
+
+    /// Send deposit by application
+    public fun send_deposit<CoinType>(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        pool: &mut Pool<CoinType>,
+        deposit_coin: Coin<CoinType>,
+        app_id: u16,
+        app_payload: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let msg = dola_pool::deposit<CoinType>(
+            pool,
+            deposit_coin,
+            app_id,
+            app_payload,
+            ctx
+        );
+
+        let message_ticket = publish_message::prepare_message(
+            &mut pool_state.wormhole_emitter,
+            0,
+            msg
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+    }
+
+    /// Send message that do not involve incoming or outgoing funds by application
+    public fun send_message(
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
+        wormhole_message_fee: Coin<SUI>,
+        app_id: u16,
+        app_payload: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let msg = dola_pool::send_message(
+            app_id,
+            app_payload,
+            ctx
+        );
+        let message_ticket = publish_message::prepare_message(
+            &mut pool_state.wormhole_emitter,
+            0,
+            msg
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+    }
+
+    /// Receive withdraw
+    public entry fun receive_withdraw<CoinType>(
+        wormhole_state: &mut WormholeState,
+        pool_approval: &PoolApproval,
+        pool_state: &mut PoolState,
+        pool: &mut Pool<CoinType>,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx
+        );
+        let payload = vaa::take_payload(vaa);
+
+        let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
+            pool_codec::decode_withdraw_payload(payload);
+        dola_pool::withdraw(
+            pool_approval,
+            &pool_state.dola_contract,
+            pool,
+            receiver,
+            amount,
+            pool_address,
+            ctx
+        );
+
+        emit(PoolWithdrawEvent {
+            nonce,
+            source_chain_id,
+            dst_chain_id: dola_address::get_dola_chain_id(&pool_address),
+            pool_address: dola_address::get_dola_address(&pool_address),
+            receiver: dola_address::get_dola_address(&receiver),
+            amount
+        })
+    }
+}

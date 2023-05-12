@@ -6,11 +6,12 @@ module genesis_proposal::genesis_proposal {
     use std::option;
     use std::vector;
 
+    use dola_protocol::dola_address;
+    use dola_protocol::dola_contract::DolaContractRegistry;
+    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
+
     use app_manager::app_manager::TotalAppInfo;
-    use dola_types::dola_address;
-    use dola_types::dola_contract::DolaContractRegistry;
-    use governance::genesis::GovernanceCap;
-    use governance::governance_v1::{Self, GovernanceInfo, Proposal};
     use lending_core::storage::Storage;
     use omnipool::dola_pool;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
@@ -18,7 +19,7 @@ module genesis_proposal::genesis_proposal {
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
-    use user_manager::user_manager::{Self, UserManagerInfo};
+    use user_manager::user_manager::UserManagerInfo;
     use wormhole::state::State;
     use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
 

@@ -1,8 +1,9 @@
 module upgrade_proposal_template::upgrade_proposal {
     use std::option;
 
-    use governance::genesis::{Self, GovernanceContracts};
-    use governance::governance_v1::{Self, GovernanceInfo, Proposal};
+    use dola_protocol::genesis::{Self, GovernanceContracts};
+    use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
+
     use sui::package::{UpgradeTicket, UpgradeReceipt};
     use sui::tx_context::TxContext;
 

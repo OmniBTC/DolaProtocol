@@ -8,12 +8,12 @@ module external_interfaces::interfaces {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_types::dola_address::{Self, DolaAddress};
+    use dola_protocol::dola_address::DolaAddress;
+
     use lending_core::logic;
     use lending_core::rates;
-    use lending_core::storage::{Self, Storage};
-    use oracle::oracle::{Self, PriceOracle};
-    use pool_manager::equilibrium_fee;
+    use lending_core::storage::Storage;
+    use oracle::oracle::PriceOracle;
     use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use ray_math::math;
     use sui::event::emit;

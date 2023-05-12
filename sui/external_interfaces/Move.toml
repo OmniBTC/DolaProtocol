@@ -18,19 +18,19 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
 
 [dependencies.PoolManager]
-local = "../pool_manager"
+local = "../dola_protocol/sources/pool_manager"
 
 [dependencies.UserManager]
-local = "../user_manager"
+local = "../dola_protocol/sources/user_manager"
 
 [dependencies.LendingCore]
-local = "../lending_core"
+local = "../dola_protocol/sources/lending_core"
 
 [dependencies.RayMath]
-local = "../ray_math"
+local = "../dola_protocol/sources/ray_math"
 
 [dependencies.Oracle]
-local = "../oracle"
+local = "../dola_protocol/sources/oracle"
 
 [dependencies.DolaTypes]
-local = "../dola_types"
+local = "../dola_protocol/sources/dola_types"
