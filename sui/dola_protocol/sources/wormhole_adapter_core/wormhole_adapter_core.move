@@ -1,0 +1,414 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
+/// Wormhole bridge adapter, this module is responsible for adapting wormhole to pass messages for settlement center
+/// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and
+/// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
+module dola_protocol::wormhole_adapter_core {
+    use sui::clock::Clock;
+    use sui::coin::Coin;
+    use sui::event;
+    use sui::object::{Self, UID};
+    use sui::object_table;
+    use sui::sui::SUI;
+    use sui::transfer;
+    use sui::tx_context::TxContext;
+    use sui::vec_map::{Self, VecMap};
+
+    use dola_protocol::app_manager::{Self, AppCap};
+    use dola_protocol::dola_address::DolaAddress;
+    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::pool_codec;
+    use dola_protocol::pool_manager::{Self, PoolManagerInfo};
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
+    use dola_protocol::wormhole_adapter_verify::{Self, Unit};
+    use wormhole::bytes32::{Self, Bytes32};
+    use wormhole::emitter::{Self, EmitterCap};
+    use wormhole::external_address::{Self, ExternalAddress};
+    use wormhole::publish_message;
+    use wormhole::state::State;
+    use wormhole::vaa;
+
+    /// Errors
+    // Bridge is not registered
+    const ENOT_REGISTERED_EMITTER: u64 = 0;
+
+    // Bridge has registered
+    const EHAS_REGISTERED_EMITTER: u64 = 1;
+
+    // Invalid App
+    const EINVALID_APP: u64 = 2;
+
+    /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
+    /// For VAA data, the following validations are required.
+    /// For wormhole official library: 1) verify the signature.
+    /// For wormhole_bridge_adapter itself: 1) make sure it comes from the correct (emitter_chain, wormhole_emitter_address) by
+    /// VAA; 2) make sure the data has not been processed by VAA hash; 3) make sure the caller is from the correct
+    /// application by app_id from pool payload.
+    struct CoreState has key, store {
+        id: UID,
+        // Move does not have a contract address, Wormhole uses the emitter
+        // in EmitterCap to represent the send address of this contract
+        wormhole_emitter: EmitterCap,
+        // Used to verify that the VAA has been processed
+        consumed_vaas: object_table::ObjectTable<Bytes32, Unit>,
+        // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
+        registered_emitters: VecMap<u16, ExternalAddress>,
+    }
+
+    /// Events
+
+    /// Event for register bridge
+    struct RegisterBridge has copy, drop {
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
+    }
+
+    /// Event for delete bridge
+    struct DeleteBridge has copy, drop {
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
+    }
+
+    /// Event for register owner
+    struct RegisterOwner has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
+    /// Event for delete owner
+    struct DeleteOwner has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
+    /// Event for register spender
+    struct RegisterSpender has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
+    /// Event for delete spender
+    struct DeleteSpender has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
+    /// Initializing caps of PoolManager and UserManager through governance
+    public fun initialize_cap_with_governance(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        ctx: &mut TxContext
+    ) {
+        transfer::public_share_object(
+            CoreState {
+                id: object::new(ctx),
+                wormhole_emitter: emitter::new(wormhole_state, ctx),
+                consumed_vaas: object_table::new(ctx),
+                registered_emitters: vec_map::empty()
+            }
+        );
+    }
+
+    /// Call by governance
+
+    /// Register the remote wormhole adapter pool through governance
+    /// Steps for registering a remote bridge:
+    /// 1) By governing the call to `initialize_cap_with_governance` of wormhole adapter core
+    /// 2) Call to `initialize` of wormhole adapter pool
+    /// 3) By governing the call to `register_remote_bridge`
+    public fun register_remote_bridge(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        wormhole_emitter_chain: u16,
+        wormhole_emitter_address: vector<u8>
+    ) {
+        assert!(!vec_map::contains(&core_state.registered_emitters, &wormhole_emitter_chain), EHAS_REGISTERED_EMITTER);
+        vec_map::insert(
+            &mut core_state.registered_emitters,
+            wormhole_emitter_chain,
+            external_address::new(bytes32::new(wormhole_emitter_address))
+        );
+        event::emit(RegisterBridge { wormhole_emitter_chain, wormhole_emitter_address });
+    }
+
+    /// Delete the remote wormhole adapter pool through governance
+    public fun delete_remote_bridge(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        wormhole_emitter_chain: u16
+    ) {
+        assert!(vec_map::contains(&core_state.registered_emitters, &wormhole_emitter_chain), ENOT_REGISTERED_EMITTER);
+        let (_, wormhole_emitter_address) = vec_map::remove(
+            &mut core_state.registered_emitters,
+            &wormhole_emitter_chain
+        );
+        event::emit(RegisterBridge {
+            wormhole_emitter_chain,
+            wormhole_emitter_address: external_address::to_bytes(wormhole_emitter_address)
+        });
+    }
+
+    /// Register owner for remote bridge through governance
+    public fun remote_register_owner(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
+    ) {
+        let msg = pool_codec::encode_manage_pool_payload(
+            dola_chain_id,
+            dola_contract,
+            pool_codec::get_register_owner_type()
+        );
+
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+
+        event::emit(RegisterOwner { dola_chain_id, dola_contract });
+    }
+
+    /// Register spender for remote bridge through governance
+    public fun remote_register_spender(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
+    ) {
+        let msg = pool_codec::encode_manage_pool_payload(
+            dola_chain_id,
+            dola_contract,
+            pool_codec::get_register_spender_type()
+        );
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+        event::emit(RegisterSpender { dola_chain_id, dola_contract });
+    }
+
+    /// Delete owner for remote bridge through governance
+    public fun remote_delete_owner(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
+    ) {
+        let msg = pool_codec::encode_manage_pool_payload(
+            dola_chain_id,
+            dola_contract,
+            pool_codec::get_delete_owner_type()
+        );
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+        event::emit(DeleteOwner { dola_chain_id, dola_contract });
+    }
+
+    /// Delete spender for remote bridge through governance
+    public fun remote_delete_spender(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        dola_contract: u256,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
+    ) {
+        let msg = pool_codec::encode_manage_pool_payload(
+            dola_chain_id,
+            dola_contract,
+            pool_codec::get_delete_spender_type()
+        );
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+        event::emit(DeleteSpender { dola_chain_id, dola_contract });
+    }
+
+    /// Call by application
+
+    /// Receive message without funding
+    public fun receive_message(
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        app_cap: &AppCap,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): (DolaAddress, vector<u8>) {
+        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &core_state.registered_emitters,
+            &mut core_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx,
+        );
+        let payload = vaa::take_payload(msg);
+
+        let (user_address, app_id, _, app_payload) =
+            pool_codec::decode_send_message_payload(payload);
+
+        // Ensure that vaa is delivered to the correct application
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
+        (user_address, app_payload)
+    }
+
+    /// Receive deposit on sui network
+    public fun receive_deposit(
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        app_cap: &AppCap,
+        vaa: vector<u8>,
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): (DolaAddress, DolaAddress, u256, vector<u8>) {
+        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &core_state.registered_emitters,
+            &mut core_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx,
+        );
+        let payload = vaa::take_payload(msg);
+
+        let (pool_address, user_address, amount, app_id, _, app_payload) =
+            pool_codec::decode_deposit_payload(payload);
+
+        // Ensure that vaa is delivered to the correct application
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
+
+        let (actual_amount, _) = pool_manager::add_liquidity(
+            pool_manager_info,
+            pool_address,
+            app_manager::get_app_id(app_cap),
+            (amount as u256),
+        );
+
+        if (!user_manager::is_dola_user(user_manager_info, user_address)) {
+            user_manager::register_dola_user_id(user_manager_info, user_address);
+        };
+
+        // myvaa::destroy(vaa);
+        (pool_address, user_address, actual_amount, app_payload)
+    }
+
+    /// Receive withdraw on sui network
+    public fun receive_withdraw(
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        app_cap: &AppCap,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): (DolaAddress, vector<u8>) {
+        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            wormhole_state,
+            &core_state.registered_emitters,
+            &mut core_state.consumed_vaas,
+            vaa,
+            clock,
+            ctx,
+        );
+        let payload = vaa::take_payload(msg);
+
+        let (user_address, app_id, _, app_payload) =
+            pool_codec::decode_send_message_payload(payload);
+
+        // Ensure that vaa is delivered to the correct application
+        assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
+
+        // myvaa::destroy(vaa);
+        (user_address, app_payload)
+    }
+
+    /// Send withdraw on sui network
+    public fun send_withdraw(
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        app_cap: &AppCap,
+        pool_manager_info: &mut PoolManagerInfo,
+        pool_address: DolaAddress,
+        user_address: DolaAddress,
+        source_chain_id: u16,
+        nonce: u64,
+        amount: u256,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
+    ) {
+        let (actual_amount, _) = pool_manager::remove_liquidity(
+            pool_manager_info,
+            pool_address,
+            app_manager::get_app_id(app_cap),
+            amount
+        );
+        let msg = pool_codec::encode_withdraw_payload(
+            source_chain_id,
+            nonce,
+            pool_address,
+            user_address,
+            (actual_amount as u64)
+        );
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+    }
+}

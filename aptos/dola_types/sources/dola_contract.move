@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// Similar to the EVM contract address, using Emitter to represent the contract address in the Dola protocol
-module dola_types::dola_contract {
-    use aptos_framework::account;
-    use aptos_framework::account::SignerCapability;
+module dola_protocol::dola_contract {
     use std::signer;
-    use aptos_framework::event::EventHandle;
-    use aptos_framework::event;
+
+    use aptos_framework::account::{Self, SignerCapability};
+    use aptos_framework::event::{Self, EventHandle};
 
     const SEED: vector<u8> = b"Dola Contract";
 

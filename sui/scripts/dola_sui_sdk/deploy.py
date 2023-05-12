@@ -1,225 +1,81 @@
 from pathlib import Path
 
 import sui_brownie
-
+import yaml
 from dola_sui_sdk import DOLA_CONFIG, sui_project
-
-net = "sui-devnet"
 
 sui_project.active_account("TestAccount")
 
-sui_project.pay_all_sui()
 
-serde_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("serde")
-)
+def export_to_config():
+    path = Path(__file__).parent.parent.parent.joinpath("brownie-config.yaml")
+    with open(path, "r") as f:
+        config = yaml.safe_load(f)
 
-serde_package.program_publish_package()
+    current_network = sui_project.network
+    if "packages" not in config["networks"][current_network]:
+        config["networks"][current_network]["packages"] = {}
 
-dola_types_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_types")
-)
+    config["networks"][current_network]["packages"]["DolaProtocol"] = sui_project.DolaProtocol[-1]
+    config["networks"][current_network]["packages"]["ExternalInterfaces"] = sui_project.ExternalInterfaces[-1]
+    config["networks"][current_network]["packages"]["GenesisProposal"] = sui_project.GenesisProposal[-1]
+    config["networks"][current_network]["packages"]["TestCoins"] = sui_project.TestCoins[-1]
 
-dola_types_package.program_publish_package(
-    replace_address=dict(serde=None))
+    if "Wormhole" not in config["networks"][current_network]["packages"]:
+        config["networks"][current_network]["packages"]["Wormhole"] = sui_project.Wormhole[-1]
 
-ray_math_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("ray_math")
-)
+    with open(path, "w") as f:
+        yaml.safe_dump(config, f)
 
-ray_math_package.program_publish_package()
 
-governance_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("governance")
-)
+def deploy():
+    wormhole_package = sui_brownie.SuiPackage(
+        package_path=Path.home().joinpath(Path(
+            ".move/https___github_com_OmniBTC_wormhole_git_ee0bd18ffca678b3598a0644a643aac0e77effc0/sui/wormhole")),
+    )
 
-governance_package.program_publish_package()
+    wormhole_package.program_publish_package(replace_address=dict(
+        wormhole="0x0"
+    ), gas_budget=1000000000)
 
-user_manager_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("user_manager")
-)
+    dola_protocol_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
+    )
 
-user_manager_package.program_publish_package(
-    replace_address=dict(serde=None,
-                         dola_types=None,
-                         governance=None))
+    dola_protocol_package.program_publish_package(replace_address=dict(
+        wormhole=wormhole_package.package_id
+    ), gas_budget=1000000000)
 
-app_manager_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("app_manager")
-)
+    external_interfaces_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
+    )
 
-app_manager_package.program_publish_package(
-    replace_address=dict(governance=None))
+    external_interfaces_package.program_publish_package(replace_address=dict(
+        dola_protocol=dola_protocol_package.package_id,
+        wormhole=wormhole_package.package_id
+    ))
 
-oracle_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("oracle")
-)
+    genesis_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            "proposals/genesis_proposal")
+    )
 
-oracle_package.program_publish_package()
+    genesis_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=dola_protocol_package.package_id,
+        wormhole=wormhole_package.package_id
+    ))
 
-pool_manager_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("pool_manager")
-)
+    test_coins_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
+    )
 
-pool_manager_package.program_publish_package(
-    replace_address=dict(serde=None, governance=None,
-                         dola_types=None, ray_math=None))
+    test_coins_package.program_publish_package()
 
-wormhole_package = sui_brownie.SuiPackage(
-    package_path=Path.home().joinpath(Path(
-        ".move/https___github_com_OmniBTC_wormhole_git_ee0bd18ffca678b3598a0644a643aac0e77effc0/sui/wormhole")),
-)
 
-wormhole_package.program_publish_package(gas_budget=1000000000)
+def main():
+    deploy()
+    export_to_config()
 
-omnipool_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("omnipool")
-)
 
-omnipool_package.program_publish_package(replace_address=dict(
-    serde=None,
-    dola_types=None,
-    wormhole=None,
-    governance=None,
-)
-)
-
-wormhole_adapter_core_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("wormhole_adapter_core")
-)
-
-wormhole_adapter_core_package.program_publish_package(replace_address=dict(
-    wormhole_adapter_core="0x0",
-    serde=None,
-    ray_math=None,
-    dola_types=None,
-    wormhole=None,
-    governance=None,
-    app_manager=None,
-    pool_manager=None,
-    user_manager=None
-)
-)
-
-lending_core_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("lending_core")
-)
-
-lending_core_package.program_publish_package(gas_budget=1000000000, replace_address=dict(
-    lending_core="0x0",
-    serde=None,
-    dola_types=None,
-    ray_math=None,
-    oracle=None,
-    app_manager=None,
-    pool_manager=None,
-    user_manager=None,
-    wormhole=None,
-    wormhole_adapter_core=None,
-    governance=None
-)
-                                             )
-
-system_core_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("system_core")
-)
-
-system_core_package.program_publish_package(replace_address=dict(
-    serde=None,
-    ray_math=None,
-    pool_manager=None,
-    dola_types=None,
-    app_manager=None,
-    user_manager=None,
-    wormhole=None,
-    wormhole_adapter_core=None,
-    governance=None
-)
-)
-
-dola_portal_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_portal")
-)
-
-dola_portal_package.program_publish_package(replace_address=dict(
-    serde=None,
-    ray_math=None,
-    dola_types=None,
-    pool_manager=None,
-    user_manager=None,
-    app_manager=None,
-    lending_core=None,
-    system_core=None,
-    oracle=None,
-    wormhole_adapter_core=None,
-    wormhole=None,
-    omnipool=None,
-    governance=None
-)
-)
-
-external_interfaces_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
-)
-
-external_interfaces_package.program_publish_package(replace_address=dict(
-    pool_manager=None,
-    user_manager=None,
-    app_manager=None,
-    governance=None,
-    serde=None,
-    wormhole_adapter_core=None,
-    wormhole=None,
-    omnipool=None,
-    dola_types=None,
-    lending_core=None,
-    ray_math=None,
-    oracle=None
-))
-
-genesis_proposal_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
-        "proposals/genesis_proposal")
-)
-
-genesis_proposal_package.program_publish_package(replace_address=dict(
-    pool_manager=None,
-    user_manager=None,
-    ray_math=None,
-    serde=None,
-    wormhole=None,
-    wormhole_adapter_core=None,
-    governance=None,
-    lending_core=None,
-    system_core=None,
-    dola_portal=None,
-    app_manager=None,
-    dola_types=None,
-    oracle=None,
-    omnipool=None
-)
-)
-
-test_coins_package = sui_brownie.SuiPackage(
-    package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
-)
-
-test_coins_package.program_publish_package()
-
-print("---------------------------Deployed Package ID-------------------------------------\n")
-print(f"serde={sui_project.Serde[-1]}")
-print(f"dola_types={sui_project.DolaTypes[-1]}")
-print(f"ray_math={sui_project.RayMath[-1]}")
-print(f"omnipool={sui_project.OmniPool[-1]}")
-print(f"app_manager={sui_project.AppManager[-1]}")
-print(f"governance={sui_project.Governance[-1]}")
-print(f"oracle={sui_project.Oracle[-1]}")
-print(f"pool_manager={sui_project.PoolManager[-1]}")
-print(f"wormhole={sui_project.Wormhole[-1]}")
-print(f"wormhole_adapter_core={sui_project.WormholeAdapterCore[-1]}")
-print(f"lending_core={sui_project.LendingCore[-1]}")
-print(f"system_core={sui_project.SystemCore[-1]}")
-print(f"dola_portal={sui_project.DolaPortal[-1]}")
-print(f"external_interfaces={sui_project.ExternalInterfaces[-1]}")
-print(f"genesis_proposal={sui_project.GenesisProposal[-1]}")
-print(f"test_coins={sui_project.TestCoins[-1]}")
+if __name__ == "__main__":
+    main()

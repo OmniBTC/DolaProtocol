@@ -2,14 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0
 
 ///
-module dola_types::dola_address {
+module dola_protocol::dola_address {
     use std::bcs;
     use std::string;
     use std::vector;
 
-    use serde::serde;
     use aptos_std::type_info;
     use aptos_framework::util;
+
+    use serde::serde;
 
     /// Errors
 

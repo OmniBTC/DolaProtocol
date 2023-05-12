@@ -6,21 +6,23 @@ module genesis_proposal::genesis_proposal {
     use std::option;
     use std::vector;
 
-    use app_manager::app_manager::TotalAppInfo;
-    use dola_types::dola_address;
-    use dola_types::dola_contract::DolaContractRegistry;
-    use governance::genesis::GovernanceCap;
-    use governance::governance_v1::{Self, GovernanceInfo, Proposal};
-    use lending_core::storage::Storage;
-    use omnipool::dola_pool;
-    use pool_manager::pool_manager::{Self, PoolManagerInfo};
     use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
-    use user_manager::user_manager::{Self, UserManagerInfo};
+
+    use dola_protocol::app_manager::TotalAppInfo;
+    use dola_protocol::dola_address;
+    use dola_protocol::dola_pool;
+    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
+    use dola_protocol::lending_core_storage::{Self, Storage};
+    use dola_protocol::lending_logic;
+    use dola_protocol::pool_manager::{Self, PoolManagerInfo};
+    use dola_protocol::system_core_storage;
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
+    use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use wormhole::state::State;
-    use wormhole_adapter_core::wormhole_adapter_core::{Self, CoreState};
 
     const EIS_FINAL_VOTE: u64 = 0;
 
@@ -69,10 +71,7 @@ module genesis_proposal::genesis_proposal {
         ctx: &mut TxContext
     ): (GovernanceCap, Certificate) {
         // init storage
-        lending_core::storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
-
-        // init wormhole adapter
-        lending_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
+        lending_core_storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
 
         (governance_cap, certificate)
     }
@@ -84,24 +83,7 @@ module genesis_proposal::genesis_proposal {
         ctx: &mut TxContext
     ): (GovernanceCap, Certificate) {
         // init storage
-        system_core::storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
-        // init wormhole adapter
-        system_core::wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
-
-        (governance_cap, certificate)
-    }
-
-    public fun init_dola_portal(
-        governance_cap: GovernanceCap,
-        certificate: Certificate,
-        dola_contract_registry: &mut DolaContractRegistry,
-        ctx: &mut TxContext
-    ): (GovernanceCap, Certificate) {
-        // init lending portal
-        dola_portal::lending::initialize_cap_with_governance(&governance_cap, dola_contract_registry, ctx);
-
-        // init system portal
-        dola_portal::system::initialize_cap_with_governance(&governance_cap, ctx);
+        system_core_storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
 
         (governance_cap, certificate)
     }
@@ -308,7 +290,7 @@ module genesis_proposal::genesis_proposal {
         optimal_utilization: u256,
         ctx: &mut TxContext
     ): (GovernanceCap, Certificate) {
-        lending_core::storage::register_new_reserve(
+        lending_core_storage::register_new_reserve(
             &governance_cap,
             storage,
             clock,
@@ -340,10 +322,8 @@ module genesis_proposal::genesis_proposal {
         dola_user_id: u64,
         amount: u64,
     ): (GovernanceCap, Certificate) {
-        let storage_cap = lending_core::storage::register_cap_with_governance(&governance_cap);
-        lending_core::logic::claim_from_treasury(
+        lending_logic::claim_from_treasury(
             &governance_cap,
-            &storage_cap,
             pool_manager_info,
             storage,
             clock,
