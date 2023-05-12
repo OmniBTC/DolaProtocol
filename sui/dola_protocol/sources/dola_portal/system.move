@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// System front-end contract portal. Including address binding, etc.
-module dola_protocol::system {
+module dola_protocol::system_portal {
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::transfer;

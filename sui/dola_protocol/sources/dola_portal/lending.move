@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// Lending front-end contract portal
-module dola_protocol::lending {
+module dola_protocol::lending_portal {
     use std::option;
     use std::vector;
 

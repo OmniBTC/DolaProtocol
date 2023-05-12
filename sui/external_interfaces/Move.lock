@@ -4,98 +4,22 @@
 version = 0
 
 dependencies = [
-  { name = "DolaTypes" },
-  { name = "LendingCore" },
-  { name = "Oracle" },
-  { name = "PoolManager" },
-  { name = "RayMath" },
-  { name = "Sui" },
-  { name = "UserManager" },
-]
-
-[[move.package]]
-name = "AppManager"
-source = { local = "../app_manager" }
-
-dependencies = [
-  { name = "Governance" },
+  { name = "DolaProtocol" },
   { name = "Sui" },
 ]
 
 [[move.package]]
-name = "DolaTypes"
-source = { local = "../dola_types" }
-
-dependencies = [
-  { name = "Serde" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "Governance"
-source = { local = "../governance" }
+name = "DolaProtocol"
+source = { local = "../dola_protocol" }
 
 dependencies = [
   { name = "Sui" },
-]
-
-[[move.package]]
-name = "LendingCore"
-source = { local = "../lending_core" }
-
-dependencies = [
-  { name = "AppManager" },
-  { name = "DolaTypes" },
-  { name = "Governance" },
-  { name = "Oracle" },
-  { name = "PoolManager" },
-  { name = "RayMath" },
-  { name = "Serde" },
-  { name = "Sui" },
-  { name = "UserManager" },
   { name = "Wormhole" },
-  { name = "WormholeAdapterCore" },
 ]
 
 [[move.package]]
 name = "MoveStdlib"
 source = { git = "https://github.com/MystenLabs/sui.git", rev = "3a70c4374090b020b95465787f3220a95d8ab0ba", subdir = "crates/sui-framework/packages/move-stdlib" }
-
-[[move.package]]
-name = "Oracle"
-source = { local = "../oracle" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "PoolManager"
-source = { local = "../pool_manager" }
-
-dependencies = [
-  { name = "DolaTypes" },
-  { name = "Governance" },
-  { name = "RayMath" },
-  { name = "Serde" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "RayMath"
-source = { local = "../ray_math" }
-
-dependencies = [
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "Serde"
-source = { local = "../serde" }
-
-dependencies = [
-  { name = "Sui" },
-]
 
 [[move.package]]
 name = "Sui"
@@ -106,35 +30,9 @@ dependencies = [
 ]
 
 [[move.package]]
-name = "UserManager"
-source = { local = "../user_manager" }
-
-dependencies = [
-  { name = "DolaTypes" },
-  { name = "Governance" },
-  { name = "Serde" },
-  { name = "Sui" },
-]
-
-[[move.package]]
 name = "Wormhole"
-source = { git = "https://github.com/wormhole-foundation/wormhole", rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0", subdir = "sui/wormhole" }
+source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },
-]
-
-[[move.package]]
-name = "WormholeAdapterCore"
-source = { local = "../wormhole_adapter_core" }
-
-dependencies = [
-  { name = "AppManager" },
-  { name = "DolaTypes" },
-  { name = "Governance" },
-  { name = "PoolManager" },
-  { name = "Serde" },
-  { name = "Sui" },
-  { name = "UserManager" },
-  { name = "Wormhole" },
 ]

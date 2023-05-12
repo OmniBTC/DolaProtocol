@@ -22,7 +22,7 @@ dependencies = [
 
 [[move.package]]
 name = "Wormhole"
-source = { git = "https://github.com/wormhole-foundation/wormhole", rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0", subdir = "sui/wormhole" }
+source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },

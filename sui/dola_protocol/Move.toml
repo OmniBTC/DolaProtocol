@@ -1,5 +1,5 @@
 [package]
-name = "dola_protocol"
+name = "DolaProtocol"
 version = "1.0.0"
 
 [addresses]
@@ -12,6 +12,6 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
 
 [dependencies.Wormhole]
-git = "https://github.com/wormhole-foundation/wormhole"
+git = "https://github.com/OmniBTC/wormhole.git"
 subdir = "sui/wormhole"
 rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0"

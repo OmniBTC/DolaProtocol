@@ -8,16 +8,17 @@ module external_interfaces::interfaces {
     use std::option::{Self, Option};
     use std::vector;
 
-    use dola_protocol::dola_address::DolaAddress;
-
-    use lending_core::logic;
-    use lending_core::rates;
-    use lending_core::storage::Storage;
-    use oracle::oracle::PriceOracle;
-    use pool_manager::pool_manager::{Self, PoolManagerInfo};
-    use ray_math::math;
     use sui::event::emit;
-    use user_manager::user_manager::{Self, UserManagerInfo};
+
+    use dola_protocol::dola_address::{Self, DolaAddress};
+    use dola_protocol::equilibrium_fee;
+    use dola_protocol::lending_core_storage::{Self as storage, Storage};
+    use dola_protocol::lending_logic as logic;
+    use dola_protocol::oracle::{Self, PriceOracle};
+    use dola_protocol::pool_manager::{Self, PoolManagerInfo};
+    use dola_protocol::rates;
+    use dola_protocol::ray_math as math;
+    use dola_protocol::user_manager::{Self, UserManagerInfo};
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
