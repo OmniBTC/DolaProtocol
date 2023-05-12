@@ -151,7 +151,7 @@ module dola_protocol::governance_v1 {
     ) {
         check_member(governance_info, tx_context::sender(ctx));
         assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
-        option::fill(&mut governance_info.governance_manager_cap, genesis::new(upgrade_cap, ctx));
+        option::fill(&mut governance_info.governance_manager_cap, genesis::init_genesis(upgrade_cap, ctx));
         governance_info.active = true;
     }
 

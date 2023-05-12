@@ -1,8 +1,11 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 module dola_protocol::genesis {
+    use std::ascii::into_bytes;
+    use std::type_name;
     use std::vector;
 
+    use sui::dynamic_field;
     use sui::object::{Self, UID, ID};
     use sui::package::{Self, UpgradeCap, UpgradeTicket, UpgradeReceipt};
     use sui::transfer;
@@ -11,6 +14,14 @@ module dola_protocol::genesis {
     friend dola_protocol::governance_v1;
 
     const E_EXIST_PACKAGE: u64 = 0;
+
+    const E_INVALID_OLD_VERSION: u64 = 1;
+
+    const E_SAME_VERSION: u64 = 2;
+
+    const E_TYPE_NOT_ALLOWED: u64 = 3;
+
+    const E_NOT_LATEST_VERISON: u64 = 4;
 
     /// Governance rights struct, responsible for governing all modules of Dola protocol.
     struct GovernanceCap {}
@@ -29,7 +40,20 @@ module dola_protocol::genesis {
         manager_ids: vector<ID>,
     }
 
-    public(friend) fun new(upgrade_cap: UpgradeCap, ctx: &mut TxContext): GovernanceManagerCap {
+    /// Version key
+    struct Version has store, drop, copy {}
+
+    /// Version 1.0.0
+    struct Version_1_0_0 has store, drop, copy {}
+
+    /// Add a new version structure when upgrading, and upgrade
+    /// the version through version migration.
+    ///
+    /// ```
+    /// struct Version_1_0_1 {}
+    /// ```
+
+    public(friend) fun init_genesis(upgrade_cap: UpgradeCap, ctx: &mut TxContext): GovernanceManagerCap {
         let governance_genesis = GovernanceGenesis {
             id: object::new(ctx),
             upgrade_cap,
@@ -38,6 +62,10 @@ module dola_protocol::genesis {
         let governance_manager_cap = GovernanceManagerCap {
             id: object::new(ctx)
         };
+
+        // Set current version
+        dynamic_field::add(&mut governance_genesis.id, Version {}, Version_1_0_0 {});
+
         vector::push_back(&mut governance_genesis.manager_ids, object::id(&governance_manager_cap));
         transfer::share_object(governance_genesis);
         governance_manager_cap
@@ -80,6 +108,39 @@ module dola_protocol::genesis {
         receipt: UpgradeReceipt,
     ) {
         package::commit_upgrade(&mut genesis.upgrade_cap, receipt);
+    }
+
+    /// Check current version
+    /// Note: Update the function to set the version limit.
+    public fun check_version(genesis: &mut GovernanceGenesis) {
+        assert!(
+            dynamic_field::exists_with_type<Version, Version_1_0_0>(&mut genesis.id, Version {}),
+            E_NOT_LATEST_VERISON
+        );
+    }
+
+    public fun migrate_version<OldVersion: store + drop, NewVersion: store + drop>(
+        _: &GovernanceCap,
+        genesis: &mut GovernanceGenesis,
+        new_version: NewVersion,
+    ) {
+        assert!(
+            dynamic_field::exists_with_type<Version, OldVersion>(&mut genesis.id, Version {}),
+            E_INVALID_OLD_VERSION
+        );
+
+        let _: OldVersion = dynamic_field::remove(&mut genesis.id, Version {});
+
+        let new_type = type_name::get<NewVersion>();
+
+        assert!(new_type != type_name::get<OldVersion>(), E_SAME_VERSION);
+
+        // Also make sure `New` originates from this module.
+        let module_name = into_bytes(type_name::get_module(&new_type));
+        assert!(module_name == b"genesis", E_TYPE_NOT_ALLOWED);
+
+        // Finally add the new version.
+        dynamic_field::add(&mut genesis.id, Version {}, new_version);
     }
 
     #[test_only]
