@@ -13,10 +13,11 @@ module dola_protocol::governance_v1 {
 
     use sui::event;
     use sui::object::{Self, UID, ID};
+    use sui::package::UpgradeCap;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
+    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap};
 
     #[test_only]
     use sui::test_scenario::{Self, Scenario};
@@ -144,13 +145,13 @@ module dola_protocol::governance_v1 {
 
     /// Activate the current version of governance.
     public entry fun activate_governance(
-        governance_genesis: &mut GovernanceGenesis,
+        upgrade_cap: UpgradeCap,
         governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
         check_member(governance_info, tx_context::sender(ctx));
         assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
-        option::fill(&mut governance_info.governance_manager_cap, genesis::new(governance_genesis, ctx));
+        option::fill(&mut governance_info.governance_manager_cap, genesis::new(upgrade_cap, ctx));
         governance_info.active = true;
     }
 
@@ -365,7 +366,6 @@ module dola_protocol::governance_v1 {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        genesis::init_for_testing(ctx);
         let members = vector::empty<address>();
         vector::push_back(&mut members, tx_context::sender(ctx));
         transfer::share_object(GovernanceInfo {
