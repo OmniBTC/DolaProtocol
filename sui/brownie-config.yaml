@@ -4,10 +4,10 @@ networks:
   sui-devnet:
     node_url: https://fullnode.devnet.sui.io:443
     packages:
-      DolaProtocol: '0xcca01a337f1d1ecbed704dbcb675ce96198299ddab5a1c54c1d1f6ebd27e5b3f'
-      ExternalInterfaces: '0x6f1c4d06cd7243502d7869695326af563a86119a93957ae12049d3617221339f'
-      GenesisProposal: '0x2c504467eddd56974524d1f372ff4b134cfded7d079560daa09bfcffc1c9676a'
-      TestCoins: '0x359914b8d1ba70483351dd973588d63be63b055549c790826c5c1d3e7087f6fe'
+      DolaProtocol: '0xc1e060ebede02d546495912929894ba4f578fa5c018940bf2e8ed6ae8f4afcee'
+      ExternalInterfaces: '0x637386bc0bf3c4f7caa920bb64a38b4eee9c5a599f0dc56674db8370ee0fbb2e'
+      GenesisProposal: '0x7e1b98256f8b61c4215ebf91f5e4e698c6f7c6c67346d9246a514e93f8e259ed'
+      TestCoins: '0x3a7fb8adf7acf191fe750d1e39be145695aae8d086d3965ac321323e93719bed'
       Wormhole: '0xa799ed12eb76079797d051a09289294451543f6ade7cbd967f5c3659ee7e0bd3'
   sui-localnet:
     node_url: http://127.0.0.1:9000

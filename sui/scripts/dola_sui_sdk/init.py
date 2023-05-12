@@ -1,10 +1,9 @@
 import functools
 from typing import List
 
+from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
-
-from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -108,8 +107,6 @@ def init_wormhole_adapter_pool():
         pool_genesis: &mut PoolGenesis,
         sui_wormhole_chain: u16, // Represents the wormhole chain id of the wormhole adpter core on Sui
         sui_wormhole_address: vector<u8>, // Represents the wormhole contract address of the wormhole adpter core on Sui
-        pool_approval: &mut PoolApproval,
-        dola_contract_registry: &mut DolaContractRegistry,
         wormhole_state: &mut WormholeState,
         ctx: &mut TxContext
     )
@@ -122,8 +119,6 @@ def init_wormhole_adapter_pool():
         dola_protocol.wormhole_adapter_pool.PoolGenesis[-1],
         0,
         get_wormhole_adapter_core_emitter(),
-        dola_protocol.dola_pool.PoolApproval[-1],
-        dola_protocol.dola_contract.DolaContractRegistry[-1],
         wormhole.state.State[-1]
     )
 
@@ -838,10 +833,9 @@ def batch_execute_proposal():
         actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
                        dola_protocol.app_manager.TotalAppInfo[-1],  # 2
-                       dola_protocol.dola_contract.DolaContractRegistry[-1],  # 3
-                       dola_protocol.user_manager.UserManagerInfo[-1],  # 4
-                       chain_group_id,  # 5
-                       group_chain_ids,  # 6
+                       dola_protocol.user_manager.UserManagerInfo[-1],  # 3
+                       chain_group_id,  # 4
+                       group_chain_ids,  # 5
                        ],
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -863,75 +857,21 @@ def batch_execute_proposal():
                 []
             ],  # 2. init_lending_core
             [
-                genesis_proposal.genesis_proposal.init_dola_portal,
+                genesis_proposal.genesis_proposal.init_chain_group_id,
                 [Argument("NestedResult", NestedResult(U16(2), U16(0))),
                  Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                 Argument("Input", U16(3))],
-                []
-            ],  # 3. init_dola_portal
-            [
-                genesis_proposal.genesis_proposal.init_chain_group_id,
-                [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(3), U16(1))),
-                 Argument("Input", U16(4)),
-                 Argument("Input", U16(5)),
-                 Argument("Input", U16(6))],
-                []
-            ],  # 4. init_chain_group_id
-            [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(4), U16(0))),
-              Argument("NestedResult", NestedResult(U16(4), U16(1)))],
-             []
-             ]
-        ]
-    )
-
-    # Set sui's dola portal as pool spender
-    lending_contract_id = int(lending_portal_contract_id())
-    result = sui_project.pay_sui([0])
-    register_spender_fee = result['objectChanges'][-1]['objectId']
-    register_spender_param = [0, lending_contract_id, register_spender_fee, clock()]
-
-    create_proposal()
-    sui_project.batch_transaction(
-        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       wormhole.state.State[-1],  # 2
-                       dola_protocol.wormhole_adapter_core.CoreState[-1],  # 3
-                       register_spender_param[0],  # 4
-                       register_spender_param[1],  # 5
-                       register_spender_param[2],  # 6
-                       register_spender_param[3],  # 7
-                       ],
-        transactions=[
-            [genesis_proposal.genesis_proposal.vote_proposal_final,
-             [Argument("Input", U16(0)), Argument("Input", U16(1))],
-             []
-             ],  # 0. vote_proposal_final
-            [
-                genesis_proposal.genesis_proposal.remote_register_spender,
-                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
-                 Argument("Input", U16(2)),
                  Argument("Input", U16(3)),
                  Argument("Input", U16(4)),
-                 Argument("Input", U16(5)),
-                 Argument("Input", U16(6)),
-                 Argument("Input", U16(7))
-                 ],
+                 Argument("Input", U16(5))],
                 []
-            ],  # 1. remote_register_spender
+            ],  # 3. init_chain_group_id
             [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-              Argument("NestedResult", NestedResult(U16(1), U16(1)))],
+             [Argument("NestedResult", NestedResult(U16(3), U16(0))),
+              Argument("NestedResult", NestedResult(U16(3), U16(1)))],
              []
              ]
         ]
     )
-
-    # (vaa, _) = bridge_core_read_vaa()
-    # todo: register spender
-    # register_spender(vaa)
 
     # Init lending reserve
 
@@ -939,6 +879,8 @@ def batch_execute_proposal():
     # [dola_pool_id, is_isolated_asset, borrowable_in_isolation, treasury,
     # treasury_factor, borrow_cap_ceiling, collateral_coefficient, borrow_coefficient,
     # base_borrow_rate, borrow_rate_slope1, borrow_rate_slope2, optimal_utilization]
+    create_proposal()
+
     btc_reserve_params = [0, False, False, 0,
                           int(0.1 * RAY),
                           0,
@@ -1028,7 +970,6 @@ def batch_execute_proposal():
     ]
     reserve_params = btc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + apt_reserve_params + bnb_reserve_params + sui_reserve_param
 
-    create_proposal()
     sui_project.batch_transaction(
         actual_params=base_params + reserve_params,
         transactions=[

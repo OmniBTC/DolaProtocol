@@ -13,18 +13,13 @@ module genesis_proposal::genesis_proposal {
 
     use dola_protocol::app_manager::TotalAppInfo;
     use dola_protocol::dola_address;
-    use dola_protocol::dola_contract::DolaContractRegistry;
     use dola_protocol::dola_pool;
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use dola_protocol::lending_core_storage::{Self, Storage};
-    use dola_protocol::lending_core_wormhole_adapter;
     use dola_protocol::lending_logic;
-    use dola_protocol::lending_portal;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::system_core_storage;
-    use dola_protocol::system_core_wormhole_adapter;
-    use dola_protocol::system_portal;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use wormhole::state::State;
@@ -78,9 +73,6 @@ module genesis_proposal::genesis_proposal {
         // init storage
         lending_core_storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
 
-        // init wormhole adapter
-        lending_core_wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
-
         (governance_cap, certificate)
     }
 
@@ -92,23 +84,6 @@ module genesis_proposal::genesis_proposal {
     ): (GovernanceCap, Certificate) {
         // init storage
         system_core_storage::initialize_cap_with_governance(&governance_cap, total_app_info, ctx);
-        // init wormhole adapter
-        system_core_wormhole_adapter::initialize_cap_with_governance(&governance_cap, ctx);
-
-        (governance_cap, certificate)
-    }
-
-    public fun init_dola_portal(
-        governance_cap: GovernanceCap,
-        certificate: Certificate,
-        dola_contract_registry: &mut DolaContractRegistry,
-        ctx: &mut TxContext
-    ): (GovernanceCap, Certificate) {
-        // init lending portal
-        lending_portal::initialize_cap_with_governance(&governance_cap, dola_contract_registry, ctx);
-
-        // init system portal
-        system_portal::initialize_cap_with_governance(&governance_cap, ctx);
 
         (governance_cap, certificate)
     }
@@ -347,10 +322,8 @@ module genesis_proposal::genesis_proposal {
         dola_user_id: u64,
         amount: u64,
     ): (GovernanceCap, Certificate) {
-        let storage_cap = lending_core_storage::register_cap_with_governance(&governance_cap);
         lending_logic::claim_from_treasury(
             &governance_cap,
-            &storage_cap,
             pool_manager_info,
             storage,
             clock,
