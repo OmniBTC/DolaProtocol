@@ -19,7 +19,7 @@ module dola_protocol::wormhole_adapter_core {
     use dola_protocol::dola_address::DolaAddress;
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::pool_codec;
-    use dola_protocol::pool_manager::{PoolManagerCap, Self, PoolManagerInfo};
+    use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_verify::{Self, Unit};
     use wormhole::bytes32::{Self, Bytes32};
@@ -47,8 +47,6 @@ module dola_protocol::wormhole_adapter_core {
     /// application by app_id from pool payload.
     struct CoreState has key, store {
         id: UID,
-        // Allow modification of pool_manager storage via PoolManagerCap
-        pool_manager_cap: PoolManagerCap,
         // Move does not have a contract address, Wormhole uses the emitter
         // in EmitterCap to represent the send address of this contract
         wormhole_emitter: EmitterCap,
@@ -98,14 +96,13 @@ module dola_protocol::wormhole_adapter_core {
 
     /// Initializing caps of PoolManager and UserManager through governance
     public fun initialize_cap_with_governance(
-        governance: &GovernanceCap,
+        _: &GovernanceCap,
         wormhole_state: &mut State,
         ctx: &mut TxContext
     ) {
         transfer::public_share_object(
             CoreState {
                 id: object::new(ctx),
-                pool_manager_cap: pool_manager::register_cap_with_governance(governance),
                 wormhole_emitter: emitter::new(wormhole_state, ctx),
                 consumed_vaas: object_table::new(ctx),
                 registered_emitters: vec_map::empty()
@@ -331,7 +328,6 @@ module dola_protocol::wormhole_adapter_core {
         assert!(app_manager::get_app_id(app_cap) == app_id, EINVALID_APP);
 
         let (actual_amount, _) = pool_manager::add_liquidity(
-            &core_state.pool_manager_cap,
             pool_manager_info,
             pool_address,
             app_manager::get_app_id(app_cap),
@@ -390,7 +386,6 @@ module dola_protocol::wormhole_adapter_core {
         clock: &Clock
     ) {
         let (actual_amount, _) = pool_manager::remove_liquidity(
-            &core_state.pool_manager_cap,
             pool_manager_info,
             pool_address,
             app_manager::get_app_id(app_cap),

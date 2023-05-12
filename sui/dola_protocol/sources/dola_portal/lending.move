@@ -22,7 +22,7 @@ module dola_protocol::lending_portal {
     use dola_protocol::lending_core_storage::{Self, Self as storage, StorageCap, Storage};
     use dola_protocol::lending_logic;
     use dola_protocol::oracle::PriceOracle;
-    use dola_protocol::pool_manager::{Self, PoolManagerCap, PoolManagerInfo};
+    use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use wormhole::state::State as WormholeState;
@@ -52,8 +52,6 @@ module dola_protocol::lending_portal {
         id: UID,
         /// Used to represent the contract address of this module in the Dola protocol
         dola_contract: DolaContract,
-        // Allow modification of pool_manager storage via PoolManagerCap
-        pool_manager_cap: PoolManagerCap,
         // Allow modification of lending storage
         storage_cap: StorageCap,
         // Relayer
@@ -102,7 +100,6 @@ module dola_protocol::lending_portal {
         transfer::share_object(LendingPortal {
             id: object::new(ctx),
             dola_contract: dola_contract::create_dola_contract(dola_contract_registry),
-            pool_manager_cap: pool_manager::register_cap_with_governance(governance),
             storage_cap: storage::register_cap_with_governance(governance),
             relayer: tx_context::sender(ctx),
             next_nonce: 0
@@ -246,7 +243,6 @@ module dola_protocol::lending_portal {
 
         // Add pool liquidity for dola protocol
         let (actual_amount, _) = pool_manager::add_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             pool_address,
             LENDING_APP_ID,
@@ -324,7 +320,6 @@ module dola_protocol::lending_portal {
 
         // Remove pool liquidity for dst ppol
         let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
@@ -397,7 +392,6 @@ module dola_protocol::lending_portal {
 
         // Remove pool liquidity for dst ppol
         let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
@@ -487,7 +481,6 @@ module dola_protocol::lending_portal {
 
         // Remove pool liquidity
         let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
@@ -557,7 +550,6 @@ module dola_protocol::lending_portal {
         );
         // Remove pool liquidity
         let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             dst_pool,
             LENDING_APP_ID,
@@ -634,7 +626,6 @@ module dola_protocol::lending_portal {
         );
 
         let (actual_amount, _) = pool_manager::add_liquidity(
-            &lending_portal.pool_manager_cap,
             pool_manager_info,
             pool_address,
             LENDING_APP_ID,

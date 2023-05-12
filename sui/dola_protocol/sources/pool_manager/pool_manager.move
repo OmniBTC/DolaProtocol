@@ -24,6 +24,9 @@ module dola_protocol::pool_manager {
     #[test_only]
     use sui::test_scenario;
 
+    friend dola_protocol::lending_portal;
+    friend dola_protocol::wormhole_adapter_core;
+
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
 
@@ -44,10 +47,6 @@ module dola_protocol::pool_manager {
     const ENOT_ENOUGH_APP_LIQUIDITY: u64 = 5;
 
     const ENOT_ENOUGH_POOL_LIQUIDITY: u64 = 6;
-
-    /// Capability allowing liquidity status modification.
-    /// Owned by bridge adapters (wormhole, layerzero, etc).
-    struct PoolManagerCap has store {}
 
     /// Responsible for maintaining the global state of different chain pools
     struct PoolManagerInfo has key, store {
@@ -147,11 +146,6 @@ module dola_protocol::pool_manager {
     ): bool {
         let pool_catalog = &pool_manager_info.pool_catalog;
         table::contains(&pool_catalog.pool_to_id, pool_address)
-    }
-
-    /// Giving the bridge adapter the right to make changes to the `pool_manager` module through governance
-    public fun register_cap_with_governance(_: &GovernanceCap): PoolManagerCap {
-        PoolManagerCap {}
     }
 
     /// Create a new pool id for managing similar tokens from different chains (e.g. USDC)
@@ -403,8 +397,7 @@ module dola_protocol::pool_manager {
     }
 
     /// Certain pool has a user deposit operation, update the pool manager status
-    public fun add_liquidity(
-        _: &PoolManagerCap,
+    public(friend) fun add_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         pool_address: DolaAddress,
         app_id: u16,
@@ -455,8 +448,7 @@ module dola_protocol::pool_manager {
     }
 
     /// Certain pool has a user withdraw operation, update the pool manager status
-    public fun remove_liquidity(
-        _: &PoolManagerCap,
+    public(friend) fun remove_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         pool_address: DolaAddress,
         app_id: u16,
@@ -503,11 +495,6 @@ module dola_protocol::pool_manager {
         (actual_amount, equilibrium_fee)
     }
 
-    /// Destroy manager
-    public fun destroy_manager(pool_manager_cap: PoolManagerCap) {
-        let PoolManagerCap {} = pool_manager_cap;
-    }
-
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         transfer::share_object(PoolManagerInfo {
@@ -519,11 +506,6 @@ module dola_protocol::pool_manager {
                 id_to_pools: table::new(ctx)
             }
         })
-    }
-
-    #[test_only]
-    public fun register_manager_cap_for_testing(): PoolManagerCap {
-        PoolManagerCap {}
     }
 
     #[test]
