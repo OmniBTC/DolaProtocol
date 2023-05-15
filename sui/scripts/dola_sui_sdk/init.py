@@ -1,6 +1,7 @@
 import functools
 from typing import List
 
+import requests
 from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
@@ -1164,54 +1165,82 @@ def batch_execute_proposal():
     )
 
 
+def get_price(symbol):
+    pyth_service_url = sui_project.network_config['pyth_service_url']
+    feed_id = sui_project.network_config['oracle']['feed_id'][symbol].replace("0x", "")
+    url = f"{pyth_service_url}/api/latest_price_feeds?ids[]={feed_id}"
+    response = requests.get(url)
+    result = response.json()
+    price = int(result[0]['ema_price']['price'])
+    decimal = int(result[0]['ema_price']['expo']).__abs__()
+    return price, decimal
+
+
 def batch_init_oracle():
+    genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
 
     # Token price params
     # [dola_pool_id, price, price_decimal]
-    btc_token_param = [0, 3000000, 2]
-    usdt_token_param = [1, 100, 2]
-    usdc_token_param = [2, 100, 2]
-    eth_token_param = [3, 190000, 2]
-    matic_token_param = [4, 100, 2]
-    apt_token_param = [5, 1830, 2]
-    bnb_token_param = [6, 28500, 2]
-    sui_token_param = [7, 100, 2]
+    (btc_price, btc_price_decimal) = get_price("BTC/USD")
+    btc_token_param = [0, btc_price, btc_price_decimal]
+    (usdt_price, usdt_price_decimal) = get_price("USDT/USD")
+    usdt_token_param = [1, usdt_price, usdt_price_decimal]
+    (usdc_price, usdc_price_decimal) = get_price("USDC/USD")
+    usdc_token_param = [2, usdc_price, usdc_price_decimal]
+    (eth_price, eth_price_decimal) = get_price("ETH/USD")
+    eth_token_param = [3, eth_price, eth_price_decimal]
+    (matic_price, matic_price_decimal) = get_price("MATIC/USD")
+    matic_token_param = [4, matic_price, matic_price_decimal]
+    (apt_price, apt_price_decimal) = get_price("APT/USD")
+    apt_token_param = [5, apt_price, apt_price_decimal]
+    (bnb_price, bnb_price_decimal) = get_price("BNB/USD")
+    bnb_token_param = [6, bnb_price, bnb_price_decimal]
+    (sui_price, sui_price_decimal) = get_price("SUI/USD")
+    sui_token_param = [7, sui_price, sui_price_decimal]
 
     sui_project.batch_transaction(
-        actual_params=[dola_protocol.oracle.OracleCap[-1],  # 0
-                       dola_protocol.oracle.PriceOracle[-1],  # 1
-                       btc_token_param[0],  # 2
-                       btc_token_param[1],  # 3
-                       btc_token_param[2],  # 4
-                       usdt_token_param[0],  # 5
-                       usdt_token_param[1],  # 6
-                       usdt_token_param[2],  # 7
-                       usdc_token_param[0],  # 8
-                       usdc_token_param[1],  # 9
-                       usdc_token_param[2],  # 10
-                       eth_token_param[0],  # 11
-                       eth_token_param[1],  # 12
-                       eth_token_param[2],  # 13
-                       matic_token_param[0],  # 14
-                       matic_token_param[1],  # 15
-                       matic_token_param[2],  # 16
-                       apt_token_param[0],  # 17
-                       apt_token_param[1],  # 18
-                       apt_token_param[2],  # 19
-                       bnb_token_param[0],  # 20
-                       bnb_token_param[1],  # 21
-                       bnb_token_param[2],  # 22
-                       sui_token_param[0],  # 23
-                       sui_token_param[1],  # 24
-                       sui_token_param[2],  # 25
-                       clock(),  # 26
-                       ],
+        actual_params=[
+            dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+            dola_protocol.oracle.PriceOracle[-1],  # 1
+            btc_token_param[0],  # 2
+            btc_token_param[1],  # 3
+            btc_token_param[2],  # 4
+            usdt_token_param[0],  # 5
+            usdt_token_param[1],  # 6
+            usdt_token_param[2],  # 7
+            usdc_token_param[0],  # 8
+            usdc_token_param[1],  # 9
+            usdc_token_param[2],  # 10
+            eth_token_param[0],  # 11
+            eth_token_param[1],  # 12
+            eth_token_param[2],  # 13
+            matic_token_param[0],  # 14
+            matic_token_param[1],  # 15
+            matic_token_param[2],  # 16
+            apt_token_param[0],  # 17
+            apt_token_param[1],  # 18
+            apt_token_param[2],  # 19
+            bnb_token_param[0],  # 20
+            bnb_token_param[1],  # 21
+            bnb_token_param[2],  # 22
+            sui_token_param[0],  # 23
+            sui_token_param[1],  # 24
+            sui_token_param[2],  # 25
+            clock(),  # 26
+            sui_project[SuiObject.from_type(proposal())][-1],  # 27
+        ],
         transactions=[
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.vote_proposal_final,
+                [Argument("Input", U16(0)), Argument("Input", U16(27))],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(0), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(2)),
                     Argument("Input", U16(3)),
@@ -1221,9 +1250,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(1), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(1), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(5)),
                     Argument("Input", U16(6)),
@@ -1233,9 +1263,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(2), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(2), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(8)),
                     Argument("Input", U16(9)),
@@ -1245,9 +1276,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(3), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(11)),
                     Argument("Input", U16(12)),
@@ -1257,9 +1289,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(4), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(4), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(14)),
                     Argument("Input", U16(15)),
@@ -1269,9 +1302,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(5), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(5), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(17)),
                     Argument("Input", U16(18)),
@@ -1281,9 +1315,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(6), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(6), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(20)),
                     Argument("Input", U16(21)),
@@ -1293,9 +1328,10 @@ def batch_init_oracle():
                 []
             ],
             [
-                dola_protocol.oracle.register_token_price,
+                genesis_proposal.genesis_proposal.register_token_price,
                 [
-                    Argument("Input", U16(0)),
+                    Argument("NestedResult", NestedResult(U16(7), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(7), U16(1))),
                     Argument("Input", U16(1)),
                     Argument("Input", U16(23)),
                     Argument("Input", U16(24)),
@@ -1303,17 +1339,22 @@ def batch_init_oracle():
                     Argument("Input", U16(26))
                 ],
                 []
+            ],
+            [
+                genesis_proposal.genesis_proposal.destory,
+                [Argument("NestedResult", NestedResult(U16(8), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(8), U16(1)))],
+                []
             ]
         ]
     )
 
 
 def batch_init():
-    batch_init_oracle()
-
     active_governance_v1()
+    batch_init_oracle()
     batch_execute_proposal()
 
 
 if __name__ == '__main__':
-    batch_init()
+    main()

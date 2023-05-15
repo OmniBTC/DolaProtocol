@@ -122,14 +122,14 @@ module dola_protocol::oracle {
         _: &GovernanceCap,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,
-        token_price: u256,
+        price_value: u256,
         price_decimal: u8,
         clock: &Clock
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, dola_pool_id), EALREADY_EXIST_ORACLE);
         table::add(price_oracles, dola_pool_id, Price {
-            value: token_price,
+            value: price_value,
             decimal: price_decimal,
             last_update_timestamp: clock::timestamp_ms(clock) / 1000
         })

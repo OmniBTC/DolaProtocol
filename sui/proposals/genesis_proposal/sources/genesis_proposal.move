@@ -18,6 +18,7 @@ module genesis_proposal::genesis_proposal {
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use dola_protocol::lending_core_storage::{Self, Storage};
     use dola_protocol::lending_logic;
+    use dola_protocol::oracle::{Self, PriceOracle};
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::system_core_storage;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
@@ -111,6 +112,26 @@ module genesis_proposal::genesis_proposal {
         ctx: &mut TxContext
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::initialize_cap_with_governance(&governance_cap, wormhole_state, ctx);
+        (governance_cap, certificate)
+    }
+
+    public fun register_token_price(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        price_oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        price_value: u256,
+        price_decimal: u8,
+        clock: &Clock
+    ): (GovernanceCap, Certificate) {
+        oracle::register_token_price(
+            &governance_cap,
+            price_oracle,
+            dola_pool_id,
+            price_value,
+            price_decimal,
+            clock
+        );
         (governance_cap, certificate)
     }
 
