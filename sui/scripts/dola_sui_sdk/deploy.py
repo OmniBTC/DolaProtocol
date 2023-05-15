@@ -16,13 +16,13 @@ def export_to_config():
     if "packages" not in config["networks"][current_network]:
         config["networks"][current_network]["packages"] = {}
 
-    config["networks"][current_network]["packages"]["DolaProtocol"] = sui_project.DolaProtocol[-1]
-    config["networks"][current_network]["packages"]["ExternalInterfaces"] = sui_project.ExternalInterfaces[-1]
-    config["networks"][current_network]["packages"]["GenesisProposal"] = sui_project.GenesisProposal[-1]
-    config["networks"][current_network]["packages"]["TestCoins"] = sui_project.TestCoins[-1]
+    config["networks"][current_network]["packages"]["dola_protocol"] = sui_project.DolaProtocol[-1]
+    config["networks"][current_network]["packages"]["genesis_proposal"] = sui_project.GenesisProposal[-1]
+    config["networks"][current_network]["packages"]["test_coins"] = sui_project.TestCoins[-1]
+    config["networks"][current_network]["packages"]["external_interfaces"] = sui_project.ExternalInterfaces[-1]
 
     if "Wormhole" not in config["networks"][current_network]["packages"]:
-        config["networks"][current_network]["packages"]["Wormhole"] = sui_project.Wormhole[-1]
+        config["networks"][current_network]["packages"]["wormhole"] = sui_project.Wormhole[-1]
 
     with open(path, "w") as f:
         yaml.safe_dump(config, f)
@@ -30,7 +30,7 @@ def export_to_config():
 
 def deploy():
     wormhole_package = sui_brownie.SuiPackage(
-        package_id=sui_project.network_config['packages']['Wormhole'],
+        package_id=sui_project.network_config['packages']['wormhole'],
         package_path=Path.home().joinpath(Path(
             ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")),
     )
@@ -41,7 +41,10 @@ def deploy():
 
     dola_protocol_package.program_publish_package(replace_address=dict(
         wormhole=wormhole_package.package_id,
-        pyth=sui_project.network_config['packages']['Pyth']
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        pyth=sui_project.network_config['packages']['pyth'],
+        wormhole=wormhole_package.package_id,
     ), gas_budget=1000000000)
 
     genesis_proposal_package = sui_brownie.SuiPackage(
@@ -51,7 +54,11 @@ def deploy():
 
     genesis_proposal_package.program_publish_package(replace_address=dict(
         dola_protocol=dola_protocol_package.package_id,
-        wormhole=wormhole_package.package_id
+        wormhole=wormhole_package.package_id,
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        pyth=sui_project.network_config['packages']['pyth'],
+        wormhole=wormhole_package.package_id,
     ))
 
     if sui_project.network != "sui-mainnet":
@@ -67,7 +74,11 @@ def deploy():
 
     external_interfaces_package.program_publish_package(replace_address=dict(
         dola_protocol=dola_protocol_package.package_id,
-        wormhole=wormhole_package.package_id
+        wormhole=wormhole_package.package_id,
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        wormhole=wormhole_package.package_id,
+        pyth=sui_project.network_config['packages']['pyth'],
     ))
 
 

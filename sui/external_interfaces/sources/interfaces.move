@@ -557,7 +557,7 @@ module external_interfaces::interfaces {
     }
 
     public entry fun get_oracle_price(oracle: &mut PriceOracle, dola_pool_id: u16) {
-        let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
+        let (price, decimal, _) = oracle::get_token_price(oracle, dola_pool_id);
         emit(TokenPrice {
             dola_pool_id,
             price,
@@ -571,7 +571,7 @@ module external_interfaces::interfaces {
         let i = 0;
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
-            let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
+            let (price, decimal, _) = oracle::get_token_price(oracle, dola_pool_id);
             let token_price = TokenPrice {
                 dola_pool_id,
                 price,
