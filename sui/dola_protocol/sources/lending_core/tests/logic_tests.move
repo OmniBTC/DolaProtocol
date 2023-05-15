@@ -14,7 +14,7 @@ module dola_protocol::logic_tests {
     use dola_protocol::genesis;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
     use dola_protocol::lending_logic as logic;
-    use dola_protocol::oracle::{Self, PriceOracle, OracleCap};
+    use dola_protocol::oracle::{Self, PriceOracle};
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::ray_math as math;
 
@@ -96,21 +96,25 @@ module dola_protocol::logic_tests {
         pool_manager::init_for_testing(ctx);
     }
 
-    public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, clock: &Clock) {
+    public fun init_oracle(oracle: &mut PriceOracle, clock: &Clock) {
+        let cap = genesis::register_governance_cap_for_testing();
+
         // register btc oracle
-        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 3000000, 2, clock);
+        oracle::register_token_price(&cap, oracle, BTC_POOL_ID, 3000000, 2, clock);
 
         // register usdt oracle
-        oracle::register_token_price(cap, oracle, USDT_POOL_ID, 100, 2, clock);
+        oracle::register_token_price(&cap, oracle, USDT_POOL_ID, 100, 2, clock);
 
         // register usdc oracle
-        oracle::register_token_price(cap, oracle, USDC_POOL_ID, 100, 2, clock);
+        oracle::register_token_price(&cap, oracle, USDC_POOL_ID, 100, 2, clock);
 
         // register eth oracle
-        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 200000, 2, clock);
+        oracle::register_token_price(&cap, oracle, ETH_POOL_ID, 200000, 2, clock);
 
         // register isolate oracle
-        oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2, clock);
+        oracle::register_token_price(&cap, oracle, ISOLATE_POOL_ID, 10000, 2, clock);
+
+        genesis::destroy(cap);
     }
 
     public fun init_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
@@ -310,12 +314,10 @@ module dola_protocol::logic_tests {
         };
         test_scenario::next_tx(scenario, creator);
         {
-            let cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
-            init_oracle(&cap, &mut oracle, &clock);
+            init_oracle(&mut oracle, &clock);
 
-            test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
         };
@@ -1715,7 +1717,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1740,7 +1741,7 @@ module dola_protocol::logic_tests {
             let before_user1_usdt_balance = logic::user_collateral_balance(&mut storage, 1, USDT_POOL_ID);
 
             // Simulate BTC price drop to 20000
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 2500000);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 2500000);
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 206);
 
@@ -1787,7 +1788,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1816,7 +1816,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1826,7 +1825,7 @@ module dola_protocol::logic_tests {
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
 
             // Simulate BTC price drop
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 1999900);
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 202);
 
@@ -1846,7 +1845,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1904,7 +1902,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1914,7 +1911,7 @@ module dola_protocol::logic_tests {
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 203);
 
             // Simulate BTC price drop
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 1999900);
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 204);
 
@@ -1934,7 +1931,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -1965,7 +1961,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -1975,7 +1970,7 @@ module dola_protocol::logic_tests {
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
 
             // Simulate BTC price has fallen sharply
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1000000);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 1000000);
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
 
@@ -2003,7 +1998,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -2036,7 +2030,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2046,7 +2039,7 @@ module dola_protocol::logic_tests {
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) > RAY, 201);
 
             // Simulate BTC price drop
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 1999900);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 1999900);
 
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 202);
             // User 1 exist btc debt
@@ -2078,7 +2071,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -2119,14 +2111,13 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
 
             // Simulate BTC price drop
-            oracle::update_token_price(&oracle_cap, &mut oracle, BTC_POOL_ID, 2500000);
+            oracle::update_token_price(&mut oracle, BTC_POOL_ID, 2500000);
 
             // Check user 0 state
             assert!(logic::user_health_factor(&mut storage, &mut oracle, 0) < RAY, 201);
@@ -2209,7 +2200,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
         test_scenario::end(scenario_val);
     }
@@ -2229,8 +2219,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
-
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2286,7 +2274,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -2316,7 +2303,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2346,7 +2332,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -2376,7 +2361,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2406,7 +2390,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -2436,7 +2419,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2465,7 +2447,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
         test_scenario::end(scenario_val);
@@ -2495,7 +2476,6 @@ module dola_protocol::logic_tests {
 
         test_scenario::next_tx(scenario, creator);
         {
-            let oracle_cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
@@ -2525,7 +2505,6 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(storage);
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
-            test_scenario::return_to_sender(scenario, oracle_cap);
         };
 
         test_scenario::end(scenario_val);

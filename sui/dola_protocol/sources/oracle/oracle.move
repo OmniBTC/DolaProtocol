@@ -176,4 +176,11 @@ module dola_protocol::oracle {
             price_oracles: table::new(ctx)
         });
     }
+
+    #[test_only]
+    public fun update_token_price(oracle: &mut PriceOracle, dola_pool_id: u16, price_value: u256) {
+        let price_oracles = &mut oracle.price_oracles;
+        let price = table::borrow_mut(price_oracles, dola_pool_id);
+        price.value = price_value;
+    }
 }
