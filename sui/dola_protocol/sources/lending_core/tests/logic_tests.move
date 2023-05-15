@@ -96,21 +96,21 @@ module dola_protocol::logic_tests {
         pool_manager::init_for_testing(ctx);
     }
 
-    public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle) {
+    public fun init_oracle(cap: &OracleCap, oracle: &mut PriceOracle, clock: &Clock) {
         // register btc oracle
-        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 3000000, 2);
+        oracle::register_token_price(cap, oracle, BTC_POOL_ID, 3000000, 2, clock);
 
         // register usdt oracle
-        oracle::register_token_price(cap, oracle, USDT_POOL_ID, 100, 2);
+        oracle::register_token_price(cap, oracle, USDT_POOL_ID, 100, 2, clock);
 
         // register usdc oracle
-        oracle::register_token_price(cap, oracle, USDC_POOL_ID, 100, 2);
+        oracle::register_token_price(cap, oracle, USDC_POOL_ID, 100, 2, clock);
 
         // register eth oracle
-        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 200000, 2);
+        oracle::register_token_price(cap, oracle, ETH_POOL_ID, 200000, 2, clock);
 
         // register isolate oracle
-        oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2);
+        oracle::register_token_price(cap, oracle, ISOLATE_POOL_ID, 10000, 2, clock);
     }
 
     public fun init_app(total_app_info: &mut TotalAppInfo, ctx: &mut TxContext) {
@@ -312,11 +312,12 @@ module dola_protocol::logic_tests {
         {
             let cap = test_scenario::take_from_sender<OracleCap>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-
-            init_oracle(&cap, &mut oracle);
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            init_oracle(&cap, &mut oracle, &clock);
 
             test_scenario::return_to_sender(scenario, cap);
             test_scenario::return_shared(oracle);
+            clock::destroy_for_testing(clock);
         };
         test_scenario::next_tx(scenario, creator);
         {
