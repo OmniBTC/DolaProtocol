@@ -95,8 +95,7 @@ module dola_protocol::lending_logic {
         update_average_liquidity(storage, oracle, clock, liquidator);
 
         // Check the freshness of the price when performing the liquidation logic.
-        check_fresh_price(oracle, collateral, clock);
-        check_fresh_price(oracle, loan, clock);
+        check_user_fresh_price(oracle, storage, violator, clock);
 
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
 
@@ -244,7 +243,7 @@ module dola_protocol::lending_logic {
         burn_otoken(storage, dola_user_id, dola_pool_id, actual_amount);
 
         // Check the freshness of the price
-        check_fresh_price(oracle, dola_pool_id, clock);
+        check_user_fresh_price(oracle, storage, dola_user_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (actual_amount == otoken_amount) {
@@ -302,6 +301,7 @@ module dola_protocol::lending_logic {
         mint_dtoken(storage, dola_user_id, borrow_pool_id, borrow_amount);
 
         // Check the freshness of the price
+        check_user_fresh_price(oracle, storage, dola_user_id, clock);
         check_fresh_price(oracle, borrow_pool_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
@@ -411,7 +411,7 @@ module dola_protocol::lending_logic {
         storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
 
         // Check the freshness of the price
-        check_fresh_price(oracle, dola_pool_id, clock);
+        check_user_fresh_price(oracle, storage, dola_user_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
@@ -498,6 +498,29 @@ module dola_protocol::lending_logic {
         } else {
             false
         }
+    }
+
+    /// Check to see if these assets involved in calculating health factors have the latest prices.
+    public fun check_user_fresh_price(
+        price_oracle: &mut PriceOracle,
+        storage: &mut Storage,
+        dola_user_id: u64,
+        clock: &Clock
+    ) {
+        let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+        let loans = storage::get_user_loans(storage, dola_user_id);
+
+        let index = 0;
+        while (index < vector::length(&collaterals)) {
+            check_fresh_price(price_oracle, *vector::borrow(&collaterals, index), clock);
+            index = index + 1;
+        };
+
+        index = 0;
+        while (index < vector::length(&loans)) {
+            check_fresh_price(price_oracle, *vector::borrow(&loans, index), clock);
+            index = index + 1;
+        };
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
