@@ -9,8 +9,9 @@ module dola_portal::lending {
     use aptos_framework::coin;
     use aptos_framework::event::{Self, EventHandle};
 
+    use dola_protocol::dola_address;
+
     use dola_portal::lending_codec;
-    use dola_types::dola_address;
     use omnipool::dola_pool;
     use omnipool::wormhole_adapter_pool;
     use wormhole::state;

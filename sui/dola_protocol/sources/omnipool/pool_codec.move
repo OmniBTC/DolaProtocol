@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// Codecing for pool contracts
-module omnipool::pool_codec {
+module dola_protocol::pool_codec {
     use std::vector;
 
     use dola_protocol::dola_address::{Self, DolaAddress};
-
-    use serde::serde;
+    use dola_protocol::serde;
 
     /// Errors
     // Invalid length of Payload

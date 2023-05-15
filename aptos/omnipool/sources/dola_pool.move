@@ -16,8 +16,9 @@ module omnipool::dola_pool {
     use aptos_framework::coin::{Self, Coin};
     use aptos_framework::event::{Self, EventHandle};
 
-    use dola_types::dola_address::{Self, DolaAddress};
-    use dola_types::dola_contract::{Self, DolaContract};
+    use dola_protocol::dola_address::{Self, DolaAddress};
+    use dola_protocol::dola_contract::{Self, DolaContract};
+
     use omnipool::pool_codec;
 
     friend omnipool::wormhole_adapter_pool;

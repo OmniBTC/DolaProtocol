@@ -3,22 +3,18 @@
 
 ///
 module dola_protocol::dola_address {
-    use std::bcs;
-    use std::string;
+    use std::ascii;
+    use std::type_name;
     use std::vector;
 
-    use aptos_std::type_info;
-    use aptos_framework::util;
+    use sui::address::from_bytes;
+    use sui::bcs;
 
-    use serde::serde;
-
-    /// Errors
+    use dola_protocol::serde;
 
     const EINVALID_ADDRESS: u64 = 0;
 
-    /// Dola chain id
-
-    const DOLACHAINID: u16 = 1;
+    const DOLACHAINID: u16 = 0;
 
     /// Used to represent user address and pool address
     struct DolaAddress has copy, drop, store {
@@ -60,11 +56,12 @@ module dola_protocol::dola_address {
     }
 
     public fun convert_dola_to_address(addr: DolaAddress): address {
-        util::address_from_bytes(addr.dola_address)
+        assert!(vector::length(&addr.dola_address) == 32, EINVALID_ADDRESS);
+        from_bytes(addr.dola_address)
     }
 
     public fun convert_pool_to_dola<CoinType>(): DolaAddress {
-        let dola_address = *string::bytes(&type_info::type_name<CoinType>());
+        let dola_address = ascii::into_bytes(type_name::into_string(type_name::get<CoinType>()));
         DolaAddress {
             dola_chain_id: DOLACHAINID,
             dola_address
