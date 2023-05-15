@@ -13,11 +13,18 @@ module dola_protocol::governance_v1 {
 
     use sui::event;
     use sui::object::{Self, UID, ID};
+    use sui::package::UpgradeCap;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap, GovernanceGenesis};
+    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap};
 
+    #[test_only]
+    use dola_protocol::genesis::GovernanceGenesis;
+    #[test_only]
+    use sui::object::id_from_address;
+    #[test_only]
+    use sui::package;
     #[test_only]
     use sui::test_scenario::{Self, Scenario};
 
@@ -144,13 +151,13 @@ module dola_protocol::governance_v1 {
 
     /// Activate the current version of governance.
     public entry fun activate_governance(
-        governance_genesis: &mut GovernanceGenesis,
+        upgrade_cap: UpgradeCap,
         governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     ) {
         check_member(governance_info, tx_context::sender(ctx));
         assert!(!governance_info.active && vector::length(&governance_info.his_proposal) == 0, EHAS_ACTIVE);
-        option::fill(&mut governance_info.governance_manager_cap, genesis::new(governance_genesis, ctx));
+        option::fill(&mut governance_info.governance_manager_cap, genesis::init_genesis(upgrade_cap, ctx));
         governance_info.active = true;
     }
 
@@ -365,7 +372,6 @@ module dola_protocol::governance_v1 {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
-        genesis::init_for_testing(ctx);
         let members = vector::empty<address>();
         vector::push_back(&mut members, tx_context::sender(ctx));
         transfer::share_object(GovernanceInfo {
@@ -397,14 +403,13 @@ module dola_protocol::governance_v1 {
         // active
         test_scenario::next_tx(scenario, governance);
         {
-            let governance_genesis = test_scenario::take_shared<GovernanceGenesis>(scenario);
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
-
-            activate_governance(&mut governance_genesis, &mut governance_info, test_scenario::ctx(scenario));
+            let ctx = test_scenario::ctx(scenario);
+            let upgrade_cap = package::test_publish(id_from_address(@dola_protocol), ctx);
+            activate_governance(upgrade_cap, &mut governance_info, test_scenario::ctx(scenario));
             assert!(governance_info.active, 0);
 
             test_scenario::return_shared(governance_info);
-            test_scenario::return_shared(governance_genesis);
         };
     }
 
