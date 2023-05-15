@@ -302,7 +302,7 @@ module dola_protocol::lending_logic {
 
         // Check the freshness of the price
         check_user_fresh_price(oracle, storage, dola_user_id, clock);
-        check_fresh_price(oracle, borrow_pool_id, clock);
+        check_fresh_price(oracle, vector[borrow_pool_id], clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(pool_manager_info, storage, borrow_pool_id, borrow_amount);
@@ -510,17 +510,8 @@ module dola_protocol::lending_logic {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let loans = storage::get_user_loans(storage, dola_user_id);
 
-        let index = 0;
-        while (index < vector::length(&collaterals)) {
-            check_fresh_price(price_oracle, *vector::borrow(&collaterals, index), clock);
-            index = index + 1;
-        };
-
-        index = 0;
-        while (index < vector::length(&loans)) {
-            check_fresh_price(price_oracle, *vector::borrow(&loans, index), clock);
-            index = index + 1;
-        };
+        check_fresh_price(price_oracle, collaterals, clock);
+        check_fresh_price(price_oracle, loans, clock);
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
@@ -673,12 +664,12 @@ module dola_protocol::lending_logic {
     }
 
     public fun calculate_value(oracle: &mut PriceOracle, dola_pool_id: u16, amount: u256): u256 {
-        let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
+        let (price, decimal, _) = oracle::get_token_price(oracle, dola_pool_id);
         amount * price / (sui::math::pow(10, decimal) as u256)
     }
 
     public fun calculate_amount(oracle: &mut PriceOracle, dola_pool_id: u16, value: u256): u256 {
-        let (price, decimal) = oracle::get_token_price(oracle, dola_pool_id);
+        let (price, decimal, _) = oracle::get_token_price(oracle, dola_pool_id);
         value * (sui::math::pow(10, decimal) as u256) / price
     }
 
@@ -925,7 +916,7 @@ module dola_protocol::lending_logic {
         dola_user_id: u64
     ) {
         if (storage::exist_user_info(storage, dola_user_id)) {
-            let current_timestamp = oracle::get_timestamp(clock);
+            let current_timestamp = storage::get_timestamp(clock);
             let last_update_timestamp = storage::get_user_last_timestamp(storage, dola_user_id);
             let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
             let health_loan_value = user_health_loan_value(storage, oracle, dola_user_id);
@@ -954,7 +945,7 @@ module dola_protocol::lending_logic {
         clock: &Clock,
         dola_pool_id: u16,
     ) {
-        let current_timestamp = oracle::get_timestamp(clock);
+        let current_timestamp = storage::get_timestamp(clock);
 
         let last_update_timestamp = storage::get_last_update_timestamp(storage, dola_pool_id);
         let dtoken_scaled_total_supply = storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);

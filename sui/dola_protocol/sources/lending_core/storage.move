@@ -3,7 +3,7 @@
 module dola_protocol::lending_core_storage {
     use std::vector;
 
-    use sui::clock::Clock;
+    use sui::clock::{Self, Clock};
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
@@ -11,7 +11,6 @@ module dola_protocol::lending_core_storage {
 
     use dola_protocol::app_manager::{Self, AppCap, TotalAppInfo};
     use dola_protocol::genesis::GovernanceCap;
-    use dola_protocol::oracle;
     use dola_protocol::ray_math as math;
 
     friend dola_protocol::lending_logic;
@@ -136,7 +135,7 @@ module dola_protocol::lending_core_storage {
             is_isolated_asset,
             borrowable_in_isolation,
             isolate_debt: 0,
-            last_update_timestamp: oracle::get_timestamp(clock),
+            last_update_timestamp: get_timestamp(clock),
             treasury,
             treasury_factor,
             supply_cap_ceiling,
@@ -262,6 +261,10 @@ module dola_protocol::lending_core_storage {
         storage: &mut Storage
     ): &AppCap {
         &storage.app_cap
+    }
+
+    public fun get_timestamp(sui_clock: &Clock): u256 {
+        ((clock::timestamp_ms(sui_clock) / 1000) as u256)
     }
 
     public fun is_isolated_asset(storage: &mut Storage, dola_pool_id: u16): bool {
@@ -513,7 +516,7 @@ module dola_protocol::lending_core_storage {
         if (!table::contains(&mut storage.user_infos, dola_user_id)) {
             table::add(&mut storage.user_infos, dola_user_id, UserInfo {
                 average_liquidity: 0,
-                last_average_update: oracle::get_timestamp(clock),
+                last_average_update: get_timestamp(clock),
                 liquid_assets: vector::empty(),
                 collaterals: vector::empty(),
                 loans: vector::empty()
@@ -601,7 +604,7 @@ module dola_protocol::lending_core_storage {
         average_liquidity: u256
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        user_info.last_average_update = oracle::get_timestamp(clock);
+        user_info.last_average_update = get_timestamp(clock);
         user_info.average_liquidity = average_liquidity;
     }
 
