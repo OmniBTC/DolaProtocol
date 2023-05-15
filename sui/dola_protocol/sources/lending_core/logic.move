@@ -9,7 +9,7 @@ module dola_protocol::lending_logic {
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage, is_isolated_asset};
-    use dola_protocol::oracle::{Self, PriceOracle};
+    use dola_protocol::oracle::{Self, PriceOracle, check_fresh_price};
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
@@ -94,6 +94,10 @@ module dola_protocol::lending_logic {
         // The most recent user contribution is required to calculate the liquidation discount.
         update_average_liquidity(storage, oracle, clock, liquidator);
 
+        // Check the freshness of the price when performing the liquidation logic.
+        check_fresh_price(oracle, collateral, clock);
+        check_fresh_price(oracle, loan, clock);
+
         assert!(!is_health(storage, oracle, violator), EIS_HEALTH);
 
         let (max_liquidable_collateral, max_liquidable_debt) = calculate_max_liquidation(
@@ -176,6 +180,7 @@ module dola_protocol::lending_logic {
         dola_pool_id: u16,
         supply_amount: u256,
     ) {
+        // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
         assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
@@ -228,6 +233,7 @@ module dola_protocol::lending_logic {
         dola_pool_id: u16,
         withdraw_amount: u256,
     ): u256 {
+        // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
 
@@ -236,6 +242,9 @@ module dola_protocol::lending_logic {
         let actual_amount = math::min(withdraw_amount, otoken_amount);
 
         burn_otoken(storage, dola_user_id, dola_pool_id, actual_amount);
+
+        // Check the freshness of the price
+        check_fresh_price(oracle, dola_pool_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         if (actual_amount == otoken_amount) {
@@ -269,6 +278,7 @@ module dola_protocol::lending_logic {
         borrow_pool_id: u16,
         borrow_amount: u256,
     ) {
+        // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
 
@@ -290,6 +300,9 @@ module dola_protocol::lending_logic {
         };
 
         mint_dtoken(storage, dola_user_id, borrow_pool_id, borrow_amount);
+
+        // Check the freshness of the price
+        check_fresh_price(oracle, borrow_pool_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(pool_manager_info, storage, borrow_pool_id, borrow_amount);
@@ -396,6 +409,9 @@ module dola_protocol::lending_logic {
 
         storage::remove_user_collateral(storage, dola_user_id, dola_pool_id);
         storage::add_user_liquid_asset(storage, dola_user_id, dola_pool_id);
+
+        // Check the freshness of the price
+        check_fresh_price(oracle, dola_pool_id, clock);
 
         assert!(is_health(storage, oracle, dola_user_id), ENOT_HEALTH);
         update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);

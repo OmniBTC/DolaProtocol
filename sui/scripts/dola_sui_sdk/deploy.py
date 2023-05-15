@@ -30,20 +30,18 @@ def export_to_config():
 
 def deploy():
     wormhole_package = sui_brownie.SuiPackage(
+        package_id=sui_project.network_config['packages']['Wormhole'],
         package_path=Path.home().joinpath(Path(
-            ".move/https___github_com_OmniBTC_wormhole_git_ee0bd18ffca678b3598a0644a643aac0e77effc0/sui/wormhole")),
+            ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")),
     )
-
-    wormhole_package.program_publish_package(replace_address=dict(
-        wormhole="0x0"
-    ), gas_budget=1000000000)
 
     dola_protocol_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
     )
 
     dola_protocol_package.program_publish_package(replace_address=dict(
-        wormhole=wormhole_package.package_id
+        wormhole=wormhole_package.package_id,
+        pyth=sui_project.network_config['packages']['Pyth']
     ), gas_budget=1000000000)
 
     external_interfaces_package = sui_brownie.SuiPackage(

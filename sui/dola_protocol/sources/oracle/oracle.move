@@ -119,12 +119,18 @@ module dola_protocol::oracle {
         price.value = token_price;
     }
 
-    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16, clock: &Clock): (u256, u8) {
+    public fun check_fresh_price(price_oracle: &mut PriceOracle, dola_pool_id: u16, clock: &Clock) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
         let price = table::borrow(price_oracles, dola_pool_id);
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
         assert!(current_timestamp - price.last_update_timestamp < price_oracle.price_age, ENOT_FRESH_PRICE);
+    }
+
+    public fun get_token_price(price_oracle: &mut PriceOracle, dola_pool_id: u16): (u256, u8) {
+        let price_oracles = &mut price_oracle.price_oracles;
+        assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
+        let price = table::borrow(price_oracles, dola_pool_id);
         (price.value, price.decimal)
     }
 
