@@ -1205,6 +1205,7 @@ def batch_init_oracle():
                        sui_token_param[0],  # 23
                        sui_token_param[1],  # 24
                        sui_token_param[2],  # 25
+                       clock(),  # 26
                        ],
         transactions=[
             [
@@ -1215,6 +1216,7 @@ def batch_init_oracle():
                     Argument("Input", U16(2)),
                     Argument("Input", U16(3)),
                     Argument("Input", U16(4)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1226,6 +1228,7 @@ def batch_init_oracle():
                     Argument("Input", U16(5)),
                     Argument("Input", U16(6)),
                     Argument("Input", U16(7)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1237,6 +1240,7 @@ def batch_init_oracle():
                     Argument("Input", U16(8)),
                     Argument("Input", U16(9)),
                     Argument("Input", U16(10)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1248,6 +1252,7 @@ def batch_init_oracle():
                     Argument("Input", U16(11)),
                     Argument("Input", U16(12)),
                     Argument("Input", U16(13)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1259,6 +1264,7 @@ def batch_init_oracle():
                     Argument("Input", U16(14)),
                     Argument("Input", U16(15)),
                     Argument("Input", U16(16)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1270,6 +1276,7 @@ def batch_init_oracle():
                     Argument("Input", U16(17)),
                     Argument("Input", U16(18)),
                     Argument("Input", U16(19)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1281,6 +1288,7 @@ def batch_init_oracle():
                     Argument("Input", U16(20)),
                     Argument("Input", U16(21)),
                     Argument("Input", U16(22)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ],
@@ -1292,6 +1300,7 @@ def batch_init_oracle():
                     Argument("Input", U16(23)),
                     Argument("Input", U16(24)),
                     Argument("Input", U16(25)),
+                    Argument("Input", U16(26))
                 ],
                 []
             ]
@@ -1300,7 +1309,6 @@ def batch_init_oracle():
 
 
 def batch_init():
-    init_wormhole()
     batch_init_oracle()
 
     active_governance_v1()

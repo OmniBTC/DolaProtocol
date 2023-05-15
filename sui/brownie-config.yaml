@@ -13,17 +13,24 @@ networks:
     node_url: http://127.0.0.1:9000
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
+    pyth_service_url: https://xc-testnet.pyth.network
     packages:
-      Wormhole: "0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e"
-      Pyth: "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44"
+      dola_protocol: "0x1e435a674fb08032284389ee4a8a328b824464db3bf4bf1df6cc304b64078fca"
+      wormhole: "0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e"
+      pyth: "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44"
     objects:
       WormholeState: "0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02"
       PythState: "0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a"
+    oracle:
+      feed_id:
+        BTC/USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b"
+        SUI/USD: "0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266"
   sui-mainnet:
     node_url: https://fullnode.mainnet.sui.io:443
+    pyth_service_url: https://xc-mainnet.pyth.network
     packages:
-      Wormhole: "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
-      Pyth: "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302"
+      wormhole: "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
+      pyth: "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302"
     objects:
       WormholeState: "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c"
       PythState: "0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f"

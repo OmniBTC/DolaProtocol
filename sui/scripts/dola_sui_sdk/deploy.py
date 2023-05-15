@@ -44,15 +44,6 @@ def deploy():
         pyth=sui_project.network_config['packages']['Pyth']
     ), gas_budget=1000000000)
 
-    external_interfaces_package = sui_brownie.SuiPackage(
-        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
-    )
-
-    external_interfaces_package.program_publish_package(replace_address=dict(
-        dola_protocol=dola_protocol_package.package_id,
-        wormhole=wormhole_package.package_id
-    ))
-
     genesis_proposal_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
             "proposals/genesis_proposal")
@@ -63,11 +54,21 @@ def deploy():
         wormhole=wormhole_package.package_id
     ))
 
-    test_coins_package = sui_brownie.SuiPackage(
-        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
+    if sui_project.network != "sui-mainnet":
+        test_coins_package = sui_brownie.SuiPackage(
+            package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
+        )
+
+        test_coins_package.program_publish_package()
+
+    external_interfaces_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
     )
 
-    test_coins_package.program_publish_package()
+    external_interfaces_package.program_publish_package(replace_address=dict(
+        dola_protocol=dola_protocol_package.package_id,
+        wormhole=wormhole_package.package_id
+    ))
 
 
 def main():
