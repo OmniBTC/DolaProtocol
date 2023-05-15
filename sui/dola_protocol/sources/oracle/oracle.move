@@ -5,11 +5,7 @@
 /// prices will be obtained from other oracles subsequently.
 ///
 /// Note: This module is currently only used for testing
-module oracle::oracle {
-    use pyth::i64;
-    use pyth::price_info::PriceInfoObject;
-    use pyth::pyth;
-    use pyth::state::State as PythState;
+module dola_protocol::oracle {
     use sui::clock::{Self, Clock};
     use sui::coin::Coin;
     use sui::object::{Self, UID};
@@ -17,6 +13,12 @@ module oracle::oracle {
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
+
+    use pyth::hot_potato_vector;
+    use pyth::i64;
+    use pyth::price_info::PriceInfoObject;
+    use pyth::pyth;
+    use pyth::state::State as PythState;
     use wormhole::state::State as WormholeState;
     use wormhole::vaa;
 
@@ -58,37 +60,25 @@ module oracle::oracle {
         }, tx_context::sender(ctx))
     }
 
-    public fun feed_token_price_for_pyth(
+    public fun feed_token_price_by_pyth(
         wormhole_state: &WormholeState,
         pyth_state: &PythState,
-        price_info_objects: &mut vector<PriceInfoObject>,
+        price_info_object: &mut PriceInfoObject,
+        price_oracle: &mut PriceOracle,
+        dola_pool_id: u16,
         vaa: vector<u8>,
         clock: &Clock,
         fee: Coin<SUI>
     ) {
         let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
-        let current_timestamp = clock::timestamp_ms(clock) / 1000;
-        pyth::update_price_feeds_if_fresh(
-            vector[verified_vaa],
-            pyth_state,
-            price_info_objects,
-            vector[current_timestamp],
-            fee,
-            clock
-        );
-    }
-
-    public fun update_token_price_by_pyth(
-        price_info_object: &PriceInfoObject,
-        price_oracle: &mut PriceOracle,
-        dola_pool_id: u16,
-        clock: &Clock,
-    ) {
-        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MAX_PRICE_AGE);
+        let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
+        let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
         let price = table::borrow_mut(price_oracles, dola_pool_id);
+        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MAX_PRICE_AGE);
+        hot_potato_vector::destroy(hot_potato_vector);
 
         let price_value = pyth::price::get_price(&pyth_price);
         let price_value = i64::get_magnitude_if_positive(&price_value);
