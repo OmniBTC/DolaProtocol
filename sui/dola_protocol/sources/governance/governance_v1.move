@@ -20,6 +20,12 @@ module dola_protocol::governance_v1 {
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap};
 
     #[test_only]
+    use dola_protocol::genesis::GovernanceGenesis;
+    #[test_only]
+    use sui::object::id_from_address;
+    #[test_only]
+    use sui::package;
+    #[test_only]
     use sui::test_scenario::{Self, Scenario};
 
     /// Proposal State
@@ -397,14 +403,13 @@ module dola_protocol::governance_v1 {
         // active
         test_scenario::next_tx(scenario, governance);
         {
-            let governance_genesis = test_scenario::take_shared<GovernanceGenesis>(scenario);
             let governance_info = test_scenario::take_shared<GovernanceInfo>(scenario);
-
-            activate_governance(&mut governance_genesis, &mut governance_info, test_scenario::ctx(scenario));
+            let ctx = test_scenario::ctx(scenario);
+            let upgrade_cap = package::test_publish(id_from_address(@dola_protocol), ctx);
+            activate_governance(upgrade_cap, &mut governance_info, test_scenario::ctx(scenario));
             assert!(governance_info.active, 0);
 
             test_scenario::return_shared(governance_info);
-            test_scenario::return_shared(governance_genesis);
         };
     }
 
