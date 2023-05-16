@@ -3,15 +3,15 @@
 module dola_portal::lending {
     use std::bcs;
     use std::signer;
+    use std::vector;
 
     use aptos_framework::account::{Self, SignerCapability};
     use aptos_framework::aptos_coin::AptosCoin;
     use aptos_framework::coin;
     use aptos_framework::event::{Self, EventHandle};
 
-    use dola_protocol::dola_address;
-
     use dola_portal::lending_codec;
+    use dola_types::dola_address;
     use omnipool::dola_pool;
     use omnipool::wormhole_adapter_pool;
     use wormhole::state;
@@ -507,6 +507,20 @@ module dola_portal::lending {
                 amount: relay_fee
             }
         );
+
+        event::emit_event(
+            &mut event_handle.lending_event_handle,
+            LendingPortalEvent {
+                nonce,
+                sender: signer::address_of(sender),
+                dola_pool_address: vector::empty(),
+                source_chain_id: dola_address::get_native_dola_chain_id(),
+                dst_chain_id: 0,
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
+                amount: 0,
+                call_type: lending_codec::get_as_colleteral_type()
+            }
+        )
     }
 
     public entry fun cancel_as_collateral(
@@ -540,5 +554,19 @@ module dola_portal::lending {
                 amount: relay_fee
             }
         );
+
+        event::emit_event(
+            &mut event_handle.lending_event_handle,
+            LendingPortalEvent {
+                nonce,
+                sender: signer::address_of(sender),
+                dola_pool_address: vector::empty(),
+                source_chain_id: dola_address::get_native_dola_chain_id(),
+                dst_chain_id: 0,
+                receiver: bcs::to_bytes(&signer::address_of(sender)),
+                amount: 0,
+                call_type: lending_codec::get_cancel_as_colleteral_type()
+            }
+        )
     }
 }
