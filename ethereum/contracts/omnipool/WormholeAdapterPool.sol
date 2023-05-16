@@ -61,8 +61,9 @@ contract WormholeAdapterPool {
                 consumedVaas,
                 encodedVm
             );
+
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+            .decodeManagePoolPayload(vaa.payload);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
             "INVALID CALL TYPE"
@@ -80,7 +81,7 @@ contract WormholeAdapterPool {
                 encodedVm
             );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+            .decodeManagePoolPayload(vaa.payload);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
             "INVALID CALL TYPE"
@@ -98,7 +99,7 @@ contract WormholeAdapterPool {
                 encodedVm
             );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+            .decodeManagePoolPayload(vaa.payload);
         require(
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
             "INVALID CALL TYPE"
@@ -116,7 +117,7 @@ contract WormholeAdapterPool {
                 encodedVm
             );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
+            .decodeManagePoolPayload(vaa.payload);
         require(
             payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
             "INVALID CALL TYPE"
@@ -183,7 +184,7 @@ contract WormholeAdapterPool {
                 encodedVm
             );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
-            .decodeWithdrawPayload(encodedVm);
+            .decodeWithdrawPayload(vaa.payload);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
 
         emit PoolWithdrawEvent(
@@ -194,5 +195,9 @@ contract WormholeAdapterPool {
             payload.user.externalAddress,
             payload.amount
         );
+    }
+
+    function getNonce() public returns (uint64) {
+        return dolaPool.getNonce();
     }
 }
