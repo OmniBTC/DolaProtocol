@@ -20,6 +20,7 @@ module dola_protocol::governance_v2 {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap};
+    use dola_protocol::merge_coins;
 
     #[test_only]
     use dola_protocol::genesis::GovernanceGenesis;
@@ -252,39 +253,6 @@ module dola_protocol::governance_v2 {
         favor_num >= threshold
     }
 
-    public fun merge_coin<CoinType>(
-        coins: vector<Coin<CoinType>>,
-        amount: u64,
-        ctx: &mut TxContext
-    ): Coin<CoinType> {
-        let len = vector::length(&coins);
-        if (len > 0) {
-            vector::reverse(&mut coins);
-            let base_coin = vector::pop_back(&mut coins);
-            while (!vector::is_empty(&coins)) {
-                coin::join(&mut base_coin, vector::pop_back(&mut coins));
-            };
-            vector::destroy_empty(coins);
-            let sum_amount = coin::value(&base_coin);
-            let split_amount = amount;
-            if (amount == U64_MAX) {
-                split_amount = sum_amount;
-            };
-            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
-            if (coin::value(&base_coin) > split_amount) {
-                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::public_transfer(base_coin, tx_context::sender(ctx));
-                split_coin
-            }else {
-                base_coin
-            }
-        }else {
-            vector::destroy_empty(coins);
-            assert!(amount == 0, EAMOUNT_MUST_ZERO);
-            coin::zero<CoinType>(ctx)
-        }
-    }
-
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
     /// certificate: When reviewing the proposal, make sure that the `certificate` in the proposal will only flow to
@@ -298,7 +266,7 @@ module dola_protocol::governance_v2 {
     ) {
         assert!(governance_info.active, ENOT_ACTIVE);
 
-        let staked_coin = merge_coin(staked_coins, staked_amount, ctx);
+        let staked_coin = merge_coins::merge_coin(staked_coins, staked_amount, ctx);
         assert!(staked_amount >= governance_info.proposal_minimum_staking, EINVALID_PROPOSAL_STAKING);
 
         let creator = tx_context::sender(ctx);
@@ -364,7 +332,7 @@ module dola_protocol::governance_v2 {
 
         let favor_votes = &mut proposal.favor_votes;
         let against_votes = &mut proposal.against_votes;
-        let staked_coin = merge_coin(staked_coins, staked_amount, ctx);
+        let staked_coin = merge_coins::merge_coin(staked_coins, staked_amount, ctx);
 
         if (current_epoch < proposal.end_vote) {
             // Voting
