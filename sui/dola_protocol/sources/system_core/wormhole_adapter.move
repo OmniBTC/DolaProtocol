@@ -1,12 +1,12 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 module dola_protocol::system_core_wormhole_adapter {
-
     use sui::clock::Clock;
     use sui::event;
     use sui::tx_context::TxContext;
 
     use dola_protocol::dola_address;
+    use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::system_codec;
     use dola_protocol::system_core_storage::{Self as storage, Storage};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
@@ -28,6 +28,7 @@ module dola_protocol::system_core_wormhole_adapter {
     }
 
     public entry fun bind_user_address(
+        genesis: &GovernanceGenesis,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
@@ -36,6 +37,7 @@ module dola_protocol::system_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
@@ -70,6 +72,7 @@ module dola_protocol::system_core_wormhole_adapter {
     }
 
     public entry fun unbind_user_address(
+        genesis: &GovernanceGenesis,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
         core_state: &mut CoreState,
@@ -78,6 +81,7 @@ module dola_protocol::system_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,

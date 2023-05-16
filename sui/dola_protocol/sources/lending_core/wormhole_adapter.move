@@ -11,6 +11,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     use sui::tx_context::TxContext;
 
     use dola_protocol::dola_address;
+    use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
     use dola_protocol::lending_logic;
@@ -40,6 +41,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun supply(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -50,6 +52,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (pool, user, amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
@@ -88,6 +91,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun withdraw(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -99,6 +103,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (user, app_payload) = wormhole_adapter_core::receive_withdraw(
             wormhole_state,
             core_state,
@@ -162,6 +167,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun borrow(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -173,6 +179,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (user, app_payload) = wormhole_adapter_core::receive_withdraw(
             wormhole_state,
             core_state,
@@ -235,6 +242,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun repay(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -245,6 +253,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (pool, user, amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
@@ -284,6 +293,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun liquidate(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -294,6 +304,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let (deposit_pool, deposit_user, deposit_amount, app_payload) = wormhole_adapter_core::receive_deposit(
             wormhole_state,
             core_state,
@@ -346,6 +357,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun as_collateral(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -356,6 +368,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
@@ -386,6 +399,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     }
 
     public entry fun cancel_as_collateral(
+        genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
         wormhole_state: &mut WormholeState,
@@ -396,6 +410,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,

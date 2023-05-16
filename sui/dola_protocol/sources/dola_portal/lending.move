@@ -16,7 +16,7 @@ module dola_protocol::lending_portal {
 
     use dola_protocol::dola_address;
     use dola_protocol::dola_pool::{Self, Pool};
-    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self, Storage};
     use dola_protocol::lending_logic;
@@ -104,8 +104,8 @@ module dola_protocol::lending_portal {
         lending_portal.relayer = relayer
     }
 
-
     public entry fun as_collateral(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -114,6 +114,7 @@ module dola_protocol::lending_portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
@@ -135,6 +136,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun cancel_as_collateral(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -143,6 +145,7 @@ module dola_protocol::lending_portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
@@ -164,6 +167,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun supply<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -175,6 +179,7 @@ module dola_protocol::lending_portal {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         assert!(deposit_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
@@ -229,6 +234,7 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
     public entry fun withdraw_local<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -239,6 +245,7 @@ module dola_protocol::lending_portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let dst_chain = dola_address::get_native_dola_chain_id();
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
@@ -292,6 +299,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun withdraw_remote(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -308,6 +316,7 @@ module dola_protocol::lending_portal {
         bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let pool_address = dola_address::create_dola_address(dst_chain, pool);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -385,6 +394,7 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
     public entry fun borrow_local<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -395,6 +405,7 @@ module dola_protocol::lending_portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let dst_chain = dola_address::get_native_dola_chain_id();
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -447,6 +458,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun borrow_remote(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -463,6 +475,7 @@ module dola_protocol::lending_portal {
         bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let pool_address = dola_address::create_dola_address(dst_chain, pool);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -538,6 +551,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun repay<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -549,6 +563,7 @@ module dola_protocol::lending_portal {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         assert!(repay_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
@@ -599,6 +614,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun liquidate<DebtCoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -614,6 +630,7 @@ module dola_protocol::lending_portal {
         liquidate_user_id: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         // Sender
         let sender = tx_context::sender(ctx);
         let liquidator_address = dola_address::convert_address_to_dola(sender);
@@ -628,6 +645,7 @@ module dola_protocol::lending_portal {
         // Deposit the token into the pool
         if (debt_amount > 0) {
             supply<DebtCoinType>(
+                genesis,
                 storage,
                 oracle,
                 clock,

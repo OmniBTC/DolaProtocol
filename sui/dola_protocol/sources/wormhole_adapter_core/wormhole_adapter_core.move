@@ -29,6 +29,10 @@ module dola_protocol::wormhole_adapter_core {
     use wormhole::state::State;
     use wormhole::vaa;
 
+    friend dola_protocol::system_core_wormhole_adapter;
+    friend dola_protocol::lending_core_wormhole_adapter;
+    friend dola_protocol::lending_portal;
+
     /// Errors
     // Bridge is not registered
     const ENOT_REGISTERED_EMITTER: u64 = 0;
@@ -274,7 +278,7 @@ module dola_protocol::wormhole_adapter_core {
     /// Call by application
 
     /// Receive message without funding
-    public fun receive_message(
+    public(friend) fun receive_message(
         wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,
@@ -301,7 +305,7 @@ module dola_protocol::wormhole_adapter_core {
     }
 
     /// Receive deposit on sui network
-    public fun receive_deposit(
+    public(friend) fun receive_deposit(
         wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,
@@ -343,7 +347,7 @@ module dola_protocol::wormhole_adapter_core {
     }
 
     /// Receive withdraw on sui network
-    public fun receive_withdraw(
+    public(friend) fun receive_withdraw(
         wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,
@@ -372,7 +376,7 @@ module dola_protocol::wormhole_adapter_core {
     }
 
     /// Send withdraw on sui network
-    public fun send_withdraw(
+    public(friend) fun send_withdraw(
         wormhole_state: &mut State,
         core_state: &mut CoreState,
         app_cap: &AppCap,

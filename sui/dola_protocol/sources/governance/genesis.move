@@ -116,9 +116,9 @@ module dola_protocol::genesis {
 
     /// Check current version
     /// Note: Update the function to set the version limit.
-    public fun check_latest_version(genesis: &mut GovernanceGenesis) {
+    public fun check_latest_version(genesis: &GovernanceGenesis) {
         assert!(
-            dynamic_field::exists_with_type<Version, Version_1_0_0>(&mut genesis.id, Version {}),
+            dynamic_field::exists_with_type<Version, Version_1_0_0>(&genesis.id, Version {}),
             E_NOT_LATEST_VERISON
         );
     }
