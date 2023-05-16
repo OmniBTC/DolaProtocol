@@ -9,6 +9,7 @@ module dola_protocol::system_portal {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::dola_address;
+    use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::system_codec;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
 
@@ -45,13 +46,17 @@ module dola_protocol::system_portal {
         nonce
     }
 
+    /// === Entry Functions ===
+
     public entry fun binding(
+        genesis: &GovernanceGenesis,
         system_portal: &mut SystemPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         binded_address: vector<u8>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = tx_context::sender(ctx);
         let user = dola_address::convert_address_to_dola(sender);
         let bind_dola_address = dola_address::create_dola_address(dola_chain_id, binded_address);
@@ -77,12 +82,14 @@ module dola_protocol::system_portal {
     }
 
     public entry fun unbinding(
+        genesis: &GovernanceGenesis,
         system_portal: &mut SystemPortal,
         user_manager_info: &mut UserManagerInfo,
         dola_chain_id: u16,
         unbinded_address: vector<u8>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = tx_context::sender(ctx);
         let user = dola_address::convert_address_to_dola(sender);
         let unbind_dola_address = dola_address::create_dola_address(dola_chain_id, unbinded_address);

@@ -25,6 +25,8 @@ networks:
     objects:
       PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
       WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
+      GovernanceGenesis: '0xd6f722f9816b99f8055a57bc2574b1aad466f7e9abb04c5e66bdae6ae9e83426'
+      GovernanceInfo: '0x6bc874b7cee29d50965846c1918cb953432b2bc39030dc72d3c21fadf89a0aae'
     oracle:
       feed_id:
         APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'

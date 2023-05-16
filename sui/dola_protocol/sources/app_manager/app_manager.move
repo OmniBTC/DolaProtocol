@@ -43,6 +43,8 @@ module dola_protocol::app_manager {
         app_id
     }
 
+    /// === Governance Functions ===
+
     /// Register cap through governance
     public fun register_cap_with_governance(
         _: &GovernanceCap,
@@ -52,10 +54,14 @@ module dola_protocol::app_manager {
         register_app(total_app_info, ctx)
     }
 
+    /// === View Functions ===
+
     /// Get app id by app cap
     public fun get_app_id(app_id: &AppCap): u16 {
         app_id.app_id
     }
+
+    /// === Helper Functions ===
 
     /// Destroy app cap
     public fun destroy_app_cap(app_id: AppCap) {

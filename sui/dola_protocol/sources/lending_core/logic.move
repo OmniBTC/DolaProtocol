@@ -73,7 +73,7 @@ module dola_protocol::lending_logic {
         call_type: u8
     }
 
-    /// Operate
+    /// === Friend Functions ===
 
     public(friend) fun execute_liquidate(
         pool_manager_info: &PoolManagerInfo,
@@ -426,6 +426,8 @@ module dola_protocol::lending_logic {
         });
     }
 
+    /// === Governance Functions ===
+
     /// Extract funds from the Treasury through governance
     public fun claim_from_treasury(
         _: &GovernanceCap,
@@ -447,6 +449,8 @@ module dola_protocol::lending_logic {
 
         update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
     }
+
+    /// === Helper Functions ===
 
     public fun not_reach_supply_ceiling(storage: &mut Storage, dola_pool_id: u16, supply_amount: u256): bool {
         let supply_ceiling = storage::get_reserve_supply_ceiling(storage, dola_pool_id);
@@ -526,22 +530,6 @@ module dola_protocol::lending_logic {
         user_collateral_value == 0 && user_loan_value > 0
     }
 
-    /// If the user is liquidated and still has debts, transfer his debts to the Treasury,
-    /// which will cover his debts.
-    public(friend) fun cover_deficit(storage: &mut Storage, dola_user_id: u64) {
-        let loans = storage::get_user_loans(storage, dola_user_id);
-        let length = vector::length(&loans);
-        let i = 0;
-        while (i < length) {
-            let loan = vector::borrow(&loans, i);
-            let treasury = storage::get_reserve_treasury(storage, *loan);
-            let debt = user_loan_balance(storage, dola_user_id, *loan);
-            // Transfer deficits to treasury debt
-            burn_dtoken(storage, dola_user_id, *loan, debt);
-            mint_dtoken(storage, treasury, *loan, debt);
-            i = i + 1;
-        };
-    }
 
     public fun user_health_factor(storage: &mut Storage, oracle: &mut PriceOracle, dola_user_id: u64): u256 {
         let health_collateral_value = user_health_collateral_value(storage, oracle, dola_user_id);
@@ -814,7 +802,26 @@ module dola_protocol::lending_logic {
         math::ray_mul((scaled_total_dtoken_supply), current_index)
     }
 
-    public(friend) fun mint_otoken(
+    /// === Internal Functions ===
+
+    /// If the user is liquidated and still has debts, transfer his debts to the Treasury,
+    /// which will cover his debts.
+    fun cover_deficit(storage: &mut Storage, dola_user_id: u64) {
+        let loans = storage::get_user_loans(storage, dola_user_id);
+        let length = vector::length(&loans);
+        let i = 0;
+        while (i < length) {
+            let loan = vector::borrow(&loans, i);
+            let treasury = storage::get_reserve_treasury(storage, *loan);
+            let debt = user_loan_balance(storage, dola_user_id, *loan);
+            // Transfer deficits to treasury debt
+            burn_dtoken(storage, dola_user_id, *loan, debt);
+            mint_dtoken(storage, treasury, *loan, debt);
+            i = i + 1;
+        };
+    }
+
+    fun mint_otoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -832,7 +839,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public(friend) fun burn_otoken(
+    fun burn_otoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -850,7 +857,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public(friend) fun mint_dtoken(
+    fun mint_dtoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -865,7 +872,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public(friend) fun burn_dtoken(
+    fun burn_dtoken(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16,
@@ -880,7 +887,7 @@ module dola_protocol::lending_logic {
         );
     }
 
-    public(friend) fun add_isolate_debt(
+    fun add_isolate_debt(
         storage: &mut Storage,
         dola_user_id: u64,
         amount: u256,
@@ -892,7 +899,7 @@ module dola_protocol::lending_logic {
         storage::update_isolate_debt(storage, *isolate_asset, new_isolate_debt)
     }
 
-    public(friend) fun reduce_isolate_debt(
+    fun reduce_isolate_debt(
         storage: &mut Storage,
         dola_user_id: u64,
         amount: u256,
@@ -909,7 +916,7 @@ module dola_protocol::lending_logic {
     }
 
     /// Update the average liquidity of user
-    public(friend) fun update_average_liquidity(
+    fun update_average_liquidity(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -940,7 +947,7 @@ module dola_protocol::lending_logic {
     ///
     /// More details refer to:
     ///    [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
-    public(friend) fun update_state(
+    fun update_state(
         storage: &mut Storage,
         clock: &Clock,
         dola_pool_id: u16,
@@ -988,7 +995,7 @@ module dola_protocol::lending_logic {
     ///
     /// More details refer to:
     ///     [https://github.com/OmniBTC/DOLA-Protocol/tree/main/en#221-omnichain-lending:~:text=users%20to%20operate.-,Interest%20Rate%20Model,-Reserves%3A%20In%20lending]
-    public(friend) fun update_interest_rate(
+    fun update_interest_rate(
         pool_manager_info: &PoolManagerInfo,
         storage: &mut Storage,
         dola_pool_id: u16,
@@ -1005,5 +1012,33 @@ module dola_protocol::lending_logic {
         let borrow_rate = rates::calculate_borrow_rate(storage, dola_pool_id, liquidity);
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(storage, dola_pool_id, borrow_rate, liquidity_rate);
+    }
+
+    #[test_only]
+    public fun update_state_for_testing(
+        storage: &mut Storage,
+        clock: &Clock,
+        dola_pool_id: u16,
+    ) {
+        update_state(
+            storage,
+            clock,
+            dola_pool_id
+        );
+    }
+
+    #[test_only]
+    public fun update_average_liquidity_for_testing(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        clock: &Clock,
+        dola_user_id: u64
+    ) {
+        update_average_liquidity(
+            storage,
+            oracle,
+            clock,
+            dola_user_id
+        );
     }
 }

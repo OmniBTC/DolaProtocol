@@ -30,7 +30,7 @@ module dola_protocol::pool_codec {
 
     const POOL_DELETE_SPENDER: u8 = 6;
 
-    /// Getter
+    /// === View Functions ===
 
     public fun get_deposit_type(): u8 {
         POOL_DEPOSIT
@@ -60,6 +60,7 @@ module dola_protocol::pool_codec {
         POOL_DELETE_SPENDER
     }
 
+    /// === Helper Functions ===
     /// Encode and decode
 
     /// Encoding of Pool Messages with Funding

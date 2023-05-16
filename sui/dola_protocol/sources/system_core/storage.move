@@ -17,6 +17,7 @@ module dola_protocol::system_core_storage {
         app_cap: AppCap,
     }
 
+    /// === Initial Functions ===
 
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
@@ -28,6 +29,8 @@ module dola_protocol::system_core_storage {
             app_cap: app_manager::register_cap_with_governance(governance, total_app_info, ctx),
         })
     }
+
+    /// === Friend Functions ===
 
     /// Get app cap
     public(friend) fun get_app_cap(

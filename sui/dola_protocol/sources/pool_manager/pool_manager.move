@@ -134,22 +134,8 @@ module dola_protocol::pool_manager {
         })
     }
 
-    /// Determine if the dola pool id is registered
-    public fun exist_pool_id(
-        pool_manager_info: &PoolManagerInfo,
-        dola_pool_id: u16
-    ): bool {
-        table::contains(&pool_manager_info.pool_infos, dola_pool_id)
-    }
 
-    /// Determine if certain pool is registered
-    public fun exist_certain_pool(
-        pool_manager_info: &PoolManagerInfo,
-        pool_address: DolaAddress
-    ): bool {
-        let pool_catalog = &pool_manager_info.pool_catalog;
-        table::contains(&pool_catalog.pool_to_id, pool_address)
-    }
+    /// === Governance Functions ===
 
     /// Create a new pool id for managing similar tokens from different chains (e.g. USDC)
     ///
@@ -272,6 +258,8 @@ module dola_protocol::pool_manager {
         pool_liquidity.lambda_1 = lambda_1;
     }
 
+    /// === View Functions ===
+
     /// Get all DolaAddress according to dola pool id
     public fun get_pools_by_id(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16): vector<DolaAddress> {
         assert!(exist_pool_id(pool_manager_info, dola_pool_id), ENOT_POOL_ID);
@@ -292,31 +280,6 @@ module dola_protocol::pool_manager {
         let pool_infos = &mut pool_manager_info.pool_infos;
         let pool_info = table::borrow(pool_infos, dola_pool_id);
         pool_info.name
-    }
-
-    public fun zero_liquidity(): Liquidity {
-        Liquidity {
-            value: 0
-        }
-    }
-
-    /// Find DolaAddress according to dola pool id and dst chain
-    public fun find_pool_by_chain(
-        pool_manager_info: &mut PoolManagerInfo,
-        dola_pool_id: u16,
-        dst_chain: u16
-    ): Option<DolaAddress> {
-        let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
-        let len = vector::length(&pools);
-        let i = 0;
-        while (i < len) {
-            let d = *vector::borrow(&pools, i);
-            if (dola_address::get_dola_chain_id(&d) == dst_chain) {
-                return option::some(d)
-            };
-            i = i + 1;
-        };
-        option::none()
     }
 
     /// Get app liquidity for dola pool id
@@ -398,6 +361,53 @@ module dola_protocol::pool_manager {
     public fun get_default_lambda_1(): u256 {
         DEFAULT_LAMBDA_1
     }
+
+    /// === Helper Functions ===
+
+    /// Find DolaAddress according to dola pool id and dst chain
+    public fun find_pool_by_chain(
+        pool_manager_info: &mut PoolManagerInfo,
+        dola_pool_id: u16,
+        dst_chain: u16
+    ): Option<DolaAddress> {
+        let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
+        let len = vector::length(&pools);
+        let i = 0;
+        while (i < len) {
+            let d = *vector::borrow(&pools, i);
+            if (dola_address::get_dola_chain_id(&d) == dst_chain) {
+                return option::some(d)
+            };
+            i = i + 1;
+        };
+        option::none()
+    }
+
+    /// Determine if the dola pool id is registered
+    public fun exist_pool_id(
+        pool_manager_info: &PoolManagerInfo,
+        dola_pool_id: u16
+    ): bool {
+        table::contains(&pool_manager_info.pool_infos, dola_pool_id)
+    }
+
+    /// Determine if certain pool is registered
+    public fun exist_certain_pool(
+        pool_manager_info: &PoolManagerInfo,
+        pool_address: DolaAddress
+    ): bool {
+        let pool_catalog = &pool_manager_info.pool_catalog;
+        table::contains(&pool_catalog.pool_to_id, pool_address)
+    }
+
+    /// Create the zero liquidity
+    public fun zero_liquidity(): Liquidity {
+        Liquidity {
+            value: 0
+        }
+    }
+
+    /// === Friend Functions ===
 
     /// Certain pool has a user deposit operation, update the pool manager status
     public(friend) fun add_liquidity(

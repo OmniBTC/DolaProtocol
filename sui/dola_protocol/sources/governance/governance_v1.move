@@ -149,6 +149,8 @@ module dola_protocol::governance_v1 {
         });
     }
 
+    /// === Initial Functions ===
+
     /// Activate the current version of governance.
     public entry fun activate_governance(
         upgrade_cap: UpgradeCap,
@@ -161,16 +163,13 @@ module dola_protocol::governance_v1 {
         governance_info.active = true;
     }
 
+    /// === Governance Functions ===
+
     /// After the upgrade, all current governance members will be invalidated.
     public fun upgrade(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
         let governance_manager_cap = option::extract(&mut governance_info.governance_manager_cap);
         governance_info.active = false;
         governance_manager_cap
-    }
-
-    /// Check if the user is a member of governance
-    public fun check_member(governance_info: &GovernanceInfo, member: address) {
-        assert!(vector::contains(&governance_info.members, &member), EINVALID_MEMBER)
     }
 
     /// Add members through governance.
@@ -200,6 +199,13 @@ module dola_protocol::governance_v1 {
         governance_info.max_delay = max_delay;
     }
 
+    /// === Helper Functions ===
+
+    /// Check if the user is a member of governance
+    public fun check_member(governance_info: &GovernanceInfo, member: address) {
+        assert!(vector::contains(&governance_info.members, &member), EINVALID_MEMBER)
+    }
+
     public fun ensure_two_thirds(votes_num: u64, favor_num: u64): bool {
         let threshold =
             if (votes_num % 3 == 0) {
@@ -209,6 +215,36 @@ module dola_protocol::governance_v1 {
             };
         favor_num >= threshold
     }
+
+    /// Get proposal state
+    public fun get_proposal_state<T: store + drop>(
+        proposal: &mut Proposal<T>,
+        ctx: &mut TxContext
+    ): String {
+        let current_epoch = tx_context::epoch(ctx);
+        if (proposal.state == PROPOSAL_SUCCESS) {
+            ascii::string(b"SUCCESS")
+        }else if (proposal.state == PROPOSAL_FAIL) {
+            ascii::string(b"FAIL")
+        }else if (proposal.state == PROPOSAL_CANCEL) {
+            ascii::string(b"CANCEL")
+        }else if (current_epoch >= proposal.expired) {
+            ascii::string(b"EXPIRED")
+        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
+            ascii::string(b"ANNOUNCEMENT_PENDING")
+        }else {
+            ascii::string(b"VOTING_PENDING")
+        }
+    }
+
+    /// Destory governance cap
+    public fun destroy_governance_cap(
+        governance_cap: GovernanceCap
+    ) {
+        genesis::destroy(governance_cap);
+    }
+
+    /// === Entry Functions ===
 
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
@@ -253,7 +289,6 @@ module dola_protocol::governance_v1 {
             proposal_id
         });
     }
-
 
     /// Vote for a proposal
     /// `certificate`: The purpose of passing in the certificate is to ensure that the
@@ -342,33 +377,6 @@ module dola_protocol::governance_v1 {
         });
     }
 
-    /// Get proposal state
-    public fun get_proposal_state<T: store + drop>(
-        proposal: &mut Proposal<T>,
-        ctx: &mut TxContext
-    ): String {
-        let current_epoch = tx_context::epoch(ctx);
-        if (proposal.state == PROPOSAL_SUCCESS) {
-            ascii::string(b"SUCCESS")
-        }else if (proposal.state == PROPOSAL_FAIL) {
-            ascii::string(b"FAIL")
-        }else if (proposal.state == PROPOSAL_CANCEL) {
-            ascii::string(b"CANCEL")
-        }else if (current_epoch >= proposal.expired) {
-            ascii::string(b"EXPIRED")
-        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
-            ascii::string(b"ANNOUNCEMENT_PENDING")
-        }else {
-            ascii::string(b"VOTING_PENDING")
-        }
-    }
-
-    /// Destory governance cap
-    public fun destroy_governance_cap(
-        governance_cap: GovernanceCap
-    ) {
-        genesis::destroy(governance_cap);
-    }
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {

@@ -20,6 +20,7 @@ module dola_protocol::governance_v2 {
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceManagerCap};
+    use dola_protocol::merge_coins;
 
     #[test_only]
     use dola_protocol::genesis::GovernanceGenesis;
@@ -178,6 +179,8 @@ module dola_protocol::governance_v2 {
         });
     }
 
+    /// === Initial Functions ===
+
     /// Activate the current version of governance through governance after v1.
     public fun activate_governance(
         _: &GovernanceCap,
@@ -191,16 +194,13 @@ module dola_protocol::governance_v2 {
         governance_info.active = true;
     }
 
+    /// === Governance Functions ===
+
     /// After the upgrade, all current governance guardians will be invalidated.
     public fun upgrade(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
         let governance_manager_cap = option::extract(&mut governance_info.governance_manager_cap);
         governance_info.active = false;
         governance_manager_cap
-    }
-
-    /// Check if the user is a guardians of governance
-    public fun check_guardians(governance_info: &GovernanceInfo, guardians: address) {
-        assert!(vector::contains(&governance_info.guardians, &guardians), EINVALID_GUARDIANS)
     }
 
     /// Add guardians through governance.
@@ -242,6 +242,13 @@ module dola_protocol::governance_v2 {
         governance_info.max_delay = max_delay;
     }
 
+    /// === Helper Functions ===
+
+    /// Check if the user is a guardians of governance
+    public fun check_guardians(governance_info: &GovernanceInfo, guardians: address) {
+        assert!(vector::contains(&governance_info.guardians, &guardians), EINVALID_GUARDIANS)
+    }
+
     public fun ensure_two_thirds(votes_num: u64, favor_num: u64): bool {
         let threshold =
             if (votes_num % 3 == 0) {
@@ -252,38 +259,35 @@ module dola_protocol::governance_v2 {
         favor_num >= threshold
     }
 
-    public fun merge_coin<CoinType>(
-        coins: vector<Coin<CoinType>>,
-        amount: u64,
+    /// Get proposal state
+    public fun get_proposal_state<T: store + drop, CoinType>(
+        proposal: &mut Proposal<T, CoinType>,
         ctx: &mut TxContext
-    ): Coin<CoinType> {
-        let len = vector::length(&coins);
-        if (len > 0) {
-            vector::reverse(&mut coins);
-            let base_coin = vector::pop_back(&mut coins);
-            while (!vector::is_empty(&coins)) {
-                coin::join(&mut base_coin, vector::pop_back(&mut coins));
-            };
-            vector::destroy_empty(coins);
-            let sum_amount = coin::value(&base_coin);
-            let split_amount = amount;
-            if (amount == U64_MAX) {
-                split_amount = sum_amount;
-            };
-            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
-            if (coin::value(&base_coin) > split_amount) {
-                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::public_transfer(base_coin, tx_context::sender(ctx));
-                split_coin
-            }else {
-                base_coin
-            }
+    ): String {
+        let current_epoch = tx_context::epoch(ctx);
+        if (proposal.state == PROPOSAL_SUCCESS) {
+            ascii::string(b"SUCCESS")
+        }else if (proposal.state == PROPOSAL_FAIL) {
+            ascii::string(b"FAIL")
+        }else if (proposal.state == PROPOSAL_CANCEL) {
+            ascii::string(b"CANCEL")
+        }else if (current_epoch >= proposal.expired) {
+            ascii::string(b"EXPIRED")
+        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
+            ascii::string(b"ANNOUNCEMENT_PENDING")
         }else {
-            vector::destroy_empty(coins);
-            assert!(amount == 0, EAMOUNT_MUST_ZERO);
-            coin::zero<CoinType>(ctx)
+            ascii::string(b"VOTING_PENDING")
         }
     }
+
+    /// Destory governance cap
+    public fun destroy_governance_cap(
+        governance_cap: GovernanceCap
+    ) {
+        genesis::destroy(governance_cap);
+    }
+
+    /// === Entry Functions ===
 
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
@@ -298,7 +302,7 @@ module dola_protocol::governance_v2 {
     ) {
         assert!(governance_info.active, ENOT_ACTIVE);
 
-        let staked_coin = merge_coin(staked_coins, staked_amount, ctx);
+        let staked_coin = merge_coins::merge_coin(staked_coins, staked_amount, ctx);
         assert!(staked_amount >= governance_info.proposal_minimum_staking, EINVALID_PROPOSAL_STAKING);
 
         let creator = tx_context::sender(ctx);
@@ -364,7 +368,7 @@ module dola_protocol::governance_v2 {
 
         let favor_votes = &mut proposal.favor_votes;
         let against_votes = &mut proposal.against_votes;
-        let staked_coin = merge_coin(staked_coins, staked_amount, ctx);
+        let staked_coin = merge_coins::merge_coin(staked_coins, staked_amount, ctx);
 
         if (current_epoch < proposal.end_vote) {
             // Voting
@@ -448,33 +452,6 @@ module dola_protocol::governance_v2 {
         });
     }
 
-    /// Get proposal state
-    public fun get_proposal_state<T: store + drop, CoinType>(
-        proposal: &mut Proposal<T, CoinType>,
-        ctx: &mut TxContext
-    ): String {
-        let current_epoch = tx_context::epoch(ctx);
-        if (proposal.state == PROPOSAL_SUCCESS) {
-            ascii::string(b"SUCCESS")
-        }else if (proposal.state == PROPOSAL_FAIL) {
-            ascii::string(b"FAIL")
-        }else if (proposal.state == PROPOSAL_CANCEL) {
-            ascii::string(b"CANCEL")
-        }else if (current_epoch >= proposal.expired) {
-            ascii::string(b"EXPIRED")
-        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
-            ascii::string(b"ANNOUNCEMENT_PENDING")
-        }else {
-            ascii::string(b"VOTING_PENDING")
-        }
-    }
-
-    /// Destory governance cap
-    public fun destroy_governance_cap(
-        governance_cap: GovernanceCap
-    ) {
-        genesis::destroy(governance_cap);
-    }
 
     /// After the proposal ends, get back the staked governance tokens
     public entry fun claim<T: store + drop, CoinType>(
@@ -510,6 +487,7 @@ module dola_protocol::governance_v2 {
             abort ENOT_VOTED
         }
     }
+
 
     #[test_only]
     struct DOLA has drop {}

@@ -18,6 +18,7 @@ module dola_protocol::wormhole_adapter_pool {
 
     use dola_protocol::dola_address;
     use dola_protocol::dola_pool::{Self, Pool};
+    use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::pool_codec;
     use dola_protocol::wormhole_adapter_verify::{Self, Unit};
     use wormhole::bytes32::{Self, Bytes32};
@@ -84,6 +85,7 @@ module dola_protocol::wormhole_adapter_pool {
         });
     }
 
+    /// === Initial Functions ===
 
     /// Initialize for remote bridge and dola pool
     public entry fun initialize(
@@ -118,10 +120,10 @@ module dola_protocol::wormhole_adapter_pool {
         pool_genesis.is_init = true;
     }
 
-    /// Call by application
+    /// === Friend Functions ===
 
     /// Send deposit by application
-    public fun send_deposit<CoinType>(
+    public(friend) fun send_deposit<CoinType>(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
@@ -155,7 +157,7 @@ module dola_protocol::wormhole_adapter_pool {
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
-    public fun send_message(
+    public(friend) fun send_message(
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         wormhole_message_fee: Coin<SUI>,
@@ -183,8 +185,11 @@ module dola_protocol::wormhole_adapter_pool {
         );
     }
 
+    /// === Entry Functions ===
+
     /// Receive withdraw
     public entry fun receive_withdraw<CoinType>(
+        genesis: &GovernanceGenesis,
         wormhole_state: &mut WormholeState,
         pool_state: &mut PoolState,
         pool: &mut Pool<CoinType>,
@@ -192,6 +197,7 @@ module dola_protocol::wormhole_adapter_pool {
         clock: &Clock,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
             wormhole_state,
             &pool_state.registered_emitters,

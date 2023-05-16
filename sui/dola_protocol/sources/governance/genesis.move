@@ -50,9 +50,14 @@ module dola_protocol::genesis {
     /// the version through version migration.
     ///
     /// ```
-    /// struct Version_1_0_1 {}
+    /// struct Version_1_0_1 has store, drop, copy {}
+    ///
+    /// public fun get_version_1_0_1(): Version_1_0_1 {
+    ///     Version_1_0_1 {}
+    /// }
     /// ```
 
+    /// === Friend Functions ===
     public(friend) fun init_genesis(upgrade_cap: UpgradeCap, ctx: &mut TxContext): GovernanceManagerCap {
         let governance_genesis = GovernanceGenesis {
             id: object::new(ctx),
@@ -71,24 +76,7 @@ module dola_protocol::genesis {
         governance_manager_cap
     }
 
-    public fun create(_: &GovernanceManagerCap): GovernanceCap {
-        GovernanceCap {}
-    }
-
-    public fun destroy(governance_cap: GovernanceCap) {
-        let GovernanceCap {} = governance_cap;
-    }
-
-    public fun destroy_manager(
-        governance_genesis: &mut GovernanceGenesis,
-        governance_manager_cap: GovernanceManagerCap
-    ) {
-        let manager_id = object::id(&governance_manager_cap);
-        let (_, index) = vector::index_of(&governance_genesis.manager_ids, &manager_id);
-        vector::remove(&mut governance_genesis.manager_ids, index);
-        let GovernanceManagerCap { id } = governance_manager_cap;
-        object::delete(id);
-    }
+    /// === Governance Functions ===
 
     /// Get the governance_cap through the proposal, return to the UpgradeTicket after
     /// the proposal is passed, and upgrade the contract in the programmable transaction.
@@ -108,15 +96,6 @@ module dola_protocol::genesis {
         receipt: UpgradeReceipt,
     ) {
         package::commit_upgrade(&mut genesis.upgrade_cap, receipt);
-    }
-
-    /// Check current version
-    /// Note: Update the function to set the version limit.
-    public fun check_version(genesis: &mut GovernanceGenesis) {
-        assert!(
-            dynamic_field::exists_with_type<Version, Version_1_0_0>(&mut genesis.id, Version {}),
-            E_NOT_LATEST_VERISON
-        );
     }
 
     public fun migrate_version<OldVersion: store + drop, NewVersion: store + drop>(
@@ -142,6 +121,37 @@ module dola_protocol::genesis {
         // Finally add the new version.
         dynamic_field::add(&mut genesis.id, Version {}, new_version);
     }
+
+    /// === Helper Functions ===
+
+    public fun create(_: &GovernanceManagerCap): GovernanceCap {
+        GovernanceCap {}
+    }
+
+    public fun destroy(governance_cap: GovernanceCap) {
+        let GovernanceCap {} = governance_cap;
+    }
+
+    public fun destroy_manager(
+        governance_genesis: &mut GovernanceGenesis,
+        governance_manager_cap: GovernanceManagerCap
+    ) {
+        let manager_id = object::id(&governance_manager_cap);
+        let (_, index) = vector::index_of(&governance_genesis.manager_ids, &manager_id);
+        vector::remove(&mut governance_genesis.manager_ids, index);
+        let GovernanceManagerCap { id } = governance_manager_cap;
+        object::delete(id);
+    }
+
+    /// Check current version
+    /// Note: Update the function to set the version limit.
+    public fun check_latest_version(genesis: &GovernanceGenesis) {
+        assert!(
+            dynamic_field::exists_with_type<Version, Version_1_0_0>(&genesis.id, Version {}),
+            E_NOT_LATEST_VERISON
+        );
+    }
+
 
     #[test_only]
     public fun register_governance_cap_for_testing(): GovernanceCap {

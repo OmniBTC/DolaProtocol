@@ -8,6 +8,8 @@ module dola_protocol::rates {
 
     const SECONDS_PER_DAY: u256 = 86400;
 
+    /// === Helper Functions ===
+
     /// Calculating utilization using liquidity and debt. Liquidity is the current liquidity plus the
     /// liquidity of the current operation
     public fun calculate_utilization(storage: &mut Storage, dola_pool_id: u16, liquidity: u256): u256 {

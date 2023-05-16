@@ -21,7 +21,7 @@ module dola_protocol::system_codec {
 
     const UNBINDING: u8 = 1;
 
-    /// Getter
+    /// === View Functions ===
 
     public fun get_binding_type(): u8 {
         BINDING
@@ -31,6 +31,7 @@ module dola_protocol::system_codec {
         UNBINDING
     }
 
+    /// === Helper Functions ===
     /// Encode and decode
 
     /// Encode binding or unbinding

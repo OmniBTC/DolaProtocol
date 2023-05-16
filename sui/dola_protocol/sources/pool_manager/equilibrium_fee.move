@@ -5,6 +5,8 @@ module dola_protocol::equilibrium_fee {
 
     use dola_protocol::ray_math as math;
 
+    /// === Helper Functions ===
+
     /// Calculate expected ratio according to weight
     public fun calculate_expected_ratio(total_weight: u256, weight: u256): u256 {
         if (total_weight == 0) {

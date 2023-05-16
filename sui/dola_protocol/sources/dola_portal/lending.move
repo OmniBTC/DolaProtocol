@@ -16,10 +16,11 @@ module dola_protocol::lending_portal {
 
     use dola_protocol::dola_address;
     use dola_protocol::dola_pool::{Self, Pool};
-    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self, Storage};
     use dola_protocol::lending_logic;
+    use dola_protocol::merge_coins;
     use dola_protocol::oracle::PriceOracle;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
@@ -28,24 +29,18 @@ module dola_protocol::lending_portal {
 
     /// Errors
 
-    const EAMOUNT_NOT_ENOUGH: u64 = 0;
+    const ENOT_FIND_POOL: u64 = 0;
 
-    const EAMOUNT_MUST_ZERO: u64 = 1;
+    const ENOT_ENOUGH_LIQUIDITY: u64 = 1;
 
-    const ENOT_FIND_POOL: u64 = 2;
+    const ENOT_RELAYER: u64 = 2;
 
-    const ENOT_ENOUGH_LIQUIDITY: u64 = 3;
+    const ENOT_ENOUGH_WORMHOLE_FEE: u64 = 3;
 
-    const ENOT_RELAYER: u64 = 4;
-
-    const ENOT_ENOUGH_WORMHOLE_FEE: u64 = 5;
-
-    const EAMOUNT_NOT_ZERO: u64 = 6;
+    const EAMOUNT_NOT_ZERO: u64 = 4;
 
     /// App ID
     const LENDING_APP_ID: u16 = 1;
-
-    const U64_MAX: u64 = 18446744073709551615;
 
     struct LendingPortal has key {
         id: UID,
@@ -87,6 +82,14 @@ module dola_protocol::lending_portal {
         call_type: u8
     }
 
+    fun get_nonce(lending_portal: &mut LendingPortal): u64 {
+        let nonce = lending_portal.next_nonce;
+        lending_portal.next_nonce = lending_portal.next_nonce + 1;
+        nonce
+    }
+
+    /// === Governance Functions ===
+
     public fun initialize_cap_with_governance(
         _: &GovernanceCap,
         ctx: &mut TxContext
@@ -98,51 +101,18 @@ module dola_protocol::lending_portal {
         })
     }
 
-    fun get_nonce(lending_portal: &mut LendingPortal): u64 {
-        let nonce = lending_portal.next_nonce;
-        lending_portal.next_nonce = lending_portal.next_nonce + 1;
-        nonce
-    }
-
-    public entry fun change_relayer(lending_portal: &mut LendingPortal, relayer: address, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == lending_portal.relayer, ENOT_RELAYER);
+    public fun set_relayer(
+        _: &GovernanceCap,
+        lending_portal: &mut LendingPortal,
+        relayer: address
+    ) {
         lending_portal.relayer = relayer
     }
 
-    public fun merge_coin<CoinType>(
-        coins: vector<Coin<CoinType>>,
-        amount: u64,
-        ctx: &mut TxContext
-    ): Coin<CoinType> {
-        let len = vector::length(&coins);
-        if (len > 0) {
-            vector::reverse(&mut coins);
-            let base_coin = vector::pop_back(&mut coins);
-            while (!vector::is_empty(&coins)) {
-                coin::join(&mut base_coin, vector::pop_back(&mut coins));
-            };
-            vector::destroy_empty(coins);
-            let sum_amount = coin::value(&base_coin);
-            let split_amount = amount;
-            if (amount == U64_MAX) {
-                split_amount = sum_amount;
-            };
-            assert!(sum_amount >= split_amount, EAMOUNT_NOT_ENOUGH);
-            if (coin::value(&base_coin) > split_amount) {
-                let split_coin = coin::split(&mut base_coin, split_amount, ctx);
-                transfer::public_transfer(base_coin, tx_context::sender(ctx));
-                split_coin
-            }else {
-                base_coin
-            }
-        }else {
-            vector::destroy_empty(coins);
-            assert!(amount == 0, EAMOUNT_MUST_ZERO);
-            coin::zero<CoinType>(ctx)
-        }
-    }
+    /// === Entry Functions ===
 
     public entry fun as_collateral(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -151,6 +121,7 @@ module dola_protocol::lending_portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
@@ -172,6 +143,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun cancel_as_collateral(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -180,6 +152,7 @@ module dola_protocol::lending_portal {
         dola_pool_ids: vector<u16>,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let sender = dola_address::convert_address_to_dola(tx_context::sender(ctx));
 
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
@@ -201,6 +174,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun supply<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -212,10 +186,11 @@ module dola_protocol::lending_portal {
         deposit_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         assert!(deposit_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
-        let deposit_coin = merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
+        let deposit_coin = merge_coins::merge_coin<CoinType>(deposit_coins, deposit_amount, ctx);
         let deposit_amount = dola_pool::normal_amount(pool, coin::value(&deposit_coin));
         let nonce = get_nonce(lending_portal);
 
@@ -266,6 +241,7 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, withdraw on sui can be skipped across the chain
     public entry fun withdraw_local<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -276,6 +252,7 @@ module dola_protocol::lending_portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let dst_chain = dola_address::get_native_dola_chain_id();
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
@@ -329,6 +306,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun withdraw_remote(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -345,6 +323,7 @@ module dola_protocol::lending_portal {
         bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let pool_address = dola_address::create_dola_address(dst_chain, pool);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -380,7 +359,7 @@ module dola_protocol::lending_portal {
         );
 
         // Bridge fee = relay fee + wormhole feee
-        let bridge_fee = merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
+        let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
         let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
         assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
         let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
@@ -422,6 +401,7 @@ module dola_protocol::lending_portal {
 
     /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
     public entry fun borrow_local<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -432,6 +412,7 @@ module dola_protocol::lending_portal {
         amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let dst_chain = dola_address::get_native_dola_chain_id();
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -484,6 +465,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun borrow_remote(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -500,6 +482,7 @@ module dola_protocol::lending_portal {
         bridge_fee_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         let receiver = dola_address::create_dola_address(dst_chain, receiver_addr);
         let pool_address = dola_address::create_dola_address(dst_chain, pool);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
@@ -533,7 +516,7 @@ module dola_protocol::lending_portal {
         );
 
         // Bridge fee = relay fee + wormhole feee
-        let bridge_fee = merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
+        let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
         let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
         assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
         let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
@@ -575,6 +558,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun repay<CoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -586,10 +570,11 @@ module dola_protocol::lending_portal {
         repay_amount: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         assert!(repay_amount > 0, EAMOUNT_NOT_ZERO);
         let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
         let pool_address = dola_address::convert_pool_to_dola<CoinType>();
-        let repay_coin = merge_coin<CoinType>(repay_coins, repay_amount, ctx);
+        let repay_coin = merge_coins::merge_coin<CoinType>(repay_coins, repay_amount, ctx);
         let repay_amount = dola_pool::normal_amount(pool, coin::value(&repay_coin));
         let nonce = get_nonce(lending_portal);
         // Deposit the token into the pool
@@ -636,6 +621,7 @@ module dola_protocol::lending_portal {
     }
 
     public entry fun liquidate<DebtCoinType>(
+        genesis: &GovernanceGenesis,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         clock: &Clock,
@@ -651,6 +637,7 @@ module dola_protocol::lending_portal {
         liquidate_user_id: u64,
         ctx: &mut TxContext
     ) {
+        genesis::check_latest_version(genesis);
         // Sender
         let sender = tx_context::sender(ctx);
         let liquidator_address = dola_address::convert_address_to_dola(sender);
@@ -665,6 +652,7 @@ module dola_protocol::lending_portal {
         // Deposit the token into the pool
         if (debt_amount > 0) {
             supply<DebtCoinType>(
+                genesis,
                 storage,
                 oracle,
                 clock,
@@ -679,7 +667,7 @@ module dola_protocol::lending_portal {
         } else {
             // Vec<Object> cannot be null, so there might be a zero coin here.
             // It's also possible to pass in tokens by mistake but the debt_amount is 0.
-            let zero_coin = merge_coin(debt_coins, debt_amount, ctx);
+            let zero_coin = merge_coins::merge_coin(debt_coins, debt_amount, ctx);
             coin::destroy_zero(zero_coin);
         };
 

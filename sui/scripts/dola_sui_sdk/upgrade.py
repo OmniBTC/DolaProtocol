@@ -1,36 +1,48 @@
+import json
+
 import sui_brownie
-from dola_sui_sdk import DOLA_CONFIG, sui_project, load
 from sui_brownie import SuiObject, SuiPackage
 
-
-def batch_add_upgrade():
-    """
-    public entry fun batch_add_upgrade_cap(
-        governance_contracts: &mut GovernanceContracts,
-        upgrade_caps: vector<UpgradeCap>
-    )
-    :return:
-    """
-    governance = load.governance_package()
-    governance.genesis.batch_add_upgrade_cap(
-        governance.genesis.GovernanceContracts[-1],
-        load.get_upgrade_cap_ids()
-    )
+from dola_sui_sdk import DOLA_CONFIG, sui_project, load
 
 
-def generate_package_info(package, replace_address: dict = None):
+def generate_package_info(package, replace_address: dict = None, replace_publish_at: dict = None):
     package: SuiPackage = getattr(load, f"{package}_package")()
-    digest = package.generate_digest(replace_address=replace_address)
+    result = package.generate_digest(replace_address=replace_address, replace_publish_at=replace_publish_at)
+    digest = bytes(json.loads(result)['digest']).hex()
     print(f"Package id:{package.package_id}, digest:{digest}")
 
 
-def deploy():
+def generate_dola_protocol_package_info():
+    generate_package_info("dola_protocol", replace_address=dict(
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+
+def deploy_upgrade_proposal():
     upgrade_proposal_template_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/upgrade_proposal_template")
     )
 
     upgrade_proposal_template_package.program_publish_package(
-        replace_address=dict(governance=None))
+        replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']),
+        replace_publish_at=dict(dola_protocol=get_latest_dola_protocol())
+    )
+
+
+def deploy_migrade_proposal():
+    upgrade_proposal_template_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal")
+    )
+
+    upgrade_proposal_template_package.program_publish_package(
+        replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']),
+        replace_publish_at=dict(dola_protocol=get_latest_dola_protocol())
+    )
 
 
 def upgrade_create_proposal():
@@ -39,46 +51,86 @@ def upgrade_create_proposal():
     :return:
     """
     upgrade_proposal_template = load.upgrade_proposal_template_package()
-    governance = load.governance_package()
     upgrade_proposal_template.upgrade_proposal.create_proposal(
-        governance.governance_v1.GovernanceInfo[-1])
-
-
-def dola_upgrade(package, replace_address: dict = None):
-    upgrade_proposal_template = load.upgrade_proposal_template_package()
-    governance = load.governance_package()
-    package: SuiPackage = getattr(load, f"{package}_package")()
-
-    cur_proposal = f"{sui_project.Governance[-1]}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
-                   f"::upgrade_proposal::Certificate>"
-
-    package.program_dola_upgrade_package(
-        upgrade_proposal_template.package_id,
-        governance.governance_v1.GovernanceInfo[-1],
-        governance.genesis.GovernanceContracts[-1],
-        sui_project[SuiObject.from_type(cur_proposal)][-1],
-        replace_address=replace_address
+        sui_project.network_config['objects']['GovernanceInfo']
     )
 
 
-def dola_upgrade_test(package, replace_address: dict = None):
+def migrate_create_proposal():
+    """
+    public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
+    :return:
+    """
+    migrate_version_proposal = load.migrate_version_proposal_package()
+    migrate_version_proposal.migrate_proposal.create_proposal(
+        sui_project.network_config['objects']['GovernanceInfo']
+    )
+
+
+def upgrade_dola_protocol():
+    upgrade_proposal_template = load.upgrade_proposal_template_package()
+    dola_protocol = load.dola_protocol_package(get_latest_dola_protocol())
+    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
+                   f"::upgrade_proposal::Certificate>"
+
+    dola_protocol.program_dola_upgrade_package(
+        upgrade_proposal_template.package_id,
+        sui_project.network_config['objects']['GovernanceInfo'],
+        sui_project.network_config['objects']['GovernanceGenesis'],
+        sui_project[SuiObject.from_type(cur_proposal)][-1],
+        replace_address=dict(
+            wormhole=sui_project.network_config['packages']['wormhole'],
+            pyth=sui_project.network_config['packages']['pyth']
+        ), replace_publish_at=dict(
+            wormhole=sui_project.network_config['packages']['wormhole'],
+            pyth=sui_project.network_config['packages']['pyth'],
+        ),
+        gas_budget=1000000000
+    )
+
+
+def migrate_version():
+    migrate_version_proposal = load.migrate_version_proposal_package()
+
+    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']}::governance_v1::Proposal<{migrate_version_proposal.package_id}" \
+                   f"::migrate_proposal::Certificate>"
+
+    migrate_version_proposal.migrate_proposal.migrate_version(
+        sui_project.network_config['objects']['GovernanceInfo'],
+        sui_project[SuiObject.from_type(cur_proposal)][-1],
+        sui_project.network_config['objects']['GovernanceGenesis'],
+    )
+
+
+def check_version(package_id=None):
+    dola_protocol = load.dola_protocol_package(package_id)
+    result = dola_protocol.genesis.check_version.simulate(
+        sui_project.network_config['objects']['GovernanceGenesis']
+    )
+    print(result['effects']['status']['status'])
+
+
+def dola_upgrade_test():
+    deploy_upgrade_proposal()
     upgrade_create_proposal()
-    dola_upgrade(package, replace_address)
+    upgrade_dola_protocol()
 
 
-def main():
-    # 1. Add upgrade
-    # batch_add_upgrade()
+def migrate_version_test():
+    # deploy_migrade_proposal()
+    # migrate_create_proposal()
+    migrate_version()
 
-    # 2. generate info and manual replace package id and digest of upgrade_proposal_template
-    # generate_package_info("serde", replace_address=None)
 
-    # 3. deploy
-    # deploy()
-
-    # 4. upgrade
-    dola_upgrade_test("serde", replace_address=None)
+def get_latest_dola_protocol():
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    result = sui_project.client.sui_getObject(governance_genesis, {'showContent': True})
+    return result['data']['content']['fields']['upgrade_cap']['fields']['package']
 
 
 if __name__ == "__main__":
-    main()
+    # generate_dola_protocol_package_info()
+    # dola_upgrade_test()
+    # migrate_version_test()
+    check_version(sui_project.network_config['packages']['dola_protocol'])
+    check_version(get_latest_dola_protocol())

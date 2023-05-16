@@ -30,7 +30,7 @@ module dola_protocol::lending_codec {
 
     const CANCEL_AS_COLLATERAL: u8 = 6;
 
-    /// Getter
+    /// === View Functions ===
 
     public fun get_supply_type(): u8 {
         SUPPLY
@@ -60,7 +60,7 @@ module dola_protocol::lending_codec {
         CANCEL_AS_COLLATERAL
     }
 
-
+    /// === Helper Functions ===
     /// Encode and decode
 
     /// Encode supply or repay

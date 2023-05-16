@@ -72,7 +72,16 @@ module dola_protocol::dola_pool {
         amount: u64
     }
 
-    /// Create pool by governance
+    /// === View Functions ===
+
+    /// Get coin decimal
+    public fun get_coin_decimal<CoinType>(pool: &Pool<CoinType>): u8 {
+        pool.decimal
+    }
+
+
+    /// === Governance Functions ===
+
     /// Prevent someone from creating the pool maliciously.
     public fun create_pool<CoinType>(_: &GovernanceCap, decimal: u8, ctx: &mut TxContext) {
         transfer::share_object(Pool<CoinType> {
@@ -82,12 +91,8 @@ module dola_protocol::dola_pool {
         })
     }
 
-    /// Call by bridge
 
-    /// Get coin decimal
-    public fun get_coin_decimal<CoinType>(pool: &Pool<CoinType>): u8 {
-        pool.decimal
-    }
+    /// === Helper Functions ===
 
     /// Convert amount from current decimal to target decimal
     public fun convert_amount(amount: u64, cur_decimal: u8, target_decimal: u8): u64 {
@@ -117,8 +122,10 @@ module dola_protocol::dola_pool {
         convert_amount(amount, cur_decimal, target_decimal)
     }
 
+    /// === Friend Functions ===
+
     /// Deposit to pool
-    public fun deposit<CoinType>(
+    public(friend) fun deposit<CoinType>(
         pool: &mut Pool<CoinType>,
         deposit_coin: Coin<CoinType>,
         app_id: u16,
@@ -180,7 +187,7 @@ module dola_protocol::dola_pool {
     }
 
     /// Send pool message that do not involve incoming or outgoing funds
-    public fun send_message(
+    public(friend) fun send_message(
         app_id: u16,
         app_payload: vector<u8>,
         ctx: &mut TxContext
