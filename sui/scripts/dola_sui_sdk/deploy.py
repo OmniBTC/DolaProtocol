@@ -21,7 +21,7 @@ def export_to_config():
     config["networks"][current_network]["packages"]["test_coins"] = sui_project.TestCoins[-1]
     config["networks"][current_network]["packages"]["external_interfaces"] = sui_project.ExternalInterfaces[-1]
 
-    if "Wormhole" not in config["networks"][current_network]["packages"]:
+    if "wormhole" not in config["networks"][current_network]["packages"]:
         config["networks"][current_network]["packages"]["wormhole"] = sui_project.Wormhole[-1]
 
     with open(path, "w") as f:

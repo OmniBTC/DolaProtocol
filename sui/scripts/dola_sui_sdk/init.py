@@ -96,8 +96,9 @@ def active_governance_v1():
     :return:
     """
     dola_protocol = load.dola_protocol_package()
+    upgrade_cap = load.get_upgrade_cap_by_package_id(dola_protocol.package_id)
     dola_protocol.governance_v1.activate_governance(
-        dola_protocol.genesis.GovernanceGenesis[-1],
+        upgrade_cap,
         dola_protocol.governance_v1.GovernanceInfo[-1],
     )
 
@@ -679,7 +680,7 @@ def batch_execute_proposal():
     sui_project.batch_transaction(
         actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       wormhole.state.State[-1],  # 2
+                       sui_project.network_config['objects']['WormholeState'],  # 2
                        decimals,  # 3
                        ],
         transactions=[
@@ -1180,6 +1181,8 @@ def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
 
+    create_proposal()
+
     # Token price params
     # [dola_pool_id, price, price_decimal]
     (btc_price, btc_price_decimal) = get_price("BTC/USD")
@@ -1357,4 +1360,4 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    main()
+    batch_init()

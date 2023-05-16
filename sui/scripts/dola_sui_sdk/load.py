@@ -46,16 +46,16 @@ def sui_package(package_id: str = None, package_path: Union[Path, str] = None):
 
 def dola_protocol_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.DolaProtocol[-1]
+        package_id: str = sui_project.network_config['packages']['dola_protocol']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol"))
 
 
 def wormhole_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.Wormhole[-1]
+        package_id: str = sui_project.network_config['packages']['wormhole']
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
+                           ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
 
 
 def external_interfaces_package(package_id: str = None):
@@ -66,7 +66,7 @@ def external_interfaces_package(package_id: str = None):
 
 def genesis_proposal_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.GenesisProposal[-1]
+        package_id: str = sui_project.network_config['packages']['genesis_proposal']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/genesis_proposal"))
 
 

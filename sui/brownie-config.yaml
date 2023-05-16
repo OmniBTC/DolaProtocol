@@ -11,35 +11,37 @@ networks:
       Wormhole: '0xa799ed12eb76079797d051a09289294451543f6ade7cbd967f5c3659ee7e0bd3'
   sui-localnet:
     node_url: http://127.0.0.1:9000
-  sui-testnet:
-    node_url: https://fullnode.testnet.sui.io:443
-    pyth_service_url: https://xc-testnet.pyth.network
-    packages:
-      dola_protocol: "0x1e435a674fb08032284389ee4a8a328b824464db3bf4bf1df6cc304b64078fca"
-      wormhole: "0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e"
-      pyth: "0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44"
-    objects:
-      WormholeState: "0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02"
-      PythState: "0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a"
-    oracle:
-      feed_id:
-        BTC/USD: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b"
-        SUI/USD: "0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266"
-        USDC/USD: "0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722"
-        USDT/USD: "0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588"
-        ETH/USD: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6"
-        BNB/USD: "0xecf553770d9b10965f8fb64771e93f5690a182edc32be4a3236e0caaa6e0581a"
-        MATIC/USD: "0xd2c2c1f2bba8e0964f9589e060c2ee97f5e19057267ac3284caef3bd50bd2cb5"
-        APT/USD: "0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e"
   sui-mainnet:
     node_url: https://fullnode.mainnet.sui.io:443
-    pyth_service_url: https://xc-mainnet.pyth.network
-    packages:
-      wormhole: "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
-      pyth: "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302"
     objects:
-      WormholeState: "0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c"
-      PythState: "0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f"
+      PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
+      WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
+    packages:
+      pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
+      wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
+    pyth_service_url: https://xc-mainnet.pyth.network
+  sui-testnet:
+    node_url: https://fullnode.testnet.sui.io:443
+    objects:
+      PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
+      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
+    oracle:
+      feed_id:
+        APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'
+        BNB/USD: '0xecf553770d9b10965f8fb64771e93f5690a182edc32be4a3236e0caaa6e0581a'
+        BTC/USD: '0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b'
+        ETH/USD: '0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6'
+        MATIC/USD: '0xd2c2c1f2bba8e0964f9589e060c2ee97f5e19057267ac3284caef3bd50bd2cb5'
+        SUI/USD: '0x50c67b3fd225db8912a424dd4baed60ffdde625ed2feaaf283724f9608fea266'
+        USDC/USD: '0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722'
+        USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
+    packages:
+      dola_protocol: '0x85cb3a28a5807a0f6ce462273de1e5c35dca33e6c2ad03102361891ae6ab28ea'
+      genesis_proposal: '0x2b94ede6f116ee6f546a0963c5d75160ec903ab20f179a9c92e3bffac17b659b'
+      pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
+      test_coins: '0x700f7fb7e1ed293d34ee36b34e918ec1d262353108d87c7c5369a3ec819ebf5d'
+      wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+    pyth_service_url: https://xc-testnet.pyth.network
 sui_wallets:
   from_mnemonic:
     Oracle: ${ORACLE_MNEMONIC}
