@@ -31,9 +31,7 @@ module dola_protocol::system_portal {
         call_type: u8
     }
 
-    public fun initialize_cap_with_governance(
-        ctx: &mut TxContext
-    ) {
+    fun init(ctx: &mut TxContext) {
         transfer::share_object(SystemPortal {
             id: object::new(ctx),
             next_nonce: 0

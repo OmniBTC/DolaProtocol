@@ -390,7 +390,7 @@ module dola_protocol::wormhole_adapter_core {
         amount: u256,
         wormhole_message_fee: Coin<SUI>,
         clock: &Clock
-    ) {
+    ): u64 {
         let (actual_amount, _) = pool_manager::remove_liquidity(
             pool_manager_info,
             pool_address,
@@ -415,6 +415,6 @@ module dola_protocol::wormhole_adapter_core {
             wormhole_message_fee,
             message_ticket,
             clock
-        );
+        )
     }
 }

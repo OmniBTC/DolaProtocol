@@ -54,6 +54,7 @@ module dola_protocol::lending_portal {
 
     /// Relay Event
     struct RelayEvent has drop, copy {
+        // Wormhole sequence
         nonce: u64,
         amount: u64,
         // Confirm that nonce is in the pool or core
@@ -82,6 +83,14 @@ module dola_protocol::lending_portal {
         call_type: u8
     }
 
+    fun init(ctx: &mut TxContext) {
+        transfer::share_object(LendingPortal {
+            id: object::new(ctx),
+            relayer: tx_context::sender(ctx),
+            next_nonce: 0
+        })
+    }
+
     fun get_nonce(lending_portal: &mut LendingPortal): u64 {
         let nonce = lending_portal.next_nonce;
         lending_portal.next_nonce = lending_portal.next_nonce + 1;
@@ -89,17 +98,6 @@ module dola_protocol::lending_portal {
     }
 
     /// === Governance Functions ===
-
-    public fun initialize_cap_with_governance(
-        _: &GovernanceCap,
-        ctx: &mut TxContext
-    ) {
-        transfer::share_object(LendingPortal {
-            id: object::new(ctx),
-            relayer: tx_context::sender(ctx),
-            next_nonce: 0
-        })
-    }
 
     public fun set_relayer(
         _: &GovernanceCap,
@@ -367,7 +365,7 @@ module dola_protocol::lending_portal {
 
         let nonce = get_nonce(lending_portal);
         // Cross-chain withdraw
-        wormhole_adapter_core::send_withdraw(
+        let sequence = wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             lending_core_storage::get_app_cap(storage),
@@ -382,7 +380,7 @@ module dola_protocol::lending_portal {
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce,
+            nonce: sequence,
             amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });
@@ -524,7 +522,7 @@ module dola_protocol::lending_portal {
 
         let nonce = get_nonce(lending_portal);
         // Cross-chain borrow
-        wormhole_adapter_core::send_withdraw(
+        let sequence = wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             lending_core_storage::get_app_cap(storage),
@@ -540,7 +538,7 @@ module dola_protocol::lending_portal {
 
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce,
+            nonce: sequence,
             amount: relay_fee_amount,
             call_type: lending_codec::get_borrow_type()
         });

@@ -19,6 +19,7 @@ module omnipool::wormhole_adapter_pool {
 
     use omnipool::dola_pool;
     use omnipool::pool_codec;
+    use omnipool::wormhole_adapter_verify;
     use wormhole::emitter::EmitterCapability;
     use wormhole::external_address::{Self, ExternalAddress};
     use wormhole::set::{Self, Set};
@@ -220,7 +221,7 @@ module omnipool::wormhole_adapter_pool {
         deposit_coin: Coin<CoinType>,
         app_id: u16,
         app_payload: vector<u8>,
-    ) acquires PoolState {
+    ): u64 acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
         let msg = dola_pool::deposit<CoinType>(
@@ -230,9 +231,7 @@ module omnipool::wormhole_adapter_pool {
             app_payload,
         );
 
-        wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+        wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee)
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
@@ -241,7 +240,7 @@ module omnipool::wormhole_adapter_pool {
         wormhole_message_fee: Coin<AptosCoin>,
         app_id: u16,
         app_payload: vector<u8>,
-    ) acquires PoolState {
+    ): u64 acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
         let msg = dola_pool::send_message(
@@ -249,9 +248,7 @@ module omnipool::wormhole_adapter_pool {
             app_id,
             app_payload,
         );
-        wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee);
-        pool_state.nonce = pool_state.nonce + 1;
-        table::add(&mut pool_state.cache_vaas, pool_state.nonce, msg);
+        wormhole::publish_message(&mut pool_state.wormhole_emitter, 0, msg, wormhole_message_fee)
     }
 
     /// Receive withdraw
@@ -260,11 +257,11 @@ module omnipool::wormhole_adapter_pool {
     ) acquires PoolState {
         assert!(ensure_init(), ENOT_INIT);
         let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        // let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
-        //     &pool_state.registered_emitters,
-        //     &mut pool_state.consumed_vaas,
-        //     vaa,
-        // );
+        let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
+            &pool_state.registered_emitters,
+            &mut pool_state.consumed_vaas,
+            vaa,
+        );
         let (source_chain_id, nonce, pool_address, receiver, amount, _call_type) =
             pool_codec::decode_withdraw_payload(vaa);
         dola_pool::withdraw<CoinType>(
@@ -273,7 +270,7 @@ module omnipool::wormhole_adapter_pool {
             amount,
             pool_address,
         );
-        // myvaa::destroy(vaa);
+        myvaa::destroy(vaa);
 
         event::emit_event(&mut pool_state.pool_withdraw_handle, PoolWithdrawEvent {
             nonce,
@@ -281,32 +278,6 @@ module omnipool::wormhole_adapter_pool {
             dst_chain_id: dola_address::get_dola_chain_id(&pool_address),
             pool_address: dola_address::get_dola_address(&pool_address),
             receiver: dola_address::get_dola_address(&receiver),
-            amount
-        })
-    }
-
-    public fun next_vaa_nonce(): u64 acquires PoolState {
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        pool_state.nonce + 1
-    }
-
-    public entry fun read_vaa(sender: &signer, index: u64) acquires PoolState {
-        let pool_state = borrow_global_mut<PoolState>(get_resource_address());
-        if (index == 0) {
-            index = pool_state.nonce;
-        };
-        move_to(sender, VaaEvent {
-            vaa: *table::borrow(&pool_state.cache_vaas, index),
-            nonce: index
-        });
-    }
-
-    public entry fun decode_withdraw_payload(sender: &signer, vaa: vector<u8>) {
-        let (_, _, pool_address, user_address, amount, _) =
-            pool_codec::decode_withdraw_payload(vaa);
-        move_to(sender, VaaReciveWithdrawEvent {
-            pool_address,
-            user_address,
             amount
         })
     }

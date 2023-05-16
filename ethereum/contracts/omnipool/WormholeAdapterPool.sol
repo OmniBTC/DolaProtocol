@@ -27,10 +27,6 @@ contract WormholeAdapterPool {
     // Used to verify that the VAA has been processed
     mapping(bytes32 => bool) consumedVaas;
 
-    // todo! Delete after wormhole running
-    mapping(uint64 => bytes) public cachedVAA;
-    uint64 vaaNonce;
-
     event PoolWithdrawEvent(
         uint64 nonce,
         uint16 sourceChainId,
@@ -51,19 +47,6 @@ contract WormholeAdapterPool {
         wormholeFinality = _wormholeFinality;
     }
 
-    // todo! Delete after wormhole running
-    function getNonce() public view returns (uint64) {
-        return vaaNonce;
-    }
-
-    function getLatestVAA() public view returns (bytes memory) {
-        return cachedVAA[getNonce() - 1];
-    }
-
-    function increaseNonce() internal {
-        vaaNonce += 1;
-    }
-
     /// Call by governance
 
     function getDolaContract() public view returns (uint256) {
@@ -71,13 +54,13 @@ contract WormholeAdapterPool {
     }
 
     function registerOwner(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(encodedVm);
         require(
@@ -89,13 +72,13 @@ contract WormholeAdapterPool {
     }
 
     function deleteOwner(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(encodedVm);
         require(
@@ -107,13 +90,13 @@ contract WormholeAdapterPool {
     }
 
     function registerSpender(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(encodedVm);
         require(
@@ -125,13 +108,13 @@ contract WormholeAdapterPool {
     }
 
     function deleteSpender(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(encodedVm);
         require(
@@ -150,7 +133,7 @@ contract WormholeAdapterPool {
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) external payable {
+    ) external payable returns (uint64) {
         uint256 wormholeFee = wormhole.messageFee();
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         // Deposit assets to the pool and perform amount checks
@@ -165,38 +148,40 @@ contract WormholeAdapterPool {
             appId,
             appPayload
         );
-        wormhole.publishMessage{value: wormholeFee}(
-            0,
-            payload,
-            wormholeFinality
-        );
-
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
+        return
+            wormhole.publishMessage{value: wormholeFee}(
+                0,
+                payload,
+                wormholeFinality
+            );
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
     function sendMessage(uint16 appId, bytes memory appPayload)
         external
         payable
+        returns (uint64)
     {
         uint256 wormholeFee = wormhole.messageFee();
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
-        wormhole.publishMessage{value: msg.value}(0, payload, wormholeFinality);
-        cachedVAA[getNonce()] = payload;
-        increaseNonce();
+        return
+            wormhole.publishMessage{value: msg.value}(
+                0,
+                payload,
+                wormholeFinality
+            );
     }
 
     /// Receive withdraw
     function receiveWithdraw(bytes memory encodedVm) public {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
             .decodeWithdrawPayload(encodedVm);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);

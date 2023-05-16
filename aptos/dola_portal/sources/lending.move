@@ -101,7 +101,7 @@ module dola_portal::lending {
         );
         let deposit_coin = coin::withdraw<CoinType>(sender, deposit_coin);
 
-        wormhole_adapter_pool::send_deposit(
+        let sequence = wormhole_adapter_pool::send_deposit(
             sender,
             wormhole_message_fee,
             deposit_coin,
@@ -116,7 +116,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -158,7 +158,7 @@ module dola_portal::lending {
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -173,7 +173,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -215,7 +215,7 @@ module dola_portal::lending {
         );
 
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -230,7 +230,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -272,7 +272,7 @@ module dola_portal::lending {
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -287,7 +287,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -328,7 +328,7 @@ module dola_portal::lending {
             lending_codec::get_borrow_type()
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -343,7 +343,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -382,7 +382,7 @@ module dola_portal::lending {
 
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_deposit(
+        let sequence = wormhole_adapter_pool::send_deposit(
             sender,
             wormhole_message_fee,
             repay_coin,
@@ -398,7 +398,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -440,7 +440,7 @@ module dola_portal::lending {
         let debt_coin = coin::withdraw<DebtCoinType>(sender, debt_amount);
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_deposit<DebtCoinType>(
+        let sequence = wormhole_adapter_pool::send_deposit<DebtCoinType>(
             sender,
             wormhole_message_fee,
             debt_coin,
@@ -456,7 +456,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -488,7 +488,7 @@ module dola_portal::lending {
         let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -503,7 +503,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -521,7 +521,7 @@ module dola_portal::lending {
         let nonce = wormhole_adapter_pool::next_vaa_nonce();
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             LENDING_APP_ID,
@@ -536,7 +536,7 @@ module dola_portal::lending {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
