@@ -1013,4 +1013,32 @@ module dola_protocol::lending_logic {
         let liquidity_rate = rates::calculate_liquidity_rate(storage, dola_pool_id, borrow_rate, liquidity);
         storage::update_interest_rate(storage, dola_pool_id, borrow_rate, liquidity_rate);
     }
+
+    #[test_only]
+    public fun update_state_for_testing(
+        storage: &mut Storage,
+        clock: &Clock,
+        dola_pool_id: u16,
+    ) {
+        update_state(
+            storage,
+            clock,
+            dola_pool_id
+        );
+    }
+
+    #[test_only]
+    public fun update_average_liquidity_for_testing(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        clock: &Clock,
+        dola_user_id: u64
+    ) {
+        update_average_liquidity(
+            storage,
+            oracle,
+            clock,
+            dola_user_id
+        );
+    }
 }

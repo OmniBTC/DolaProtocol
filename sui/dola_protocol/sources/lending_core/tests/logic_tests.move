@@ -2205,7 +2205,7 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
-    public fun test_update_average_liquidity() {
+    public fun test_update_average_liquidity_for_testing() {
         let creator = @0xA;
 
         let scenario_val = init_test_scenario(creator);
@@ -2230,7 +2230,7 @@ module dola_protocol::logic_tests {
 
             clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
 
-            logic::update_average_liquidity(&mut storage, &mut oracle, &clock, 0);
+            logic::update_average_liquidity_for_testing(&mut storage, &mut oracle, &clock, 0);
             let average_liquidity_1 = storage::get_user_average_liquidity(&mut storage, 0);
             let health_value_1 = logic::user_health_collateral_value(&mut storage, &mut oracle, 0);
             // [average_liquidity = health_value = collateral_value - loan_value]
@@ -2280,7 +2280,7 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
-    public fun test_update_state_with_low_utilization() {
+    public fun test_update_state_for_testing_with_low_utilization() {
         // 30% utilization
         let creator = @0xA;
 
@@ -2317,7 +2317,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
+                logic::update_state_for_testing(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -2338,7 +2338,7 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
-    public fun test_update_state_with_high_utilization() {
+    public fun test_update_state_for_testing_with_high_utilization() {
         // utilization 80%
         let creator = @0xA;
 
@@ -2375,7 +2375,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
+                logic::update_state_for_testing(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
             };
 
@@ -2431,7 +2431,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
+                logic::update_state_for_testing(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
 
                 let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);
@@ -2489,7 +2489,7 @@ module dola_protocol::logic_tests {
 
             while (day < 365) {
                 clock::increment_for_testing(&mut clock, MILLISECONDS_PER_DAY);
-                logic::update_state(&mut storage, &clock, USDT_POOL_ID);
+                logic::update_state_for_testing(&mut storage, &clock, USDT_POOL_ID);
                 day = day + 1;
 
                 let current_supply = logic::total_otoken_supply(&mut storage, USDT_POOL_ID);
