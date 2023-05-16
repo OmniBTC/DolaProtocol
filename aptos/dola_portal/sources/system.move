@@ -8,9 +8,8 @@ module dola_portal::system {
     use aptos_framework::coin;
     use aptos_framework::event::{Self, EventHandle};
 
-    use dola_protocol::dola_address;
-
     use dola_portal::system_codec;
+    use dola_types::dola_address;
     use omnipool::wormhole_adapter_pool;
     use wormhole::state;
 
@@ -96,7 +95,7 @@ module dola_portal::system {
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             SYSTEM_APP_ID,
@@ -110,7 +109,7 @@ module dola_portal::system {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );
@@ -144,7 +143,7 @@ module dola_portal::system {
         );
         let wormhole_message_fee = coin::withdraw<AptosCoin>(sender, state::get_message_fee());
 
-        wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message(
             sender,
             wormhole_message_fee,
             SYSTEM_APP_ID,
@@ -158,7 +157,7 @@ module dola_portal::system {
         event::emit_event(
             &mut event_handle.relay_event_handle,
             RelayEvent {
-                nonce,
+                nonce: sequence,
                 amount: relay_fee
             }
         );

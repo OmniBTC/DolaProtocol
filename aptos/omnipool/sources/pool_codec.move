@@ -5,8 +5,7 @@
 module omnipool::pool_codec {
     use std::vector;
 
-    use dola_protocol::dola_address::{Self, DolaAddress};
-
+    use dola_types::dola_address::{Self, DolaAddress};
     use serde::serde;
 
     /// Errors
