@@ -1,14 +1,13 @@
 module upgrade_proposal_template::upgrade_proposal {
     use std::option;
 
-    use dola_protocol::genesis;
+    use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::package::{UpgradeTicket, UpgradeReceipt};
     use sui::tx_context::TxContext;
 
-    const PACKAGE_NAME: vector<u8> = b"Serde";
-    const PACKAGE_ID: address = @0x6a7c03a2911856faf91387c55ffba34a1fc1b4707980c06a40a3f53c86bf3d64;
-    const DIGEST: vector<u8> = x"86733bdce774f439ff87b006955a11c6500c793276bffc20d5520f4e4670f72d";
+    /// The digest of the new contract
+    const DIGEST: vector<u8> = x"e707c709d976b3558fa4e10b1894fd3d155acc2ca6d8f1c0d8ed1dcd3fd8ab0e";
     const POLICY: u8 = 0;
 
     /// Errors
@@ -37,20 +36,22 @@ module upgrade_proposal_template::upgrade_proposal {
     public fun vote_proposal_final(
         governance_info: &GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
+        gov_genesis: &mut GovernanceGenesis,
         ctx: &mut TxContext
     ): UpgradeTicket {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
         assert!(option::is_some(&governance_cap), ENOT_FINAL_VOTE);
         let cap = option::extract(&mut governance_cap);
-        let ticket = genesis::authorize_upgrade(&cap, governance_contracts, PACKAGE_ID, POLICY, DIGEST);
+        let ticket = genesis::authorize_upgrade(&cap, gov_genesis, POLICY, DIGEST);
         governance_v1::destroy_governance_cap(cap);
         option::destroy_none(governance_cap);
         ticket
     }
 
     public fun commit_upgrade(
+        gov_genesis: &mut GovernanceGenesis,
         receipt: UpgradeReceipt,
     ) {
-        genesis::commit_upgrade(PACKAGE_ID, receipt)
+        genesis::commit_upgrade(gov_genesis, receipt)
     }
 }

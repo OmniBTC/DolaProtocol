@@ -52,6 +52,14 @@ module dola_protocol::genesis {
     /// ```
     /// struct Version_1_0_1 {}
     /// ```
+    ///
+    /// todo: removed before the merge
+    /// Version 1.0.1 for test
+    struct Version_1_0_1 has store, drop, copy {}
+
+    public fun get_version_1_0_1(): Version_1_0_1 {
+        Version_1_0_1 {}
+    }
 
     public(friend) fun init_genesis(upgrade_cap: UpgradeCap, ctx: &mut TxContext): GovernanceManagerCap {
         let governance_genesis = GovernanceGenesis {
@@ -114,7 +122,7 @@ module dola_protocol::genesis {
     /// Note: Update the function to set the version limit.
     public fun check_version(genesis: &mut GovernanceGenesis) {
         assert!(
-            dynamic_field::exists_with_type<Version, Version_1_0_0>(&mut genesis.id, Version {}),
+            dynamic_field::exists_with_type<Version, Version_1_0_1>(&mut genesis.id, Version {}),
             E_NOT_LATEST_VERISON
         );
     }

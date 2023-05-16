@@ -1,7 +1,7 @@
 module migrate_version_proposal::migrate_proposal {
     use std::option;
 
-    use dola_protocol::genesis::{Self, GovernanceGenesis};
+    use dola_protocol::genesis::{Self, GovernanceGenesis, Version_1_0_0, Version_1_0_1, get_version_1_0_1};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::tx_context::TxContext;
 
@@ -28,17 +28,17 @@ module migrate_version_proposal::migrate_proposal {
         option::destroy_none(governance_cap)
     }
 
-    public fun migrate_version<OldVersion, NewVersion>(
+    public fun migrate_version(
         governance_info: &GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         gov_genesis: &mut GovernanceGenesis,
-        new_version: NewVersion,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
         assert!(option::is_some(&governance_cap), ENOT_FINAL_VOTE);
         let cap = option::extract(&mut governance_cap);
-        genesis::migrate_version<OldVersion, NewVersion>(&cap, gov_genesis, new_version);
+        let new_version = get_version_1_0_1();
+        genesis::migrate_version<Version_1_0_0, Version_1_0_1>(&cap, gov_genesis, new_version);
         governance_v1::destroy_governance_cap(cap);
         option::destroy_none(governance_cap);
     }
