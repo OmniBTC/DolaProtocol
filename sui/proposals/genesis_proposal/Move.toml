@@ -5,17 +5,17 @@ version = "0.0.1"
 [addresses]
 genesis_proposal = "0x0"
 dola_protocol = "0x0"
-wormhole = "0x15e1e51cb59fe1f987b037da12745a278855c8ac73050f4f194466096a0ca05b"
+wormhole = "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
-rev = "3a70c4374090b020b95465787f3220a95d8ab0ba"
+rev = "09b2081498366df936abae26eea4b2d5cafb2788"
 
 [dependencies.Wormhole]
-git = "https://github.com/OmniBTC/wormhole.git"
+git = "https://github.com/wormhole-foundation/wormhole.git"
 subdir = "sui/wormhole"
-rev = "ee0bd18ffca678b3598a0644a643aac0e77effc0"
+rev = "d050ad1d67a5b7da9fb65030aad12ef5d774ccad"
 
 [dependencies.DolaProtocol]
 local = "../../dola_protocol"
