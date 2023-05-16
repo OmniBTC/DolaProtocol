@@ -97,7 +97,8 @@ module dola_protocol::lending_core_storage {
         optimal_utilization: u256
     }
 
-    /// initialize
+    /// === Initial Functions ===
+    
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,
@@ -110,6 +111,8 @@ module dola_protocol::lending_core_storage {
             user_infos: table::new(ctx)
         });
     }
+
+    /// === Governance Functions ===
 
     public fun register_new_reserve(
         _: &GovernanceCap,
@@ -249,18 +252,12 @@ module dola_protocol::lending_core_storage {
         borrow_rate_factors.optimal_utilization = optimal_utilization;
     }
 
-    /// Getter
+    /// === View Functions ===
 
     public fun get_app_id(
         storage: &mut Storage
     ): u16 {
         app_manager::get_app_id(&storage.app_cap)
-    }
-
-    public(friend) fun get_app_cap(
-        storage: &mut Storage
-    ): &AppCap {
-        &storage.app_cap
     }
 
     public fun get_timestamp(sui_clock: &Clock): u256 {
@@ -432,7 +429,13 @@ module dola_protocol::lending_core_storage {
         (borrow_rate_factors.base_borrow_rate, borrow_rate_factors.borrow_rate_slope1, borrow_rate_factors.borrow_rate_slope2, borrow_rate_factors.optimal_utilization)
     }
 
-    /// Setter
+    /// === Friend Functions ===
+
+    public(friend) fun get_app_cap(
+        storage: &mut Storage
+    ): &AppCap {
+        &storage.app_cap
+    }
 
     public(friend) fun mint_otoken_scaled(
         storage: &mut Storage,
@@ -506,22 +509,6 @@ module dola_protocol::lending_core_storage {
         assert!(current_amount >= scaled_amount, EAMOUNT_NOT_ENOUGH);
         table::add(&mut dtoken_scaled.user_state, dola_user_id, current_amount - scaled_amount);
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - scaled_amount;
-    }
-
-    public fun ensure_user_info_exist(
-        storage: &mut Storage,
-        clock: &Clock,
-        dola_user_id: u64,
-    ) {
-        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
-            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
-                average_liquidity: 0,
-                last_average_update: get_timestamp(clock),
-                liquid_assets: vector::empty(),
-                collaterals: vector::empty(),
-                loans: vector::empty()
-            });
-        };
     }
 
     public(friend) fun add_user_liquid_asset(
@@ -649,6 +636,24 @@ module dola_protocol::lending_core_storage {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_rate = new_borrow_rate;
         reserve.current_liquidity_rate = new_liquidity_rate;
+    }
+
+    /// === Helper Functions ===
+
+    public fun ensure_user_info_exist(
+        storage: &mut Storage,
+        clock: &Clock,
+        dola_user_id: u64,
+    ) {
+        if (!table::contains(&mut storage.user_infos, dola_user_id)) {
+            table::add(&mut storage.user_infos, dola_user_id, UserInfo {
+                average_liquidity: 0,
+                last_average_update: get_timestamp(clock),
+                liquid_assets: vector::empty(),
+                collaterals: vector::empty(),
+                loans: vector::empty()
+            });
+        };
     }
 
     #[test_only]

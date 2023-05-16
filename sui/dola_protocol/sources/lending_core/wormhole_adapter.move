@@ -40,6 +40,8 @@ module dola_protocol::lending_core_wormhole_adapter {
         call_type: u8
     }
 
+    /// === Entry Functions ===
+
     public entry fun supply(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,

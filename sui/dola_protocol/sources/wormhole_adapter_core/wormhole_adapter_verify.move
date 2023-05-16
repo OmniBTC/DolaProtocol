@@ -28,6 +28,8 @@ module dola_protocol::wormhole_adapter_verify {
     /// Placeholder for map
     struct Unit has key, store { id: UID, }
 
+    /// === Helper Functions ===
+
     /// Get wormhole emitter address by wormhole chain id
     public fun get_registered_emitter(
         registered_emitters: &VecMap<u16, ExternalAddress>,

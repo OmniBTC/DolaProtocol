@@ -179,6 +179,8 @@ module dola_protocol::governance_v2 {
         });
     }
 
+    /// === Initial Functions ===
+
     /// Activate the current version of governance through governance after v1.
     public fun activate_governance(
         _: &GovernanceCap,
@@ -192,16 +194,13 @@ module dola_protocol::governance_v2 {
         governance_info.active = true;
     }
 
+    /// === Governance Functions ===
+
     /// After the upgrade, all current governance guardians will be invalidated.
     public fun upgrade(_: &GovernanceCap, governance_info: &mut GovernanceInfo): GovernanceManagerCap {
         let governance_manager_cap = option::extract(&mut governance_info.governance_manager_cap);
         governance_info.active = false;
         governance_manager_cap
-    }
-
-    /// Check if the user is a guardians of governance
-    public fun check_guardians(governance_info: &GovernanceInfo, guardians: address) {
-        assert!(vector::contains(&governance_info.guardians, &guardians), EINVALID_GUARDIANS)
     }
 
     /// Add guardians through governance.
@@ -243,6 +242,13 @@ module dola_protocol::governance_v2 {
         governance_info.max_delay = max_delay;
     }
 
+    /// === Helper Functions ===
+
+    /// Check if the user is a guardians of governance
+    public fun check_guardians(governance_info: &GovernanceInfo, guardians: address) {
+        assert!(vector::contains(&governance_info.guardians, &guardians), EINVALID_GUARDIANS)
+    }
+
     public fun ensure_two_thirds(votes_num: u64, favor_num: u64): bool {
         let threshold =
             if (votes_num % 3 == 0) {
@@ -252,6 +258,36 @@ module dola_protocol::governance_v2 {
             };
         favor_num >= threshold
     }
+
+    /// Get proposal state
+    public fun get_proposal_state<T: store + drop, CoinType>(
+        proposal: &mut Proposal<T, CoinType>,
+        ctx: &mut TxContext
+    ): String {
+        let current_epoch = tx_context::epoch(ctx);
+        if (proposal.state == PROPOSAL_SUCCESS) {
+            ascii::string(b"SUCCESS")
+        }else if (proposal.state == PROPOSAL_FAIL) {
+            ascii::string(b"FAIL")
+        }else if (proposal.state == PROPOSAL_CANCEL) {
+            ascii::string(b"CANCEL")
+        }else if (current_epoch >= proposal.expired) {
+            ascii::string(b"EXPIRED")
+        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
+            ascii::string(b"ANNOUNCEMENT_PENDING")
+        }else {
+            ascii::string(b"VOTING_PENDING")
+        }
+    }
+
+    /// Destory governance cap
+    public fun destroy_governance_cap(
+        governance_cap: GovernanceCap
+    ) {
+        genesis::destroy(governance_cap);
+    }
+
+    /// === Entry Functions ===
 
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
@@ -416,33 +452,6 @@ module dola_protocol::governance_v2 {
         });
     }
 
-    /// Get proposal state
-    public fun get_proposal_state<T: store + drop, CoinType>(
-        proposal: &mut Proposal<T, CoinType>,
-        ctx: &mut TxContext
-    ): String {
-        let current_epoch = tx_context::epoch(ctx);
-        if (proposal.state == PROPOSAL_SUCCESS) {
-            ascii::string(b"SUCCESS")
-        }else if (proposal.state == PROPOSAL_FAIL) {
-            ascii::string(b"FAIL")
-        }else if (proposal.state == PROPOSAL_CANCEL) {
-            ascii::string(b"CANCEL")
-        }else if (current_epoch >= proposal.expired) {
-            ascii::string(b"EXPIRED")
-        }else if (proposal.state == PROPOSAL_ANNOUNCEMENT_PENDING) {
-            ascii::string(b"ANNOUNCEMENT_PENDING")
-        }else {
-            ascii::string(b"VOTING_PENDING")
-        }
-    }
-
-    /// Destory governance cap
-    public fun destroy_governance_cap(
-        governance_cap: GovernanceCap
-    ) {
-        genesis::destroy(governance_cap);
-    }
 
     /// After the proposal ends, get back the staked governance tokens
     public entry fun claim<T: store + drop, CoinType>(
@@ -478,6 +487,7 @@ module dola_protocol::governance_v2 {
             abort ENOT_VOTED
         }
     }
+
 
     #[test_only]
     struct DOLA has drop {}

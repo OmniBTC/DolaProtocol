@@ -13,6 +13,8 @@ module dola_protocol::merge_coins {
 
     const U64_MAX: u64 = 18446744073709551615;
 
+    /// === Helper Functions ===
+
     public fun merge_coin<CoinType>(
         coins: vector<Coin<CoinType>>,
         amount: u64,

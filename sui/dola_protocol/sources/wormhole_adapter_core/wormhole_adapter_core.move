@@ -98,6 +98,8 @@ module dola_protocol::wormhole_adapter_core {
         dola_contract: u256
     }
 
+    /// === Governance Functions ===
+
     /// Initializing caps of PoolManager and UserManager through governance
     public fun initialize_cap_with_governance(
         _: &GovernanceCap,
@@ -275,7 +277,7 @@ module dola_protocol::wormhole_adapter_core {
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
     }
 
-    /// Call by application
+    /// === Friend Functions ===
 
     /// Receive message without funding
     public(friend) fun receive_message(

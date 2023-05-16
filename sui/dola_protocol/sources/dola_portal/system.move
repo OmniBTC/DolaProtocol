@@ -46,6 +46,8 @@ module dola_protocol::system_portal {
         nonce
     }
 
+    /// === Entry Functions ===
+
     public entry fun binding(
         genesis: &GovernanceGenesis,
         system_portal: &mut SystemPortal,

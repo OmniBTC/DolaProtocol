@@ -79,6 +79,7 @@ module dola_protocol::user_manager {
         })
     }
 
+    /// === Governance Functions ===
 
     /// Register the chain ids that need to be grouped
     public fun register_dola_chain_id(
@@ -103,6 +104,25 @@ module dola_protocol::user_manager {
         table::remove(chain_id_to_group, dola_chain_id);
     }
 
+    /// === View Functions ===
+
+    /// Get dola_user_id from DolaAddress
+    public fun get_dola_user_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): u64 {
+        let user_address = process_group_id(user_manager_info, user_address);
+        let user_catalog = &user_manager_info.user_address_catalog;
+        assert!(table::contains(&user_catalog.user_address_to_user_id, user_address), ENOT_USER);
+        *table::borrow(&user_catalog.user_address_to_user_id, user_address)
+    }
+
+    /// Get all DolaAddressd from dola_user_id
+    public fun get_user_addresses(user_manager_info: &UserManagerInfo, dola_user_id: u64): vector<DolaAddress> {
+        let user_catalog = &user_manager_info.user_address_catalog;
+        assert!(table::contains(&user_catalog.user_id_to_addresses, dola_user_id), ENOT_USER);
+        *table::borrow(&user_catalog.user_id_to_addresses, dola_user_id)
+    }
+
+    /// === Helper Functions ===
+
     /// Convert DolaAddress to a new DolaAddress based on group_id
     public fun process_group_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): DolaAddress {
         let dola_chain_id = dola_address::get_dola_chain_id(&user_address);
@@ -121,20 +141,7 @@ module dola_protocol::user_manager {
         table::contains(&user_catalog.user_address_to_user_id, user_address)
     }
 
-    /// Get dola_user_id from DolaAddress
-    public fun get_dola_user_id(user_manager_info: &UserManagerInfo, user_address: DolaAddress): u64 {
-        let user_address = process_group_id(user_manager_info, user_address);
-        let user_catalog = &user_manager_info.user_address_catalog;
-        assert!(table::contains(&user_catalog.user_address_to_user_id, user_address), ENOT_USER);
-        *table::borrow(&user_catalog.user_address_to_user_id, user_address)
-    }
-
-    /// Get all DolaAddressd from dola_user_id
-    public fun get_user_addresses(user_manager_info: &UserManagerInfo, dola_user_id: u64): vector<DolaAddress> {
-        let user_catalog = &user_manager_info.user_address_catalog;
-        assert!(table::contains(&user_catalog.user_id_to_addresses, dola_user_id), ENOT_USER);
-        *table::borrow(&user_catalog.user_id_to_addresses, dola_user_id)
-    }
+    /// === Friend Functions ===
 
     /// Register new DolaAddress
     public(friend) fun register_dola_user_id(

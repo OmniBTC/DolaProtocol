@@ -82,6 +82,14 @@ module dola_protocol::lending_portal {
         call_type: u8
     }
 
+    fun get_nonce(lending_portal: &mut LendingPortal): u64 {
+        let nonce = lending_portal.next_nonce;
+        lending_portal.next_nonce = lending_portal.next_nonce + 1;
+        nonce
+    }
+
+    /// === Governance Functions ===
+
     public fun initialize_cap_with_governance(
         _: &GovernanceCap,
         ctx: &mut TxContext
@@ -93,16 +101,15 @@ module dola_protocol::lending_portal {
         })
     }
 
-    fun get_nonce(lending_portal: &mut LendingPortal): u64 {
-        let nonce = lending_portal.next_nonce;
-        lending_portal.next_nonce = lending_portal.next_nonce + 1;
-        nonce
-    }
-
-    public entry fun change_relayer(lending_portal: &mut LendingPortal, relayer: address, ctx: &mut TxContext) {
-        assert!(tx_context::sender(ctx) == lending_portal.relayer, ENOT_RELAYER);
+    public fun set_relayer(
+        _: &GovernanceCap,
+        lending_portal: &mut LendingPortal,
+        relayer: address
+    ) {
         lending_portal.relayer = relayer
     }
+
+    /// === Entry Functions ===
 
     public entry fun as_collateral(
         genesis: &GovernanceGenesis,

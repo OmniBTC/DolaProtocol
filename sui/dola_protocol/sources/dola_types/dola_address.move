@@ -22,6 +22,8 @@ module dola_protocol::dola_address {
         dola_address: vector<u8>
     }
 
+    /// === View Functions ===
+
     public fun get_native_dola_chain_id(): u16 {
         DOLACHAINID
     }
@@ -33,6 +35,8 @@ module dola_protocol::dola_address {
     public fun get_dola_address(dola_address: &DolaAddress): vector<u8> {
         dola_address.dola_address
     }
+
+    /// === Helper Functions ===
 
     public fun update_dola_chain_id(addr: DolaAddress, dola_chain_id: u16): DolaAddress {
         addr.dola_chain_id = dola_chain_id;

@@ -27,6 +27,8 @@ module dola_protocol::system_core_wormhole_adapter {
         call_type: u8
     }
 
+    /// === Entry Functions ===
+
     public entry fun bind_user_address(
         genesis: &GovernanceGenesis,
         user_manager_info: &mut UserManagerInfo,

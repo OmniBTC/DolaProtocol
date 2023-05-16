@@ -85,6 +85,7 @@ module dola_protocol::wormhole_adapter_pool {
         });
     }
 
+    /// === Initial Functions ===
 
     /// Initialize for remote bridge and dola pool
     public entry fun initialize(
@@ -119,7 +120,7 @@ module dola_protocol::wormhole_adapter_pool {
         pool_genesis.is_init = true;
     }
 
-    /// Call by application
+    /// === Friend Functions ===
 
     /// Send deposit by application
     public(friend) fun send_deposit<CoinType>(
@@ -183,6 +184,8 @@ module dola_protocol::wormhole_adapter_pool {
             clock
         );
     }
+
+    /// === Entry Functions ===
 
     /// Receive withdraw
     public entry fun receive_withdraw<CoinType>(
