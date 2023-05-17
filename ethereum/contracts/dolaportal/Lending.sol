@@ -11,7 +11,7 @@ import "../libraries/LibAsset.sol";
 
 contract LendingPortal {
     uint8 public constant LENDING_APP_ID = 1;
-    IWormholeAdapterPool immutable wormholeAdapterPool;
+    IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
     event RelayEvent(uint64 nonce, uint256 amount);

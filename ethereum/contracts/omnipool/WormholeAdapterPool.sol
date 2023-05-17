@@ -197,7 +197,7 @@ contract WormholeAdapterPool {
         );
     }
 
-    function getNonce() public returns (uint64) {
+    function getNonce() external returns (uint64) {
         return dolaPool.getNonce();
     }
 }

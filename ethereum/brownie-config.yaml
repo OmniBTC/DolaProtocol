@@ -1,9 +1,9 @@
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.6.0
 compiler:
   solc:
     remappings:
-      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
-dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.6.0
+      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0"
 dotenv: .env
 networks:
   arbitrum-test:
@@ -16,14 +16,16 @@ networks:
     wormhole_chainid: 6
   bsc-test:
     btc: '0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5'
-    lending_portal: '0xA42203928eAC6a133071a89D46e3989b752C6639'
+    lending_portal: '0x3bDCd3dE2FAaEed58Ae5E9FD5e7c92Bfa938B5d0'
     scan_rpc_url: https://api-testnet.bscscan.com/api
-    system_portal: '0x358563E4cB3A78D0847ACb6e720a320803d8D284'
-    usdc: '0x1b619121e3918489C3214917f23AA18c5DC877fe'
-    usdt: '0xe6606196DfcE08E0B0945BDbfECDF5952F8C2cfC'
+    system_portal: '0xbA6f703c67f60bD90f9DA55c4318809Fae88Cd69'
+    usdc: '0xA8Bc57f9f9Fd81a7eed9b7C2C91e5E299559D0d9'
+    usdt: '0x6d615704201811c5e6575f99d263d8ba1CF0ccE2'
+    wbtc: '0xCB9a33266F16B368FD90D43993F25F475622F01F'
     wormhole: '0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D'
-    wormhole_adapter_pool: '0xf6D384aAd207F3De738aa8dA72191b00b30b0c7A'
+    wormhole_adapter_pool: '0x2145b48c726e07850c6E4E59cD7c10A71f1Cf0b5'
     wormhole_chainid: 4
+    wormhole_finality: 200
   default: development
   development:
     wormhole: '0x0000000000000000000000000000000000000000'
@@ -32,14 +34,14 @@ networks:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
   polygon-test:
+    lending_portal: '0x6C569EF411983c81d077318FB58c23bB6325abC6'
     scan_rpc_url: https://api-testnet.polygonscan.com/api
-    lending_portal: '0x7af29B4F354668B3c178300934e6523D561836eA'
-    system_portal: '0xCF85dB47D90D1B088F9D4fa0E2D010458042c4c8'
-    usdc: '0xef02dAEAEBc700eeD35D080e123357FB9cbaCf84'
-    usdt: '0x3881dE36832967335Db6d2349f2464316E6e1780'
-    wbtc: '0x92DABA79E56FBF9692B52880Df1F101ccCBb096D'
+    system_portal: '0x2b6d25f5EC0BE1F032ff3bECb721f80d3763693f'
+    usdc: '0x4Ac6D3469496dD456621441ee24a4960515CB83a'
+    usdt: '0x3314af958D4A28F8C61Fb2bf6d628d760d85c4C2'
+    wbtc: '0x6736C334141Dc833B154451865C789390f21B49E'
     wormhole: '0x0CBE91CF822c73C2315FB05100C2F714765d5c20'
-    wormhole_adapter_pool: '0x047b56e5582cD0B94FEeB7bD7557E820DE5A1378'
+    wormhole_adapter_pool: '0x0A3ad2Aaf9C561677bf653Bb5583045d7fa40645'
     wormhole_chainid: 5
     wormhole_finality: 200
   polygon-zk-test:

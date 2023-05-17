@@ -1,8 +1,7 @@
-from brownie import Contract
-
 import dola_ethereum_sdk.load as load
+from brownie import Contract
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
-from dola_ethereum_sdk.init import usdt, btc
+from dola_ethereum_sdk.init import usdt
 
 
 def portal_binding(bind_address, dola_chain_id=5, fee=0):
@@ -236,10 +235,9 @@ def monitor_liquidate(dst_chain=4, receiver=None):
 
 
 def main():
-    # monitor_supply(usdt(), 100000, int(1e14))
-    # monitor_supply(usdt(), 100000)
+    monitor_supply(usdt(), 100000)
     # portal_cancel_as_collateral([1, 2])
-    monitor_withdraw(usdt(), 5, get_account().address)
+    # monitor_withdraw(usdt(), 5, get_account().address)
     # portal_binding("0x29555e85402caf438597bed573142f4db50557aa548b29c70aa8c28eb2b3e1e8", 1)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())
