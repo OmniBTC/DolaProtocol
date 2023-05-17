@@ -712,7 +712,7 @@ def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, co
         debt_coins,
         int(deposit_amount),
         int(collateral_chain_id),
-        list(bytes(collateral_pool_address.replace('0x', ''), 'ascii')),
+        list(bytes.fromhex(collateral_pool_address.replace('0x', ''))),
         int(violator_id),
         type_arguments=[debt_coin_type]
     )
@@ -798,7 +798,7 @@ def portal_binding(bind_address, dola_chain_id=0):
         system_portal,
         user_manager_info,
         int(dola_chain_id),
-        list(bytes(bind_address.replace('0x', ''), 'ascii'))
+        list(bytes.fromhex(bind_address))
     )
 
 
@@ -874,7 +874,7 @@ def portal_unbinding(unbind_address, dola_chain_id=0):
         system_portal,
         user_manager_info,
         int(dola_chain_id),
-        list(bytes(unbind_address.replace('0x', ''), 'ascii'))
+        list(bytes.fromhex(unbind_address.replace('0x', '')))
     )
 
 
@@ -1092,16 +1092,11 @@ def export_objects():
 
 
 if __name__ == "__main__":
-    # portal_binding("29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566")
-    # claim_test_coin(usdt())
-    # monitor_supply(usdt())
-    # portal_withdraw_remote(bytes(usdt().removeprefix("0x"), "ascii"), 1e7)
-    # force_claim_test_coin(usdc(), 100000)
-    # monitor_supply(usdc())
-    # monitor_supply(sui())
-    # monitor_borrow(usdt())
-    # monitor_repay(usdt())
-    # check_pool_info()
-    # check_app_storage()
-    # check_user_manager()
+    # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
+    # init.claim_test_coin(usdt())
+    # portal_supply(usdt(), int(1e8))
+
+    # oracle.feed_token_price_by_pyth('USDT/USD')
+    # portal_withdraw_local(usdt(), int(1e8))
+
     export_objects()

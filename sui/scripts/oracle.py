@@ -63,12 +63,14 @@ def feed_token_price_by_pyth(symbol):
     dola_protocol = load.dola_protocol_package()
 
     pyth_fee_amount = get_pyth_fee()
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
 
     result = sui_project.pay_sui([pyth_fee_amount])
     fee_coin = result['objectChanges'][-1]['objectId']
 
     dola_protocol.oracle.feed_token_price_by_pyth(
+        governance_genesis,
         wormhole_state,
         pyth_state(),
         get_price_info_object(symbol),
@@ -104,14 +106,16 @@ def get_token_price(symbol):
 def get_pool_id(symbol):
     if symbol == "BTC/USD":
         return 0
+    elif symbol == "USDT/USD":
+        return 1
+    elif symbol == "USDC/USD":
+        return 2
     elif symbol == "ETH/USD":
         return 3
     elif symbol == "MATIC/USD":
         return 4
-    elif symbol == "APT/USD":
+    elif symbol == "SUI/USD":
         return 5
-    elif symbol == "BNB/USD":
-        return 6
 
 
 def get_market_prices(symbols=("BTC/USDT", "ETH/USDT")):
