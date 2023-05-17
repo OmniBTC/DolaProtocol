@@ -1,56 +1,57 @@
-# exclude SafeMath when calculating test coverage
-# https://eth-brownie.readthedocs.io/en/v1.10.3/config.html#exclude_paths
-dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.6.0
 compiler:
   solc:
     remappings:
-      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0"
-# automatically fetch contract sources from Etherscan
-#autofetch_sources: True
+      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
+dependencies:
+  - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
+  arbitrum-test:
+    scan_rpc_url: https://api-goerli.arbiscan.io/api
+    wormhole: '0xC7A204bDBFe983FCD8d8E61D02b475D4073fF97e'
+    wormhole_chainid: 23
+    wormhole_finality: 200
+  avax-test:
+    wormhole: '0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C'
+    wormhole_chainid: 6
+  bsc-test:
+    btc: '0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5'
+    lending_portal: '0xA42203928eAC6a133071a89D46e3989b752C6639'
+    scan_rpc_url: https://api-testnet.bscscan.com/api
+    system_portal: '0x358563E4cB3A78D0847ACb6e720a320803d8D284'
+    usdc: '0x1b619121e3918489C3214917f23AA18c5DC877fe'
+    usdt: '0xe6606196DfcE08E0B0945BDbfECDF5952F8C2cfC'
+    wormhole: '0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D'
+    wormhole_adapter_pool: '0xf6D384aAd207F3De738aa8dA72191b00b30b0c7A'
+    wormhole_chainid: 4
   default: development
   development:
+    wormhole: '0x0000000000000000000000000000000000000000'
     wormhole_chainid: 0
-    wormhole: "0x0000000000000000000000000000000000000000"
   goerli:
+    wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
-    wormhole: "0x706abc4E45D419950511e474C7B9Ed348A4a716c"
-  bsc-test:
-    scan_rpc_url: "https://api-testnet.bscscan.com/api"
-    wormhole_chainid: 4
-    wormhole: "0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D"
-    wormhole_adapter_pool: '0xf6D384aAd207F3De738aa8dA72191b00b30b0c7A'
-    btc: "0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5"
-    usdt: "0xe6606196DfcE08E0B0945BDbfECDF5952F8C2cfC"
-    usdc: "0x1b619121e3918489C3214917f23AA18c5DC877fe"
-    lending_portal: '0xA42203928eAC6a133071a89D46e3989b752C6639'
-    system_portal: '0x358563E4cB3A78D0847ACb6e720a320803d8D284'
   polygon-test:
-    scan_rpc_url: "https://api-testnet.polygonscan.com/api"
+    scan_rpc_url: https://api-testnet.polygonscan.com/api
+    lending_portal: '0x7af29B4F354668B3c178300934e6523D561836eA'
+    system_portal: '0xCF85dB47D90D1B088F9D4fa0E2D010458042c4c8'
+    usdc: '0xef02dAEAEBc700eeD35D080e123357FB9cbaCf84'
+    usdt: '0x3881dE36832967335Db6d2349f2464316E6e1780'
+    wbtc: '0x92DABA79E56FBF9692B52880Df1F101ccCBb096D'
+    wormhole: '0x0CBE91CF822c73C2315FB05100C2F714765d5c20'
+    wormhole_adapter_pool: '0x047b56e5582cD0B94FEeB7bD7557E820DE5A1378'
     wormhole_chainid: 5
-    wormhole: "0x0CBE91CF822c73C2315FB05100C2F714765d5c20"
-    wormhole_adapter_pool: '0xA98cA91F8e756a3F0F5732dfC2226091f1F55212'
-    btc: "0x9d6b8FeCDe95C9E222a388BdAC04d4b57CcEc27F"
-    usdt: "0x896e955002262debAdB35f8a1F23B79284D0118F"
-    usdc: "0xcFD3A43F83E7A0d932c446A410be93fFf668FEc8"
-    lending_portal: '0x3De3F1D90B99065C552dD1F1848d5178E1dA131c'
-    system_portal: '0xc60868C882A2cBB3c42cf1e18E0D96cA59bf48DA'
+    wormhole_finality: 200
   polygon-zk-test:
-    # Maintenance in progress
-    scan_rpc_url: "https://api-testnet-zkevm.polygonscan.com/api"
-    wormhole_chainid: 7
-    wormhole: "0x0000000000000000000000000000000000000000"
-    wormhole_adapter_pool: '0x5DAa53dd528dbc1d885Ad5E9D963f8368F9A39F0'
-    btc: "0x9895bcd049eE00560599b1458fC2436793E3E011"
-    usdt: "0xABC8849BB0fF39EDF2CfC41d23C307f0FEaE1714"
-    usdc: "0x2bb68D45ce273e5eed8D10193B98a9e33259f2B1"
+    btc: '0x9895bcd049eE00560599b1458fC2436793E3E011'
     lending_portal: '0x4e7AE7De13Db1587EA9B6C306299f66c3991D57e'
+    scan_rpc_url: https://api-testnet-zkevm.polygonscan.com/api
     system_portal: '0x174C29259764719f4c4e6a92dDd817847864f7B1'
-  avax-test:
-    wormhole_chainid: 6
-    wormhole: "0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C"
+    usdc: '0x2bb68D45ce273e5eed8D10193B98a9e33259f2B1'
+    usdt: '0xABC8849BB0fF39EDF2CfC41d23C307f0FEaE1714'
+    wormhole: '0x0000000000000000000000000000000000000000'
+    wormhole_adapter_pool: '0x5DAa53dd528dbc1d885Ad5E9D963f8368F9A39F0'
+    wormhole_chainid: 7
 wallets:
   from_key: ${PRIVATE_KEY}
   from_mnemonic: ${MNEMONIC}
