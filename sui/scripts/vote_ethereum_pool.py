@@ -104,6 +104,7 @@ if __name__ == "__main__":
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
 
+    # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
     dola_ethereum_sdk.set_ethereum_network("polygon-test")
     main(4, b"MATIC")

@@ -13,7 +13,6 @@ networks:
     node_url: http://127.0.0.1:9000
   sui-mainnet:
     node_url: https://fullnode.mainnet.sui.io:443
-    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
     objects:
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
@@ -21,31 +20,31 @@ networks:
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pyth_service_url: https://xc-mainnet.pyth.network
+    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
-    wormhole_url: https://wormhole-v2-testnet-api.certus.one
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
-      CoreState: '0x36789b20729a73c091392807c7f510513bf54393fcb3107260fd00a25be108a1'
-      Faucet: '0x7b85f2b52c592d50ed9a427c36d8373d13788106789b1d15e4ffa6fa73ab3443'
-      GovernanceGenesis: '0x87f634b42183b918d5052921d863b80e009c7cf4ca8e79c5056ef375b3ed9d3d'
-      GovernanceInfo: '0x44a8eab292a4399a3b1577d3f6e80095761c78887a6617f840cec0ad5301025f'
-      LendingPortal: '0xe87f7c4e7a4e70dea675d67dd8e0afb73bd98dcb0310552e5a42a4042f559966'
-      Pool<SUI>: '0x8b0db2e5527ad5c5dd7bca81b56d81e9d8ae002776e0dc5b5e3814e26c983e26'
-      Pool<USDC>: '0x117fa1892ffcaf96b57fa9b850885429ea5d3b59df30cb9a230990a11997aae1'
-      Pool<USDT>: '0x415eebd96ad7abe1048daed32b90f8420747f403e33a2042deaec9b57fdd8927'
-      Pool<WBTC>: '0xa76d0c3eed7fef79756bdc8d8c1024c655b52f799c6ec46242d6b2fb7c1ff781'
-      PoolManagerInfo: '0xa0104b911bd253f6b683fa40fd50eeb0060cf0a392bcb47879b89a45f0b53a0d'
-      PoolState: '0xd4626f3fce264ea7fba1f45399c3ee835ef9d33c9b8fc174be1c4307efdbd75c'
-      PriceOracle: '0x9c17b5f10dd9f18cc375d70d66ab669a83702ba2e5a834f25cbaa74c367839d5'
+      CoreState: '0x09031ef5f90321bd3aa77b9f3effd9d01913b37b6ca8af791f694bd3cf032e3f'
+      Faucet: '0x836330934aa3a543a649fd2cd9d20bac21b1f87745c053f18dcf597dc9a096a8'
+      GovernanceGenesis: '0x944360bbf8da705ef1befd559fc37d327232f7801c5707744fc9afe86446517b'
+      GovernanceInfo: '0x9125793d244fe119debba509bbf5086579c28e54db06c9cc35fab75136511136'
+      LendingPortal: '0x0fafe7d14024a1d3bc826e0dc3c72fed2a280e71fe8dc3fd88a6140faa6301b2'
+      LendingStorage: '0xa832c3023b61580e8d23f9a064949fc3b4829cec1fde0c4ae30f9904e20b3458'
+      Pool<SUI>: '0x3d697cdf2d07337cf31e51a252405539305ea633e817f90cd12c5819a5909625'
+      Pool<USDC>: '0xd52d21ec53fd486227e717caff9151a908ede1c00e2dec01a7ce5745acbc72eb'
+      Pool<USDT>: '0x54f98e601144af33c855554bb441068cc2a34f0461c3884938d734e21409c54a'
+      Pool<WBTC>: '0xe78827977187825dded0fdf41cfafa6fb9f904474ab75ccf834689d6b6cda836'
+      PoolManagerInfo: '0xc86c7b9853c1b474ab9e04ad9045fdc5b1cf21817bf861b47351f7bcbe59e541'
+      PoolState: '0x05bc7c0e62ab8c13d2371ecf696007c4953921e9b0c036800d033026551d2b41'
+      PriceOracle: '0x1d773cea705dfd85e96841983075cd8a52b84c4bb5cf762f20d3b6da241f99d3'
       PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
       SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-      LendingStorage: '0xc75f67b82fce40d44ef043b693e2b8b118316d7dfeea78be4d1b38a837b197e9'
-      SystemPortal: '0x50c49adb55126ee8afaf4e1f426154c8002adc8b33bec0b852d5194913708d08'
-      USDC: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::USDC
-      USDT: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::USDT
-      UserManagerInfo: '0x150eb3d512ddc015fe83df9cf468653a5fc20fd7e1be52679311391c8a72e1cd'
-      WBTC: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::WBTC
+      SystemPortal: '0xdc14c22adae5e9736889405b85ecc4b7b8c4d1d9584284eae6c634f3745ad7cf'
+      USDC: 5a775ec74b661346b17fdde9330e54caf77a1967f1290eaa82a7c3f5b359a8d2::coins::USDC
+      USDT: 5a775ec74b661346b17fdde9330e54caf77a1967f1290eaa82a7c3f5b359a8d2::coins::USDT
+      UserManagerInfo: '0x5ca7a1cc433397f56a460f6fa7c870fa6ff846abb0bb6f346940b3822d95c1dd'
+      WBTC: 5a775ec74b661346b17fdde9330e54caf77a1967f1290eaa82a7c3f5b359a8d2::coins::WBTC
       WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
     oracle:
       feed_id:
@@ -58,13 +57,14 @@ networks:
         USDC/USD: '0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722'
         USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
     packages:
-      dola_protocol: '0x75d94202ded8a0521380b561886a94ae3d73091ca6a704b1cc2016ac041956d6'
-      external_interfaces: '0x07c5738bbb26523b03e11683d9c14233f9a091ca2af5e365184bccb24ebb2325'
-      genesis_proposal: '0x49e90191b13433dbfcc4c51f8237d368e20f270dbd3cdf269aa5cd82548054ba'
+      dola_protocol: '0xe6b1d826eeb65335d25f1be23b203f00b2dc8fc4c187e7e145a4a58f189d0b6b'
+      external_interfaces: '0x52d2c57186c469b4eebf164e6e8e60546bd04128e734571dbe8d00ee7416724c'
+      genesis_proposal: '0xa5505b6a2dd104ed4009fbe208edde0f4075366b6aba3125db77ab134540f5e1'
       pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
-      test_coins: '0xe2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e'
+      test_coins: '0x5a775ec74b661346b17fdde9330e54caf77a1967f1290eaa82a7c3f5b359a8d2'
       wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
     pyth_service_url: https://xc-testnet.pyth.network
+    wormhole_url: https://wormhole-v2-testnet-api.certus.one
 sui_wallets:
   from_mnemonic:
     Oracle: ${ORACLE_MNEMONIC}

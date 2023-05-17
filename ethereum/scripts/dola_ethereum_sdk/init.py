@@ -6,6 +6,7 @@ import requests
 from brownie import (
     network,
     config, )
+
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -93,11 +94,8 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
     }
 
 
-def relay_events(start_block=0, end_block=99999999, limit=10):
-    lending_portal = load.lending_portal_package()
-    system_portal = load.system_portal_package()
+def relay_events(lending_portal, system_portal, start_block=0, end_block=99999999, limit=10, net="polygon-test"):
     topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
-    net = network.show_active()
     api_key = get_scan_api_key(net)
 
     base_url = scan_rpc_url()
