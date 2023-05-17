@@ -23,9 +23,27 @@ networks:
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
     objects:
-      GovernanceGenesis: '0xd6f722f9816b99f8055a57bc2574b1aad466f7e9abb04c5e66bdae6ae9e83426'
-      GovernanceInfo: '0x6bc874b7cee29d50965846c1918cb953432b2bc39030dc72d3c21fadf89a0aae'
+      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
+      CoreState: '0x36789b20729a73c091392807c7f510513bf54393fcb3107260fd00a25be108a1'
+      Faucet: '0x7b85f2b52c592d50ed9a427c36d8373d13788106789b1d15e4ffa6fa73ab3443'
+      GovernanceGenesis: '0x87f634b42183b918d5052921d863b80e009c7cf4ca8e79c5056ef375b3ed9d3d'
+      GovernanceInfo: '0x44a8eab292a4399a3b1577d3f6e80095761c78887a6617f840cec0ad5301025f'
+      LendingPortal: '0xe87f7c4e7a4e70dea675d67dd8e0afb73bd98dcb0310552e5a42a4042f559966'
+      Pool<SUI>: '0x8b0db2e5527ad5c5dd7bca81b56d81e9d8ae002776e0dc5b5e3814e26c983e26'
+      Pool<USDC>: '0x117fa1892ffcaf96b57fa9b850885429ea5d3b59df30cb9a230990a11997aae1'
+      Pool<USDT>: '0x415eebd96ad7abe1048daed32b90f8420747f403e33a2042deaec9b57fdd8927'
+      Pool<WBTC>: '0xa76d0c3eed7fef79756bdc8d8c1024c655b52f799c6ec46242d6b2fb7c1ff781'
+      PoolManagerInfo: '0xa0104b911bd253f6b683fa40fd50eeb0060cf0a392bcb47879b89a45f0b53a0d'
+      PoolState: '0xd4626f3fce264ea7fba1f45399c3ee835ef9d33c9b8fc174be1c4307efdbd75c'
+      PriceOracle: '0x9c17b5f10dd9f18cc375d70d66ab669a83702ba2e5a834f25cbaa74c367839d5'
       PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
+      SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+      Storage: '0xc75f67b82fce40d44ef043b693e2b8b118316d7dfeea78be4d1b38a837b197e9'
+      SystemPortal: '0x50c49adb55126ee8afaf4e1f426154c8002adc8b33bec0b852d5194913708d08'
+      USDC: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::USDC
+      USDT: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::USDT
+      UserManagerInfo: '0x150eb3d512ddc015fe83df9cf468653a5fc20fd7e1be52679311391c8a72e1cd'
+      WBTC: e2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e::coins::WBTC
       WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
     oracle:
       feed_id:
@@ -44,11 +62,6 @@ networks:
       pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
       test_coins: '0xe2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e'
       wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
-    tokens:
-      btc: ""
-      usdt: ""
-      usdc: ""
-      sui: "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
     pyth_service_url: https://xc-testnet.pyth.network
 sui_wallets:
   from_mnemonic:

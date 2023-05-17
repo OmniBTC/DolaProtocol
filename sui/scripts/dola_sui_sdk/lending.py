@@ -1,10 +1,13 @@
+from pathlib import Path
 from pprint import pprint
 
-from dola_sui_sdk import load
-from dola_sui_sdk.init import btc, usdt, usdc, sui, clock
-from dola_sui_sdk.init import coin, pool
-from dola_sui_sdk.load import sui_project
+import yaml
 from sui_brownie import SuiObject
+
+from dola_sui_sdk import load
+from dola_sui_sdk.init import coin, pool
+from dola_sui_sdk.init import wbtc, usdt, usdc, sui, clock
+from dola_sui_sdk.load import sui_project
 
 U64_MAX = 18446744073709551615
 
@@ -914,42 +917,30 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
 
 def export_objects():
     # Package id
-    dola_portal = load.dola_portal_package()
+    dola_protocol = load.dola_protocol_package()
     external_interfaces = load.external_interfaces_package()
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
-    lending_core = load.lending_core_package()
-    system_core = load.system_core_package()
     test_coins = load.test_coins_package()
-    print(f"dola_portal={dola_portal.package_id}")
+    print(f"dola_protocol={dola_protocol.package_id}")
     print(f"external_interfaces={external_interfaces.package_id}")
-    print(f"wormhole_adapter_core={wormhole_adapter_core.package_id}")
-    print(f"lending_core={lending_core.package_id}")
-    print(f"system_core={system_core.package_id}")
     print(f"test_coins={test_coins.package_id}")
 
-    # objects
-    wormhole = load.wormhole_package()
-    oracle = load.oracle_package()
-    lending_core = load.lending_core_package()
-    pool_manager = load.pool_manager_package()
-    user_manager = load.user_manager_package()
-    omnipool = load.omnipool_package()
-
     data = {
-        "PoolApproval": omnipool.dola_pool.PoolApproval[-1],
-        "PoolState": omnipool.wormhole_adapter_pool.PoolState[-1],
-        "CoreState": wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
-        "WormholeState": wormhole.state.State[-1],
-        "LendingPortal": dola_portal.lending.LendingPortal[-1],
-        "SystemPortal": dola_portal.system.SystemPortal[-1],
-        "PriceOracle": oracle.oracle.PriceOracle[-1],
-        "Storage": lending_core.storage.Storage[-1],
+        "GovernanceGenesis": dola_protocol.genesis.GovernanceGenesis[-1],
+        "GovernanceInfo": dola_protocol.governance_v1.GovernanceInfo[-1],
+        "PoolState": dola_protocol.wormhole_adapter_pool.PoolState[-1],
+        "CoreState": dola_protocol.wormhole_adapter_core.CoreState[-1],
+        "WormholeState": sui_project.network_config['objects']['WormholeState'],
+        "LendingPortal": dola_protocol.lending_portal.LendingPortal[-1],
+        "SystemPortal": dola_protocol.system_portal.SystemPortal[-1],
+        "PriceOracle": dola_protocol.oracle.PriceOracle[-1],
+        "Storage": dola_protocol.lending_core_storage.Storage[-1],
         "Faucet": test_coins.faucet.Faucet[-1],
-        "PoolManagerInfo": pool_manager.pool_manager.PoolManagerInfo[-1],
-        "UserManagerInfo": user_manager.user_manager.UserManagerInfo[-1],
+        "PoolManagerInfo": dola_protocol.pool_manager.PoolManagerInfo[-1],
+        "UserManagerInfo": dola_protocol.user_manager.UserManagerInfo[-1],
         "Clock": clock(),
     }
-    coin_types = [btc(), usdt(), usdc(), "0x2::sui::SUI"]
+
+    coin_types = [wbtc(), usdt(), usdc(), "0x2::sui::SUI"]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
@@ -957,7 +948,19 @@ def export_objects():
         data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
 
     data['SUI'] = sui().removeprefix("0x")
+
     pprint(data)
+
+    path = Path(__file__).parent.parent.parent.joinpath("brownie-config.yaml")
+    with open(path, "r") as f:
+        config = yaml.safe_load(f)
+
+    current_network = sui_project.network
+    for key in data:
+        config["networks"][current_network]["objects"][key] = data[key]
+
+    with open(path, "w") as f:
+        yaml.safe_dump(config, f)
 
 
 def monitor_supply(coin):
