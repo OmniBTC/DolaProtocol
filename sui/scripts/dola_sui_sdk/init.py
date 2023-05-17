@@ -606,6 +606,11 @@ def pool(coin_type):
     return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<{coin_type}>"
 
 
+def pool_id(coin_type):
+    coin_name = coin_type.split("::")[-1]
+    return sui_project.network_config['objects'][f"Pool<{coin_name}>"]
+
+
 def proposal():
     return f"{sui_project.DolaProtocol[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
            f"::genesis_proposal::Certificate>"
