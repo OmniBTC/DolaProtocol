@@ -55,8 +55,9 @@ module dola_protocol::lending_portal {
     /// Relay Event
     struct RelayEvent has drop, copy {
         // Wormhole sequence
-        nonce: u64,
-        amount: u64,
+        sequence: u64,
+        // Relay fee amount
+        fee_amount: u64,
         // Confirm that nonce is in the pool or core
         call_type: u8
     }
@@ -380,8 +381,8 @@ module dola_protocol::lending_portal {
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce: sequence,
-            amount: relay_fee_amount,
+            sequence,
+            fee_amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });
 
@@ -538,8 +539,8 @@ module dola_protocol::lending_portal {
 
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
-            nonce: sequence,
-            amount: relay_fee_amount,
+            sequence,
+            fee_amount: relay_fee_amount,
             call_type: lending_codec::get_borrow_type()
         });
 

@@ -2,11 +2,12 @@ from pathlib import Path
 from pprint import pprint
 
 import yaml
+from sui_brownie import SuiObject
+
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.init import wbtc, usdt, usdc, sui, clock
 from dola_sui_sdk.load import sui_project
-from sui_brownie import SuiObject
 
 U64_MAX = 18446744073709551615
 
@@ -300,7 +301,7 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     )
 
 
-def pool_withdraw(vaa, coin_type):
+def pool_withdraw(vaa, coin_type, relay_fee=0):
     """
     public entry fun receive_withdraw<CoinType>(
         genesis: &GovernanceGenesis,
@@ -321,8 +322,7 @@ def pool_withdraw(vaa, coin_type):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     pool_state = sui_project.network_config['objects']['PoolState']
 
-    account_address = omnipool.account.account_address
-    dola_protocol.wormhole_adapter_pool.receive_withdraw(
+    result = dola_protocol.wormhole_adapter_pool.receive_withdraw.simulate(
         genesis,
         wormhole_state,
         pool_state,
@@ -331,6 +331,22 @@ def pool_withdraw(vaa, coin_type):
         init.clock(),
         type_arguments=[coin_type]
     )
+
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
+
+    executed = False
+    if relay_fee > gas:
+        executed = True
+        dola_protocol.wormhole_adapter_pool.receive_withdraw(
+            genesis,
+            wormhole_state,
+            pool_state,
+            init.pool_id(coin_type),
+            vaa,
+            init.clock(),
+            type_arguments=[coin_type]
+        )
+    return gas, executed
 
 
 def core_withdraw(vaa, relay_fee=0):

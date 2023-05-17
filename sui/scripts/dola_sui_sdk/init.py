@@ -2,9 +2,10 @@ import functools
 from typing import List
 
 import requests
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -647,9 +648,9 @@ def lending_portal_contract_id():
 
 
 def query_relay_event(limit=5):
-    dola_portal = load.dola_portal_package()
-    return dola_portal.query_events(
-        {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']
+    dola_protocol = load.dola_protocol_package()
+    return dola_protocol.query_events(
+        {"MoveEvent": f"{dola_protocol.package_id}::lending_portal::RelayEvent"}, limit=limit)['data']
 
 
 @functools.lru_cache()

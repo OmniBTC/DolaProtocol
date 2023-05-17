@@ -34,8 +34,8 @@ networks:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
   polygon-test:
-    lending_portal: '0x6C569EF411983c81d077318FB58c23bB6325abC6'
     scan_rpc_url: https://api-testnet.polygonscan.com/api
+    lending_portal: '0x6C569EF411983c81d077318FB58c23bB6325abC6'
     system_portal: '0x2b6d25f5EC0BE1F032ff3bECb721f80d3763693f'
     usdc: '0x4Ac6D3469496dD456621441ee24a4960515CB83a'
     usdt: '0x3314af958D4A28F8C61Fb2bf6d628d760d85c4C2'
