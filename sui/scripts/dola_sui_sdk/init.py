@@ -578,8 +578,8 @@ def eth():
     return f"{sui_project.TestCoins[-1]}::coins::ETH"
 
 
-def btc():
-    return f"{sui_project.TestCoins[-1]}::coins::BTC"
+def wbtc():
+    return f"{sui_project.TestCoins[-1]}::coins::WBTC"
 
 
 def bnb():
@@ -699,7 +699,7 @@ def batch_execute_proposal():
                 [Argument("NestedResult", NestedResult(U16(1), U16(0))),
                  Argument("NestedResult", NestedResult(U16(1), U16(1))),
                  Argument("Input", U16(3))],
-                [btc()]
+                [wbtc()]
             ],  # 2. create_omnipool btc
             [
                 genesis_proposal.genesis_proposal.create_omnipool,
@@ -734,37 +734,23 @@ def batch_execute_proposal():
 
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
-    btc_pool_params = [list(bytes(btc().replace("0x", ""), "ascii")), 0, list(b"BTC"), 0, 1]
+    wbtc_pool_params = [list(bytes(wbtc().replace("0x", ""), "ascii")), 0, list(b"WBTC"), 0, 1]
     usdt_pool_params = [list(bytes(usdt().replace("0x", ""), "ascii")), 0, list(b"USDT"), 1, 1]
     usdc_pool_params = [list(bytes(usdc().replace("0x", ""), "ascii")), 0, list(b"USDC"), 2, 1]
-    sui_pool_params = [list(bytes(sui().replace("0x", ""), "ascii")), 0, list(b"SUI"), 7, 1]
+    sui_pool_params = [list(bytes(sui().replace("0x", ""), "ascii")), 0, list(b"SUI"), 5, 1]
 
     create_proposal()
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
+    ]
+
+    pool_params = wbtc_pool_params + usdt_pool_params + usdc_pool_params + sui_pool_params
+
     sui_project.batch_transaction(
-        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
-                       btc_pool_params[0],  # 3
-                       btc_pool_params[1],  # 4
-                       btc_pool_params[2],  # 5
-                       btc_pool_params[3],  # 6
-                       btc_pool_params[4],  # 7
-                       usdt_pool_params[0],  # 8
-                       usdt_pool_params[1],  # 9
-                       usdt_pool_params[2],  # 10
-                       usdt_pool_params[3],  # 11
-                       usdt_pool_params[4],  # 12
-                       usdc_pool_params[0],  # 13
-                       usdc_pool_params[1],  # 14
-                       usdc_pool_params[2],  # 15
-                       usdc_pool_params[3],  # 16
-                       usdc_pool_params[4],  # 17
-                       sui_pool_params[0],  # 18
-                       sui_pool_params[1],  # 19
-                       sui_pool_params[2],  # 20
-                       sui_pool_params[3],  # 21
-                       sui_pool_params[4],  # 22
-                       ],
+        actual_params=basic_params + pool_params,
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
              [Argument("Input", U16(0)), Argument("Input", U16(1))],
@@ -828,7 +814,7 @@ def batch_execute_proposal():
 
     # Init chain group id param
     chain_group_id = 2
-    group_chain_ids = [4, 5, 7]
+    group_chain_ids = [5, 23]
 
     create_proposal()
     sui_project.batch_transaction(
@@ -883,16 +869,16 @@ def batch_execute_proposal():
     # base_borrow_rate, borrow_rate_slope1, borrow_rate_slope2, optimal_utilization]
     create_proposal()
 
-    btc_reserve_params = [0, False, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
+    wbtc_reserve_params = [0, False, False, 0,
+                           int(0.1 * RAY),
+                           0,
+                           0,
+                           int(0.8 * RAY),
+                           int(1.1 * RAY),
+                           int(0.02 * RAY),
+                           int(0.07 * RAY),
+                           int(3 * RAY),
+                           int(0.45 * RAY)]
     usdt_reserve_params = [1, False, True, 0,
                            int(0.1 * RAY),
                            0,
@@ -933,27 +919,7 @@ def batch_execute_proposal():
                             int(0.07 * RAY),
                             int(3 * RAY),
                             int(0.45 * RAY)]
-    apt_reserve_params = [5, True, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
-    bnb_reserve_params = [6, False, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
-    sui_reserve_param = [7, False, False, 0,
+    sui_reserve_param = [5, True, False, 0,
                          int(0.1 * RAY),
                          0,
                          0,
@@ -970,7 +936,7 @@ def batch_execute_proposal():
         dola_protocol.lending_core_storage.Storage[-1],  # 2
         clock()  # 3
     ]
-    reserve_params = btc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + apt_reserve_params + bnb_reserve_params + sui_reserve_param
+    reserve_params = wbtc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + sui_reserve_param
 
     sui_project.batch_transaction(
         actual_params=base_params + reserve_params,
@@ -1001,7 +967,7 @@ def batch_execute_proposal():
                  Argument("Input", U16(16)),
                  ],
                 []
-            ],  # 1. register_new_reserve 0 btc
+            ],  # 1. register_new_reserve 0 wbtc
             [
                 genesis_proposal.genesis_proposal.register_new_reserve,
                 [Argument("NestedResult", NestedResult(U16(1), U16(0))),
@@ -1111,55 +1077,11 @@ def batch_execute_proposal():
                  Argument("Input", U16(81)),
                  ],
                 []
-            ],  # 6. register_new_reserve 5 apt
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(6), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(82)),
-                 Argument("Input", U16(83)),
-                 Argument("Input", U16(84)),
-                 Argument("Input", U16(85)),
-                 Argument("Input", U16(86)),
-                 Argument("Input", U16(87)),
-                 Argument("Input", U16(88)),
-                 Argument("Input", U16(89)),
-                 Argument("Input", U16(90)),
-                 Argument("Input", U16(91)),
-                 Argument("Input", U16(92)),
-                 Argument("Input", U16(93)),
-                 Argument("Input", U16(94)),
-                 ],
-                []
-            ],  # 7. register_new_reserve 6 bnb
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(7), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(7), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(95)),
-                 Argument("Input", U16(96)),
-                 Argument("Input", U16(97)),
-                 Argument("Input", U16(98)),
-                 Argument("Input", U16(99)),
-                 Argument("Input", U16(100)),
-                 Argument("Input", U16(101)),
-                 Argument("Input", U16(102)),
-                 Argument("Input", U16(103)),
-                 Argument("Input", U16(104)),
-                 Argument("Input", U16(105)),
-                 Argument("Input", U16(106)),
-                 Argument("Input", U16(107)),
-                 ],
-                []
-            ],  # 8. register_new_reserve 7 sui
+            ],  # 6. register_new_reserve 5 sui
             [
                 genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(8), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(8), U16(1)))],
+                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
                 []
             ]
         ]
@@ -1195,48 +1117,22 @@ def batch_init_oracle():
     eth_token_param = [3, eth_price, eth_price_decimal]
     (matic_price, matic_price_decimal) = get_price("MATIC/USD")
     matic_token_param = [4, matic_price, matic_price_decimal]
-    (apt_price, apt_price_decimal) = get_price("APT/USD")
-    apt_token_param = [5, apt_price, apt_price_decimal]
-    (bnb_price, bnb_price_decimal) = get_price("BNB/USD")
-    bnb_token_param = [6, bnb_price, bnb_price_decimal]
     (sui_price, sui_price_decimal) = get_price("SUI/USD")
-    sui_token_param = [7, sui_price, sui_price_decimal]
+    sui_token_param = [5, sui_price, sui_price_decimal]
 
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        dola_protocol.oracle.PriceOracle[-1],  # 1
+        clock(),  # 2
+        sui_project[SuiObject.from_type(proposal())][-1],  # 3
+    ]
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + eth_token_param + matic_token_param + sui_token_param
     sui_project.batch_transaction(
-        actual_params=[
-            dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-            dola_protocol.oracle.PriceOracle[-1],  # 1
-            btc_token_param[0],  # 2
-            btc_token_param[1],  # 3
-            btc_token_param[2],  # 4
-            usdt_token_param[0],  # 5
-            usdt_token_param[1],  # 6
-            usdt_token_param[2],  # 7
-            usdc_token_param[0],  # 8
-            usdc_token_param[1],  # 9
-            usdc_token_param[2],  # 10
-            eth_token_param[0],  # 11
-            eth_token_param[1],  # 12
-            eth_token_param[2],  # 13
-            matic_token_param[0],  # 14
-            matic_token_param[1],  # 15
-            matic_token_param[2],  # 16
-            apt_token_param[0],  # 17
-            apt_token_param[1],  # 18
-            apt_token_param[2],  # 19
-            bnb_token_param[0],  # 20
-            bnb_token_param[1],  # 21
-            bnb_token_param[2],  # 22
-            sui_token_param[0],  # 23
-            sui_token_param[1],  # 24
-            sui_token_param[2],  # 25
-            clock(),  # 26
-            sui_project[SuiObject.from_type(proposal())][-1],  # 27
-        ],
+        actual_params=basic_params + token_params,
         transactions=[
             [
                 genesis_proposal.genesis_proposal.vote_proposal_final,
-                [Argument("Input", U16(0)), Argument("Input", U16(27))],
+                [Argument("Input", U16(0)), Argument("Input", U16(3))],
                 []
             ],
             [
@@ -1245,10 +1141,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(0), U16(0))),
                     Argument("NestedResult", NestedResult(U16(0), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                    Argument("Input", U16(3)),
                     Argument("Input", U16(4)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1258,10 +1154,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(1), U16(0))),
                     Argument("NestedResult", NestedResult(U16(1), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(5)),
-                    Argument("Input", U16(6)),
                     Argument("Input", U16(7)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(8)),
+                    Argument("Input", U16(9)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1271,10 +1167,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(2), U16(0))),
                     Argument("NestedResult", NestedResult(U16(2), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(8)),
-                    Argument("Input", U16(9)),
                     Argument("Input", U16(10)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(11)),
+                    Argument("Input", U16(12)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1284,10 +1180,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(3), U16(0))),
                     Argument("NestedResult", NestedResult(U16(3), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(11)),
-                    Argument("Input", U16(12)),
                     Argument("Input", U16(13)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(14)),
+                    Argument("Input", U16(15)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1297,10 +1193,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(4), U16(0))),
                     Argument("NestedResult", NestedResult(U16(4), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(14)),
-                    Argument("Input", U16(15)),
                     Argument("Input", U16(16)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(17)),
+                    Argument("Input", U16(18)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1310,43 +1206,17 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(5), U16(0))),
                     Argument("NestedResult", NestedResult(U16(5), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(17)),
-                    Argument("Input", U16(18)),
                     Argument("Input", U16(19)),
-                    Argument("Input", U16(26))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(6), U16(1))),
-                    Argument("Input", U16(1)),
                     Argument("Input", U16(20)),
                     Argument("Input", U16(21)),
-                    Argument("Input", U16(22)),
-                    Argument("Input", U16(26))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(7), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(7), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(23)),
-                    Argument("Input", U16(24)),
-                    Argument("Input", U16(25)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
             [
                 genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(8), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(8), U16(1)))],
+                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
                 []
             ]
         ]

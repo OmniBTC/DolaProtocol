@@ -23,10 +23,10 @@ networks:
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
     objects:
-      PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
-      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
       GovernanceGenesis: '0xd6f722f9816b99f8055a57bc2574b1aad466f7e9abb04c5e66bdae6ae9e83426'
       GovernanceInfo: '0x6bc874b7cee29d50965846c1918cb953432b2bc39030dc72d3c21fadf89a0aae'
+      PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
+      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
     oracle:
       feed_id:
         APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'
@@ -38,11 +38,17 @@ networks:
         USDC/USD: '0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722'
         USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
     packages:
-      dola_protocol: '0x85cb3a28a5807a0f6ce462273de1e5c35dca33e6c2ad03102361891ae6ab28ea'
-      genesis_proposal: '0x2b94ede6f116ee6f546a0963c5d75160ec903ab20f179a9c92e3bffac17b659b'
+      dola_protocol: '0x75d94202ded8a0521380b561886a94ae3d73091ca6a704b1cc2016ac041956d6'
+      external_interfaces: '0x07c5738bbb26523b03e11683d9c14233f9a091ca2af5e365184bccb24ebb2325'
+      genesis_proposal: '0x49e90191b13433dbfcc4c51f8237d368e20f270dbd3cdf269aa5cd82548054ba'
       pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
-      test_coins: '0x700f7fb7e1ed293d34ee36b34e918ec1d262353108d87c7c5369a3ec819ebf5d'
+      test_coins: '0xe2a1bf6e43b4302d8242201eff0347141871ee1fc9ffaa046a3f82161e6e614e'
       wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+    tokens:
+      btc: ""
+      usdt: ""
+      usdc: ""
+      sui: "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
     pyth_service_url: https://xc-testnet.pyth.network
 sui_wallets:
   from_mnemonic:

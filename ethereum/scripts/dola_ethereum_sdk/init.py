@@ -6,7 +6,6 @@ import requests
 from brownie import (
     network,
     config, )
-
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -31,8 +30,8 @@ def usdt():
     return config["networks"][network.show_active()]["usdt"]
 
 
-def btc():
-    return config["networks"][network.show_active()]["btc"]
+def wbtc():
+    return config["networks"][network.show_active()]["wbtc"]
 
 
 def usdc():
