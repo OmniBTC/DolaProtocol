@@ -6,7 +6,6 @@ import requests
 from brownie import (
     network,
     config, )
-
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -100,8 +99,8 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
 
     base_url = scan_rpc_url()
 
-    system_rpc_params = build_rpc_params(system_portal.address, topic, api_key, start_block, end_block, limit)
-    lending_rpc_params = build_rpc_params(lending_portal.address, topic, api_key, start_block, end_block, limit)
+    system_rpc_params = build_rpc_params(system_portal, topic, api_key, start_block, end_block, limit)
+    lending_rpc_params = build_rpc_params(lending_portal, topic, api_key, start_block, end_block, limit)
     headers = {}
     if "bsc" in net:
         headers = {
@@ -145,8 +144,8 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
 
 
 def decode_relay_events(data):
-    events = [d['data'] for d in data['result']]
-    return {int(log[2:66], 16): int(log[66:], 16) for log in events}
+    events = {int(d['blockNumber'], 16): d['data'] for d in data['result']}
+    return {block: [int(events[block][2:66], 16), int(events[block][66:], 16)] for block in events}
 
 
 def current_block_number():

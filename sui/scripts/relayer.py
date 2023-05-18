@@ -8,9 +8,15 @@ import traceback
 from collections import OrderedDict
 from multiprocessing import Queue
 from pathlib import Path
+from pprint import pprint
 
 import brownie.network
 import ccxt
+import requests
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
+
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -21,10 +27,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from retrying import retry
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -254,7 +257,9 @@ def rotate_accounts():
     index = account_index.get()
     index += 1
     num = index % 4
-    sui_project.active_account(f"Relayer{num}")
+    # todo: change to real account
+    sui_project.active_account("TestAccount")
+    # sui_project.active_account(f"Relayer{num}")
     account_index.set(index)
     index_lock.release()
 
@@ -326,7 +331,6 @@ def aptos_portal_watcher():
 
 
 def eth_portal_watcher(network="polygon-test"):
-    time.sleep(10)
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
     data = BridgeDict(f"{network}_pool_vaa.json")
@@ -336,8 +340,9 @@ def eth_portal_watcher(network="polygon-test"):
     local_logger = logger.getChild(f"[{network}_portal_watcher]")
     local_logger.info(f"Start to read {network} pool vaa ^-^")
 
-    lending_portal = dola_ethereum_load.lending_portal_package().address
-    system_portal = dola_ethereum_load.system_portal_package().address
+    wormhole = dola_ethereum_load.womrhole_package(network)
+    lending_portal = dola_ethereum_load.lending_portal_package(network).address
+    system_portal = dola_ethereum_load.system_portal_package(network).address
 
     if network not in start_block_record:
         start_block_record[network] = 0
@@ -352,12 +357,19 @@ def eth_portal_watcher(network="polygon-test"):
                 local_logger.info(f"Relaying events: {relay_events}")
 
             for block_number in sorted(relay_events):
-                nonce = relay_events[block_number][0]
-                vaa, nonce = dola_ethereum_init.bridge_pool_read_vaa(nonce)
-                decode_vaa = list(bytes.fromhex(
-                    vaa.replace("0x", "") if "0x" in vaa else vaa))
-                call_name = get_call_name(decode_vaa[1], decode_vaa[-1])
-                dk = f"{network}_portal_{call_name}_{str(nonce)}"
+                sequence = relay_events[block_number][0]
+
+                # get vaa
+                vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[network], sequence, network)
+                # parse vaa
+                vm = wormhole.parseVM(vaa)
+                # parse payload
+                payload = list(vm)[7]
+
+                app_id = payload[1]
+                call_type = payload[-1]
+                call_name = get_call_name(app_id, call_type)
+                dk = f"{network}_portal_{call_name}_{str(sequence)}"
                 if dk not in data:
                     # gas_token = get_gas_token(network)
 
@@ -370,13 +382,14 @@ def eth_portal_watcher(network="polygon-test"):
                     start_block_record[network] = block_number + 1
                     start_block_lock.release()
 
-                    portal_vaa_q.put((vaa, nonce, network))
+                    portal_vaa_q.put((app_id, call_type, vaa, sequence, network))
 
                     data[dk] = vaa
 
-                    local_logger.info(f"Have a {call_name} transaction from {network}, nonce: {nonce}")
+                    local_logger.info(f"Have a {call_name} transaction from {network}, sequence: {sequence}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
+            traceback.print_exc()
         time.sleep(1)
 
 
@@ -431,11 +444,8 @@ def sui_core_executor():
     local_logger.info("Start to relay pool vaa ^-^")
     while True:
         try:
-            (vaa, nonce, chain) = portal_vaa_q.get()
-            decode_vaa = list(bytes.fromhex(
-                vaa.replace("0x", "") if "0x" in vaa else vaa))
-            app_id = decode_vaa[1]
-            call_type = decode_vaa[-1]
+            (app_id, call_type, vaa, nonce, chain) = portal_vaa_q.get()
+
             call_name = get_call_name(app_id, call_type)
             dk = f"{chain}_portal_{call_name}_{nonce}"
 
@@ -455,7 +465,7 @@ def sui_core_executor():
                 data[dk] = vaa
 
                 rotate_accounts()
-                gas, executed = execute_sui_core(app_id, call_type, decode_vaa, relay_fee)
+                gas, executed = execute_sui_core(app_id, call_type, vaa, relay_fee)
 
                 gas_amount = gas
                 if executed:
@@ -465,8 +475,8 @@ def sui_core_executor():
                         finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
                                                      "consumed_fee": get_fee_value(gas_amount)}
                         del relay_fee_record[dk]
-                        # todo: use sui realtime gas price
-                        gas_price = 1000
+
+                        gas_price = int(sui_project.client.suix_getReferenceGasPrice())
                         action_gas_record[f"sui_{call_name}"] = int(gas_amount / gas_price)
                     data[dk] = vaa
                     local_logger.info("Execute sui core success! ")
@@ -764,6 +774,38 @@ def compensate_unfinished_transaction():
     #                             withdraw_data['dola_chain_id']))
 
 
+def sui_vaa_payload(vaa):
+    wormhole = dola_sui_load.wormhole_package()
+
+    result = sui_project.batch_transaction_inspect(
+        actual_params=[
+            sui_project.network_config['objects']['WormholeState'],
+            list(bytes.fromhex(vaa.replace("0x", ""))),
+            dola_sui_init.clock()
+        ],
+        transactions=[
+            [
+                wormhole.vaa.parse_and_verify,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                ],
+                []
+            ],
+            [
+                wormhole.vaa.payload,
+                [
+                    Argument("Result", U16(0))
+                ],
+                []
+            ]
+        ]
+    )
+
+    pprint(result)
+
+
 NET_TO_WORMHOLE_CHAINID = {
     # mainnet
     "mainnet": 2,
@@ -793,13 +835,6 @@ WORMHOLE_EMITTER_ADDRESS = {
 }
 
 
-def format_emitter_address(addr):
-    addr = addr.replace("0x", "")
-    if len(addr) < 64:
-        addr = "0" * (64 - len(addr)) + addr
-    return addr
-
-
 @retry
 def get_signed_vaa_by_wormhole(
         emitter: str,
@@ -815,7 +850,7 @@ def get_signed_vaa_by_wormhole(
         {'vaaBytes': 'AQAAAAEOAGUI...'}
     """
     wormhole_url = sui_project.network_config['wormhole_url']
-    emitter_address = format_emitter_address(emitter)
+    emitter_address = dola_sui_init.format_emitter_address(emitter)
     emitter_chainid = NET_TO_WORMHOLE_CHAINID[src_net]
 
     url = f"{wormhole_url}/v1/signed_vaa/{emitter_chainid}/{emitter_address}/{sequence}"
@@ -849,12 +884,12 @@ def main():
     pt = ProcessExecutor(executor=5)
 
     pt.run([
-        run_sui_relayer,
-        run_aptos_relayer,
+        # run_sui_relayer,
+        # run_aptos_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-test"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
-        eth_pool_executor,
+        # eth_pool_executor,
         # compensate_unfinished_transaction
     ])
 

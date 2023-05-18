@@ -182,7 +182,7 @@ def core_supply(vaa, relay_fee=0):
         core_state,
         oracle,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         init.clock(),
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -198,7 +198,7 @@ def core_supply(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
     return gas, executed
@@ -327,7 +327,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
         wormhole_state,
         pool_state,
         init.pool_id(coin_type),
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         init.clock(),
         type_arguments=[coin_type]
     )
@@ -342,7 +342,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
             wormhole_state,
             pool_state,
             init.pool_id(coin_type),
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
             type_arguments=[coin_type]
         )
@@ -390,7 +390,7 @@ def core_withdraw(vaa, relay_fee=0):
         oracle,
         storage,
         gas_coin,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         init.clock()
     )
 
@@ -407,7 +407,7 @@ def core_withdraw(vaa, relay_fee=0):
             oracle,
             storage,
             gas_coin,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
 
@@ -556,7 +556,7 @@ def core_borrow(vaa, relay_fee=0):
         oracle,
         storage,
         gas_coin,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock,
     )
 
@@ -573,7 +573,7 @@ def core_borrow(vaa, relay_fee=0):
             oracle,
             storage,
             gas_coin,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
     return gas, executed
@@ -660,7 +660,7 @@ def core_repay(vaa, relay_fee=0):
         core_state,
         oracle,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock,
     )
 
@@ -676,7 +676,7 @@ def core_repay(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
     return gas, executed
@@ -769,7 +769,7 @@ def core_liquidate(vaa, relay_fee=0):
         core_state,
         oracle,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock,
     )
 
@@ -785,7 +785,7 @@ def core_liquidate(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
     return gas, executed
@@ -847,7 +847,7 @@ def core_binding(vaa, relay_fee=0):
         wormhole_state,
         core_state,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock
     )
 
@@ -861,7 +861,7 @@ def core_binding(vaa, relay_fee=0):
             wormhole_state,
             core_state,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
     return gas, executed
@@ -923,7 +923,7 @@ def core_unbinding(vaa, relay_fee=0):
         wormhole_state,
         core_state,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock
     )
 
@@ -937,7 +937,7 @@ def core_unbinding(vaa, relay_fee=0):
             wormhole_state,
             core_state,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
     return gas, executed
@@ -980,7 +980,7 @@ def core_as_collateral(vaa, relay_fee=0):
         core_state,
         oracle,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock
     )
 
@@ -996,7 +996,7 @@ def core_as_collateral(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
     return gas, executed
@@ -1037,7 +1037,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         core_state,
         oracle,
         storage,
-        vaa,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
         clock
     )
 
@@ -1053,7 +1053,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            vaa,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
     return gas, executed
@@ -1109,10 +1109,10 @@ def export_objects():
 
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
-    # init.claim_test_coin(usdt())
-    # portal_supply(usdt(), int(1e8))
+    init.claim_test_coin(usdt())
+    portal_supply(usdt(), int(1e8))
 
     # oracle.feed_token_price_by_pyth('USDT/USD')
     # portal_withdraw_local(usdt(), int(1e8))
 
-    export_objects()
+    # export_objects()

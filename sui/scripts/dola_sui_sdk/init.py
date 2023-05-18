@@ -2,9 +2,10 @@ import functools
 from typing import List
 
 import requests
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -480,55 +481,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     )
 
 
-def vote_register_new_reserve(dola_pool_id):
-    """
-    public entry fun vote_register_new_reserve(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        clock: &Clock,
-        dola_pool_id: u16,
-        is_isolated_asset: bool,
-        borrowable_in_isolation: bool,
-        treasury: u64,
-        treasury_factor: u256,
-        borrow_cap_ceiling: u256,
-        collateral_coefficient: u256,
-        borrow_coefficient: u256,
-        base_borrow_rate: u256,
-        borrow_rate_slope1: u256,
-        borrow_rate_slope2: u256,
-        optimal_utilization: u256,
-        storage: &mut Storage,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
-    lending_core = load.lending_core_package()
-    # set apt as isolated asset
-    is_isolated_asset = dola_pool_id == 5
-    borrowable_in_isolation = dola_pool_id in [1, 2]
-    genesis_proposal.genesis_proposal.vote_register_new_reserve(
-        governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())][-1],
-        clock(),
-        dola_pool_id,
-        is_isolated_asset,
-        borrowable_in_isolation,
-        0,
-        int(0.1 * RAY),
-        0,
-        int(0.8 * RAY),
-        int(1.1 * RAY),
-        int(0.02 * RAY),
-        int(0.07 * RAY),
-        int(3 * RAY),
-        int(0.45 * RAY),
-        lending_core.storage.Storage[-1]
-    )
-
-
 def claim_test_coin(coin_type):
     test_coins = load.test_coins_package()
     test_coins.faucet.claim(
@@ -616,36 +568,6 @@ def proposal():
            f"::genesis_proposal::Certificate>"
 
 
-def bridge_pool_read_vaa(index=0):
-    omnipool = load.omnipool_package()
-    result = omnipool.wormhole_adapter_pool.read_vaa.simulate(
-        omnipool.wormhole_adapter_pool.PoolState[-1], index
-    )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
-
-
-def bridge_core_read_vaa(index=0):
-    dola_protocol = load.dola_protocol_package()
-    result = dola_protocol.wormhole_adapter_core.read_vaa.simulate(
-        dola_protocol.wormhole_adapter_core.CoreState[-1], index
-    )["events"][0]["parsedJson"]
-    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
-
-
-def lending_portal_contract_id():
-    dola_protocol = load.dola_protocol_package()
-    lending_portal_info = sui_project.client.sui_multiGetObjects([dola_protocol.lending_portal.LendingPortal[-1]], {
-        "showType": False,
-        "showOwner": False,
-        "showPreviousTransaction": False,
-        "showDisplay": False,
-        "showContent": True,
-        "showBcs": False,
-        "showStorageRebate": False
-    })
-    return lending_portal_info[0]['data']['content']['fields']['dola_contract']['fields']['dola_contract']
-
-
 def query_portal_relay_event(limit=5):
     dola_protocol = load.dola_protocol_package()
     return dola_protocol.query_events(
@@ -677,9 +599,86 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
     return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
 
 
+@functools.lru_cache()
+def get_wormhole_adapter_pool_emitter() -> List[int]:
+    dola_protocol = load.dola_protocol_package()
+    result = sui_project.client.sui_getObject(
+        dola_protocol.wormhole_adapter_core.PoolState[-1],
+        {
+            "showType": True,
+            "showOwner": True,
+            "showPreviousTransaction": False,
+            "showDisplay": False,
+            "showContent": True,
+            "showBcs": False,
+            "showStorageRebate": False
+        }
+    )
+
+    return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
+
+
+def format_emitter_address(addr):
+    addr = addr.replace("0x", "")
+    if len(addr) < 64:
+        addr = "0" * (64 - len(addr)) + addr
+    return addr
+
+
+def register_remote_bridge(wormhole_chain_id, emitter_address):
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    emitter_address = format_emitter_address(emitter_address)
+
+    create_proposal()
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+    ]
+
+    bridge_params = [
+        sui_project.network_config['objects']['CoreState'],
+        wormhole_chain_id,
+        list(bytes.fromhex(emitter_address.replace("0x", ""))),
+    ]
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + bridge_params,
+        transactions=[
+            [
+                genesis_proposal.genesis_proposal.vote_proposal_final,
+                [
+                    Argument("Input", U16(0)), Argument("Input", U16(1))
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.register_remote_bridge,
+                [
+                    Argument("NestedResult", NestedResult(U16(0), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.destory,
+                [
+                    Argument("NestedResult", NestedResult(U16(1), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(1), U16(1)))
+                ],
+                []
+            ]
+        ]
+    )
+
+
 def batch_execute_proposal():
     genesis_proposal = load.genesis_proposal_package()
-    wormhole = load.wormhole_package()
     dola_protocol = load.dola_protocol_package()
 
     # Execute genesis proposal
