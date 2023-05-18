@@ -12,6 +12,7 @@ def deploy():
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
     wormhole_finality = config["networks"][cur_net]["wormhole_finality"]
+    core_emitter = config["networks"][cur_net]["core_emitter"]
 
     DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
 
@@ -20,6 +21,8 @@ def deploy():
         wormhole_address,
         wormhole_chainid,
         wormhole_finality,
+        21,
+        core_emitter,
         {'from': account}
     )
 

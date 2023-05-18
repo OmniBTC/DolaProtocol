@@ -1,7 +1,8 @@
+from brownie import Contract, network
+
 import dola_ethereum_sdk.load as load
-from brownie import Contract
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
-from dola_ethereum_sdk.init import usdt
+from dola_ethereum_sdk.init import usdt, wbtc
 
 
 def portal_binding(bind_address, dola_chain_id=5, fee=0):
@@ -13,7 +14,7 @@ def portal_binding(bind_address, dola_chain_id=5, fee=0):
     :return:
     """
     account = get_account()
-    system_portal = load.system_portal_package()
+    system_portal = load.system_portal_package(network.show_active())
     system_portal.binding(
         dola_chain_id,
         bind_address,
@@ -28,7 +29,7 @@ def portal_unbinding(unbind_address, dola_chain_id=5):
     :return:
     """
     account = get_account()
-    system_portal = load.system_portal_package()
+    system_portal = load.system_portal_package(network.show_active())
     system_portal.unbinding(
         dola_chain_id,
         unbind_address,
@@ -58,7 +59,7 @@ def portal_cancel_as_collateral(pool_ids=None):
     :return:
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
     if pool_ids is None:
         pool_ids = []
 
@@ -78,7 +79,8 @@ def portal_supply(token, amount, relay_fee=0):
     :return: payload
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+
+    lending_portal = load.lending_portal_package(network.show_active())
     token = Contract.from_abi("MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
     token.mint(account.address, amount, {'from': account})
     token.approve(lending_portal.address, amount, {'from': account})
@@ -99,7 +101,7 @@ def portal_supply_eth(amount):
         :return: payload
         """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
     eth = "0x0000000000000000000000000000000000000000"
     lending_portal.supply(
         eth,
@@ -123,7 +125,7 @@ def portal_withdraw(token, amount, dst_chain=5, receiver=None, relay_fee=0):
     if receiver is None:
         receiver = account.address
 
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
     lending_portal.withdraw(
         str(token),
         str(receiver),
@@ -143,7 +145,7 @@ def pool_withdraw(vaa):
     :return:
     """
     account = get_account()
-    wormhole_adapter_pool = load.wormhole_adapter_pool_package()
+    wormhole_adapter_pool = load.wormhole_adapter_pool_package(network.show_active())
     wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
@@ -158,7 +160,7 @@ def portal_borrow(token, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
     lending_portal.borrow(
         str(token),
         str(receiver),
@@ -199,7 +201,7 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     :return:
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
 
     token = Contract.from_abi("ERC20", debt_pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
@@ -231,13 +233,13 @@ def monitor_repay(pool, amount=1):
 
 
 def monitor_liquidate(dst_chain=4, receiver=None):
-    print(portal_liquidate(usdt(), btc(), 1e18, dst_chain, receiver))
+    print(portal_liquidate(usdt(), wbtc(), 1e18, dst_chain, receiver))
 
 
 def main():
-    monitor_supply(usdt(), 100000)
+    # monitor_supply(usdt(), 100000)
     # portal_cancel_as_collateral([1, 2])
-    # monitor_withdraw(usdt(), 5, get_account().address)
+    monitor_withdraw(usdt(), 5)
     # portal_binding("0x29555e85402caf438597bed573142f4db50557aa548b29c70aa8c28eb2b3e1e8", 1)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())

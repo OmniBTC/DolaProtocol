@@ -120,7 +120,7 @@ def init_wormhole_adapter_pool():
 
     dola_protocol.wormhole_adapter_pool.initialize(
         dola_protocol.wormhole_adapter_pool.PoolGenesis[-1],
-        0,
+        21,
         get_wormhole_adapter_core_emitter(),
         wormhole.state.State[-1]
     )
@@ -603,7 +603,7 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
 def get_wormhole_adapter_pool_emitter() -> List[int]:
     dola_protocol = load.dola_protocol_package()
     result = sui_project.client.sui_getObject(
-        dola_protocol.wormhole_adapter_core.PoolState[-1],
+        dola_protocol.wormhole_adapter_pool.PoolState[-1],
         {
             "showType": True,
             "showOwner": True,

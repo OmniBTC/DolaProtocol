@@ -400,6 +400,7 @@ def pool_withdraw_watcher():
     while True:
         try:
             relay_events = dola_sui_init.query_core_relay_event()
+
             for event in relay_events:
                 fields = event['event']['moveEvent']['fields']
 
@@ -830,7 +831,7 @@ NET_TO_WORMHOLE_CHAINID = {
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
     # testnet
-    "polygon-test": "0x0A3ad2Aaf9C561677bf653Bb5583045d7fa40645",
+    "polygon-test": "0x4bddaFDa87acc90A35CE126aa48B7A48271841C5",
     "sui-testnet": "0xb22cd218bb63da447ac2704c1cc72727df6b5e981ee17a22176fd7b84c114610",
 }
 
@@ -895,4 +896,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    eth_portal_watcher("polygon-test")

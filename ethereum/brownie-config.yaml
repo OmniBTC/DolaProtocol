@@ -7,6 +7,7 @@ compiler:
 dotenv: .env
 networks:
   arbitrum-test:
+    core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
     scan_rpc_url: https://api-goerli.arbiscan.io/api
     wormhole: '0xC7A204bDBFe983FCD8d8E61D02b475D4073fF97e'
     wormhole_chainid: 23
@@ -34,14 +35,15 @@ networks:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
   polygon-test:
+    core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
+    lending_portal: '0x3B5B5875234a38C9529A62C0B913976Cfa5407D8'
     scan_rpc_url: https://api-testnet.polygonscan.com/api
-    lending_portal: '0x6C569EF411983c81d077318FB58c23bB6325abC6'
-    system_portal: '0x2b6d25f5EC0BE1F032ff3bECb721f80d3763693f'
-    usdc: '0x4Ac6D3469496dD456621441ee24a4960515CB83a'
-    usdt: '0x3314af958D4A28F8C61Fb2bf6d628d760d85c4C2'
-    wbtc: '0x6736C334141Dc833B154451865C789390f21B49E'
+    system_portal: '0xE8049aaE888014eC9C02B2E9883874FED534a83c'
+    usdc: '0xc1dAFfE593b169FB23B2a0445E974b43cAD05d20'
+    usdt: '0x65bcC6CF6f32D974e999810e3BE23B16488a5168'
+    wbtc: '0xA132A74f16e09a1aE9d712659CDE90fdA29ad1d8'
     wormhole: '0x0CBE91CF822c73C2315FB05100C2F714765d5c20'
-    wormhole_adapter_pool: '0x0A3ad2Aaf9C561677bf653Bb5583045d7fa40645'
+    wormhole_adapter_pool: '0x4bddaFDa87acc90A35CE126aa48B7A48271841C5'
     wormhole_chainid: 5
     wormhole_finality: 200
   polygon-zk-test:

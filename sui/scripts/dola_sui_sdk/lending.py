@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 
 import yaml
-from sui_brownie import SuiObject
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import pool
@@ -368,8 +368,6 @@ def core_withdraw(vaa, relay_fee=0):
     """
     dola_protocol = load.dola_protocol_package()
 
-    zero_coin = get_zero_coin()
-
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
@@ -377,7 +375,6 @@ def core_withdraw(vaa, relay_fee=0):
     core_state = sui_project.network_config['objects']['CoreState']
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
-    wormhole_message_fee = sui_project.network_config['objects']['WormholeMessageFee']
 
     gas_coin = get_zero_coin()
 
@@ -481,7 +478,7 @@ def portal_borrow_remote(pool_addr, amount, dst_chain=0, receiver=None):
     :return:
     """
     dola_protocol = load.dola_protocol_package()
-    account_address = dola_portal.account.account_address
+    account_address = dola_protocol.account.account_address
     if receiver is None:
         assert dst_chain == 0
         receiver = account_address
@@ -716,7 +713,7 @@ def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, co
     result = sui_project.client.suix_getCoins(sui_project.account.account_address, debt_coin_type, None, None)
     debt_coins = [c["coinObjectId"] for c in result["data"]]
 
-    dola_portal.lending.liquidate(
+    dola_protocol.lending.liquidate(
         genesis,
         storage,
         oracle,
@@ -1107,12 +1104,102 @@ def export_objects():
         yaml.safe_dump(config, f)
 
 
+def parse_u16(vec):
+    return vec[0] + (vec[1] << 8)
+
+
+def convert_vec_u16_to_list(vec):
+    length = vec[0]
+    return [parse_u16(vec[1 + i * 2: 3 + i * 2]) for i in range(length)]
+
+
+def get_withdraw_user_asset_ids_from_vaa(vaa):
+    dola_protocol = load.dola_protocol_package()
+    wormhole = load.wormhole_package()
+
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    lending_core_storage = sui_project.network_config['objects']['LendingStorage']
+
+    result = sui_project.batch_transaction_inspect(
+        actual_params=[
+            wormhole_state,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
+            init.clock(),
+            user_manager_info,
+            lending_core_storage
+        ],
+        transactions=[
+            # 1. parse_vaa
+            [
+                wormhole.vaa.parse_and_verify,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                ],
+                []
+            ],
+            # 2. get_payload
+            [
+                wormhole.vaa.payload,
+                [
+                    Argument("Result", U16(0)),
+                ],
+                []
+            ],
+            # 3. decode_send_message_payload
+            [
+                dola_protocol.pool_codec.decode_send_message_payload,
+                [
+                    Argument("Result", U16(1)),
+                ],
+                []
+            ],
+            # 4. get dola_user_id
+            [
+                dola_protocol.user_manager.get_dola_user_id,
+                [
+                    Argument("Input", U16(3)),
+                    Argument("NestedResult", NestedResult(U16(2), U16(0))),
+                ],
+                []
+            ],
+            # 5. get user collateral
+            [
+                dola_protocol.lending_core_storage.get_user_collaterals,
+                [
+                    Argument("Input", U16(4)),
+                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
+                ],
+                []
+            ],
+            # 6. get user loans
+            [
+                dola_protocol.lending_core_storage.get_user_loans,
+                [
+                    Argument("Input", U16(4)),
+                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
+                ],
+                []
+            ]
+        ]
+    )
+    collateral_ids = convert_vec_u16_to_list(result["results"][4]["returnValues"][0][0])
+    loan_ids = convert_vec_u16_to_list(result["results"][5]["returnValues"][0][0])
+    return collateral_ids + loan_ids
+
+
+def get_violator_user_asset_ids_from_vaa(vaa):
+    pass
+
+
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
-    init.claim_test_coin(usdt())
-    portal_supply(usdt(), int(1e8))
+    # init.claim_test_coin(usdt())
+    # portal_supply(usdt(), int(1e8))
 
     # oracle.feed_token_price_by_pyth('USDT/USD')
     # portal_withdraw_local(usdt(), int(1e8))
 
-    # export_objects()
+    export_objects()

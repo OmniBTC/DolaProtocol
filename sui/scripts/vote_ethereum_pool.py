@@ -1,12 +1,13 @@
 from pathlib import Path
 
+from sui_brownie import SuiObject, Argument, U16, NestedResult
+
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
-from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 
 def main(pool_id, pool_name):
@@ -54,7 +55,7 @@ def main(pool_id, pool_name):
                  Argument("Input", U16(6)),
                  Argument("Input", U16(7))],
                 []
-            ],  # 1. register_new_pool btc
+            ],  # 1. register_new_pool wbtc
             [
                 genesis_proposal.genesis_proposal.register_new_pool,
                 [Argument("NestedResult", NestedResult(U16(1), U16(0))),
@@ -90,7 +91,7 @@ def main(pool_id, pool_name):
                  Argument("Input", U16(21)),
                  Argument("Input", U16(22))],
                 []
-            ],  # 4. register_new_pool sui
+            ],  # 4. register_new_pool matic
             [genesis_proposal.genesis_proposal.destory,
              [Argument("NestedResult", NestedResult(U16(4), U16(0))),
               Argument("NestedResult", NestedResult(U16(4), U16(1)))],
