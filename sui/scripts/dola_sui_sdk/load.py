@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
+
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -56,6 +57,15 @@ def wormhole_package(package_id: str = None):
     return sui_package(package_id,
                        Path.home().joinpath(Path(
                            ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
+
+
+def pyth_package():
+    return sui_brownie.SuiPackage(
+        package_id=sui_project.network_config['packages']['pyth'],
+        package_path=Path.home().joinpath(Path(
+            ".move/https___github_com_pyth-network_pyth-crosschain_git_61c9ab5c65face02841739ee0ea7c8ee488322b5"
+            "/target_chains/sui/contracts")),
+    )
 
 
 def external_interfaces_package(package_id: str = None):

@@ -142,11 +142,11 @@ module dola_protocol::oracle {
     }
 
     /// === Entry Functions ===
-    
+
     public fun feed_token_price_by_pyth(
         genesis: &GovernanceGenesis,
-        wormhole_state: &WormholeState,
-        pyth_state: &PythState,
+        wormhole_state: &mut WormholeState,
+        pyth_state: &mut PythState,
         price_info_object: &mut PriceInfoObject,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,

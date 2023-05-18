@@ -1,10 +1,8 @@
 import base64
 import time
-from pathlib import Path
 
 import ccxt
 import requests
-import sui_brownie
 from sui_brownie import Argument, U16
 
 from dola_sui_sdk import load, sui_project, init
@@ -28,15 +26,6 @@ def pyth_state():
     return sui_project.network_config['objects']['PythState']
 
 
-def load_pyth():
-    return sui_brownie.SuiPackage(
-        package_id=sui_project.network_config['packages']['pyth'],
-        package_path=Path.home().joinpath(Path(
-            ".move/https___github_com_pyth-network_pyth-crosschain_git_61c9ab5c65face02841739ee0ea7c8ee488322b5"
-            "/target_chains/sui/contracts")),
-    )
-
-
 def get_feed_vaa(symbol):
     pyth_service_url = sui_project.network_config['pyth_service_url']
     feed_id = sui_project.network_config['oracle']['feed_id'][symbol].replace("0x", "")
@@ -47,7 +36,7 @@ def get_feed_vaa(symbol):
 
 
 def get_price_info_object(symbol):
-    pyth = load_pyth()
+    pyth = load.pyth_package()
     feed_vaa = sui_project.network_config['oracle']['feed_id'][symbol].replace("0x", "")
     feed_id = bytes.fromhex(feed_vaa.replace("0x", ""))
     result = pyth.state.get_price_info_object_id.inspect(pyth_state(), list(feed_id))
@@ -55,7 +44,7 @@ def get_price_info_object(symbol):
 
 
 def get_pyth_fee():
-    pyth = load_pyth()
+    pyth = load.pyth_package()
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state())
     return parse_u64(result['results'][0]['returnValues'][0][0])
