@@ -12,6 +12,11 @@ from pprint import pprint
 
 import brownie.network
 import ccxt
+import requests
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
+
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -22,11 +27,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -267,7 +268,6 @@ ZERO_FEE = int(1e18)
 
 
 def sui_portal_watcher():
-    data = BridgeDict("sui_pool_vaa.json")
     local_logger = logger.getChild("[sui_portal_watcher]")
     local_logger.info("Start to read sui pool vaa ^-^")
 
@@ -277,9 +277,8 @@ def sui_portal_watcher():
             relay_events = dola_sui_init.query_portal_relay_event()
 
             for event in relay_events:
-                fields = event['event']['moveEvent']['fields']
+                fields = event['parsedJson']
                 # relay_fee_amount = int(fields['fee_amount'])
-
                 nonce = int(fields['nonce'])
                 call_type = int(fields['call_type'])
                 call_name = get_call_name(1, call_type)
@@ -396,41 +395,42 @@ def pool_withdraw_watcher():
     data = BridgeDict("pool_withdraw_vaa.json")
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
+
+    sui_network = sui_project.network
     while True:
         try:
             relay_events = dola_sui_init.query_core_relay_event()
 
             for event in relay_events:
-                fields = event['event']['moveEvent']['fields']
+                fields = event['parsedJson']
 
                 source_chain_id = fields['source_chain_id']
                 srouce_chain_nonce = fields['source_chain_nonce']
-                sequence = fields['sequence']
 
-                if dola_chain_id in [0, 1]:
-                    token_name = bytes(token_name).decode("ascii")
-                    if token_name[:2] != "0x":
-                        token_name = f"0x{token_name}"
-
-                dk = f"pool_withdraw_{dola_chain_id}_{str(nonce)}"
+                dk = f"pool_withdraw_{source_chain_id}_{str(srouce_chain_nonce)}"
                 if dk not in data:
                     call_type = fields["call_type"]
                     call_name = get_call_name(1, int(call_type))
-                    network = get_dola_network(source_chain_id)
-                    vaa = get_signed_vaa_by_wormhole()
+                    src_network = get_dola_network(source_chain_id)
+                    sequence = fields['sequence']
+                    vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
 
-                    if dola_chain_id == 0:
-                        sui_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
+                    dst_pool = fields['dst_pool']
+                    dst_chain_id = int(dst_pool['dola_chain_id'])
+                    dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
+
+                    if dst_chain_id == 0:
+                        sui_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {network} to sui, nonce: {nonce}, token: {token_name}")
-                    elif dola_chain_id == 1:
-                        aptos_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, token_name))
+                            f"Have a {call_name} from {src_network} to sui, nonce: {srouce_chain_nonce}")
+                    elif dst_chain_id == 1:
+                        aptos_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {network} to aptos, nonce: {nonce}, token: {token_name}")
+                            f"Have a {call_name} from {src_network} to aptos, nonce: {srouce_chain_nonce}")
                     else:
-                        eth_withdraw_q.put((vaa, source_chain_id, source_nonce, call_type, dola_chain_id))
+                        eth_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_chain_id))
                         local_logger.info(
-                            f"Have a {call_name} from {network} to {get_dola_network(dola_chain_id)}, nonce: {nonce}")
+                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {srouce_chain_nonce}")
                     data[dk] = vaa
         except Exception as e:
             local_logger.error(f"Error: {e}")
@@ -501,7 +501,6 @@ def sui_pool_executor():
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
 
-    dola_protocol = dola_sui_load.dola_protocol_package()
     while True:
         try:
             (vaa, source_chain_id, source_nonce, call_type, token_name) = sui_withdraw_q.get()
@@ -522,10 +521,7 @@ def sui_pool_executor():
 
                 rotate_accounts()
 
-                if "sui" in token_name:
-                    token_name = "0x2::sui::SUI"
-
-                gas_used, executed = dola_sui_lending.pool_withdraw(token_name, vaa)
+                gas_used, executed = dola_sui_lending.pool_withdraw(vaa, token_name, available_gas_amount)
 
                 tx_gas_amount = gas_used
                 if executed:
@@ -639,7 +635,7 @@ def eth_pool_executor():
             network = get_dola_network(dola_chain_id)
             dola_ethereum_sdk.set_ethereum_network(network)
 
-            ethereum_wormhole_bridge = dola_ethereum_load.wormhole_adapter_pool_package()
+            ethereum_wormhole_bridge = dola_ethereum_load.wormhole_adapter_pool_package(network)
             ethereum_account = dola_ethereum_sdk.get_account()
             local_logger.info(f"Ethereum account: {ethereum_account.address}")
             call_name = get_call_name(1, int(call_type))
@@ -830,8 +826,8 @@ NET_TO_WORMHOLE_CHAINID = {
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
     # testnet
-    "polygon-test": "0xBfd6F0a8562db049cC829Fbc18453784416Ea59D",
-    "sui-testnet": "0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94",
+    "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",
+    "sui-testnet": "0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e",
 }
 
 
@@ -911,12 +907,12 @@ def main():
     pt = ProcessExecutor(executor=5)
 
     pt.run([
-        # run_sui_relayer,
+        run_sui_relayer,
         # run_aptos_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-test"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
-        # eth_pool_executor,
+        eth_pool_executor,
         # compensate_unfinished_transaction
     ])
 

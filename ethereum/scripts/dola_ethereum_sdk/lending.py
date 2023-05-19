@@ -1,6 +1,5 @@
-from brownie import Contract, network
-
 import dola_ethereum_sdk.load as load
+from brownie import Contract, network
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 from dola_ethereum_sdk.init import usdt, wbtc
 

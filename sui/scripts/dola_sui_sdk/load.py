@@ -63,15 +63,14 @@ def pyth_wormhole_package(package_id: str = None):
         package_id: str = sui_project.network_config['packages']['wormhole']
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           "https___github_com_OmniBTC_wormhole_git_pyth-testnet/sui/wormhole")))
+                           ".move/https___github_com_OmniBTC_wormhole_git_pyth-testnet/sui/wormhole")))
 
 
 def pyth_package():
     return sui_brownie.SuiPackage(
         package_id=sui_project.network_config['packages']['pyth'],
         package_path=Path.home().joinpath(Path(
-            "https___github_com_OmniBTC_pyth-crosschain_git_pyth-testnet"
-            "/target_chains/sui/contracts")),
+            ".move/https___github_com_OmniBTC_pyth-crosschain_git_pyth-testnet/target_chains/sui/contracts")),
     )
 
 
