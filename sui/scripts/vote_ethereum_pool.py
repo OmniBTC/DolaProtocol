@@ -16,6 +16,8 @@ def main(pool_id, pool_name):
     dola_protocol = dola_sui_load.dola_protocol_package()
     genesis_proposal = dola_sui_load.genesis_proposal_package()
 
+    dola_sui_init.create_proposal()
+
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
     wbtc_pool_params = [list(bytes.fromhex(dola_ethereum_init.wbtc().replace("0x", ""))), dola_chain_id, list(b"WBTC"),
@@ -26,8 +28,6 @@ def main(pool_id, pool_name):
                         2, 1]
     eth_pool_params = [list(bytes.fromhex(dola_ethereum_init.eth().replace("0x", ""))), dola_chain_id, list(pool_name),
                        pool_id, 1]
-
-    dola_sui_init.create_proposal()
 
     basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0

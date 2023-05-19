@@ -14,6 +14,7 @@ source = { local = "../dola_protocol" }
 
 dependencies = [
   { name = "Pyth" },
+  { name = "PythWormhole" },
   { name = "Sui" },
   { name = "Wormhole" },
 ]
@@ -24,11 +25,19 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "09b2081498366df
 
 [[move.package]]
 name = "Pyth"
-source = { git = "https://github.com/pyth-network/pyth-crosschain.git", rev = "61c9ab5c65face02841739ee0ea7c8ee488322b5", subdir = "target_chains/sui/contracts" }
+source = { git = "https://github.com/OmniBTC/pyth-crosschain.git", rev = "pyth-testnet", subdir = "target_chains/sui/contracts" }
+
+dependencies = [
+  { name = "PythWormhole" },
+  { name = "Sui" },
+]
+
+[[move.package]]
+name = "PythWormhole"
+source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "pyth-testnet", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },
-  { name = "Wormhole" },
 ]
 
 [[move.package]]

@@ -74,8 +74,8 @@ def deploy():
         wormhole=wormhole_package.package_id,
         pyth=sui_project.network_config['packages']['pyth']
     ), replace_publish_at=dict(
-        wormhole=wormhole_package.package_id,
         pyth=sui_project.network_config['packages']['pyth'],
+        wormhole=wormhole_package.package_id,
     ))
 
 

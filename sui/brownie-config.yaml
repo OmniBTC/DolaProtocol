@@ -25,27 +25,28 @@ networks:
     node_url: https://fullnode.testnet.sui.io:443
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
-      CoreState: '0x59aa01c734d94b240c3dbbf4a9b6a33e3dbe00248c8e277aa010947fd3bfabee'
-      Faucet: '0xd1f481661016f17f92ebb44ec5c5ee8d47e9376c103d1f1de23f62d9886e9bc8'
-      GovernanceGenesis: '0x164d9bcb588abe0fb4ec328183fb8dee16f029745f925e55f621c0c2c8ee4e36'
-      GovernanceInfo: '0xb9bd8ef52563fd0bd74406590ce99894a67df66d8e7803dfd56f92937ad9a422'
-      LendingPortal: '0x5cbbeba89b5c8f6a01e6cb6ba033626c788ce2ced71b349f3ec0d4f0e8639dbc'
-      LendingStorage: '0x52fed39eff68462040573bbd5220a97c9f359381aee34e87f29e09c1f34c79da'
-      Pool<SUI>: '0x3a1f28bad2bf4b60a3b1697724569362b9397dac3ed2ba5da923ba7ea4487c34'
-      Pool<USDC>: '0xc17f5b5e2cd4f375cee0daadc19bbad043b8d2bcb280e6bf1df497096ee942d4'
-      Pool<USDT>: '0x554ec1e0fe005ca37d4a49410b783bb92b1b57d909558ae12b83369d083ec306'
-      Pool<WBTC>: '0xa6c47efb06c25e29306f27264b24a717eea1f0f1d498c9336a0d29fac39bc801'
-      PoolManagerInfo: '0xc13d35f4815da4646605280244ea2b00696b2b01098ef87e2d6029b05d0c84af'
-      PoolState: '0x6b83482887891dbebe31c9be0321e01a1ec7dc7a53464ecd5a14bb01d6a7cd25'
-      PriceOracle: '0x0479f05fd5aae279d50f43763a1a0530fb905d23836a5414b4eb787132eff04a'
+      CoreState: '0xfcf6912bcf470ba53c6f011d1aca9e0f9fc0884ed6cd5a406e9877f90b2f20c0'
+      Faucet: '0x1c1ccef170198f16a639853b1d4ff349d9df5dd03f55b461ff0663705261d023'
+      GovernanceGenesis: '0xd634a99cf34fb8c44ed7b7b614eea1cdd80081877f2c6e3895590e4ccb2cf9d5'
+      GovernanceInfo: '0xd7addce675aa7435465ccd80ef3551795794fd10fd0c50af37d8b0fd084f07c2'
+      LendingPortal: '0x06512c9127e1dcdb48db98fe1aa6efe25cc3328edce2a37059e44f57aea656b3'
+      LendingStorage: '0x55b45dc67f397e0d60f45619715867552f333710300c6d4303bee849c10c8403'
+      Pool<SUI>: '0x6753f5d0341756b375fa6958347927cbf3c6e5fc110d5166b8588d080e951a83'
+      Pool<USDC>: '0xb131c79379b144fb9e8605f13faa39e6fd3571250dd8ae41ac16d2ab6766b67c'
+      Pool<USDT>: '0xdf2b8304aa7583f8529c99e07365d86c2270f7534d45bcb6bb68c829f829820f'
+      Pool<WBTC>: '0x1354565bf0592d687a07163131c9440d32e949c134ba27f7c53398866cd59634'
+      PoolManagerInfo: '0x0e65b27b81da20729f42c196543d32c82d8abbadeecca1b8644a8bd233d4fd70'
+      PoolState: '0x8c8a5719a3a935689d809ecb3265c947861c5db76128288540c2ad732e0a5907'
+      PriceOracle: '0xdfa0ef02ceb5ad5939396d547b36ddf5500317781be256aab58b7d4e0f864cac'
       PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
+      PythWormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
       SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-      SystemPortal: '0xbbfbf3c8ee4ba75555a7086272e6645fe2836768ff2fdb790b177480013b28e4'
-      USDC: 172cb776b2484ffef3287a805f84c9dbbc15d5152300926b76aeb714485d84a0::coins::USDC
-      USDT: 172cb776b2484ffef3287a805f84c9dbbc15d5152300926b76aeb714485d84a0::coins::USDT
-      UserManagerInfo: '0x7aaa9e51614636b064884b5c5a164a0ad90c53279aa1bf48182fbdecd7aa8dc3'
-      WBTC: 172cb776b2484ffef3287a805f84c9dbbc15d5152300926b76aeb714485d84a0::coins::WBTC
-      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
+      SystemPortal: '0x658ae03f22158b972803a2abcab078ea81ba6d9d249ce173655de896b65c395e'
+      USDC: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::USDC
+      USDT: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::USDT
+      UserManagerInfo: '0x897167dea970a297823d3de42e30683e5f5260348db164577e8a227cc9f868da'
+      WBTC: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::WBTC
+      WormholeState: '0x31358d198147da50db32eda2562951d53973a0c0ad5ed738e9b17d88b213d790'
     oracle:
       feed_id:
         APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'
@@ -57,12 +58,13 @@ networks:
         USDC/USD: '0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722'
         USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
     packages:
-      dola_protocol: '0xf62bfaf1044037bcf4b09c05471514b3d920005f0c0d9687bbb7e030a9b95e6c'
-      external_interfaces: '0x785f208de20ef78a1bbbb1366c959ef6995b054132c1e38e4dcb399be2d0e10d'
-      genesis_proposal: '0xf855b23afe63374595d68c9a3feee2a98c6fec80c7d805fd7c5e7f63a50a2355'
+      dola_protocol: '0x36eb3fe975ca09fcf0aec1bc487589d2fc94e47c97093b435555b700efbdab41'
+      external_interfaces: '0x05d111ae7acd7e439779166d123b833556ec0cae8f6dc4558bffb9bcbcefbcb1'
+      genesis_proposal: '0x6c7aeb51c4e2f115e9132e7908cee955ae7285cdebe1a1b0d9b9753f1a019442'
       pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
-      test_coins: '0x172cb776b2484ffef3287a805f84c9dbbc15d5152300926b76aeb714485d84a0'
-      wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+      pyth_wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+      test_coins: '0x43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912'
+      wormhole: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
     pyth_service_url: https://xc-testnet.pyth.network
     wormhole_url: https://wormhole-v2-testnet-api.certus.one
 sui_wallets:

@@ -12,11 +12,6 @@ from pprint import pprint
 
 import brownie.network
 import ccxt
-import requests
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
-
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -27,7 +22,11 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import requests
 from dola_sui_sdk.load import sui_project
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -81,7 +80,7 @@ def get_token_price(token):
     elif token == "apt":
         return float(kucoin.fetch_ticker("APT/USDT")['close'])
     elif token == "sui":
-        return float(100)
+        return float(kucoin.fetch_ticker("SUI/USDT")['close'])
 
 
 def get_token_decimal(token):
@@ -831,8 +830,8 @@ NET_TO_WORMHOLE_CHAINID = {
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
     # testnet
-    "polygon-test": "0x4bddaFDa87acc90A35CE126aa48B7A48271841C5",
-    "sui-testnet": "0xb22cd218bb63da447ac2704c1cc72727df6b5e981ee17a22176fd7b84c114610",
+    "polygon-test": "0xBfd6F0a8562db049cC829Fbc18453784416Ea59D",
+    "sui-testnet": "0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94",
 }
 
 
@@ -859,6 +858,33 @@ def get_signed_vaa_by_wormhole(
     vaa_bytes = response.json()['vaaBytes']
     vaa = base64.b64decode(vaa_bytes).hex()
     return f"0x{vaa}"
+
+
+def get_signed_vaa(
+        sequence: int,
+        src_wormhole_id: int = None,
+        url: str = None
+):
+    if url is None:
+        url = "http://wormhole-testnet.sherpax.io"
+    if src_wormhole_id is None:
+        data = {
+            "method": "GetSignedVAA",
+            "params": [
+                str(sequence),
+            ]
+        }
+    else:
+        data = {
+            "method": "GetSignedVAA",
+            "params": [
+                str(sequence),
+                src_wormhole_id,
+            ]
+        }
+    headers = {'content-type': 'application/json'}
+    response = requests.post(url, data=json.dumps(data), headers=headers)
+    return response.json()
 
 
 def run_aptos_relayer():
@@ -896,4 +922,4 @@ def main():
 
 
 if __name__ == "__main__":
-    eth_portal_watcher("polygon-test")
+    main()

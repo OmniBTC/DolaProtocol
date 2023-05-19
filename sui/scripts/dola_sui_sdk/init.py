@@ -2,10 +2,9 @@ import functools
 from typing import List
 
 import requests
+from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
-
-from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -1241,3 +1240,7 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
+
+    # register_remote_bridge(5, "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c")
+    # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
+    # register_remote_bridge(0, sui_pool_emitter)
