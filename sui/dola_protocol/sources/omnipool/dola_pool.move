@@ -9,18 +9,15 @@ module dola_protocol::dola_pool {
     use std::type_name;
 
     use sui::balance::{Self, Balance, zero};
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, CoinMetadata};
     use sui::event;
     use sui::object::{Self, UID};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
     use dola_protocol::dola_address::{Self, DolaAddress};
-    use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::pool_codec;
 
-    #[test_only]
-    use dola_protocol::genesis;
     #[test_only]
     use sui::sui::SUI;
     #[test_only]
@@ -83,7 +80,8 @@ module dola_protocol::dola_pool {
     /// === Governance Functions ===
 
     /// Prevent someone from creating the pool maliciously.
-    public fun create_pool<CoinType>(_: &GovernanceCap, decimal: u8, ctx: &mut TxContext) {
+    public fun create_pool<CoinType>(coin_metadata: &CoinMetadata<CoinType>, ctx: &mut TxContext) {
+        let decimal = coin::get_decimals(coin_metadata);
         transfer::share_object(Pool<CoinType> {
             id: object::new(ctx),
             balance: zero<CoinType>(),
@@ -197,6 +195,15 @@ module dola_protocol::dola_pool {
         pool_payload
     }
 
+    #[test_only]
+    public fun create_pool_for_testing<CoinType>(decimal: u8, ctx: &mut TxContext) {
+        transfer::share_object(Pool<CoinType> {
+            id: object::new(ctx),
+            balance: zero<CoinType>(),
+            decimal
+        })
+    }
+
     #[test]
     public fun test_deposit() {
         let manager = @0xA;
@@ -204,10 +211,8 @@ module dola_protocol::dola_pool {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
-            create_pool<SUI>(&gov_cap, 9, ctx);
-            genesis::destroy(gov_cap);
+            create_pool_for_testing<SUI>(9, ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
@@ -229,10 +234,8 @@ module dola_protocol::dola_pool {
         let scenario_val = test_scenario::begin(manager);
         let scenario = &mut scenario_val;
         {
-            let gov_cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
-            create_pool<SUI>(&gov_cap, 9, ctx);
-            genesis::destroy(gov_cap);
+            create_pool_for_testing<SUI>(9, ctx);
         };
         test_scenario::next_tx(scenario, manager);
         {
