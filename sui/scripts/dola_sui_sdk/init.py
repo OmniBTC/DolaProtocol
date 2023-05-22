@@ -2,9 +2,10 @@ import functools
 from typing import List
 
 import requests
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -183,7 +184,8 @@ def create_proposal():
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
     genesis_proposal.genesis_proposal.create_proposal(
-        dola_protocol.governance_v1.GovernanceInfo[-1])
+        dola_protocol.governance_v1.GovernanceInfo[-1]
+    )
 
 
 def vote_init_wormhole_adapter_core():
@@ -484,43 +486,23 @@ def add_test_coins_admin(address):
 
 
 def usdt():
-    return f"{sui_project.TestCoins[-1]}::coins::USDT"
+    return sui_project.network_config['tokens']['USDT']
 
 
 def usdc():
-    return f"{sui_project.TestCoins[-1]}::coins::USDC"
+    return sui_project.network_config['tokens']['USDC']
 
 
-def dai():
-    return f"{sui_project.TestCoins[-1]}::coins::DAI"
-
-
-def matic():
-    return f"{sui_project.TestCoins[-1]}::coins::MATIC"
-
-
-def apt():
-    return f"{sui_project.TestCoins[-1]}::coins::APT"
-
-
-def eth():
-    return f"{sui_project.TestCoins[-1]}::coins::ETH"
-
-
-def wbtc():
-    return f"{sui_project.TestCoins[-1]}::coins::WBTC"
-
-
-def bnb():
-    return f"{sui_project.TestCoins[-1]}::coins::BNB"
+def weth():
+    return sui_project.network_config['tokens']['WETH']
 
 
 def sui():
-    return "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
+    return sui_project.network_config['tokens']['SUI']
 
 
 def clock():
-    return "0x0000000000000000000000000000000000000000000000000000000000000006"
+    return sui_project.network_config['objects']['Clock']
 
 
 def coin(coin_type):
@@ -604,6 +586,14 @@ def format_emitter_address(addr):
     return addr
 
 
+def hex_to_vector(hex_str: str):
+    return list(bytes.fromhex(hex_str.replace("0x", "")))
+
+
+def coin_type_to_vector(coin_type: str):
+    return list(bytes(coin_type.replace("0x", ""), "ascii"))
+
+
 def register_remote_bridge(wormhole_chain_id, emitter_address):
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
@@ -656,45 +646,129 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
     )
 
 
+def build_vote_proposal_final_tx_block(genesis_proposal):
+    return [
+        genesis_proposal.genesis_proposal.vote_proposal_final,
+        [Argument("Input", U16(0)), Argument("Input", U16(1))],
+        []
+    ]
+
+
+def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
+    return [
+        genesis_proposal.genesis_proposal.destory,
+        [Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
+         Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))],
+        []
+    ]
+
+
+def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence):
+    return [
+        genesis_proposal.genesis_proposal.register_new_pool,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(basic_param_num - 1)),
+            Argument("Input", U16(basic_param_num + 5 * sequence + 0)),
+            Argument("Input", U16(basic_param_num + 5 * sequence + 1)),
+            Argument("Input", U16(basic_param_num + 5 * sequence + 2)),
+            Argument("Input", U16(basic_param_num + 5 * sequence + 3)),
+            Argument("Input", U16(basic_param_num + 5 * sequence + 4)),
+        ],
+        []
+    ]
+
+
+def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, sequence):
+    return [
+        genesis_proposal.genesis_proposal.register_new_reserve,
+        [Argument("NestedResult", NestedResult(U16(0), U16(0))),
+         Argument("NestedResult", NestedResult(U16(0), U16(1))),
+         Argument("Input", U16(basic_param_num - 2)),
+         Argument("Input", U16(basic_param_num - 1)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 0)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 1)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 2)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 3)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 4)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 5)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 6)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 7)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 8)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 9)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 10)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 11)),
+         Argument("Input", U16(basic_param_num + 13 * sequence + 12)),
+         ],
+        []
+    ]
+
+
 def batch_execute_proposal():
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
 
     # Execute genesis proposal
 
+    # init_wormhole_adapter_core
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
     create_proposal()
+
+    init_wormhole_adapter_core_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        wormhole_state,  # 2
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    init_wormhole_adapter_core_tx_block = [
+        genesis_proposal.genesis_proposal.init_wormhole_adapter_core,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(2))
+        ],
+        []
+    ]
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
     sui_project.batch_transaction(
-        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       sui_project.network_config['objects']['WormholeState'],  # 2
-                       ],
-        transactions=[
-            [genesis_proposal.genesis_proposal.vote_proposal_final,
-             [Argument("Input", U16(0)), Argument("Input", U16(1))],
-             []
-             ],  # 0. vote_proposal_final
-            [genesis_proposal.genesis_proposal.init_wormhole_adapter_core,
-             [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-              Argument("NestedResult", NestedResult(U16(0), U16(1))),
-              Argument("Input", U16(2))],
-             []
-             ],  # 1. init_wormhole_adapter_core
-            [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-              Argument("NestedResult", NestedResult(U16(1), U16(1)))],
-             []
-             ]
-        ]
+        actual_params=init_wormhole_adapter_core_params,
+        transactions=vote_proposal_final_tx_block + init_wormhole_adapter_core_tx_block + finish_proposal_tx_block
     )
+
     # Use core state
     init_wormhole_adapter_pool()
 
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
-    wbtc_pool_params = [list(bytes(wbtc().replace("0x", ""), "ascii")), 0, list(b"WBTC"), 0, 1]
-    usdt_pool_params = [list(bytes(usdt().replace("0x", ""), "ascii")), 0, list(b"USDT"), 1, 1]
-    usdc_pool_params = [list(bytes(usdc().replace("0x", ""), "ascii")), 0, list(b"USDC"), 2, 1]
-    sui_pool_params = [list(bytes(sui().replace("0x", ""), "ascii")), 0, list(b"SUI"), 5, 1]
+
+    usdt_pool_address = sui_project.network_config['pools']['USDT']['pool_address']
+    usdt_chain_id = sui_project.network_config['pools']['USDT']['dola_chain_id']
+    usdt_pool_name = sui_project.network_config['pools']['USDT']['pool_name']
+    usdt_pool_id = sui_project.network_config['pools']['USDT']['dola_pool_id']
+    usdt_pool_weight = sui_project.network_config['pools']['USDT']['pool_weight']
+    usdt_pool_params = [coin_type_to_vector(usdt_pool_address), usdt_chain_id, coin_type_to_vector(usdt_pool_name),
+                        usdt_pool_id, usdt_pool_weight]
+
+    usdc_pool_address = sui_project.network_config['pools']['USDC']['pool_address']
+    usdc_chain_id = sui_project.network_config['pools']['USDC']['dola_chain_id']
+    usdc_pool_name = sui_project.network_config['pools']['USDC']['pool_name']
+    usdc_pool_id = sui_project.network_config['pools']['USDC']['dola_pool_id']
+    usdc_pool_weight = sui_project.network_config['pools']['USDC']['pool_weight']
+    usdc_pool_params = [coin_type_to_vector(usdc_pool_address), usdc_chain_id, coin_type_to_vector(usdc_pool_name),
+                        usdc_pool_id, usdc_pool_weight]
+
+    sui_pool_address = sui_project.network_config['pools']['SUI']['pool_address']
+    sui_chain_id = sui_project.network_config['pools']['SUI']['dola_chain_id']
+    sui_pool_name = sui_project.network_config['pools']['SUI']['pool_name']
+    sui_pool_id = sui_project.network_config['pools']['SUI']['dola_pool_id']
+    sui_pool_weight = sui_project.network_config['pools']['SUI']['pool_weight']
+    sui_pool_params = [coin_type_to_vector(sui_pool_address), sui_chain_id, coin_type_to_vector(sui_pool_name),
+                       sui_pool_id, sui_pool_weight]
 
     create_proposal()
 
@@ -704,69 +778,19 @@ def batch_execute_proposal():
         dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
     ]
 
-    pool_params = wbtc_pool_params + usdt_pool_params + usdc_pool_params + sui_pool_params
+    pool_params = usdt_pool_params + usdc_pool_params + sui_pool_params
+
+    pool_num = len(pool_params) // 5
+    register_new_pool_tx_blocks = [
+        build_register_new_pool_tx_block(genesis_proposal, len(basic_params), i) for i in range(pool_num)
+    ]
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, pool_num)
 
     sui_project.batch_transaction(
         actual_params=basic_params + pool_params,
-        transactions=[
-            [genesis_proposal.genesis_proposal.vote_proposal_final,
-             [Argument("Input", U16(0)), Argument("Input", U16(1))],
-             []
-             ],  # 0. vote_proposal_final
-            [
-                genesis_proposal.genesis_proposal.register_new_pool,
-                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(4)),
-                 Argument("Input", U16(5)),
-                 Argument("Input", U16(6)),
-                 Argument("Input", U16(7))],
-                []
-            ],  # 1. register_new_pool btc
-            [
-                genesis_proposal.genesis_proposal.register_new_pool,
-                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(8)),
-                 Argument("Input", U16(9)),
-                 Argument("Input", U16(10)),
-                 Argument("Input", U16(11)),
-                 Argument("Input", U16(12))],
-                []
-            ],  # 2. register_new_pool usdt
-            [
-                genesis_proposal.genesis_proposal.register_new_pool,
-                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(13)),
-                 Argument("Input", U16(14)),
-                 Argument("Input", U16(15)),
-                 Argument("Input", U16(16)),
-                 Argument("Input", U16(17))],
-                []
-            ],  # 3. register_new_pool usdc
-            [
-                genesis_proposal.genesis_proposal.register_new_pool,
-                [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(3), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(18)),
-                 Argument("Input", U16(19)),
-                 Argument("Input", U16(20)),
-                 Argument("Input", U16(21)),
-                 Argument("Input", U16(22))],
-                []
-            ],  # 4. register_new_pool sui
-            [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(4), U16(0))),
-              Argument("NestedResult", NestedResult(U16(4), U16(1)))],
-             []
-             ]
-        ]
+        transactions=vote_proposal_final_tx_block + register_new_pool_tx_blocks + finish_proposal_tx_block
     )
 
     # Init chain group id param
@@ -826,222 +850,48 @@ def batch_execute_proposal():
     # base_borrow_rate, borrow_rate_slope1, borrow_rate_slope2, optimal_utilization]
     create_proposal()
 
-    wbtc_reserve_params = [0, False, False, 0,
-                           int(0.1 * RAY),
-                           0,
-                           0,
-                           int(0.8 * RAY),
-                           int(1.1 * RAY),
-                           int(0.02 * RAY),
-                           int(0.07 * RAY),
-                           int(3 * RAY),
-                           int(0.45 * RAY)]
-    usdt_reserve_params = [1, False, True, 0,
-                           int(0.1 * RAY),
-                           0,
-                           0,
-                           int(0.8 * RAY),
-                           int(1.1 * RAY),
-                           int(0.02 * RAY),
-                           int(0.07 * RAY),
-                           int(3 * RAY),
-                           int(0.45 * RAY)]
-    usdc_reserve_params = [2, False, True, 0,
-                           int(0.1 * RAY),
-                           0,
-                           0,
-                           int(0.8 * RAY),
-                           int(1.1 * RAY),
-                           int(0.02 * RAY),
-                           int(0.07 * RAY),
-                           int(3 * RAY),
-                           int(0.45 * RAY)]
-    eth_reserve_params = [3, False, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
-    matic_reserve_params = [4, False, False, 0,
-                            int(0.1 * RAY),
-                            0,
-                            0,
-                            int(0.8 * RAY),
-                            int(1.1 * RAY),
-                            int(0.02 * RAY),
-                            int(0.07 * RAY),
-                            int(3 * RAY),
-                            int(0.45 * RAY)]
-    sui_reserve_param = [5, True, False, 0,
-                         int(0.1 * RAY),
-                         0,
-                         0,
-                         int(0.8 * RAY),
-                         int(1.1 * RAY),
-                         int(0.02 * RAY),
-                         int(0.07 * RAY),
-                         int(3 * RAY),
-                         int(0.45 * RAY)]
-
-    base_params = [
+    basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
         sui_project[SuiObject.from_type(proposal())][-1],  # 1
         dola_protocol.lending_core_storage.Storage[-1],  # 2
         clock()  # 3
     ]
-    reserve_params = wbtc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + sui_reserve_param
+
+    reserve_params = []
+    reserves_num = len(sui_project.network_config['reserves'])
+
+    for reserve in sui_project.network_config['reserves']:
+        reserve_pool_id = sui_project.network_config['reserves'][reserve]['dola_pool_id']
+        reserve_is_isolated_asset = sui_project.network_config['reserves'][reserve]['is_isolated_asset']
+        reserve_borrowable_in_isolation = sui_project.network_config['reserves'][reserve]['borrowable_in_isolation']
+        reserve_treasury = sui_project.network_config['reserves'][reserve]['treasury']
+        reserve_treasury_factor = int(sui_project.network_config['reserves'][reserve]['treasury_factor'] * RAY)
+        reserve_borrow_cap_ceiling = sui_project.network_config['reserves'][reserve]['borrow_cap_ceiling']
+        reserve_collateral_coefficient = int(
+            sui_project.network_config['reserves'][reserve]['collateral_coefficient'] * RAY)
+        reserve_borrow_coefficient = int(sui_project.network_config['reserves'][reserve]['borrow_coefficient'] * RAY)
+        reserve_base_borrow_rate = int(sui_project.network_config['reserves'][reserve]['base_borrow_rate'] * RAY)
+        reserve_borrow_rate_slope1 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope1'] * RAY)
+        reserve_borrow_rate_slope2 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope2'] * RAY)
+        reserve_optimal_utilization = int(sui_project.network_config['reserves'][reserve]['optimal_utilization'] * RAY)
+        reserve_param = [reserve_pool_id, reserve_is_isolated_asset, reserve_borrowable_in_isolation, reserve_treasury,
+                         reserve_treasury_factor, reserve_borrow_cap_ceiling, reserve_collateral_coefficient,
+                         reserve_borrow_coefficient, reserve_base_borrow_rate, reserve_borrow_rate_slope1,
+                         reserve_borrow_rate_slope2, reserve_optimal_utilization]
+        reserve_params.append(reserve_param)
+
+    register_new_reserve_tx_blocks = []
+    for i in range(reserves_num):
+        register_new_reserve_tx_block = build_register_new_reserve_tx_block(genesis_proposal, len(basic_params), i)
+        register_new_reserve_tx_blocks.append(register_new_reserve_tx_block)
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, reserves_num)
 
     sui_project.batch_transaction(
-        actual_params=base_params + reserve_params,
-        transactions=[
-            [
-                genesis_proposal.genesis_proposal.vote_proposal_final,
-                [Argument("Input", U16(0)), Argument("Input", U16(1))],
-                []
-            ],  # 0. vote_proposal_final
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(4)),
-                 Argument("Input", U16(5)),
-                 Argument("Input", U16(6)),
-                 Argument("Input", U16(7)),
-                 Argument("Input", U16(8)),
-                 Argument("Input", U16(9)),
-                 Argument("Input", U16(10)),
-                 Argument("Input", U16(11)),
-                 Argument("Input", U16(12)),
-                 Argument("Input", U16(13)),
-                 Argument("Input", U16(14)),
-                 Argument("Input", U16(15)),
-                 Argument("Input", U16(16)),
-                 ],
-                []
-            ],  # 1. register_new_reserve 0 wbtc
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(17)),
-                 Argument("Input", U16(18)),
-                 Argument("Input", U16(19)),
-                 Argument("Input", U16(20)),
-                 Argument("Input", U16(21)),
-                 Argument("Input", U16(22)),
-                 Argument("Input", U16(23)),
-                 Argument("Input", U16(24)),
-                 Argument("Input", U16(25)),
-                 Argument("Input", U16(26)),
-                 Argument("Input", U16(27)),
-                 Argument("Input", U16(28)),
-                 Argument("Input", U16(29)),
-                 ],
-                []
-            ],  # 2. register_new_reserve 1 usdt
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(30)),
-                 Argument("Input", U16(31)),
-                 Argument("Input", U16(32)),
-                 Argument("Input", U16(33)),
-                 Argument("Input", U16(34)),
-                 Argument("Input", U16(35)),
-                 Argument("Input", U16(36)),
-                 Argument("Input", U16(37)),
-                 Argument("Input", U16(38)),
-                 Argument("Input", U16(39)),
-                 Argument("Input", U16(40)),
-                 Argument("Input", U16(41)),
-                 Argument("Input", U16(42)),
-                 ],
-                []
-            ],  # 3. register_new_reserve 2 usdc
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(3), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(43)),
-                 Argument("Input", U16(44)),
-                 Argument("Input", U16(45)),
-                 Argument("Input", U16(46)),
-                 Argument("Input", U16(47)),
-                 Argument("Input", U16(48)),
-                 Argument("Input", U16(49)),
-                 Argument("Input", U16(50)),
-                 Argument("Input", U16(51)),
-                 Argument("Input", U16(52)),
-                 Argument("Input", U16(53)),
-                 Argument("Input", U16(54)),
-                 Argument("Input", U16(55)),
-                 ],
-                []
-            ],  # 4. register_new_reserve 3 eth
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(4), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(4), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(56)),
-                 Argument("Input", U16(57)),
-                 Argument("Input", U16(58)),
-                 Argument("Input", U16(59)),
-                 Argument("Input", U16(60)),
-                 Argument("Input", U16(61)),
-                 Argument("Input", U16(62)),
-                 Argument("Input", U16(63)),
-                 Argument("Input", U16(64)),
-                 Argument("Input", U16(65)),
-                 Argument("Input", U16(66)),
-                 Argument("Input", U16(67)),
-                 Argument("Input", U16(68)),
-                 ],
-                []
-            ],  # 5. register_new_reserve 4 matic
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(5), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(5), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(69)),
-                 Argument("Input", U16(70)),
-                 Argument("Input", U16(71)),
-                 Argument("Input", U16(72)),
-                 Argument("Input", U16(73)),
-                 Argument("Input", U16(74)),
-                 Argument("Input", U16(75)),
-                 Argument("Input", U16(76)),
-                 Argument("Input", U16(77)),
-                 Argument("Input", U16(78)),
-                 Argument("Input", U16(79)),
-                 Argument("Input", U16(80)),
-                 Argument("Input", U16(81)),
-                 ],
-                []
-            ],  # 6. register_new_reserve 5 sui
-            [
-                genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
-                []
-            ]
-        ]
+        actual_params=basic_params + reserve_params,
+        transactions=vote_proposal_final_tx_block + register_new_reserve_tx_blocks + finish_proposal_tx_block
     )
 
 
@@ -1056,42 +906,50 @@ def get_price(symbol):
     return price, decimal
 
 
+def build_create_pool_tx_block(dola_protocol, sequence, coin_type):
+    return [
+        dola_protocol.omnipool.create_pool,
+        [
+            Argument('Input', U16(sequence))
+        ],
+        [coin_type]
+    ]
+
+
 def batch_create_pool():
     dola_protocol = load.dola_protocol_package()
 
-    sui_metadata = sui_project.client.suix_getCoinMetadata(sui())['id']
-    usdt_metadata = sui_project.client.suix_getCoinMetadata(usdt())['id']
-    usdc_metadata = sui_project.client.suix_getCoinMetadata(usdc())['id']
+    sui_metadata = sui_project.client.suix_getCoinMetadata(sui()['coin_type'])['id']
+    usdt_metadata = sui_project.client.suix_getCoinMetadata(usdt()['coin_type'])['id']
+    usdc_metadata = sui_project.client.suix_getCoinMetadata(usdc()['coin_type'])['id']
+
+    create_pool_params = [sui_metadata, usdt_metadata, usdc_metadata]
+    coin_types = [sui()['coin_type'], usdt()['coin_type'], usdc()['coin_type']]
+    create_pool_tx_blocks = [
+        build_create_pool_tx_block(dola_protocol, i, coin_types[i])
+        for i in range(len(create_pool_params))
+    ]
     sui_project.batch_transaction(
-        actual_params=[
-            sui_metadata,
-            usdt_metadata,
-            usdc_metadata
-        ],
-        transactions=[
-            [
-                dola_protocol.omnipool.create_pool,
-                [
-                    Argument('Input', U16(0))
-                ],
-                [sui()]
-            ],
-            [
-                dola_protocol.omnipool.create_pool,
-                [
-                    Argument('Input', U16(1))
-                ],
-                [usdt()]
-            ],
-            [
-                dola_protocol.omnipool.create_pool,
-                [
-                    Argument('Input', U16(2))
-                ],
-                [usdc()]
-            ],
-        ]
+        actual_params=create_pool_params,
+        transactions=create_pool_tx_blocks
     )
+
+
+def build_register_token_price_tx_block(genesis_proposal, basic_param_num, sequence):
+    return [
+        genesis_proposal.genesis_proposal.register_token_price,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(basic_param_num - 2)),
+            Argument("Input", U16(basic_param_num + sequence * 4 + 0)),
+            Argument("Input", U16(basic_param_num + sequence * 4 + 1)),
+            Argument("Input", U16(basic_param_num + sequence * 4 + 2)),
+            Argument("Input", U16(basic_param_num + sequence * 4 + 3)),
+            Argument("Input", U16(basic_param_num - 1)),
+        ],
+        []
+    ]
 
 
 def batch_init_oracle():
@@ -1100,122 +958,58 @@ def batch_init_oracle():
 
     create_proposal()
 
-    # Token price params
-    # [dola_pool_id, price, price_decimal]
-    (btc_price, btc_price_decimal) = get_price("BTC/USD")
-    btc_token_param = [0, btc_price, btc_price_decimal]
-    (usdt_price, usdt_price_decimal) = get_price("USDT/USD")
-    usdt_token_param = [1, usdt_price, usdt_price_decimal]
-    (usdc_price, usdc_price_decimal) = get_price("USDC/USD")
-    usdc_token_param = [2, usdc_price, usdc_price_decimal]
-    (eth_price, eth_price_decimal) = get_price("ETH/USD")
-    eth_token_param = [3, eth_price, eth_price_decimal]
-    (matic_price, matic_price_decimal) = get_price("MATIC/USD")
-    matic_token_param = [4, matic_price, matic_price_decimal]
-    (sui_price, sui_price_decimal) = get_price("SUI/USD")
-    sui_token_param = [5, sui_price, sui_price_decimal]
+    btc_token_param = construct_register_token_price_param(
+        "BTC/USD", 'BTC'
+    )
+    usdt_token_param = construct_register_token_price_param(
+        "USDT/USD", 'USDT'
+    )
+    usdc_token_param = construct_register_token_price_param(
+        "USDC/USD", 'USDC'
+    )
+    sui_token_param = construct_register_token_price_param(
+        "SUI/USD", 'SUI'
+    )
+    matic_token_param = construct_register_token_price_param(
+        "MATIC/USD", 'MATIC'
+    )
 
     basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-        dola_protocol.oracle.PriceOracle[-1],  # 1
-        clock(),  # 2
-        sui_project[SuiObject.from_type(proposal())][-1],  # 3
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        dola_protocol.oracle.PriceOracle[-1],  # 2
+        clock(),  # 3
     ]
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + eth_token_param + matic_token_param + sui_token_param
+
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + matic_token_param
+
+    token_nums = len(token_params) // 4
+    register_token_price_tx_blocks = [
+        build_register_token_price_tx_block(
+            genesis_proposal, len(basic_params), i
+        )
+        for i in range(token_nums)
+    ]
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, token_nums)
+
     sui_project.batch_transaction(
         actual_params=basic_params + token_params,
-        transactions=[
-            [
-                genesis_proposal.genesis_proposal.vote_proposal_final,
-                [Argument("Input", U16(0)), Argument("Input", U16(3))],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(4)),
-                    Argument("Input", U16(5)),
-                    Argument("Input", U16(6)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(1), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(7)),
-                    Argument("Input", U16(8)),
-                    Argument("Input", U16(9)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(10)),
-                    Argument("Input", U16(11)),
-                    Argument("Input", U16(12)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(3), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(13)),
-                    Argument("Input", U16(14)),
-                    Argument("Input", U16(15)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(4), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(4), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(16)),
-                    Argument("Input", U16(17)),
-                    Argument("Input", U16(18)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(5), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(5), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(19)),
-                    Argument("Input", U16(20)),
-                    Argument("Input", U16(21)),
-                    Argument("Input", U16(2))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
-                []
-            ]
-        ]
+        transactions=vote_proposal_final_tx_block + register_token_price_tx_blocks + finish_proposal_tx_block
     )
+
+
+def construct_register_token_price_param(symbol, token_name):
+    # use pyth oracle price to init oracle
+    # Token price params
+    # [dola_pool_id, price, price_decimal]
+    (btc_price, btc_price_decimal) = get_price(symbol)
+    btc_dola_pool_id = sui_project.network_config['resreves'][token_name]['dola_pool_id']
+    btc_feed_id = hex_to_vector(
+        sui_project.network_config['oracle']['feed_id'][symbol]
+    )
+    return [btc_dola_pool_id, btc_feed_id, btc_price, btc_price_decimal]
 
 
 def batch_init():

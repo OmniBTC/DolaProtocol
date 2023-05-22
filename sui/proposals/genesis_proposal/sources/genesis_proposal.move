@@ -118,8 +118,8 @@ module genesis_proposal::genesis_proposal {
         governance_cap: GovernanceCap,
         certificate: Certificate,
         price_oracle: &mut PriceOracle,
-        feed_id: vector<u8>,
         dola_pool_id: u16,
+        feed_id: vector<u8>,
         price_value: u256,
         price_decimal: u8,
         clock: &Clock

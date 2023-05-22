@@ -17,26 +17,46 @@ networks:
     objects:
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
+      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
     packages:
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     tokens:
       USDT:
         dola_pool_id: 1
-        address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
         decimals: 6
       USDC:
         dola_pool_id: 2
-        address: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
         decimals: 6
       SUI:
         dola_pool_id: 3
-        address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+        coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         decimals: 9
       WETH:
         dola_pool_id: 4
-        address: af8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN
+        coin_type: 0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN
         decimals: 8
+    pools:
+      USDT:
+        dola_chain_id: 0
+        dola_pool_id: 1
+        pool_address: "5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN"
+        pool_name: "USDT"
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 0
+        dola_pool_id: 2
+        pool_address: "c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN"
+        pool_name: "USDC"
+        pool_weight: 1
+      SUI:
+        dola_chain_id: 0
+        dola_pool_id: 3
+        pool_address: "0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
+        pool_name: "SUI"
+        pool_weight: 1
     reserves:
       BTC:
         dola_pool_id: 0
@@ -94,22 +114,8 @@ networks:
         borrow_rate_slope1: 0.07
         borrow_rate_slope2: 3
         optimal_utilization: 0.45
-      ETH:
-        dola_pool_id: 4
-        is_isolated_asset: False
-        borrowable_in_isolation: False
-        treasury: 0
-        treasury_factor: 0.23
-        supply_cap_ceiling: 0
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0.88
-        borrow_coefficient: 1.09
-        base_borrow_rate: 0.02
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        optimal_utilization: 0.45
       MATIC:
-        dola_pool_id: 5
+        dola_pool_id: 4
         is_isolated_asset: True
         borrowable_in_isolation: False
         treasury: 0
