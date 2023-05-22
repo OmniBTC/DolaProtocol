@@ -39,12 +39,15 @@ contract WormholeAdapterPool {
     constructor(
         IWormhole _wormhole,
         uint16 _dolaChainId,
-        uint8 _wormholeFinality
+        uint8 _wormholeFinality,
+        uint16 _emitterChainId,
+        bytes32 _emitterAddress
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
         dolaPool = new DolaPool(_dolaChainId, address(this));
         wormholeFinality = _wormholeFinality;
+        registeredEmitters[_emitterChainId] = _emitterAddress;
     }
 
     /// Call by governance
@@ -197,7 +200,7 @@ contract WormholeAdapterPool {
         );
     }
 
-    function getNonce() public returns (uint64) {
+    function getNonce() external returns (uint64) {
         return dolaPool.getNonce();
     }
 }

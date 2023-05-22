@@ -10,7 +10,7 @@ module dola_protocol::lending_core_wormhole_adapter {
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
 
-    use dola_protocol::dola_address;
+    use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
@@ -37,6 +37,14 @@ module dola_protocol::lending_core_wormhole_adapter {
         receiver: vector<u8>,
         amount: u256,
         liquidate_user_id: u64,
+        call_type: u8
+    }
+
+    struct RelayEvent has drop, copy {
+        sequence: u64,
+        dst_pool: DolaAddress,
+        source_chain_id: u16,
+        source_chain_nonce: u64,
         call_type: u8
     }
 
@@ -141,7 +149,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
-        wormhole_adapter_core::send_withdraw(
+        let sequence = wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             storage::get_app_cap(storage),
@@ -154,6 +162,14 @@ module dola_protocol::lending_core_wormhole_adapter {
             wormhole_message_fee,
             clock
         );
+
+        event::emit(RelayEvent {
+            sequence,
+            dst_pool,
+            source_chain_id,
+            source_chain_nonce: nonce,
+            call_type
+        });
 
         event::emit(LendingCoreEvent {
             nonce,
@@ -216,7 +232,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= amount, ENOT_ENOUGH_LIQUIDITY);
 
-        wormhole_adapter_core::send_withdraw(
+        let sequence = wormhole_adapter_core::send_withdraw(
             wormhole_state,
             core_state,
             storage::get_app_cap(storage),
@@ -229,6 +245,14 @@ module dola_protocol::lending_core_wormhole_adapter {
             wormhole_message_fee,
             clock
         );
+
+        event::emit(RelayEvent {
+            sequence,
+            dst_pool,
+            source_chain_id,
+            source_chain_nonce: nonce,
+            call_type
+        });
 
         event::emit(LendingCoreEvent {
             nonce,

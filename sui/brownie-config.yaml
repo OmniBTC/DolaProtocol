@@ -20,13 +20,33 @@ networks:
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pyth_service_url: https://xc-mainnet.pyth.network
+    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
     objects:
+      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
+      CoreState: '0xfcf6912bcf470ba53c6f011d1aca9e0f9fc0884ed6cd5a406e9877f90b2f20c0'
+      Faucet: '0x1c1ccef170198f16a639853b1d4ff349d9df5dd03f55b461ff0663705261d023'
+      GovernanceGenesis: '0xd634a99cf34fb8c44ed7b7b614eea1cdd80081877f2c6e3895590e4ccb2cf9d5'
+      GovernanceInfo: '0xd7addce675aa7435465ccd80ef3551795794fd10fd0c50af37d8b0fd084f07c2'
+      LendingPortal: '0x06512c9127e1dcdb48db98fe1aa6efe25cc3328edce2a37059e44f57aea656b3'
+      LendingStorage: '0x55b45dc67f397e0d60f45619715867552f333710300c6d4303bee849c10c8403'
+      Pool<SUI>: '0x6753f5d0341756b375fa6958347927cbf3c6e5fc110d5166b8588d080e951a83'
+      Pool<USDC>: '0xb131c79379b144fb9e8605f13faa39e6fd3571250dd8ae41ac16d2ab6766b67c'
+      Pool<USDT>: '0xdf2b8304aa7583f8529c99e07365d86c2270f7534d45bcb6bb68c829f829820f'
+      Pool<WBTC>: '0x1354565bf0592d687a07163131c9440d32e949c134ba27f7c53398866cd59634'
+      PoolManagerInfo: '0x0e65b27b81da20729f42c196543d32c82d8abbadeecca1b8644a8bd233d4fd70'
+      PoolState: '0x8c8a5719a3a935689d809ecb3265c947861c5db76128288540c2ad732e0a5907'
+      PriceOracle: '0xdfa0ef02ceb5ad5939396d547b36ddf5500317781be256aab58b7d4e0f864cac'
       PythState: '0xd8afde3a48b4ff7212bd6829a150f43f59043221200d63504d981f62bff2e27a'
-      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
-      GovernanceGenesis: '0xd6f722f9816b99f8055a57bc2574b1aad466f7e9abb04c5e66bdae6ae9e83426'
-      GovernanceInfo: '0x6bc874b7cee29d50965846c1918cb953432b2bc39030dc72d3c21fadf89a0aae'
+      PythWormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
+      SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+      SystemPortal: '0x658ae03f22158b972803a2abcab078ea81ba6d9d249ce173655de896b65c395e'
+      USDC: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::USDC
+      USDT: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::USDT
+      UserManagerInfo: '0x897167dea970a297823d3de42e30683e5f5260348db164577e8a227cc9f868da'
+      WBTC: 43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912::coins::WBTC
+      WormholeState: '0x31358d198147da50db32eda2562951d53973a0c0ad5ed738e9b17d88b213d790'
     oracle:
       feed_id:
         APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'
@@ -38,12 +58,15 @@ networks:
         USDC/USD: '0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722'
         USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
     packages:
-      dola_protocol: '0x85cb3a28a5807a0f6ce462273de1e5c35dca33e6c2ad03102361891ae6ab28ea'
-      genesis_proposal: '0x2b94ede6f116ee6f546a0963c5d75160ec903ab20f179a9c92e3bffac17b659b'
+      dola_protocol: '0x36eb3fe975ca09fcf0aec1bc487589d2fc94e47c97093b435555b700efbdab41'
+      external_interfaces: '0x05d111ae7acd7e439779166d123b833556ec0cae8f6dc4558bffb9bcbcefbcb1'
+      genesis_proposal: '0x6c7aeb51c4e2f115e9132e7908cee955ae7285cdebe1a1b0d9b9753f1a019442'
       pyth: '0x975e063f398f720af4f33ec06a927f14ea76ca24f7f8dd544aa62ab9d5d15f44'
-      test_coins: '0x700f7fb7e1ed293d34ee36b34e918ec1d262353108d87c7c5369a3ec819ebf5d'
-      wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+      pyth_wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
+      test_coins: '0x43cf06122069d4b6c7d079fb06a33d64a3de1e6a4f817efa62ec95b598c54912'
+      wormhole: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
     pyth_service_url: https://xc-testnet.pyth.network
+    wormhole_url: https://wormhole-v2-testnet-api.certus.one
 sui_wallets:
   from_mnemonic:
     Oracle: ${ORACLE_MNEMONIC}

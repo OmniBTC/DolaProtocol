@@ -16,7 +16,7 @@ contract DolaPool {
     // Save the dola contract address that allows withdrawals
     address[] allSpenders;
     mapping(address => uint256) public spenders;
-    uint64 nonce;
+    uint64 public nonce;
 
     /// Events
 
@@ -145,7 +145,7 @@ contract DolaPool {
             );
     }
 
-    function getNonce() public isSpender(msg.sender) returns (uint64) {
+    function getNonce() external returns (uint64) {
         return nonce++;
     }
 

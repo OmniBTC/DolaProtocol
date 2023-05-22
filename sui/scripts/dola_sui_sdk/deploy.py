@@ -21,9 +21,6 @@ def export_to_config():
     config["networks"][current_network]["packages"]["test_coins"] = sui_project.TestCoins[-1]
     config["networks"][current_network]["packages"]["external_interfaces"] = sui_project.ExternalInterfaces[-1]
 
-    if "wormhole" not in config["networks"][current_network]["packages"]:
-        config["networks"][current_network]["packages"]["wormhole"] = sui_project.Wormhole[-1]
-
     with open(path, "w") as f:
         yaml.safe_dump(config, f)
 
@@ -77,8 +74,8 @@ def deploy():
         wormhole=wormhole_package.package_id,
         pyth=sui_project.network_config['packages']['pyth']
     ), replace_publish_at=dict(
-        wormhole=wormhole_package.package_id,
         pyth=sui_project.network_config['packages']['pyth'],
+        wormhole=wormhole_package.package_id,
     ))
 
 

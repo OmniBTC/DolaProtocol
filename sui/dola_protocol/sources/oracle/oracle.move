@@ -22,8 +22,8 @@ module dola_protocol::oracle {
     use pyth::price_info::PriceInfoObject;
     use pyth::pyth;
     use pyth::state::State as PythState;
-    use wormhole::state::State as WormholeState;
-    use wormhole::vaa;
+    use pyth_wormhole::state::State as WormholeState;
+    use pyth_wormhole::vaa;
 
     const MINUATE: u64 = 60;
 
@@ -142,11 +142,11 @@ module dola_protocol::oracle {
     }
 
     /// === Entry Functions ===
-    
+
     public fun feed_token_price_by_pyth(
         genesis: &GovernanceGenesis,
-        wormhole_state: &WormholeState,
-        pyth_state: &PythState,
+        wormhole_state: &mut WormholeState,
+        pyth_state: &mut PythState,
         price_info_object: &mut PriceInfoObject,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,

@@ -58,6 +58,22 @@ def wormhole_package(package_id: str = None):
                            ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
 
 
+def pyth_wormhole_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = sui_project.network_config['packages']['wormhole']
+    return sui_package(package_id,
+                       Path.home().joinpath(Path(
+                           ".move/https___github_com_OmniBTC_wormhole_git_pyth-testnet/sui/wormhole")))
+
+
+def pyth_package():
+    return sui_brownie.SuiPackage(
+        package_id=sui_project.network_config['packages']['pyth'],
+        package_path=Path.home().joinpath(Path(
+            ".move/https___github_com_OmniBTC_pyth-crosschain_git_pyth-testnet/target_chains/sui/contracts")),
+    )
+
+
 def external_interfaces_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.ExternalInterfaces[-1]

@@ -1,14 +1,18 @@
-from brownie import config, network
+import yaml
+from brownie import network
 
-from dola_ethereum_sdk import DOLA_CONFIG, get_account, set_ethereum_network
+from dola_ethereum_sdk import DOLA_CONFIG, get_account, set_ethereum_network, config
 
 
 def deploy():
     account = get_account()
     cur_net = network.show_active()
     print(f"Current network:{cur_net}, account:{account}")
+
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
+    wormhole_finality = config["networks"][cur_net]["wormhole_finality"]
+    core_emitter = config["networks"][cur_net]["core_emitter"]
 
     DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
 
@@ -16,7 +20,9 @@ def deploy():
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
-        0,
+        wormhole_finality,
+        21,
+        core_emitter,
         {'from': account}
     )
 
@@ -32,19 +38,27 @@ def deploy():
         {'from': account}
     )
 
-    btc = deploy_token("BTC")
+    path = DOLA_CONFIG["DOLA_PROJECT_PATH"].joinpath('ethereum/brownie-config.yaml')
+    with open(path, "r") as f:
+        config_file = yaml.safe_load(f)
 
-    usdt = deploy_token("USDT")
+    config_file["networks"][cur_net]["wormhole_adapter_pool"] = wormhole_adapter_pool.address
+    config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
+    config_file["networks"][cur_net]["system_portal"] = system_portal.address
 
-    usdc = deploy_token("USDC")
+    if "test" in cur_net:
+        wbtc = deploy_token("WBTC")
 
-    print("----- deploy result -----")
-    print(f"wormhole_adapter_pool:'{wormhole_adapter_pool}'")
-    print(f"btc:'{btc}'")
-    print(f"usdt:'{usdt}'")
-    print(f"usdc:'{usdc}'")
-    print(f"lending_portal:'{lending_portal}'")
-    print(f"system_portal:'{system_portal}'")
+        usdt = deploy_token("USDT")
+
+        usdc = deploy_token("USDC")
+
+        config_file["networks"][cur_net]["wbtc"] = wbtc.address
+        config_file["networks"][cur_net]["usdt"] = usdt.address
+        config_file["networks"][cur_net]["usdc"] = usdc.address
+
+    with open(path, "w") as f:
+        yaml.safe_dump(config_file, f)
 
 
 def deploy_token(token_name="USDT"):
@@ -57,5 +71,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-zk-test")
+    set_ethereum_network("polygon-test")
     deploy()

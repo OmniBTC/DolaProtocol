@@ -2,9 +2,10 @@ import functools
 from typing import List
 
 import requests
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -119,7 +120,7 @@ def init_wormhole_adapter_pool():
 
     dola_protocol.wormhole_adapter_pool.initialize(
         dola_protocol.wormhole_adapter_pool.PoolGenesis[-1],
-        0,
+        21,
         get_wormhole_adapter_core_emitter(),
         wormhole.state.State[-1]
     )
@@ -480,55 +481,6 @@ def vote_register_new_pool(pool_id, pool_name, coin_type, dst_chain=0):
     )
 
 
-def vote_register_new_reserve(dola_pool_id):
-    """
-    public entry fun vote_register_new_reserve(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        clock: &Clock,
-        dola_pool_id: u16,
-        is_isolated_asset: bool,
-        borrowable_in_isolation: bool,
-        treasury: u64,
-        treasury_factor: u256,
-        borrow_cap_ceiling: u256,
-        collateral_coefficient: u256,
-        borrow_coefficient: u256,
-        base_borrow_rate: u256,
-        borrow_rate_slope1: u256,
-        borrow_rate_slope2: u256,
-        optimal_utilization: u256,
-        storage: &mut Storage,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
-    lending_core = load.lending_core_package()
-    # set apt as isolated asset
-    is_isolated_asset = dola_pool_id == 5
-    borrowable_in_isolation = dola_pool_id in [1, 2]
-    genesis_proposal.genesis_proposal.vote_register_new_reserve(
-        governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())][-1],
-        clock(),
-        dola_pool_id,
-        is_isolated_asset,
-        borrowable_in_isolation,
-        0,
-        int(0.1 * RAY),
-        0,
-        int(0.8 * RAY),
-        int(1.1 * RAY),
-        int(0.02 * RAY),
-        int(0.07 * RAY),
-        int(3 * RAY),
-        int(0.45 * RAY),
-        lending_core.storage.Storage[-1]
-    )
-
-
 def claim_test_coin(coin_type):
     test_coins = load.test_coins_package()
     test_coins.faucet.claim(
@@ -578,8 +530,8 @@ def eth():
     return f"{sui_project.TestCoins[-1]}::coins::ETH"
 
 
-def btc():
-    return f"{sui_project.TestCoins[-1]}::coins::BTC"
+def wbtc():
+    return f"{sui_project.TestCoins[-1]}::coins::WBTC"
 
 
 def bnb():
@@ -606,45 +558,28 @@ def pool(coin_type):
     return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<{coin_type}>"
 
 
+def pool_id(coin_type):
+    coin_name = coin_type.split("::")[-1]
+    return sui_project.network_config['objects'][f"Pool<{coin_name}>"]
+
+
 def proposal():
     return f"{sui_project.DolaProtocol[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
            f"::genesis_proposal::Certificate>"
 
 
-def bridge_pool_read_vaa(index=0):
-    omnipool = load.omnipool_package()
-    result = omnipool.wormhole_adapter_pool.read_vaa.simulate(
-        omnipool.wormhole_adapter_pool.PoolState[-1], index
-    )["events"][-1]["moveEvent"]["fields"]
-    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
-
-
-def bridge_core_read_vaa(index=0):
+def query_portal_relay_event(limit=5):
     dola_protocol = load.dola_protocol_package()
-    result = dola_protocol.wormhole_adapter_core.read_vaa.simulate(
-        dola_protocol.wormhole_adapter_core.CoreState[-1], index
-    )["events"][0]["parsedJson"]
-    return "0x" + bytes(result["vaa"]).hex(), result["nonce"]
+    return sui_project.client.suix_queryEvents(
+        {"MoveEventType": f"{dola_protocol.package_id}::lending_portal::RelayEvnet"}, limit=limit, cursor=None,
+        descending_order=None)['data']
 
 
-def lending_portal_contract_id():
+def query_core_relay_event(limit=5):
     dola_protocol = load.dola_protocol_package()
-    lending_portal_info = sui_project.client.sui_multiGetObjects([dola_protocol.lending_portal.LendingPortal[-1]], {
-        "showType": False,
-        "showOwner": False,
-        "showPreviousTransaction": False,
-        "showDisplay": False,
-        "showContent": True,
-        "showBcs": False,
-        "showStorageRebate": False
-    })
-    return lending_portal_info[0]['data']['content']['fields']['dola_contract']['fields']['dola_contract']
-
-
-def query_relay_event(limit=5):
-    dola_portal = load.dola_portal_package()
-    return dola_portal.query_events(
-        {"MoveEvent": f"{dola_portal.package_id}::lending::RelayEvent"}, limit=limit)['data']
+    return sui_project.client.suix_queryEvents(
+        {"MoveEventType": f"{dola_protocol.package_id}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
+        cursor=None, descending_order=None)['data']
 
 
 @functools.lru_cache()
@@ -666,9 +601,86 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
     return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
 
 
+@functools.lru_cache()
+def get_wormhole_adapter_pool_emitter() -> List[int]:
+    dola_protocol = load.dola_protocol_package()
+    result = sui_project.client.sui_getObject(
+        dola_protocol.wormhole_adapter_pool.PoolState[-1],
+        {
+            "showType": True,
+            "showOwner": True,
+            "showPreviousTransaction": False,
+            "showDisplay": False,
+            "showContent": True,
+            "showBcs": False,
+            "showStorageRebate": False
+        }
+    )
+
+    return list(bytes.fromhex(result["data"]["content"]["fields"]["wormhole_emitter"]["fields"]["id"]["id"][2:]))
+
+
+def format_emitter_address(addr):
+    addr = addr.replace("0x", "")
+    if len(addr) < 64:
+        addr = "0" * (64 - len(addr)) + addr
+    return addr
+
+
+def register_remote_bridge(wormhole_chain_id, emitter_address):
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    emitter_address = format_emitter_address(emitter_address)
+
+    create_proposal()
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+    ]
+
+    bridge_params = [
+        sui_project.network_config['objects']['CoreState'],
+        wormhole_chain_id,
+        list(bytes.fromhex(emitter_address.replace("0x", ""))),
+    ]
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + bridge_params,
+        transactions=[
+            [
+                genesis_proposal.genesis_proposal.vote_proposal_final,
+                [
+                    Argument("Input", U16(0)), Argument("Input", U16(1))
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.register_remote_bridge,
+                [
+                    Argument("NestedResult", NestedResult(U16(0), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.destory,
+                [
+                    Argument("NestedResult", NestedResult(U16(1), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(1), U16(1)))
+                ],
+                []
+            ]
+        ]
+    )
+
+
 def batch_execute_proposal():
     genesis_proposal = load.genesis_proposal_package()
-    wormhole = load.wormhole_package()
     dola_protocol = load.dola_protocol_package()
 
     # Execute genesis proposal
@@ -699,7 +711,7 @@ def batch_execute_proposal():
                 [Argument("NestedResult", NestedResult(U16(1), U16(0))),
                  Argument("NestedResult", NestedResult(U16(1), U16(1))),
                  Argument("Input", U16(3))],
-                [btc()]
+                [wbtc()]
             ],  # 2. create_omnipool btc
             [
                 genesis_proposal.genesis_proposal.create_omnipool,
@@ -734,37 +746,23 @@ def batch_execute_proposal():
 
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
-    btc_pool_params = [list(bytes(btc().replace("0x", ""), "ascii")), 0, list(b"BTC"), 0, 1]
+    wbtc_pool_params = [list(bytes(wbtc().replace("0x", ""), "ascii")), 0, list(b"WBTC"), 0, 1]
     usdt_pool_params = [list(bytes(usdt().replace("0x", ""), "ascii")), 0, list(b"USDT"), 1, 1]
     usdc_pool_params = [list(bytes(usdc().replace("0x", ""), "ascii")), 0, list(b"USDC"), 2, 1]
-    sui_pool_params = [list(bytes(sui().replace("0x", ""), "ascii")), 0, list(b"SUI"), 7, 1]
+    sui_pool_params = [list(bytes(sui().replace("0x", ""), "ascii")), 0, list(b"SUI"), 5, 1]
 
     create_proposal()
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
+    ]
+
+    pool_params = wbtc_pool_params + usdt_pool_params + usdc_pool_params + sui_pool_params
+
     sui_project.batch_transaction(
-        actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
-                       btc_pool_params[0],  # 3
-                       btc_pool_params[1],  # 4
-                       btc_pool_params[2],  # 5
-                       btc_pool_params[3],  # 6
-                       btc_pool_params[4],  # 7
-                       usdt_pool_params[0],  # 8
-                       usdt_pool_params[1],  # 9
-                       usdt_pool_params[2],  # 10
-                       usdt_pool_params[3],  # 11
-                       usdt_pool_params[4],  # 12
-                       usdc_pool_params[0],  # 13
-                       usdc_pool_params[1],  # 14
-                       usdc_pool_params[2],  # 15
-                       usdc_pool_params[3],  # 16
-                       usdc_pool_params[4],  # 17
-                       sui_pool_params[0],  # 18
-                       sui_pool_params[1],  # 19
-                       sui_pool_params[2],  # 20
-                       sui_pool_params[3],  # 21
-                       sui_pool_params[4],  # 22
-                       ],
+        actual_params=basic_params + pool_params,
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
              [Argument("Input", U16(0)), Argument("Input", U16(1))],
@@ -828,7 +826,7 @@ def batch_execute_proposal():
 
     # Init chain group id param
     chain_group_id = 2
-    group_chain_ids = [4, 5, 7]
+    group_chain_ids = [5, 23]
 
     create_proposal()
     sui_project.batch_transaction(
@@ -883,16 +881,16 @@ def batch_execute_proposal():
     # base_borrow_rate, borrow_rate_slope1, borrow_rate_slope2, optimal_utilization]
     create_proposal()
 
-    btc_reserve_params = [0, False, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
+    wbtc_reserve_params = [0, False, False, 0,
+                           int(0.1 * RAY),
+                           0,
+                           0,
+                           int(0.8 * RAY),
+                           int(1.1 * RAY),
+                           int(0.02 * RAY),
+                           int(0.07 * RAY),
+                           int(3 * RAY),
+                           int(0.45 * RAY)]
     usdt_reserve_params = [1, False, True, 0,
                            int(0.1 * RAY),
                            0,
@@ -933,27 +931,7 @@ def batch_execute_proposal():
                             int(0.07 * RAY),
                             int(3 * RAY),
                             int(0.45 * RAY)]
-    apt_reserve_params = [5, True, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
-    bnb_reserve_params = [6, False, False, 0,
-                          int(0.1 * RAY),
-                          0,
-                          0,
-                          int(0.8 * RAY),
-                          int(1.1 * RAY),
-                          int(0.02 * RAY),
-                          int(0.07 * RAY),
-                          int(3 * RAY),
-                          int(0.45 * RAY)]
-    sui_reserve_param = [7, False, False, 0,
+    sui_reserve_param = [5, True, False, 0,
                          int(0.1 * RAY),
                          0,
                          0,
@@ -970,7 +948,7 @@ def batch_execute_proposal():
         dola_protocol.lending_core_storage.Storage[-1],  # 2
         clock()  # 3
     ]
-    reserve_params = btc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + apt_reserve_params + bnb_reserve_params + sui_reserve_param
+    reserve_params = wbtc_reserve_params + usdt_reserve_params + usdc_reserve_params + eth_reserve_params + matic_reserve_params + sui_reserve_param
 
     sui_project.batch_transaction(
         actual_params=base_params + reserve_params,
@@ -1001,7 +979,7 @@ def batch_execute_proposal():
                  Argument("Input", U16(16)),
                  ],
                 []
-            ],  # 1. register_new_reserve 0 btc
+            ],  # 1. register_new_reserve 0 wbtc
             [
                 genesis_proposal.genesis_proposal.register_new_reserve,
                 [Argument("NestedResult", NestedResult(U16(1), U16(0))),
@@ -1111,55 +1089,11 @@ def batch_execute_proposal():
                  Argument("Input", U16(81)),
                  ],
                 []
-            ],  # 6. register_new_reserve 5 apt
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(6), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(82)),
-                 Argument("Input", U16(83)),
-                 Argument("Input", U16(84)),
-                 Argument("Input", U16(85)),
-                 Argument("Input", U16(86)),
-                 Argument("Input", U16(87)),
-                 Argument("Input", U16(88)),
-                 Argument("Input", U16(89)),
-                 Argument("Input", U16(90)),
-                 Argument("Input", U16(91)),
-                 Argument("Input", U16(92)),
-                 Argument("Input", U16(93)),
-                 Argument("Input", U16(94)),
-                 ],
-                []
-            ],  # 7. register_new_reserve 6 bnb
-            [
-                genesis_proposal.genesis_proposal.register_new_reserve,
-                [Argument("NestedResult", NestedResult(U16(7), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(7), U16(1))),
-                 Argument("Input", U16(2)),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(95)),
-                 Argument("Input", U16(96)),
-                 Argument("Input", U16(97)),
-                 Argument("Input", U16(98)),
-                 Argument("Input", U16(99)),
-                 Argument("Input", U16(100)),
-                 Argument("Input", U16(101)),
-                 Argument("Input", U16(102)),
-                 Argument("Input", U16(103)),
-                 Argument("Input", U16(104)),
-                 Argument("Input", U16(105)),
-                 Argument("Input", U16(106)),
-                 Argument("Input", U16(107)),
-                 ],
-                []
-            ],  # 8. register_new_reserve 7 sui
+            ],  # 6. register_new_reserve 5 sui
             [
                 genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(8), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(8), U16(1)))],
+                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
                 []
             ]
         ]
@@ -1195,48 +1129,22 @@ def batch_init_oracle():
     eth_token_param = [3, eth_price, eth_price_decimal]
     (matic_price, matic_price_decimal) = get_price("MATIC/USD")
     matic_token_param = [4, matic_price, matic_price_decimal]
-    (apt_price, apt_price_decimal) = get_price("APT/USD")
-    apt_token_param = [5, apt_price, apt_price_decimal]
-    (bnb_price, bnb_price_decimal) = get_price("BNB/USD")
-    bnb_token_param = [6, bnb_price, bnb_price_decimal]
     (sui_price, sui_price_decimal) = get_price("SUI/USD")
-    sui_token_param = [7, sui_price, sui_price_decimal]
+    sui_token_param = [5, sui_price, sui_price_decimal]
 
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        dola_protocol.oracle.PriceOracle[-1],  # 1
+        clock(),  # 2
+        sui_project[SuiObject.from_type(proposal())][-1],  # 3
+    ]
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + eth_token_param + matic_token_param + sui_token_param
     sui_project.batch_transaction(
-        actual_params=[
-            dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
-            dola_protocol.oracle.PriceOracle[-1],  # 1
-            btc_token_param[0],  # 2
-            btc_token_param[1],  # 3
-            btc_token_param[2],  # 4
-            usdt_token_param[0],  # 5
-            usdt_token_param[1],  # 6
-            usdt_token_param[2],  # 7
-            usdc_token_param[0],  # 8
-            usdc_token_param[1],  # 9
-            usdc_token_param[2],  # 10
-            eth_token_param[0],  # 11
-            eth_token_param[1],  # 12
-            eth_token_param[2],  # 13
-            matic_token_param[0],  # 14
-            matic_token_param[1],  # 15
-            matic_token_param[2],  # 16
-            apt_token_param[0],  # 17
-            apt_token_param[1],  # 18
-            apt_token_param[2],  # 19
-            bnb_token_param[0],  # 20
-            bnb_token_param[1],  # 21
-            bnb_token_param[2],  # 22
-            sui_token_param[0],  # 23
-            sui_token_param[1],  # 24
-            sui_token_param[2],  # 25
-            clock(),  # 26
-            sui_project[SuiObject.from_type(proposal())][-1],  # 27
-        ],
+        actual_params=basic_params + token_params,
         transactions=[
             [
                 genesis_proposal.genesis_proposal.vote_proposal_final,
-                [Argument("Input", U16(0)), Argument("Input", U16(27))],
+                [Argument("Input", U16(0)), Argument("Input", U16(3))],
                 []
             ],
             [
@@ -1245,10 +1153,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(0), U16(0))),
                     Argument("NestedResult", NestedResult(U16(0), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                    Argument("Input", U16(3)),
                     Argument("Input", U16(4)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1258,10 +1166,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(1), U16(0))),
                     Argument("NestedResult", NestedResult(U16(1), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(5)),
-                    Argument("Input", U16(6)),
                     Argument("Input", U16(7)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(8)),
+                    Argument("Input", U16(9)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1271,10 +1179,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(2), U16(0))),
                     Argument("NestedResult", NestedResult(U16(2), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(8)),
-                    Argument("Input", U16(9)),
                     Argument("Input", U16(10)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(11)),
+                    Argument("Input", U16(12)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1284,10 +1192,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(3), U16(0))),
                     Argument("NestedResult", NestedResult(U16(3), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(11)),
-                    Argument("Input", U16(12)),
                     Argument("Input", U16(13)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(14)),
+                    Argument("Input", U16(15)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1297,10 +1205,10 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(4), U16(0))),
                     Argument("NestedResult", NestedResult(U16(4), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(14)),
-                    Argument("Input", U16(15)),
                     Argument("Input", U16(16)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(17)),
+                    Argument("Input", U16(18)),
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
@@ -1310,43 +1218,17 @@ def batch_init_oracle():
                     Argument("NestedResult", NestedResult(U16(5), U16(0))),
                     Argument("NestedResult", NestedResult(U16(5), U16(1))),
                     Argument("Input", U16(1)),
-                    Argument("Input", U16(17)),
-                    Argument("Input", U16(18)),
                     Argument("Input", U16(19)),
-                    Argument("Input", U16(26))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(6), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(6), U16(1))),
-                    Argument("Input", U16(1)),
                     Argument("Input", U16(20)),
                     Argument("Input", U16(21)),
-                    Argument("Input", U16(22)),
-                    Argument("Input", U16(26))
-                ],
-                []
-            ],
-            [
-                genesis_proposal.genesis_proposal.register_token_price,
-                [
-                    Argument("NestedResult", NestedResult(U16(7), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(7), U16(1))),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(23)),
-                    Argument("Input", U16(24)),
-                    Argument("Input", U16(25)),
-                    Argument("Input", U16(26))
+                    Argument("Input", U16(2))
                 ],
                 []
             ],
             [
                 genesis_proposal.genesis_proposal.destory,
-                [Argument("NestedResult", NestedResult(U16(8), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(8), U16(1)))],
+                [Argument("NestedResult", NestedResult(U16(6), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(6), U16(1)))],
                 []
             ]
         ]
@@ -1361,3 +1243,7 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
+
+    # register_remote_bridge(5, "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c")
+    # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
+    # register_remote_bridge(0, sui_pool_emitter)
