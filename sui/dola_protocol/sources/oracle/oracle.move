@@ -19,7 +19,8 @@ module dola_protocol::oracle {
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use pyth::hot_potato_vector;
     use pyth::i64;
-    use pyth::price_info::PriceInfoObject;
+    use pyth::price_identifier::{Self, PriceIdentifier};
+    use pyth::price_info::{Self, PriceInfoObject};
     use pyth::pyth;
     use pyth::state::State as PythState;
     use pyth_wormhole::state::State as WormholeState;
@@ -37,12 +38,16 @@ module dola_protocol::oracle {
 
     const ENOT_RECENT_PRICE: u64 = 3;
 
+    const EWRONG_FEED_TOKEN: u64 = 4;
+
     struct PriceOracle has key {
         id: UID,
         // price guard period
         price_guard_time: u64,
         // the maximum period of validity of the price when executing the transaction
         price_fresh_time: u64,
+        // dola_pool_id => price_identifier
+        price_identifiers: Table<u16, PriceIdentifier>,
         // dola_pool_id => price
         price_oracles: Table<u16, Price>
     }
@@ -60,6 +65,7 @@ module dola_protocol::oracle {
             id: object::new(ctx),
             price_guard_time: HOUR,
             price_fresh_time: MINUATE,
+            price_identifiers: table::new(ctx),
             price_oracles: table::new(ctx)
         });
     }
@@ -96,6 +102,7 @@ module dola_protocol::oracle {
     public fun register_token_price(
         _: &GovernanceCap,
         price_oracle: &mut PriceOracle,
+        feed_id: vector<u8>,
         dola_pool_id: u16,
         price_value: u256,
         price_decimal: u8,
@@ -103,6 +110,13 @@ module dola_protocol::oracle {
     ) {
         let price_oracles = &mut price_oracle.price_oracles;
         assert!(!table::contains(price_oracles, dola_pool_id), EALREADY_EXIST_ORACLE);
+        let price_identifier = price_identifier::from_byte_vec(feed_id);
+        let price_identifiers = &mut price_oracle.price_identifiers;
+        assert!(
+            !table::contains(price_identifiers, dola_pool_id),
+            EALREADY_EXIST_ORACLE
+        );
+        table::add(price_identifiers, dola_pool_id, price_identifier);
         table::add(price_oracles, dola_pool_id, Price {
             value: price_value,
             decimal: price_decimal,
@@ -154,13 +168,22 @@ module dola_protocol::oracle {
         clock: &Clock,
         fee: Coin<SUI>
     ) {
+        // Check current protocol version
         genesis::check_latest_version(genesis);
+
+        // Check feed token is correct
+        assert!(table::contains(&price_oracle.price_identifiers, dola_pool_id), ENONEXISTENT_ORACLE);
+        let price_idetifiers = &mut price_oracle.price_identifiers;
+        let price_identifier = table::borrow(price_idetifiers, dola_pool_id);
+        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
+        let pyth_price_identifier = price_info::get_price_identifier(&price_info);
+        assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
+
         let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
         let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
         let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
         let price_oracles = &mut price_oracle.price_oracles;
-        assert!(table::contains(price_oracles, dola_pool_id), ENONEXISTENT_ORACLE);
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
         // get the price of the lastest minute
@@ -183,6 +206,7 @@ module dola_protocol::oracle {
             id: object::new(ctx),
             price_guard_time: HOUR,
             price_fresh_time: MINUATE,
+            price_identifiers: table::new(ctx),
             price_oracles: table::new(ctx)
         });
     }

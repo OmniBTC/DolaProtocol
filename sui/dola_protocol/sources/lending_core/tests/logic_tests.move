@@ -100,19 +100,59 @@ module dola_protocol::logic_tests {
         let cap = genesis::register_governance_cap_for_testing();
 
         // register btc oracle
-        oracle::register_token_price(&cap, oracle, BTC_POOL_ID, 3000000, 2, clock);
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            BTC_POOL_ID,
+            3000000,
+            2,
+            clock
+        );
 
         // register usdt oracle
-        oracle::register_token_price(&cap, oracle, USDT_POOL_ID, 100, 2, clock);
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            USDT_POOL_ID,
+            100,
+            2,
+            clock
+        );
 
         // register usdc oracle
-        oracle::register_token_price(&cap, oracle, USDC_POOL_ID, 100, 2, clock);
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            USDC_POOL_ID,
+            100,
+            2,
+            clock
+        );
 
         // register eth oracle
-        oracle::register_token_price(&cap, oracle, ETH_POOL_ID, 200000, 2, clock);
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            ETH_POOL_ID,
+            200000,
+            2,
+            clock
+        );
 
         // register isolate oracle
-        oracle::register_token_price(&cap, oracle, ISOLATE_POOL_ID, 10000, 2, clock);
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            ISOLATE_POOL_ID,
+            10000,
+            2,
+            clock
+        );
 
         genesis::destroy(cap);
     }
