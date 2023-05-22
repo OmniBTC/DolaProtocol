@@ -29,7 +29,7 @@ def deploy():
     wormhole_package = sui_brownie.SuiPackage(
         package_id=sui_project.network_config['packages']['wormhole'],
         package_path=Path.home().joinpath(Path(
-            ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")),
+            ".move/https___github_com_wormhole-foundation_wormhole_git_fcfe551da0f46b704b76b09ae11dca3dd9387837/sui/wormhole")),
     )
 
     dola_protocol_package = sui_brownie.SuiPackage(

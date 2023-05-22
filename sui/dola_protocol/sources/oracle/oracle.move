@@ -23,8 +23,8 @@ module dola_protocol::oracle {
     use pyth::price_info::{Self, PriceInfoObject};
     use pyth::pyth;
     use pyth::state::State as PythState;
-    use pyth_wormhole::state::State as WormholeState;
-    use pyth_wormhole::vaa;
+    use wormhole::state::State as WormholeState;
+    use wormhole::vaa;
 
     const MINUATE: u64 = 60;
 
