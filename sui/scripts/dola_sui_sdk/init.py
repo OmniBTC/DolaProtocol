@@ -2,37 +2,14 @@ import functools
 from typing import List
 
 import requests
+from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
-
-from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
 
-def vote_create_pool(coin_type, decimal=8):
-    """
-    public entry fun vote_create_omnipool<CoinType>(
-        governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        decimals: u8,
-        ctx: &mut TxContext
-    )
-    :param decimal:
-    :param coin_type:
-    :return:
-    """
-    genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
-
-    genesis_proposal.genesis_proposal.vote_create_omnipool(
-        governance.governance_v1.GovernanceInfo[-1],
-        sui_project[SuiObject.from_type(proposal())][-1],
-        decimal,
-        type_arguments=[coin_type]
-    )
-
-
+# for devnet
 def init_wormhole():
     """
     public entry fun complete(
@@ -685,15 +662,11 @@ def batch_execute_proposal():
 
     # Execute genesis proposal
 
-    # Create omnipool params
-    decimals = 8
-
     create_proposal()
     sui_project.batch_transaction(
         actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
                        sui_project.network_config['objects']['WormholeState'],  # 2
-                       decimals,  # 3
                        ],
         transactions=[
             [genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -706,37 +679,9 @@ def batch_execute_proposal():
               Argument("Input", U16(2))],
              []
              ],  # 1. init_wormhole_adapter_core
-            [
-                genesis_proposal.genesis_proposal.create_omnipool,
-                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
-                 Argument("Input", U16(3))],
-                [wbtc()]
-            ],  # 2. create_omnipool btc
-            [
-                genesis_proposal.genesis_proposal.create_omnipool,
-                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                 Argument("Input", U16(3))],
-                [usdt()]
-            ],  # 3. create_omnipool usdt
-            [
-                genesis_proposal.genesis_proposal.create_omnipool,
-                [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(3), U16(1))),
-                 Argument("Input", U16(3))],
-                [usdc()]
-            ],  # 4. create_omnipool usdc
-            [
-                genesis_proposal.genesis_proposal.create_omnipool,
-                [Argument("NestedResult", NestedResult(U16(4), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(4), U16(1))),
-                 Argument("Input", U16(3))],
-                [sui()]
-            ],  # 5. create_omnipool sui
             [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(5), U16(0))),
-              Argument("NestedResult", NestedResult(U16(5), U16(1)))],
+             [Argument("NestedResult", NestedResult(U16(1), U16(0))),
+              Argument("NestedResult", NestedResult(U16(1), U16(1)))],
              []
              ]
         ]
@@ -1111,6 +1056,44 @@ def get_price(symbol):
     return price, decimal
 
 
+def batch_create_pool():
+    dola_protocol = load.dola_protocol_package()
+
+    sui_metadata = sui_project.client.suix_getCoinMetadata(sui())['id']
+    usdt_metadata = sui_project.client.suix_getCoinMetadata(usdt())['id']
+    usdc_metadata = sui_project.client.suix_getCoinMetadata(usdc())['id']
+    sui_project.batch_transaction(
+        actual_params=[
+            sui_metadata,
+            usdt_metadata,
+            usdc_metadata
+        ],
+        transactions=[
+            [
+                dola_protocol.omnipool.create_pool,
+                [
+                    Argument('Input', U16(0))
+                ],
+                [sui()]
+            ],
+            [
+                dola_protocol.omnipool.create_pool,
+                [
+                    Argument('Input', U16(1))
+                ],
+                [usdt()]
+            ],
+            [
+                dola_protocol.omnipool.create_pool,
+                [
+                    Argument('Input', U16(2))
+                ],
+                [usdc()]
+            ],
+        ]
+    )
+
+
 def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
@@ -1238,6 +1221,7 @@ def batch_init_oracle():
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
+    batch_create_pool()
     batch_execute_proposal()
 
 
