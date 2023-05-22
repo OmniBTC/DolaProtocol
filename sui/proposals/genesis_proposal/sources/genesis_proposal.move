@@ -13,7 +13,6 @@ module genesis_proposal::genesis_proposal {
 
     use dola_protocol::app_manager::TotalAppInfo;
     use dola_protocol::dola_address;
-    use dola_protocol::dola_pool;
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use dola_protocol::lending_core_storage::{Self, Storage};
@@ -278,16 +277,6 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee,
             clock
         );
-        (governance_cap, certificate)
-    }
-
-    public fun create_omnipool<CoinType>(
-        governance_cap: GovernanceCap,
-        certificate: Certificate,
-        decimals: u8,
-        ctx: &mut TxContext
-    ): (GovernanceCap, Certificate) {
-        dola_pool::create_pool<CoinType>(&governance_cap, decimals, ctx);
         (governance_cap, certificate)
     }
 
