@@ -851,7 +851,8 @@ def batch_execute_proposal():
         reserve_borrowable_in_isolation = sui_project.network_config['reserves'][reserve]['borrowable_in_isolation']
         reserve_treasury = sui_project.network_config['reserves'][reserve]['treasury']
         reserve_treasury_factor = int(sui_project.network_config['reserves'][reserve]['treasury_factor'] * RAY)
-        reserve_borrow_cap_ceiling = sui_project.network_config['reserves'][reserve]['borrow_cap_ceiling']
+        reserve_supply_cap_ceiling = int(sui_project.network_config['reserves'][reserve]['supply_cap_ceiling'] * 1e8)
+        reserve_borrow_cap_ceiling = int(sui_project.network_config['reserves'][reserve]['borrow_cap_ceiling'] * 1e8)
         reserve_collateral_coefficient = int(
             sui_project.network_config['reserves'][reserve]['collateral_coefficient'] * RAY)
         reserve_borrow_coefficient = int(sui_project.network_config['reserves'][reserve]['borrow_coefficient'] * RAY)
@@ -860,7 +861,8 @@ def batch_execute_proposal():
         reserve_borrow_rate_slope2 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope2'] * RAY)
         reserve_optimal_utilization = int(sui_project.network_config['reserves'][reserve]['optimal_utilization'] * RAY)
         reserve_param = [reserve_pool_id, reserve_is_isolated_asset, reserve_borrowable_in_isolation, reserve_treasury,
-                         reserve_treasury_factor, reserve_borrow_cap_ceiling, reserve_collateral_coefficient,
+                         reserve_treasury_factor, reserve_supply_cap_ceiling, reserve_borrow_cap_ceiling,
+                         reserve_collateral_coefficient,
                          reserve_borrow_coefficient, reserve_base_borrow_rate, reserve_borrow_rate_slope1,
                          reserve_borrow_rate_slope2, reserve_optimal_utilization]
         reserve_params.append(reserve_param)

@@ -64,7 +64,7 @@ networks:
         borrowable_in_isolation: False
         treasury: 0
         treasury_factor: 0.23
-        supply_cap_ceiling: 0
+        supply_cap_ceiling: 5
         borrow_cap_ceiling: 0
         collateral_coefficient: 0.88
         borrow_coefficient: 1.09
@@ -78,7 +78,7 @@ networks:
         borrowable_in_isolation: True
         treasury: 0
         treasury_factor: 0.05
-        supply_cap_ceiling: 0
+        supply_cap_ceiling: 100000
         borrow_cap_ceiling: 0
         collateral_coefficient: 0.9
         borrow_coefficient: 1.06
@@ -92,7 +92,7 @@ networks:
         borrowable_in_isolation: True
         treasury: 0
         treasury_factor: 0.23
-        supply_cap_ceiling: 0
+        supply_cap_ceiling: 100000
         borrow_cap_ceiling: 0
         collateral_coefficient: 0.9
         borrow_coefficient: 1.06
@@ -106,7 +106,7 @@ networks:
         borrowable_in_isolation: False
         treasury: 0
         treasury_factor: 0.23
-        supply_cap_ceiling: 0
+        supply_cap_ceiling: 100000
         borrow_cap_ceiling: 0
         collateral_coefficient: 0
         borrow_coefficient: 1.4
@@ -120,7 +120,7 @@ networks:
         borrowable_in_isolation: False
         treasury: 0
         treasury_factor: 0.23
-        supply_cap_ceiling: 0
+        supply_cap_ceiling: 100000
         borrow_cap_ceiling: 0
         collateral_coefficient: 0
         borrow_coefficient: 1.4
