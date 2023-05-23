@@ -14,7 +14,7 @@ def deploy():
     wormhole_finality = config["networks"][cur_net]["wormhole_finality"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
-    DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
+    # DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
 
     print("deploy wormhole adapter pool...")
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
@@ -71,5 +71,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("polygon-main")
     deploy()

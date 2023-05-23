@@ -36,9 +36,13 @@ networks:
     wormhole_chainid: 2
   polygon-main:
     dola_chain_id: 5
-    wormhole_chain_id: 5
-    wormhole_finality: 200
+    wormhole_chainid: 5
+    wormhole_finality: 1
     wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
+    core_emitter: "0xdef592d077e939fdf83f3a06cbd2b701d16d87fe255bfc834b851d70f062e95d"
+    wormhole_adapter_pool: "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E"
+    lending_portal: "0x5E8B51907646cc2F1A77662B906e8709cbbF124a"
+    system_portal: "0x14Bd8EBbD9FF6E8Ef0a8d3e87B7685Edd2b2ebcD"
     pools:
       WBTC:
         dola_chain_id: 5
