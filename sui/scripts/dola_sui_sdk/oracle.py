@@ -208,6 +208,5 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 
 if __name__ == '__main__':
     # deploy_oracle()
-    sui_project.pay_all_sui()
-    batch_feed_token_price_by_pyth(['USDC/USD', 'SUI/USD', 'BTC/USD'])
-    # print(check_fresh_price('BTC/USD'))
+    
+    print(check_fresh_price('BTC/USD'))

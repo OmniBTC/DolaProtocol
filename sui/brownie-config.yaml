@@ -15,14 +15,12 @@ networks:
     dola_chain_id: 0
     node_url: https://fullnode.mainnet.sui.io:443
     objects:
-      COIN: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       CoreState: '0x12661f5e412be455806bed8c142d8b84532b2bd35361d598cf70bc1f85ce461b'
       GovernanceGenesis: '0x3b778f05e58f9efbd37eedcfa01e77785696b7e6f5c388aff02103955dd8cce7'
       GovernanceInfo: '0x0e13f4bcacaf954f37cfd3f1935667eddd11f7b111559c4402e53b6be75f51f8'
       LendingPortal: '0x940b81ac0d7e21f74c60720239408fd49f9359cc503655abd6c1ddffb02b6759'
       LendingStorage: '0x24e5a8456162770293d1b876a50bd254d7c9bc94dfefffa89c5f36b3e3c51a7a'
-      Pool<COIN>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
       Pool<SUI>: '0x3d6fe65516d3538d688fc6391648cebe2955bf3cc6eef6fa662caba4ec0ac275'
       Pool<USDC>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
       Pool<USDT>: '0xcbd1937636bde070d1b2f98314be9f9b556874d0ba40f8e11689af110bdf7797'
