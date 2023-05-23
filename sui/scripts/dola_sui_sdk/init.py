@@ -647,20 +647,20 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
 
 
 def build_vote_proposal_final_tx_block(genesis_proposal):
-    return [
+    return [[
         genesis_proposal.genesis_proposal.vote_proposal_final,
         [Argument("Input", U16(0)), Argument("Input", U16(1))],
         []
-    ]
+    ]]
 
 
 def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
-    return [
+    return [[
         genesis_proposal.genesis_proposal.destory,
         [Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
          Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))],
         []
-    ]
+    ]]
 
 
 def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence):
@@ -683,8 +683,8 @@ def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence
 def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, sequence):
     return [
         genesis_proposal.genesis_proposal.register_new_reserve,
-        [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-         Argument("NestedResult", NestedResult(U16(0), U16(1))),
+        [Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+         Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
          Argument("Input", U16(basic_param_num - 2)),
          Argument("Input", U16(basic_param_num - 1)),
          Argument("Input", U16(basic_param_num + 13 * sequence + 0)),
@@ -723,7 +723,7 @@ def batch_execute_proposal():
 
     vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
 
-    init_wormhole_adapter_core_tx_block = [
+    init_wormhole_adapter_core_tx_block = [[
         genesis_proposal.genesis_proposal.init_wormhole_adapter_core,
         [
             Argument("NestedResult", NestedResult(U16(0), U16(0))),
@@ -731,7 +731,7 @@ def batch_execute_proposal():
             Argument("Input", U16(2))
         ],
         []
-    ]
+    ]]
 
     finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
 
@@ -865,7 +865,7 @@ def batch_execute_proposal():
                          reserve_collateral_coefficient,
                          reserve_borrow_coefficient, reserve_base_borrow_rate, reserve_borrow_rate_slope1,
                          reserve_borrow_rate_slope2, reserve_optimal_utilization]
-        reserve_params.append(reserve_param)
+        reserve_params.extend(reserve_param)
 
     register_new_reserve_tx_blocks = []
     for i in range(reserves_num):
@@ -876,9 +876,12 @@ def batch_execute_proposal():
 
     finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, reserves_num)
 
+    actual_params = basic_params + reserve_params
+    transactions = vote_proposal_final_tx_block + register_new_reserve_tx_blocks + finish_proposal_tx_block
+
     sui_project.batch_transaction(
-        actual_params=basic_params + reserve_params,
-        transactions=vote_proposal_final_tx_block + register_new_reserve_tx_blocks + finish_proposal_tx_block
+        actual_params=actual_params,
+        transactions=transactions
     )
 
 
@@ -895,7 +898,7 @@ def get_price(symbol):
 
 def build_create_pool_tx_block(dola_protocol, sequence, coin_type):
     return [
-        dola_protocol.omnipool.create_pool,
+        dola_protocol.dola_pool.create_pool,
         [
             Argument('Input', U16(sequence))
         ],
@@ -926,8 +929,8 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
     return [
         genesis_proposal.genesis_proposal.register_token_price,
         [
-            Argument("NestedResult", NestedResult(U16(0), U16(0))),
-            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+            Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
             Argument("Input", U16(basic_param_num - 2)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 0)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 1)),
@@ -992,7 +995,7 @@ def construct_register_token_price_param(symbol, token_name):
     # Token price params
     # [dola_pool_id, price, price_decimal]
     (btc_price, btc_price_decimal) = get_price(symbol)
-    btc_dola_pool_id = sui_project.network_config['resreves'][token_name]['dola_pool_id']
+    btc_dola_pool_id = sui_project.network_config['reserves'][token_name]['dola_pool_id']
     btc_feed_id = hex_to_vector(
         sui_project.network_config['oracle']['feed_id'][symbol]
     )
