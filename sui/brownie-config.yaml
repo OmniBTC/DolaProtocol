@@ -22,16 +22,16 @@ networks:
       LendingPortal: '0x940b81ac0d7e21f74c60720239408fd49f9359cc503655abd6c1ddffb02b6759'
       LendingStorage: '0x24e5a8456162770293d1b876a50bd254d7c9bc94dfefffa89c5f36b3e3c51a7a'
       Pool<SUI>: '0x3d6fe65516d3538d688fc6391648cebe2955bf3cc6eef6fa662caba4ec0ac275'
-      Pool<USDC>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
-      Pool<USDT>: '0xcbd1937636bde070d1b2f98314be9f9b556874d0ba40f8e11689af110bdf7797'
+      Pool<USDT>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
+      Pool<USDC>: '0xcbd1937636bde070d1b2f98314be9f9b556874d0ba40f8e11689af110bdf7797'
       PoolManagerInfo: '0x1764faffa045705e3c0bb06b6b956bde43038e9b7091a901faf0a535af6a65be'
       PoolState: '0x22ab171e753ad8e70dc0794ecb61a31ad1995b5519375e8ec0bc516af534c845'
       PriceOracle: '0x81ab8880199866a329358170a4411ecc8f4ebf81642ed33a5bc49dad21547471'
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
       SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
       SystemPortal: '0x33cda56027b3ad4eb43e99e765a585fd98d8a4b861cc552b4c2adcb4d63be68e'
-      USDC: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
-      USDT: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+      USDT: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+      USDC: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
       UserManagerInfo: '0x25d537a1121053b953e24ae9f243aea4cb13bc58f69060c35f3daacf38cf0fcc'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
     oracle:
@@ -55,17 +55,17 @@ networks:
         pool_address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         pool_name: SUI
         pool_weight: 1
-      USDC:
-        dola_chain_id: 0
-        dola_pool_id: 2
-        pool_address: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
-        pool_name: USDC
-        pool_weight: 1
       USDT:
         dola_chain_id: 0
         dola_pool_id: 1
-        pool_address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        pool_address: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
         pool_name: USDT
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 0
+        dola_pool_id: 2
+        pool_address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        pool_name: USDC
         pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
     reserves:
@@ -144,14 +144,14 @@ networks:
         coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         decimals: 9
         dola_pool_id: 3
-      USDC:
+      USDT:
         coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
         decimals: 6
-        dola_pool_id: 2
-      USDT:
+        dola_pool_id: 1
+      USDC:
         coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
         decimals: 6
-        dola_pool_id: 1
+        dola_pool_id: 2
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443

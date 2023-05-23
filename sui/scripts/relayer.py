@@ -825,6 +825,8 @@ NET_TO_WORMHOLE_CHAINID = {
 
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
+    "polygon-main": "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E",
+    "sui-mainnet": "0xdef592d077e939fdf83f3a06cbd2b701d16d87fe255bfc834b851d70f062e95d",
     # testnet
     "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",
     "sui-testnet": "0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e",
@@ -910,7 +912,7 @@ def main():
         run_sui_relayer,
         # run_aptos_relayer,
         sui_core_executor,
-        functools.partial(eth_portal_watcher, "polygon-test"),
+        functools.partial(eth_portal_watcher, "polygon-main"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
         eth_pool_executor,
         # compensate_unfinished_transaction

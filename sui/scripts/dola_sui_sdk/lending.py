@@ -2,13 +2,12 @@ from pathlib import Path
 from pprint import pprint
 
 import yaml
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -874,7 +873,7 @@ def core_liquidate(vaa, relay_fee=0):
 
     sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
+    result = sui_project.pay_sui(fee_amounts)
     fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
 
     basic_params = [
@@ -1557,11 +1556,21 @@ def cancel_as_collateral_sender_asset_ids_from_vaa(vaa):
     return collateral_ids + loan_ids
 
 
+def get_wormhole_fee():
+    wormhole = load.wormhole_package()
+
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+
+    result = wormhole.state.message_fee.inspect(
+        wormhole_state
+    )
+    return parse_u64(result['results'][0]['returnValues'][0][0])
+
+
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
-    # portal_supply(usdt(), int(1e8))
-
+    # portal_supply(usdt()['coin_type'], int(1e5))
     # portal_withdraw_local(usdt(), int(1e8))
 
     export_objects()
