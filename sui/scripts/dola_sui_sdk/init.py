@@ -514,7 +514,10 @@ def balance(coin_type):
 
 
 def pool(coin_type):
-    return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<{coin_type}>"
+    if "sui::SUI" in coin_type:
+        return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<0x2::sui::SUI>"
+    else:
+        return f"{sui_project.DolaProtocol[-1]}::dola_pool::Pool<{coin_type}>"
 
 
 def pool_id(coin_type):
