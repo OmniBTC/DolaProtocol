@@ -15,128 +15,131 @@ networks:
     dola_chain_id: 0
     node_url: https://fullnode.mainnet.sui.io:443
     objects:
+      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
-      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
-    packages:
-      pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
-      wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
-    tokens:
-      USDT:
-        dola_pool_id: 1
-        coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
-        decimals: 6
-      USDC:
-        dola_pool_id: 2
-        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
-        decimals: 6
-      SUI:
-        dola_pool_id: 3
-        coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-        decimals: 9
-      WETH:
-        dola_pool_id: 4
-        coin_type: 0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN
-        decimals: 8
-    pools:
-      USDT:
-        dola_chain_id: 0
-        dola_pool_id: 1
-        pool_address: "5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN"
-        pool_name: "USDT"
-        pool_weight: 1
-      USDC:
-        dola_chain_id: 0
-        dola_pool_id: 2
-        pool_address: "c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN"
-        pool_name: "USDC"
-        pool_weight: 1
-      SUI:
-        dola_chain_id: 0
-        dola_pool_id: 3
-        pool_address: "0000000000000000000000000000000000000000000000000000000000000002::sui::SUI"
-        pool_name: "SUI"
-        pool_weight: 1
-    reserves:
-      BTC:
-        dola_pool_id: 0
-        is_isolated_asset: False
-        borrowable_in_isolation: False
-        treasury: 0
-        treasury_factor: 0.23
-        supply_cap_ceiling: 5
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0.88
-        borrow_coefficient: 1.09
-        base_borrow_rate: 0.02
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        optimal_utilization: 0.45
-      USDT:
-        dola_pool_id: 1
-        is_isolated_asset: False
-        borrowable_in_isolation: True
-        treasury: 0
-        treasury_factor: 0.05
-        supply_cap_ceiling: 100000
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0.9
-        borrow_coefficient: 1.06
-        base_borrow_rate: 0.01
-        borrow_rate_slope1: 0.005
-        borrow_rate_slope2: 0.75
-        optimal_utilization: 0.8
-      USDC:
-        dola_pool_id: 2
-        is_isolated_asset: False
-        borrowable_in_isolation: True
-        treasury: 0
-        treasury_factor: 0.23
-        supply_cap_ceiling: 100000
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0.9
-        borrow_coefficient: 1.06
-        base_borrow_rate: 0.01
-        borrow_rate_slope1: 0.005
-        borrow_rate_slope2: 0.75
-        optimal_utilization: 0.8
-      SUI:
-        dola_pool_id: 3
-        is_isolated_asset: True
-        borrowable_in_isolation: False
-        treasury: 0
-        treasury_factor: 0.23
-        supply_cap_ceiling: 100000
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0
-        borrow_coefficient: 1.4
-        base_borrow_rate: 0.02
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        optimal_utilization: 0.45
-      MATIC:
-        dola_pool_id: 4
-        is_isolated_asset: True
-        borrowable_in_isolation: False
-        treasury: 0
-        treasury_factor: 0.23
-        supply_cap_ceiling: 100000
-        borrow_cap_ceiling: 0
-        collateral_coefficient: 0
-        borrow_coefficient: 1.4
-        base_borrow_rate: 0.02
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        optimal_utilization: 0.45
     oracle:
       feed_id:
-        BTC/USD: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"
-        USDT/USD: "0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b"
-        USDC/USD: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a"
-        SUI/USD: "0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744"
-        ETH/USD: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace"
-        MATIC/USD: "0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52"
+        BTC/USD: '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'
+        ETH/USD: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace'
+        MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
+        SUI/USD: '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744'
+        USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
+        USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
+    packages:
+      dola_protocol: '0x2daca359a68a04f3ed381b4427ffdb2ec1e464821c5098bbb4ddb9024e680845'
+      external_interfaces: '0x87ee319d04058b2bdabf83b21f2349d39a9ff33e9b44acbb97f22703fb7cef65'
+      genesis_proposal: '0xd92004518f6da709dc3e19b6f85ea9a564f5fb13f6a971788c3a1c43a0fef8b6'
+      pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
+      wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
+    pools:
+      SUI:
+        dola_chain_id: 0
+        dola_pool_id: 3
+        pool_address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+        pool_name: SUI
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 0
+        dola_pool_id: 2
+        pool_address: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 0
+        dola_pool_id: 1
+        pool_address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        pool_name: USDT
+        pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
+    reserves:
+      BTC:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.09
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.88
+        dola_pool_id: 0
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 5
+        treasury: 0
+        treasury_factor: 0.23
+      MATIC:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.4
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0
+        dola_pool_id: 4
+        is_isolated_asset: true
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      SUI:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.4
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0
+        dola_pool_id: 3
+        is_isolated_asset: true
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      USDC:
+        base_borrow_rate: 0.01
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.005
+        borrow_rate_slope2: 0.75
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 2
+        is_isolated_asset: false
+        optimal_utilization: 0.8
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      USDT:
+        base_borrow_rate: 0.01
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.005
+        borrow_rate_slope2: 0.75
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 1
+        is_isolated_asset: false
+        optimal_utilization: 0.8
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.05
+    tokens:
+      SUI:
+        coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+        decimals: 9
+        dola_pool_id: 3
+      USDC:
+        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        decimals: 6
+        dola_pool_id: 1
+      WETH:
+        coin_type: 0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN
+        decimals: 8
+        dola_pool_id: 4
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443

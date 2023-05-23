@@ -12,14 +12,12 @@ git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "09b2081498366df936abae26eea4b2d5cafb2788"
 
-# branch `sui/mainnet`
 [dependencies.Wormhole]
 git = "https://github.com/wormhole-foundation/wormhole.git"
 subdir = "sui/wormhole"
 rev = "fcfe551da0f46b704b76b09ae11dca3dd9387837"
 override = true
 
-# branch `sui/hot_potato`
 [dependencies.Pyth]
 git = "https://github.com/pyth-network/pyth-crosschain.git"
 subdir = "target_chains/sui/contracts"
