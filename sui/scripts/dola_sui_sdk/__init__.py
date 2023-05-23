@@ -11,7 +11,7 @@ DOLA_CONFIG = {
 sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network="sui-mainnet")
 
 
-def set_dola_project_path(path: Union[Path, str], network="sui-testnet"):
+def set_dola_project_path(path: Union[Path, str], network="sui-mainnet"):
     global sui_project
     if isinstance(path, str):
         path = Path(path)
