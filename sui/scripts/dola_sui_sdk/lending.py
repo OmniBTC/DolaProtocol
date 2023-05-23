@@ -5,8 +5,8 @@ import yaml
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 from dola_sui_sdk import load, init
+from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
-from dola_sui_sdk.init import usdt, usdc, sui, clock
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
 
@@ -1270,14 +1270,13 @@ def export_objects():
         "Clock": clock(),
     }
 
-    coin_types = [usdt()["coin_type"], usdc()["coin_type"], "0x2::sui::SUI"]
-    for k in coin_types:
-        coin_key = k.split("::")[-1]
-        data[coin_key] = k.replace("0x", "")
-        dk = f'Pool<{k.split("::")[-1]}>'
-        data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
+    tokens = sui_project.network_config['tokens']
 
-    data['SUI'] = sui()["coin_type"].replace("0x", "")
+    for token in tokens:
+        coin_type = tokens[token]['coin_type']
+        data[token] = coin_type.replace("0x", "")
+        dk = f'Pool<{token}>'
+        data[dk] = sui_project[SuiObject.from_type(pool(coin_type))][-1]
 
     pprint(data)
 

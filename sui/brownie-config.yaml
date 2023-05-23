@@ -150,10 +150,6 @@ networks:
         coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
         decimals: 6
         dola_pool_id: 1
-      WETH:
-        coin_type: 0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN
-        decimals: 8
-        dola_pool_id: 4
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
