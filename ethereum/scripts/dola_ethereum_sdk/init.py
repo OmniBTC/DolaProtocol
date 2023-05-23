@@ -6,6 +6,7 @@ import requests
 from brownie import (
     network,
     config, )
+
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -40,6 +41,10 @@ def usdc():
 
 def eth():
     return "0x0000000000000000000000000000000000000000"
+
+
+def pools():
+    return config["networks"][network.show_active()]["pools"]
 
 
 def scan_rpc_url():
