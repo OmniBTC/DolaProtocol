@@ -15,8 +15,22 @@ networks:
     dola_chain_id: 0
     node_url: https://fullnode.mainnet.sui.io:443
     objects:
+      COIN: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
+      CoreState: '0x12661f5e412be455806bed8c142d8b84532b2bd35361d598cf70bc1f85ce461b'
+      GovernanceGenesis: '0x3b778f05e58f9efbd37eedcfa01e77785696b7e6f5c388aff02103955dd8cce7'
+      GovernanceInfo: '0x0e13f4bcacaf954f37cfd3f1935667eddd11f7b111559c4402e53b6be75f51f8'
+      LendingPortal: '0x940b81ac0d7e21f74c60720239408fd49f9359cc503655abd6c1ddffb02b6759'
+      LendingStorage: '0x24e5a8456162770293d1b876a50bd254d7c9bc94dfefffa89c5f36b3e3c51a7a'
+      Pool<COIN>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
+      Pool<SUI>: '0x3d6fe65516d3538d688fc6391648cebe2955bf3cc6eef6fa662caba4ec0ac275'
+      PoolManagerInfo: '0x1764faffa045705e3c0bb06b6b956bde43038e9b7091a901faf0a535af6a65be'
+      PoolState: '0x22ab171e753ad8e70dc0794ecb61a31ad1995b5519375e8ec0bc516af534c845'
+      PriceOracle: '0x81ab8880199866a329358170a4411ecc8f4ebf81642ed33a5bc49dad21547471'
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
+      SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+      SystemPortal: '0x33cda56027b3ad4eb43e99e765a585fd98d8a4b861cc552b4c2adcb4d63be68e'
+      UserManagerInfo: '0x25d537a1121053b953e24ae9f243aea4cb13bc58f69060c35f3daacf38cf0fcc'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
     oracle:
       feed_id:

@@ -6,7 +6,7 @@ from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import pool
-from dola_sui_sdk.init import wbtc, usdt, usdc, sui, clock
+from dola_sui_sdk.init import usdt, usdc, sui, clock
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
 
@@ -1252,10 +1252,8 @@ def export_objects():
     # Package id
     dola_protocol = load.dola_protocol_package()
     external_interfaces = load.external_interfaces_package()
-    test_coins = load.test_coins_package()
     print(f"dola_protocol={dola_protocol.package_id}")
     print(f"external_interfaces={external_interfaces.package_id}")
-    print(f"test_coins={test_coins.package_id}")
 
     data = {
         "GovernanceGenesis": dola_protocol.genesis.GovernanceGenesis[-1],
@@ -1267,20 +1265,19 @@ def export_objects():
         "SystemPortal": dola_protocol.system_portal.SystemPortal[-1],
         "PriceOracle": dola_protocol.oracle.PriceOracle[-1],
         "LendingStorage": dola_protocol.lending_core_storage.Storage[-1],
-        "Faucet": test_coins.faucet.Faucet[-1],
         "PoolManagerInfo": dola_protocol.pool_manager.PoolManagerInfo[-1],
         "UserManagerInfo": dola_protocol.user_manager.UserManagerInfo[-1],
         "Clock": clock(),
     }
 
-    coin_types = [wbtc(), usdt(), usdc(), "0x2::sui::SUI"]
+    coin_types = [usdt()["coin_type"], usdc()["coin_type"], "0x2::sui::SUI"]
     for k in coin_types:
         coin_key = k.split("::")[-1]
         data[coin_key] = k.replace("0x", "")
         dk = f'Pool<{k.split("::")[-1]}>'
         data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
 
-    data['SUI'] = sui().removeprefix("0x")
+    data['SUI'] = sui()["coin_type"].replace("0x", "")
 
     pprint(data)
 
