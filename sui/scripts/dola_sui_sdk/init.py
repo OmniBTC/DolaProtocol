@@ -746,39 +746,24 @@ def batch_execute_proposal():
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
 
-    usdt_pool_address = sui_project.network_config['pools']['USDT']['pool_address']
-    usdt_chain_id = sui_project.network_config['pools']['USDT']['dola_chain_id']
-    usdt_pool_name = sui_project.network_config['pools']['USDT']['pool_name']
-    usdt_pool_id = sui_project.network_config['pools']['USDT']['dola_pool_id']
-    usdt_pool_weight = sui_project.network_config['pools']['USDT']['pool_weight']
-    usdt_pool_params = [coin_type_to_vector(usdt_pool_address), usdt_chain_id, coin_type_to_vector(usdt_pool_name),
-                        usdt_pool_id, usdt_pool_weight]
-
-    usdc_pool_address = sui_project.network_config['pools']['USDC']['pool_address']
-    usdc_chain_id = sui_project.network_config['pools']['USDC']['dola_chain_id']
-    usdc_pool_name = sui_project.network_config['pools']['USDC']['pool_name']
-    usdc_pool_id = sui_project.network_config['pools']['USDC']['dola_pool_id']
-    usdc_pool_weight = sui_project.network_config['pools']['USDC']['pool_weight']
-    usdc_pool_params = [coin_type_to_vector(usdc_pool_address), usdc_chain_id, coin_type_to_vector(usdc_pool_name),
-                        usdc_pool_id, usdc_pool_weight]
-
-    sui_pool_address = sui_project.network_config['pools']['SUI']['pool_address']
-    sui_chain_id = sui_project.network_config['pools']['SUI']['dola_chain_id']
-    sui_pool_name = sui_project.network_config['pools']['SUI']['pool_name']
-    sui_pool_id = sui_project.network_config['pools']['SUI']['dola_pool_id']
-    sui_pool_weight = sui_project.network_config['pools']['SUI']['pool_weight']
-    sui_pool_params = [coin_type_to_vector(sui_pool_address), sui_chain_id, coin_type_to_vector(sui_pool_name),
-                       sui_pool_id, sui_pool_weight]
-
     create_proposal()
+
+    pool_params = []
+
+    for pool in sui_project.network_config['pools']:
+        pool_address = sui_project.network_config['pools'][pool]['pool_address']
+        dola_chain_id = sui_project.network_config['pools'][pool]['dola_chain_id']
+        pool_name = sui_project.network_config['pools'][pool]['pool_name']
+        dola_pool_id = sui_project.network_config['pools'][pool]['dola_pool_id']
+        pool_weight = sui_project.network_config['pools'][pool]['pool_weight']
+        pool_params.append([coin_type_to_vector(pool_address), dola_chain_id, coin_type_to_vector(pool_name),
+                            dola_pool_id, pool_weight])
 
     basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
         sui_project[SuiObject.from_type(proposal())][-1],  # 1
         dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
     ]
-
-    pool_params = usdt_pool_params + usdc_pool_params + sui_pool_params
 
     pool_num = len(pool_params) // 5
     register_new_pool_tx_blocks = [

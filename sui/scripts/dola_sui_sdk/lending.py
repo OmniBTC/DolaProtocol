@@ -396,7 +396,6 @@ def core_withdraw(vaa, relay_fee=0):
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
@@ -422,12 +421,11 @@ def core_withdraw(vaa, relay_fee=0):
         storage,  # 3
         zero_coin,  # 4
         list(bytes.fromhex(vaa.replace('0x', ''))),  # 5
-        wormhole_state,  # 6
-        genesis,  # 7
-        pyth_wormhole_state,  # 8
-        pyth_state,  # 9
-        oracle,  # 10
-        init.clock(),  # 11
+        genesis,  # 6
+        wormhole_state,  # 7
+        pyth_state,  # 8
+        oracle,  # 9
+        init.clock(),  # 10
     ]
 
     feed_params = []
@@ -446,16 +444,16 @@ def core_withdraw(vaa, relay_fee=0):
     withdraw_transaction_block = [[
         dola_protocol.lending_core_wormhole_adapter.withdraw,
         [
-            Argument("Input", U16(7)),
+            Argument("Input", U16(6)),
             Argument("Input", U16(0)),
             Argument("Input", U16(1)),
-            Argument("Input", U16(6)),
+            Argument("Input", U16(7)),
             Argument("Input", U16(2)),
-            Argument("Input", U16(10)),
+            Argument("Input", U16(9)),
             Argument("Input", U16(3)),
             Argument("Input", U16(4)),
             Argument("Input", U16(5)),
-            Argument("Input", U16(11)),
+            Argument("Input", U16(10)),
         ],
         []
     ]]
@@ -609,7 +607,6 @@ def core_borrow(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
 
@@ -631,12 +628,11 @@ def core_borrow(vaa, relay_fee=0):
         storage,  # 3
         zero_coin,  # 4
         list(bytes.fromhex(vaa.replace('0x', ''))),  # 5
-        wormhole_state,  # 6
-        genesis,  # 7
-        pyth_wormhole_state,  # 8
-        pyth_state,  # 9
-        oracle,  # 10
-        init.clock(),  # 11
+        genesis,  # 6
+        wormhole_state,  # 7
+        pyth_state,  # 8
+        oracle,  # 9
+        init.clock(),  # 10
     ]
 
     feed_params = []
@@ -655,16 +651,16 @@ def core_borrow(vaa, relay_fee=0):
     withdraw_transaction_block = [[
         dola_protocol.lending_core_wormhole_adapter.borrow,
         [
-            Argument("Input", U16(7)),
+            Argument("Input", U16(6)),
             Argument("Input", U16(0)),
             Argument("Input", U16(1)),
-            Argument("Input", U16(6)),
+            Argument("Input", U16(7)),
             Argument("Input", U16(2)),
-            Argument("Input", U16(10)),
+            Argument("Input", U16(9)),
             Argument("Input", U16(3)),
             Argument("Input", U16(4)),
             Argument("Input", U16(5)),
-            Argument("Input", U16(11)),
+            Argument("Input", U16(10)),
         ],
         []
     ]]
@@ -869,7 +865,6 @@ def core_liquidate(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = get_violator_user_asset_ids_from_vaa(vaa)
 
@@ -888,12 +883,11 @@ def core_liquidate(vaa, relay_fee=0):
         core_state,  # 2
         storage,  # 3
         list(bytes.fromhex(vaa.replace('0x', ''))),  # 4
-        wormhole_state,  # 5
-        genesis,  # 6
-        pyth_wormhole_state,  # 7
-        pyth_state,  # 8
-        oracle,  # 9
-        init.clock(),  # 10
+        genesis,  # 5
+        wormhole_state,  # 6
+        pyth_state,  # 7
+        oracle,  # 8
+        init.clock(),  # 9
     ]
 
     feed_params = []
@@ -912,15 +906,15 @@ def core_liquidate(vaa, relay_fee=0):
     liquidate_transaction_block = [[
         dola_protocol.lending_core_wormhole_adapter.liquidate,
         [
-            Argument("Input", U16(6)),
+            Argument("Input", U16(5)),
             Argument("Input", U16(0)),
             Argument("Input", U16(1)),
-            Argument("Input", U16(5)),
+            Argument("Input", U16(6)),
             Argument("Input", U16(2)),
-            Argument("Input", U16(9)),
+            Argument("Input", U16(8)),
             Argument("Input", U16(3)),
             Argument("Input", U16(4)),
-            Argument("Input", U16(10)),
+            Argument("Input", U16(9)),
         ],
         []
     ]]
@@ -1200,12 +1194,11 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
         core_state,  # 2
         storage,  # 3
         list(bytes.fromhex(vaa.replace('0x', ''))),  # 4
-        wormhole_state,  # 5
-        genesis,  # 6
-        pyth_wormhole_state,  # 7
-        pyth_state,  # 8
-        oracle,  # 9
-        init.clock(),  # 10
+        genesis,  # 5
+        wormhole_state,  # 6
+        pyth_state,  # 7
+        oracle,  # 8
+        init.clock(),  # 9
     ]
 
     feed_params = []
@@ -1224,15 +1217,15 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     cancel_as_collateral_transaction_block = [[
         dola_protocol.lending_core_wormhole_adapter.cancel_as_collateral,
         [
-            Argument("Input", U16(6)),
+            Argument("Input", U16(5)),
             Argument("Input", U16(0)),
             Argument("Input", U16(1)),
-            Argument("Input", U16(5)),
+            Argument("Input", U16(6)),
             Argument("Input", U16(2)),
-            Argument("Input", U16(9)),
+            Argument("Input", U16(8)),
             Argument("Input", U16(3)),
             Argument("Input", U16(4)),
-            Argument("Input", U16(10)),
+            Argument("Input", U16(9)),
         ],
         []
     ]]
