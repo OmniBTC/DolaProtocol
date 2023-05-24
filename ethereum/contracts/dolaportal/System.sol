@@ -12,7 +12,7 @@ import "../libraries/LibAsset.sol";
 contract SystemPortal {
     uint8 public constant SYSTEM_APP_ID = 0;
 
-    IWormholeAdapterPool immutable wormholeAdapterPool;
+    IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
     event RelayEvent(uint64 nonce, uint256 amount);

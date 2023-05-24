@@ -1,7 +1,7 @@
-import dola_ethereum_sdk.load as load
 from brownie import Contract, network
+
+import dola_ethereum_sdk.load as load
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
-from dola_ethereum_sdk.init import usdt, wbtc
 
 
 def portal_binding(bind_address, dola_chain_id=5, fee=0):
@@ -18,7 +18,7 @@ def portal_binding(bind_address, dola_chain_id=5, fee=0):
         dola_chain_id,
         bind_address,
         fee,
-        {'from': account}
+        {'from': account, 'value': fee}
     )
 
 
@@ -80,8 +80,11 @@ def portal_supply(token, amount, relay_fee=0):
     account = get_account()
 
     lending_portal = load.lending_portal_package(network.show_active())
-    token = Contract.from_abi("MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
-    token.mint(account.address, amount, {'from': account})
+    if "test" in network.show_active():
+        token = Contract.from_abi("MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
+        token.mint(account.address, amount, {'from': account})
+    else:
+        token = Contract.from_abi("ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.supply(
         token,
@@ -215,35 +218,15 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     )
 
 
-def monitor_supply(pool, amount=1, relay_fee=0):
-    print(portal_supply(pool, amount * 1e18, relay_fee))
-
-
-def monitor_withdraw(pool, dst_chain=5, receiver=None, relay_fee=0):
-    print(portal_withdraw(pool, 1e7, dst_chain, receiver, relay_fee))
-
-
-def monitor_borrow(pool, amount=1, dst_chain=4, receiver=None):
-    print(portal_borrow(pool, amount * 1e8, dst_chain, receiver))
-
-
-def monitor_repay(pool, amount=1):
-    print(portal_repay(pool, amount * 1e18))
-
-
-def monitor_liquidate(dst_chain=4, receiver=None):
-    print(portal_liquidate(usdt(), wbtc(), 1e18, dst_chain, receiver))
-
-
 def main():
-    # monitor_supply(usdt(), 100000)
+    # portal_supply(usdt()['address'], 0.1 * 1e6)
     # portal_cancel_as_collateral([1, 2])
-    monitor_withdraw(usdt(), 5)
-    # portal_binding("0x29555e85402caf438597bed573142f4db50557aa548b29c70aa8c28eb2b3e1e8", 1)
+    # monitor_withdraw(usdt(), 0.1)
+    portal_binding("0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("polygon-main")
     main()

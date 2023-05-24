@@ -1,6 +1,6 @@
 import pprint
 
-from dola_sui_sdk import load
+from dola_sui_sdk import load, sui_project
 
 
 # btc -> dola_pool_id 0
@@ -30,9 +30,11 @@ def get_dola_user_id(user_address, dola_chain_id=0):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
-    result = external_interfaces.interfaces.get_dola_user_id.simulate(
-        user_manager.user_manager.UserManagerInfo[-1],
+
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+
+    result = external_interfaces.interfaces.get_dola_user_id.inspect(
+        user_manager_info,
         dola_chain_id,
         list(bytes.fromhex(user_address))
     )
@@ -48,9 +50,10 @@ def get_dola_user_addresses(dola_user_id):
     :return:
     '''
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
-    result = external_interfaces.interfaces.get_dola_user_addresses.simulate(
-        user_manager.user_manager.UserManagerInfo[-1],
+
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    result = external_interfaces.interfaces.get_dola_user_addresses.inspect(
+        user_manager_info,
         dola_user_id
     )
 
@@ -298,11 +301,11 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
 
 if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
-    # pprint.pp(get_dola_user_id("B6B12aDA59a8Ac44Ded72e03693dd14614224349", 5))
-    dola_addresses = get_dola_user_addresses(1)
-    result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
-              dola_addresses['dola_user_addresses']]
-    pprint.pp(result)
+    pprint.pp(get_dola_user_id("0e40519af01985208114ffac4441b9b13218572f", 5))
+    # dola_addresses = get_dola_user_addresses(1)
+    # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
+    #           dola_addresses['dola_user_addresses']]
+    # pprint.pp(result)
     # pprint.pp(get_user_all_collateral(1))
     # pprint.pp(get_user_health_factor(1))
     # pprint.pp(get_reserve_info(1))

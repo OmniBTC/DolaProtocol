@@ -12,11 +12,6 @@ from pprint import pprint
 
 import brownie.network
 import ccxt
-import requests
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
-
 import dola_aptos_sdk
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -27,7 +22,11 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import requests
 from dola_sui_sdk.load import sui_project
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -833,7 +832,7 @@ WORMHOLE_EMITTER_ADDRESS = {
 }
 
 
-@retry
+@retry(stop_max_attempt_number=5, wait_random_min=1000, wait_random_max=10000)
 def get_signed_vaa_by_wormhole(
         emitter: str,
         sequence: int,
@@ -853,6 +852,10 @@ def get_signed_vaa_by_wormhole(
 
     url = f"{wormhole_url}/v1/signed_vaa/{emitter_chainid}/{emitter_address}/{sequence}"
     response = requests.get(url)
+
+    if 'vaaBytes' not in response.json():
+        raise ValueError(f"Get {src_net} signed vaa failed: {response.text}")
+
     vaa_bytes = response.json()['vaaBytes']
     vaa = base64.b64decode(vaa_bytes).hex()
     return f"0x{vaa}"
@@ -906,15 +909,15 @@ def run_sui_relayer():
 
 
 def main():
-    pt = ProcessExecutor(executor=5)
+    pt = ProcessExecutor(executor=2)
 
     pt.run([
-        run_sui_relayer,
+        # run_sui_relayer,
         # run_aptos_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-main"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
-        eth_pool_executor,
+        # eth_pool_executor,
         # compensate_unfinished_transaction
     ])
 

@@ -6,7 +6,6 @@ import requests
 from brownie import (
     network,
     config, )
-
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -28,15 +27,15 @@ def get_wormhole():
 
 
 def usdt():
-    return config["networks"][network.show_active()]["usdt"]
+    return config["networks"][network.show_active()]["tokens"]["USDT"]
 
 
 def wbtc():
-    return config["networks"][network.show_active()]["wbtc"]
+    return config["networks"][network.show_active()]["tokens"]["WBTC"]
 
 
 def usdc():
-    return config["networks"][network.show_active()]["usdc"]
+    return config["networks"][network.show_active()]["tokens"]["USDC"]
 
 
 def eth():

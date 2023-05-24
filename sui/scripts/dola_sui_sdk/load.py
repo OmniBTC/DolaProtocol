@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
-
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -69,7 +68,7 @@ def pyth_package():
 
 def external_interfaces_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.ExternalInterfaces[-1]
+        package_id: str = sui_project.network_config['packages']['external_interfaces']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces"))
 
 

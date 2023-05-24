@@ -69,6 +69,23 @@ networks:
         pool_address: "0x0000000000000000000000000000000000000000"
         pool_name: "MATIC"
         pool_weight: 1
+    tokens:
+      WBTC:
+        address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
+        dola_pool_id: 0
+        decimals: 8
+      USDT:
+        address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+        dola_pool_id: 1
+        decimals: 6
+      USDC:
+        address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+        dola_pool_id: 2
+        decimals: 6
+      MATIC:
+        address: "0x0000000000000000000000000000000000000000"
+        dola_pool_id: 4
+        decimals: 18
   polygon-test:
     core_emitter: '0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e'
     lending_portal: '0x56Cf618fC2FB892b74C5850B391F381423d667b7'
