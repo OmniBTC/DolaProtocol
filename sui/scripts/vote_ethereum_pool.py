@@ -1,20 +1,19 @@
 from pathlib import Path
 
-from sui_brownie import SuiObject
-
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
+from sui_brownie import SuiObject
 
 
 def main():
     dola_protocol = dola_sui_load.dola_protocol_package()
     genesis_proposal = dola_sui_load.genesis_proposal_package()
 
-    # dola_sui_init.create_proposal()
+    dola_sui_init.create_proposal()
 
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight
@@ -27,7 +26,7 @@ def main():
         pool_name = pools[pool]['pool_name']
         dola_pool_id = pools[pool]['dola_pool_id']
         pool_weight = pools[pool]['pool_weight']
-        pool_params.append([dola_sui_init.hex_to_vector(pool_address), dola_chain_id,
+        pool_params.extend([dola_sui_init.hex_to_vector(pool_address), dola_chain_id,
                             dola_sui_init.coin_type_to_vector(pool_name),
                             dola_pool_id, pool_weight])
 

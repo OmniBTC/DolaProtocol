@@ -2,10 +2,9 @@ import functools
 from typing import List
 
 import requests
+from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
-
-from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -670,8 +669,8 @@ def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence
     return [
         genesis_proposal.genesis_proposal.register_new_pool,
         [
-            Argument("NestedResult", NestedResult(U16(0), U16(0))),
-            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+            Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
             Argument("Input", U16(basic_param_num - 1)),
             Argument("Input", U16(basic_param_num + 5 * sequence + 0)),
             Argument("Input", U16(basic_param_num + 5 * sequence + 1)),
@@ -759,7 +758,7 @@ def batch_execute_proposal():
         pool_name = sui_project.network_config['pools'][pool]['pool_name']
         dola_pool_id = sui_project.network_config['pools'][pool]['dola_pool_id']
         pool_weight = sui_project.network_config['pools'][pool]['pool_weight']
-        pool_params.append([coin_type_to_vector(pool_address), dola_chain_id, coin_type_to_vector(pool_name),
+        pool_params.extend([coin_type_to_vector(pool_address), dola_chain_id, coin_type_to_vector(pool_name),
                             dola_pool_id, pool_weight])
 
     basic_params = [
