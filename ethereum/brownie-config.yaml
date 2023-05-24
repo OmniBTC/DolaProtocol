@@ -1,9 +1,9 @@
 compiler:
   solc:
     remappings:
-      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
+    - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
 dependencies:
-  - OpenZeppelin/openzeppelin-contracts@4.6.0
+- OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
   arbitrum-test:
@@ -35,57 +35,57 @@ networks:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
   polygon-main:
+    core_emitter: '0xdef592d077e939fdf83f3a06cbd2b701d16d87fe255bfc834b851d70f062e95d'
     dola_chain_id: 5
+    lending_portal: '0x5E8B51907646cc2F1A77662B906e8709cbbF124a'
+    pools:
+      MATIC:
+        dola_chain_id: 5
+        dola_pool_id: 4
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: MATIC
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 5
+        dola_pool_id: 2
+        pool_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 5
+        dola_pool_id: 1
+        pool_address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 5
+        dola_pool_id: 0
+        pool_address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6'
+        pool_name: WBTC
+        pool_weight: 1
+    scan_rpc_url: https://api.polygonscan.com/api
+    system_portal: '0xCf19af4840eCdd8E50157Bb3d85C2C6DBBa91301'
+    tokens:
+      MATIC:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 4
+      USDC:
+        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+        decimals: 6
+        dola_pool_id: 1
+      WBTC:
+        address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6'
+        decimals: 8
+        dola_pool_id: 0
+    wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
+    wormhole_adapter_pool: '0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E'
     wormhole_chainid: 5
     wormhole_finality: 1
-    scan_rpc_url: https://api.polygonscan.com/api
-    wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
-    core_emitter: "0xdef592d077e939fdf83f3a06cbd2b701d16d87fe255bfc834b851d70f062e95d"
-    wormhole_adapter_pool: "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E"
-    lending_portal: "0x5E8B51907646cc2F1A77662B906e8709cbbF124a"
-    system_portal: "0x14Bd8EBbD9FF6E8Ef0a8d3e87B7685Edd2b2ebcD"
-    pools:
-      WBTC:
-        dola_chain_id: 5
-        dola_pool_id: 0
-        pool_address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
-        pool_name: "WBTC"
-        pool_weight: 1
-      USDT:
-        dola_chain_id: 5
-        dola_pool_id: 1
-        pool_address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
-        pool_name: "USDT"
-        pool_weight: 1
-      USDC:
-        dola_chain_id: 5
-        dola_pool_id: 2
-        pool_address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-        pool_name: "USDC"
-        pool_weight: 1
-      MATIC:
-        dola_chain_id: 5
-        dola_pool_id: 4
-        pool_address: "0x0000000000000000000000000000000000000000"
-        pool_name: "MATIC"
-        pool_weight: 1
-    tokens:
-      WBTC:
-        address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
-        dola_pool_id: 0
-        decimals: 8
-      USDT:
-        address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
-        dola_pool_id: 1
-        decimals: 6
-      USDC:
-        address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-        dola_pool_id: 2
-        decimals: 6
-      MATIC:
-        address: "0x0000000000000000000000000000000000000000"
-        dola_pool_id: 4
-        decimals: 18
   polygon-test:
     core_emitter: '0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e'
     lending_portal: '0x56Cf618fC2FB892b74C5850B391F381423d667b7'
