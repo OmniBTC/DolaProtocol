@@ -55,18 +55,6 @@ networks:
         pool_address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         pool_name: SUI
         pool_weight: 1
-      USDT:
-        dola_chain_id: 0
-        dola_pool_id: 1
-        pool_address: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
-        pool_name: USDT
-        pool_weight: 1
-      USDC:
-        dola_chain_id: 0
-        dola_pool_id: 2
-        pool_address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
-        pool_name: USDC
-        pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
     reserves:
       BTC:
