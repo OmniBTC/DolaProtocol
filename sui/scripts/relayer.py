@@ -12,7 +12,11 @@ from pprint import pprint
 
 import brownie.network
 import ccxt
-import dola_aptos_sdk
+import requests
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
+
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
 import dola_ethereum_sdk
@@ -22,11 +26,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
 
 
 class ColorFormatter(logging.Formatter):
@@ -267,35 +267,51 @@ ZERO_FEE = int(1e18)
 
 
 def sui_portal_watcher():
+    data = BridgeDict("sui_pool_vaa.json")
     local_logger = logger.getChild("[sui_portal_watcher]")
-    local_logger.info("Start to read sui pool vaa ^-^")
 
+    sui_network = sui_project.network
     while True:
         try:
-            # get vaa nonce and relay fee from relay event emitted at portal
             relay_events = dola_sui_init.query_portal_relay_event()
 
             for event in relay_events:
                 fields = event['parsedJson']
-                # relay_fee_amount = int(fields['fee_amount'])
-                nonce = int(fields['nonce'])
-                call_type = int(fields['call_type'])
-                call_name = get_call_name(1, call_type)
-                dk = f"sui_portal_{call_name}_{nonce}"
 
-                if dk not in relay_fee_record:
-                    # relay_fee_record[dk] = get_fee_value(relay_fee_amount)
-                    fee_record_lock.acquire()
-                    relay_fee_record[dk] = ZERO_FEE
-                    fee_record_lock.release()
-                    local_logger.info(f"Have a {call_name} transaction from sui, nonce: {nonce}")
+                source_chain_id = fields['source_chain_id']
+                srouce_chain_nonce = fields['source_chain_nonce']
+
+                dk = f"pool_withdraw_{source_chain_id}_{str(srouce_chain_nonce)}"
+                if dk not in data:
+                    call_type = fields["call_type"]
+                    call_name = get_call_name(1, int(call_type))
+                    src_network = get_dola_network(source_chain_id)
+                    sequence = fields['sequence']
+                    vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
+
+                    dst_pool = fields['dst_pool']
+                    dst_chain_id = int(dst_pool['dola_chain_id'])
+                    dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
+
+                    if dst_chain_id == 0:
+                        sui_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        local_logger.info(
+                            f"Have a {call_name} from {src_network} to sui, nonce: {srouce_chain_nonce}")
+                    elif dst_chain_id == 1:
+                        aptos_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        local_logger.info(
+                            f"Have a {call_name} from {src_network} to aptos, nonce: {srouce_chain_nonce}")
+                    else:
+                        eth_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_chain_id))
+                        local_logger.info(
+                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {srouce_chain_nonce}")
+                    data[dk] = vaa
         except Exception as e:
             local_logger.error(f"Error: {e}")
-        time.sleep(5)
+        time.sleep(3)
 
 
 def aptos_portal_watcher():
-    time.sleep(10)
     data = BridgeDict("aptos_pool_vaa.json")
     local_logger = logger.getChild("[aptos_portal_watcher]")
     local_logger.info("Start to read aptos pool vaa ^-^")
@@ -448,20 +464,9 @@ def sui_core_executor():
             call_name = get_call_name(app_id, call_type)
             dk = f"{chain}_portal_{call_name}_{nonce}"
 
-            # compensate unfinished transaction
-            if dk not in relay_fee_record:
-                fee_record_lock.acquire()
-                relay_fee_record[dk] = ZERO_FEE
-                fee_record_lock.release()
-
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
                 relay_fee = get_fee_amount(relay_fee_value)
-
-                # Because the rpc of sui test network often times out, it is impossible
-                # to judge whether the transaction is executed successfully or not, so
-                # the default transaction execution is successful.
-                data[dk] = vaa
 
                 rotate_accounts()
                 gas, executed = execute_sui_core(app_id, call_type, vaa, relay_fee)
@@ -506,12 +511,6 @@ def sui_pool_executor():
             chain = get_dola_network(source_chain_id)
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
-
-            # todo: removed after fixing sui_watcher
-            if dk not in relay_fee_record:
-                fee_record_lock.acquire()
-                relay_fee_record[dk] = ZERO_FEE
-                fee_record_lock.release()
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
@@ -569,12 +568,6 @@ def aptos_pool_executor():
             chain = get_dola_network(source_chain_id)
             call_name = get_call_name(1, int(call_type))
             dk = f"{chain}_portal_{call_name}_{source_nonce}"
-
-            # todo: removed after fixing sui_watcher
-            if dk not in relay_fee_record:
-                fee_record_lock.acquire()
-                relay_fee_record[dk] = ZERO_FEE
-                fee_record_lock.release()
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
@@ -640,12 +633,6 @@ def eth_pool_executor():
             call_name = get_call_name(1, int(call_type))
             source_chain = get_dola_network(source_chain_id)
             dk = f"{source_chain}_portal_{call_name}_{source_nonce}"
-
-            # todo: removed after fixing sui_watcher
-            if dk not in relay_fee_record:
-                fee_record_lock.acquire()
-                relay_fee_record[dk] = ZERO_FEE
-                fee_record_lock.release()
 
             if dk not in data:
                 relay_fee_value = relay_fee_record[dk]
@@ -888,16 +875,6 @@ def get_signed_vaa(
     return response.json()
 
 
-def run_aptos_relayer():
-    dola_aptos_sdk.set_dola_project_path(Path("../.."))
-    pt = ThreadExecutor(executor=2)
-
-    pt.run([
-        aptos_portal_watcher,
-        aptos_pool_executor
-    ])
-
-
 def run_sui_relayer():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     pt = ThreadExecutor(executor=2)
@@ -913,7 +890,6 @@ def main():
 
     pt.run([
         # run_sui_relayer,
-        # run_aptos_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-main"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),

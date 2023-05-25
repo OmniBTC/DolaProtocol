@@ -2,12 +2,13 @@ from pathlib import Path
 from pprint import pprint
 
 import yaml
+from sui_brownie import SuiObject, Argument, U16, NestedResult
+
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
-from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -983,17 +984,16 @@ def core_binding(vaa, relay_fee=0):
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    clock = sui_project.network_config['objects']['Clock']
+    system_storage = sui_project.network_config['objects']['SystemStorage']
 
     result = dola_protocol.system_core_wormhole_adapter.bind_user_address.simulate(
         genesis,
         user_manager_info,
         wormhole_state,
         core_state,
-        storage,
+        system_storage,
         list(bytes.fromhex(vaa.replace('0x', ''))),
-        clock
+        init.clock()
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -1005,9 +1005,9 @@ def core_binding(vaa, relay_fee=0):
             user_manager_info,
             wormhole_state,
             core_state,
-            storage,
+            system_storage,
             list(bytes.fromhex(vaa.replace('0x', ''))),
-            clock
+            init.clock()
         )
     return gas, executed
 
@@ -1059,17 +1059,16 @@ def core_unbinding(vaa, relay_fee=0):
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    clock = sui_project.network_config['objects']['Clock']
+    system_storage = sui_project.network_config['objects']['SystemStorage']
 
     result = dola_protocol.system_core_wormhole_adapter.unbind_user_address.simulate(
         genesis,
         user_manager_info,
         wormhole_state,
         core_state,
-        storage,
+        system_storage,
         list(bytes.fromhex(vaa.replace('0x', ''))),
-        clock
+        init.clock()
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
@@ -1081,9 +1080,9 @@ def core_unbinding(vaa, relay_fee=0):
             user_manager_info,
             wormhole_state,
             core_state,
-            storage,
+            system_storage,
             list(bytes.fromhex(vaa.replace('0x', ''))),
-            clock
+            init.clock()
         )
     return gas, executed
 
@@ -1264,6 +1263,7 @@ def export_objects():
         "SystemPortal": dola_protocol.system_portal.SystemPortal[-1],
         "PriceOracle": dola_protocol.oracle.PriceOracle[-1],
         "LendingStorage": dola_protocol.lending_core_storage.Storage[-1],
+        "SystemStorage": dola_protocol.system_core_storage.Storage[-1],
         "PoolManagerInfo": dola_protocol.pool_manager.PoolManagerInfo[-1],
         "UserManagerInfo": dola_protocol.user_manager.UserManagerInfo[-1],
         "Clock": clock(),

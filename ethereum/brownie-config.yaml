@@ -1,9 +1,9 @@
 compiler:
   solc:
     remappings:
-    - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
+      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
 dependencies:
-- OpenZeppelin/openzeppelin-contracts@4.6.0
+  - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
   arbitrum-test:

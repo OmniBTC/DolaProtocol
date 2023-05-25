@@ -2,9 +2,10 @@ import functools
 from typing import List
 
 import requests
-from dola_sui_sdk import load, sui_project
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project
 
 RAY = 1000000000000000000000000000
 
@@ -532,8 +533,8 @@ def proposal():
 def query_portal_relay_event(limit=5):
     dola_protocol = load.dola_protocol_package()
     return sui_project.client.suix_queryEvents(
-        {"MoveEventType": f"{dola_protocol.package_id}::lending_portal::RelayEvnet"}, limit=limit, cursor=None,
-        descending_order=None)['data']
+        {"MoveEventType": f"{dola_protocol.package_id}::lending_portal::RelayEvent"}, limit=limit,
+        cursor=None, descending_order=None)['data']
 
 
 def query_core_relay_event(limit=5):
@@ -1012,7 +1013,7 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
+    query_sui_relay_event()
 
     # register_remote_bridge(5, "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()

@@ -23,7 +23,7 @@ module dola_protocol::system_portal {
 
     // Since the protocol can be directly connected on sui,
     // this is a special event for the sui chain.
-    struct SymstemLocalEvent has drop, copy {
+    struct SystemLocalEvent has drop, copy {
         nonce: u64,
         sender: address,
         user_chain_id: u16,
@@ -70,7 +70,7 @@ module dola_protocol::system_portal {
                 bind_dola_address
             );
         };
-        emit(SymstemLocalEvent {
+        emit(SystemLocalEvent {
             nonce: get_nonce(system_portal),
             sender,
             user_chain_id: dola_chain_id,
@@ -97,7 +97,7 @@ module dola_protocol::system_portal {
             unbind_dola_address
         );
 
-        emit(SymstemLocalEvent {
+        emit(SystemLocalEvent {
             nonce: get_nonce(system_portal),
             sender,
             user_chain_id: dola_chain_id,

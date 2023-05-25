@@ -21,6 +21,7 @@ networks:
       GovernanceInfo: '0x0e13f4bcacaf954f37cfd3f1935667eddd11f7b111559c4402e53b6be75f51f8'
       LendingPortal: '0x940b81ac0d7e21f74c60720239408fd49f9359cc503655abd6c1ddffb02b6759'
       LendingStorage: '0x24e5a8456162770293d1b876a50bd254d7c9bc94dfefffa89c5f36b3e3c51a7a'
+      SystemStorage: '0x6fe62ad7cb12dacce3f32bf1a717abf874b7df58027041ab8c76f615b25931e9'
       Pool<SUI>: '0x3d6fe65516d3538d688fc6391648cebe2955bf3cc6eef6fa662caba4ec0ac275'
       Pool<USDT>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
       Pool<USDC>: '0xcbd1937636bde070d1b2f98314be9f9b556874d0ba40f8e11689af110bdf7797'
