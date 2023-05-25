@@ -270,12 +270,18 @@ def sui_portal_watcher():
                 fields = event['parsedJson']
 
                 source_chain_id = fields['source_chain_id']
-                srouce_chain_nonce = fields['source_chain_nonce']
+                source_chain_nonce = fields['source_chain_nonce']
+                call_type = fields["call_type"]
+                call_name = get_call_name(1, int(call_type))
 
-                dk = f"pool_withdraw_{source_chain_id}_{str(srouce_chain_nonce)}"
+                dk = f"sui_portal_{call_name}_{source_chain_nonce}"
                 if dk not in data:
-                    call_type = fields["call_type"]
-                    call_name = get_call_name(1, int(call_type))
+                    fee_record_lock.acquire()
+                    # relay_fee_amount = int(fields['fee_amount'])
+                    # relay_fee_record[dk] = get_fee_value(relay_fee_amount, 'sui')
+                    relay_fee_record[dk] = ZERO_FEE
+                    fee_record_lock.release()
+
                     src_network = get_dola_network(source_chain_id)
                     sequence = fields['sequence']
                     vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
@@ -285,17 +291,17 @@ def sui_portal_watcher():
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
                     if dst_chain_id == 0:
-                        sui_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        sui_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to sui, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to sui, nonce: {source_chain_nonce}")
                     elif dst_chain_id == 1:
-                        aptos_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        aptos_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to aptos, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to aptos, nonce: {source_chain_nonce}")
                     else:
-                        eth_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_chain_id))
+                        eth_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_chain_id))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
                     data[dk] = vaa
         except Exception as e:
             local_logger.error(f"Error: {e}")
@@ -313,7 +319,7 @@ def aptos_portal_watcher():
 
             for event in relay_events:
                 nonce = int(event['nonce'])
-                relay_fee_amount = int(event['amount'])
+                # relay_fee_amount = int(event['amount'])
                 vaa, nonce = dola_aptos_init.bridge_pool_read_vaa(nonce)
                 decode_vaa = list(bytes.fromhex(
                     vaa.replace("0x", "") if "0x" in vaa else vaa))
@@ -412,9 +418,9 @@ def pool_withdraw_watcher():
                 fields = event['parsedJson']
 
                 source_chain_id = fields['source_chain_id']
-                srouce_chain_nonce = fields['source_chain_nonce']
+                source_chain_nonce = fields['source_chain_nonce']
 
-                dk = f"pool_withdraw_{source_chain_id}_{str(srouce_chain_nonce)}"
+                dk = f"pool_withdraw_{source_chain_id}_{str(source_chain_nonce)}"
                 if dk not in data:
                     call_type = fields["call_type"]
                     call_name = get_call_name(1, int(call_type))
@@ -427,17 +433,17 @@ def pool_withdraw_watcher():
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
                     if dst_chain_id == 0:
-                        sui_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        sui_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to sui, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to sui, nonce: {source_chain_nonce}")
                     elif dst_chain_id == 1:
-                        aptos_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_pool_address))
+                        aptos_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_pool_address))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to aptos, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to aptos, nonce: {source_chain_nonce}")
                     else:
-                        eth_withdraw_q.put((vaa, source_chain_id, srouce_chain_nonce, call_type, dst_chain_id))
+                        eth_withdraw_q.put((vaa, source_chain_id, source_chain_nonce, call_type, dst_chain_id))
                         local_logger.info(
-                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {srouce_chain_nonce}")
+                            f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
                     data[dk] = vaa
         except Exception as e:
             local_logger.error(f"Error: {e}")
@@ -869,11 +875,12 @@ def get_signed_vaa(
 
 
 def main():
-    pt = ProcessExecutor(executor=5)
+    pt = ProcessExecutor(executor=6)
 
     pt.run([
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-main"),
+        sui_portal_watcher,
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
         pool_withdraw_watcher,
         sui_pool_executor,
