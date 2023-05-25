@@ -349,14 +349,6 @@ module dola_protocol::lending_portal {
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
-        // Remove pool liquidity for dst ppol
-        let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            pool_manager_info,
-            dst_pool,
-            LENDING_APP_ID,
-            actual_amount
-        );
-
         // Bridge fee = relay fee + wormhole feee
         let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
         let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
@@ -375,7 +367,7 @@ module dola_protocol::lending_portal {
             receiver,
             dola_address::get_native_dola_chain_id(),
             nonce,
-            withdraw_amount,
+            actual_amount,
             wormhole_fee,
             clock
         );
@@ -506,13 +498,6 @@ module dola_protocol::lending_portal {
             dola_pool_id,
             (amount as u256)
         );
-        // Remove pool liquidity
-        let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            pool_manager_info,
-            dst_pool,
-            LENDING_APP_ID,
-            (amount as u256)
-        );
 
         // Bridge fee = relay fee + wormhole feee
         let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
@@ -532,7 +517,7 @@ module dola_protocol::lending_portal {
             receiver,
             dola_address::get_native_dola_chain_id(),
             nonce,
-            withdraw_amount,
+            (amount as u256),
             wormhole_fee,
             clock
         );

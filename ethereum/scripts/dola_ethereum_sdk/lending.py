@@ -222,7 +222,7 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
 def main():
     # portal_supply(usdt()['address'], 0.1 * 1e6)
     # portal_cancel_as_collateral([1, 2])
-    portal_withdraw(usdt()['address'], 0.1 * 1e6, 5)
+    portal_withdraw(usdt()['address'], 0.01 * 1e8, 5)
     # portal_binding("0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0)
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())

@@ -14,7 +14,7 @@ import ccxt
 import requests
 from retrying import retry
 from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor, ThreadExecutor
+from sui_brownie.parallelism import ProcessExecutor
 
 import dola_aptos_sdk.init as dola_aptos_init
 import dola_aptos_sdk.load as dola_aptos_load
@@ -493,6 +493,7 @@ def sui_core_executor():
 
 
 def sui_pool_executor():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("sui_pool_executed_vaa.json")
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
@@ -867,25 +868,15 @@ def get_signed_vaa(
     return response.json()
 
 
-def run_sui_relayer():
-    dola_sui_sdk.set_dola_project_path(Path("../.."))
-    pt = ThreadExecutor(executor=2)
-
-    pt.run([
-        pool_withdraw_watcher,
-        sui_pool_executor
-    ])
-
-
 def main():
-    pt = ProcessExecutor(executor=4)
+    pt = ProcessExecutor(executor=5)
 
     pt.run([
-        # run_sui_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-main"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
         pool_withdraw_watcher,
+        sui_pool_executor,
         eth_pool_executor,
         # compensate_unfinished_transaction
     ])

@@ -4,6 +4,7 @@ from pprint import pprint
 import yaml
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
+import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
@@ -266,7 +267,7 @@ def portal_withdraw_local(coin_type, amount):
     )
 
 
-def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver=None):
+def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
     """
     public entry fun withdraw_remote(
         genesis: &GovernanceGenesis,
@@ -302,6 +303,8 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
 
     gas_coin = get_zero_coin()
 
@@ -1572,5 +1575,7 @@ if __name__ == "__main__":
     # init.claim_test_coin(usdt())
     # portal_supply(usdt()['coin_type'], int(1e5))
     # portal_withdraw_local(usdt(), int(1e8))
+    portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
+                           list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    export_objects()
+    # export_objects()
