@@ -14,7 +14,7 @@ module dola_protocol::lending_portal {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use dola_protocol::dola_address;
+    use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::dola_pool::{Self, Pool};
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::lending_codec;
@@ -54,8 +54,10 @@ module dola_protocol::lending_portal {
 
     /// Relay Event
     struct RelayEvent has drop, copy {
-        // Wormhole sequence
         sequence: u64,
+        dst_pool: DolaAddress,
+        source_chain_id: u16,
+        source_chain_nonce: u64,
         // Relay fee amount
         fee_amount: u64,
         // Confirm that nonce is in the pool or core
@@ -374,6 +376,9 @@ module dola_protocol::lending_portal {
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            dst_pool,
+            source_chain_id: dola_address::get_native_dola_chain_id(),
+            source_chain_nonce: nonce,
             fee_amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });
@@ -525,8 +530,11 @@ module dola_protocol::lending_portal {
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            dst_pool,
+            source_chain_id: dola_address::get_native_dola_chain_id(),
+            source_chain_nonce: nonce,
             fee_amount: relay_fee_amount,
-            call_type: lending_codec::get_borrow_type()
+            call_type: lending_codec::get_withdraw_type()
         });
 
         emit(LendingPortalEvent {
