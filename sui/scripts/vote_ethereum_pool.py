@@ -1,12 +1,13 @@
 from pathlib import Path
 
+from sui_brownie import SuiObject
+
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
-from sui_brownie import SuiObject
 
 
 def main():

@@ -6,6 +6,7 @@ import requests
 from brownie import (
     network,
     config, )
+
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -147,6 +148,18 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
     return lending_relay_events
 
 
+def get_gas_price(net):
+    api_key = get_scan_api_key(net)
+
+    base_url = scan_rpc_url()
+
+    request_url = f"{base_url}?module=gastracker&action=gasoracle&apikey={api_key}"
+
+    response = requests.get(request_url)
+
+    return response.json()['result']
+
+
 def decode_relay_events(data):
     events = {int(d['blockNumber'], 16): d['data'] for d in data['result']}
     return {block: [int(events[block][2:66], 16), int(events[block][66:], 16)] for block in events}
@@ -157,5 +170,5 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
-    print(relay_events(start_block=33494168))
+    set_ethereum_network("polygon-main")
+    get_gas_price("polygon-main")

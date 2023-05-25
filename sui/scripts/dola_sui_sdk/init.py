@@ -1013,7 +1013,7 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    query_sui_relay_event()
+    batch_init()
 
     # register_remote_bridge(5, "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()

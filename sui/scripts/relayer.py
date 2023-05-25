@@ -10,7 +10,6 @@ from multiprocessing import Queue
 from pathlib import Path
 from pprint import pprint
 
-import brownie.network
 import ccxt
 import requests
 from retrying import retry
@@ -27,6 +26,8 @@ import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
 from dola_sui_sdk.load import sui_project
+
+G_wei = 1e9
 
 
 class ColorFormatter(logging.Formatter):
@@ -130,18 +131,8 @@ def get_call_name(app_id, call_type):
 def get_dola_network(dola_chain_id):
     if dola_chain_id == 0:
         return "sui"
-    elif dola_chain_id == 1:
-        return "aptos"
-    elif dola_chain_id == 4:
-        return "bsc-test"
     elif dola_chain_id == 5:
-        return "polygon-test"
-    elif dola_chain_id == 7:
-        return "polygon-zk-test"
-    elif dola_chain_id == 8:
-        return "arbitrum-test"
-    elif dola_chain_id == 9:
-        return "optimism-test"
+        return "polygon-main"
     else:
         return "unknown"
 
@@ -407,6 +398,7 @@ def eth_portal_watcher(network="polygon-test"):
 
 
 def pool_withdraw_watcher():
+    dola_sui_sdk.set_dola_project_path(Path("../.."))
     data = BridgeDict("pool_withdraw_vaa.json")
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
@@ -427,7 +419,7 @@ def pool_withdraw_watcher():
                     call_type = fields["call_type"]
                     call_name = get_call_name(1, int(call_type))
                     src_network = get_dola_network(source_chain_id)
-                    sequence = fields['sequence']
+                    sequence = int(fields['sequence'])
                     vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
 
                     dst_pool = fields['dst_pool']
@@ -638,16 +630,16 @@ def eth_pool_executor():
                 relay_fee_value = relay_fee_record[dk]
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
 
-                gas_price = brownie.network.gas_price()
+                gas_price = float(dola_ethereum_init.get_gas_price(network)['SafeGasPrice']) * G_wei
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
-                tx_gas_amount = int(gas_used) * gas_price
+                tx_gas_amount = int(gas_used) * int(gas_price)
                 if available_gas_amount > tx_gas_amount:
                     ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
 
-                    finished_transactions[dk] = {"relay_fee": relay_fee_record[dk],
+                    finished_transactions[dk] = {"relay_fee": relay_fee_value,
                                                  "consumed_fee": get_fee_value(tx_gas_amount)}
                     del relay_fee_record[dk]
                     action_gas_record[f"{network}_{call_name}"] = gas_used
@@ -886,14 +878,15 @@ def run_sui_relayer():
 
 
 def main():
-    pt = ProcessExecutor(executor=2)
+    pt = ProcessExecutor(executor=4)
 
     pt.run([
         # run_sui_relayer,
         sui_core_executor,
         functools.partial(eth_portal_watcher, "polygon-main"),
         # functools.partial(eth_portal_watcher, "arbitrum-test"),
-        # eth_pool_executor,
+        pool_withdraw_watcher,
+        eth_pool_executor,
         # compensate_unfinished_transaction
     ])
 
