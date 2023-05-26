@@ -128,7 +128,7 @@ def get_call_name(app_id, call_type):
 
 def get_dola_network(dola_chain_id):
     if dola_chain_id == 0:
-        return "sui"
+        return "sui-mainnet"
     elif dola_chain_id == 5:
         return "polygon-main"
     else:
@@ -545,7 +545,7 @@ def eth_pool_executor():
                                             {"$set": {'executed': 'true', 'withdraw_cost_fee': withdraw_cost_fee}})
 
                     gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                          {"$set": {'withdraw_gas': tx_gas_amount, 'dst_chain_id': dola_chain_id}})
+                                          {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
 
                     local_logger.info(f"Execute {network} withdraw success! ")
                     local_logger.info(f"source: {source_chain} nonce: {source_nonce}")
@@ -561,6 +561,46 @@ def eth_pool_executor():
             except Exception as e:
                 traceback.print_exc()
                 local_logger.error(f"Execute eth pool withdraw fail\n {e}")
+
+
+def calculate_relay_fee(src_chain_id, dst_chain_id, call_name):
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    db = mongodb()
+    gas_record = db['GasRecord']
+
+    result = gas_record.find(
+        {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).limit(10)
+
+    records = list(result)
+    if not records:
+        return {'relay_fee': '0'}
+
+    core_gas = 0
+    withdraw_gas = 0
+    for record in records:
+        core_gas += record['core_gas']
+        withdraw_gas += record['withdraw_gas']
+
+    record_len = len(records)
+    average_core_gas = int(core_gas / record_len)
+    average_withdraw_gas = int(withdraw_gas / record_len)
+
+    sui_gas_price = int(sui_project.client.suix_getReferenceGasPrice())
+    core_fee_amount = average_core_gas * sui_gas_price
+    core_fee = get_fee_value(core_fee_amount, 'sui')
+
+    dst_net = get_dola_network(dst_chain_id)
+    if int(dst_chain_id) == 0:
+        gas_price = sui_gas_price
+    else:
+        gas_price = int(dola_ethereum_init.get_gas_price(dst_net)['SafeGasPrice']) * G_wei
+    withdraw_fee_amount = average_withdraw_gas * gas_price
+    withdraw_fee = get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
+
+    relay_fee = core_fee + withdraw_fee
+    src_net = get_dola_network(src_chain_id)
+
+    return {'relay_fee': str(get_fee_amount(relay_fee, get_gas_token(src_net)))}
 
 
 def sui_vaa_payload(vaa):
