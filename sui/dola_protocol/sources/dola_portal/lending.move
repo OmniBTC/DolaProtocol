@@ -55,9 +55,8 @@ module dola_protocol::lending_portal {
     /// Relay Event
     struct RelayEvent has drop, copy {
         sequence: u64,
+        nonce: u64,
         dst_pool: DolaAddress,
-        source_chain_id: u16,
-        source_chain_nonce: u64,
         // Relay fee amount
         fee_amount: u64,
         // Confirm that nonce is in the pool or core
@@ -376,9 +375,8 @@ module dola_protocol::lending_portal {
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            nonce,
             dst_pool,
-            source_chain_id: dola_address::get_native_dola_chain_id(),
-            source_chain_nonce: nonce,
             fee_amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });
@@ -530,9 +528,8 @@ module dola_protocol::lending_portal {
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            nonce,
             dst_pool,
-            source_chain_id: dola_address::get_native_dola_chain_id(),
-            source_chain_nonce: nonce,
             fee_amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });

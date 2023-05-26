@@ -15,7 +15,7 @@ contract SystemPortal {
     IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
-    event RelayEvent(uint64 nonce, uint256 amount);
+    event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
 
     event SystemPortalEvent(
         uint64 nonce,
@@ -45,14 +45,15 @@ contract SystemPortal {
             LibDolaTypes.DolaAddress(bindDolaChainId, bindAddress),
             LibSystemCodec.BINDING
         );
-        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
+
+        uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             SYSTEM_APP_ID,
             appPayload
         );
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(nonce, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit SystemPortalEvent(
             nonce,
@@ -78,14 +79,15 @@ contract SystemPortal {
             LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress),
             LibSystemCodec.UNBINDING
         );
-        IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
+
+        uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             SYSTEM_APP_ID,
             appPayload
         );
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(nonce, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit SystemPortalEvent(
             nonce,

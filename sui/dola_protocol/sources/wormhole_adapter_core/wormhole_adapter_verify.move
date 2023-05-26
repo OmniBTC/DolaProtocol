@@ -25,6 +25,9 @@ module dola_protocol::wormhole_adapter_verify {
     /// Unkonwn emitter
     const EUNKNOWN_EMITTER: u64 = 2;
 
+    /// Replay vaa
+    const EREPLAY_VAA: u64 = 3;
+
     /// Placeholder for map
     struct Unit has key, store { id: UID, }
 
@@ -70,6 +73,7 @@ module dola_protocol::wormhole_adapter_verify {
         vaa: &VAA,
         ctx: &mut TxContext
     ) {
+        assert!(!object_table::contains(consumed_vaas, vaa::digest(vaa)), EREPLAY_VAA);
         // this calls set::add which aborts if the element already exists
         object_table::add<Bytes32, Unit>(
             consumed_vaas,

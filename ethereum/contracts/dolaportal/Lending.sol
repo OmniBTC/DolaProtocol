@@ -14,7 +14,7 @@ contract LendingPortal {
     IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
-    event RelayEvent(uint64 nonce, uint256 amount);
+    event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
 
     event LendingPortalEvent(
         uint64 nonce,
@@ -60,12 +60,12 @@ contract LendingPortal {
         }
 
         uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-            value: msg.value - fee
-        }(token, amount, LENDING_APP_ID, appPayload);
+                value: msg.value - fee
+            }(token, amount, LENDING_APP_ID, appPayload);
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -105,7 +105,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -145,7 +145,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -189,12 +189,12 @@ contract LendingPortal {
         }
 
         uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-            value: msg.value
-        }(token, amount, LENDING_APP_ID, appPayload);
+                value: msg.value
+            }(token, amount, LENDING_APP_ID, appPayload);
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -241,7 +241,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -256,8 +256,8 @@ contract LendingPortal {
     }
 
     function as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-        external
-        payable
+    external
+    payable
     {
         uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
@@ -273,7 +273,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -288,8 +288,8 @@ contract LendingPortal {
     }
 
     function cancel_as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-        external
-        payable
+    external
+    payable
     {
         uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
@@ -305,7 +305,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
