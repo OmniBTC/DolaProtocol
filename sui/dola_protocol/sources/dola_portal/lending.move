@@ -54,8 +54,11 @@ module dola_protocol::lending_portal {
 
     /// Relay Event
     struct RelayEvent has drop, copy {
+        // Wormhole vaa sequence
         sequence: u64,
+        // Transaction nonce
         nonce: u64,
+        // Withdraw pool
         dst_pool: DolaAddress,
         // Relay fee amount
         fee_amount: u64,

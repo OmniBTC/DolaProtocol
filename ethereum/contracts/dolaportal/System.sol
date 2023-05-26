@@ -15,6 +15,7 @@ contract SystemPortal {
     IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
+    /// RelayEvent(transaction nonce, wormhole sequence, relay fee amount)
     event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
 
     event SystemPortalEvent(
