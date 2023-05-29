@@ -16,25 +16,25 @@ def deploy():
 
     # DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
 
-    print("deploy wormhole adapter pool...")
-    wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
-        wormhole_address,
-        wormhole_chainid,
-        wormhole_finality,
-        21,
-        core_emitter,
-        {'from': account}
-    )
-
-    print("deploy lending portal...")
-    lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(
-        wormhole_adapter_pool.address,
-        {'from': account}
-    )
+    # print("deploy wormhole adapter pool...")
+    # wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
+    #     wormhole_address,
+    #     wormhole_chainid,
+    #     wormhole_finality,
+    #     21,
+    #     core_emitter,
+    #     {'from': account}
+    # )
+    #
+    # print("deploy lending portal...")
+    # lending_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LendingPortal"].deploy(
+    #     wormhole_adapter_pool.address,
+    #     {'from': account}
+    # )
 
     print("deploy system portal...")
     system_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["SystemPortal"].deploy(
-        wormhole_adapter_pool.address,
+        "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8",
         {'from': account}
     )
 
@@ -71,5 +71,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("arbitrum-main")
+    set_ethereum_network("polygon-main")
     deploy()

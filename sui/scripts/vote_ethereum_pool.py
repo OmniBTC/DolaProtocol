@@ -14,7 +14,7 @@ def main():
     dola_protocol = dola_sui_load.dola_protocol_package()
     genesis_proposal = dola_sui_load.genesis_proposal_package()
 
-    # dola_sui_init.create_proposal()
+    dola_sui_init.create_proposal()
 
     # Init poolmanager params
     # pool_address, dola_chain_id, pool_name, dola_pool_id, pool_weight

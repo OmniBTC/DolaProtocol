@@ -1013,8 +1013,8 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
+    # batch_init()
 
-    # register_remote_bridge(5, "0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E")
+    register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)

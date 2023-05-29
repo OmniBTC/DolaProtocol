@@ -89,7 +89,7 @@ networks:
   polygon-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 5
-    lending_portal: '0x5E8B51907646cc2F1A77662B906e8709cbbF124a'
+    lending_portal: '0xeb3F7D77C277b67B29Ce454E54657bBDAeB2BA36'
     pools:
       USDC:
         dola_chain_id: 5
@@ -110,7 +110,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.polygonscan.com/api
-    system_portal: '0xCf19af4840eCdd8E50157Bb3d85C2C6DBBa91301'
+    system_portal: '0x495131913898c3c5fdD345125a850d97614Ac104'
     tokens:
       MATIC:
         address: '0x0000000000000000000000000000000000000000'
@@ -129,7 +129,7 @@ networks:
         decimals: 8
         dola_pool_id: 0
     wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
-    wormhole_adapter_pool: '0x5af12a3FBeeb89C21699ACeD9615848A3c2D4f4E'
+    wormhole_adapter_pool: '0x1FFBE74B4665037070E734daf9F79fa33B6d54a8'
     wormhole_chainid: 5
     wormhole_finality: 1
   polygon-test:
