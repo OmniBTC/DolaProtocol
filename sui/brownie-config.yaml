@@ -16,24 +16,24 @@ networks:
     node_url: https://fullnode.mainnet.sui.io:443
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
-      CoreState: '0x12661f5e412be455806bed8c142d8b84532b2bd35361d598cf70bc1f85ce461b'
-      GovernanceGenesis: '0x3b778f05e58f9efbd37eedcfa01e77785696b7e6f5c388aff02103955dd8cce7'
-      GovernanceInfo: '0x0e13f4bcacaf954f37cfd3f1935667eddd11f7b111559c4402e53b6be75f51f8'
-      LendingPortal: '0x940b81ac0d7e21f74c60720239408fd49f9359cc503655abd6c1ddffb02b6759'
-      LendingStorage: '0x24e5a8456162770293d1b876a50bd254d7c9bc94dfefffa89c5f36b3e3c51a7a'
-      SystemStorage: '0x6fe62ad7cb12dacce3f32bf1a717abf874b7df58027041ab8c76f615b25931e9'
-      Pool<SUI>: '0x3d6fe65516d3538d688fc6391648cebe2955bf3cc6eef6fa662caba4ec0ac275'
-      Pool<USDT>: '0xa93076118cd709ab949c33df57c1aa988622d3d24aa99f1b1d1989cdc36f47ff'
-      Pool<USDC>: '0xcbd1937636bde070d1b2f98314be9f9b556874d0ba40f8e11689af110bdf7797'
-      PoolManagerInfo: '0x1764faffa045705e3c0bb06b6b956bde43038e9b7091a901faf0a535af6a65be'
-      PoolState: '0x22ab171e753ad8e70dc0794ecb61a31ad1995b5519375e8ec0bc516af534c845'
-      PriceOracle: '0x81ab8880199866a329358170a4411ecc8f4ebf81642ed33a5bc49dad21547471'
+      CoreState: '0xffee67f1fc55a72caab7d150abef55625ac6420ca43c5798f5d52db31fb800a7'
+      GovernanceGenesis: '0x42ef90066e649215e6ab91399a83e1a5467fd7cc436e8b83adb8743a0efba621'
+      GovernanceInfo: '0x79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d'
+      LendingPortal: '0x28447d90e392185e81afbfea980be7d1c95d1afe5a93281b180841b90697f303'
+      LendingStorage: '0xe5a189b1858b207f2cf8c05a09d75bae4271c7a9a8f84a8c199c6896dc7c37e6'
+      Pool<SUI>: '0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73'
+      Pool<USDC>: '0xe3544997abc93c211ef7e35cd5e0af719bed4810cec8d2d3bf4b7653310a75fb'
+      Pool<USDT>: '0x00c9b245490fb92d7eb8967ecb401b34b96e835bb27b911f539f0b034a9e1b49'
+      PoolManagerInfo: '0x1be839a23e544e8d4ba7fab09eab50626c5cfed80f6a22faf7ff71b814689cfb'
+      PoolState: '0x5c9d9db2dd5f34154ee59686334f3504026809fa67afe5332837191ee6220586'
+      PriceOracle: '0x42afbffd3479b06f40c5576799b02ea300df36cf967adcd1ae15445270f572e2'
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
       SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-      SystemPortal: '0x33cda56027b3ad4eb43e99e765a585fd98d8a4b861cc552b4c2adcb4d63be68e'
-      USDT: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+      SystemPortal: '0xbad5ab9b0cefa1a002073e06fd8cb2fb8397151e4bd0014b42513e0c742d5cc3'
+      SystemStorage: '0xd09aaaf78ad366c47d0f4976093133d6c61bfd9152c8700870f3ce4a26af565c'
       USDC: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
-      UserManagerInfo: '0x25d537a1121053b953e24ae9f243aea4cb13bc58f69060c35f3daacf38cf0fcc'
+      USDT: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+      UserManagerInfo: '0xee633dc3fd1218d3bd9703fb9b98e6c8d7fdd8c8bf1ca2645ee40d65fb533a3e'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
     oracle:
       feed_id:
@@ -43,9 +43,9 @@ networks:
         USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
     packages:
-      dola_protocol: '0x2daca359a68a04f3ed381b4427ffdb2ec1e464821c5098bbb4ddb9024e680845'
-      external_interfaces: '0x87ee319d04058b2bdabf83b21f2349d39a9ff33e9b44acbb97f22703fb7cef65'
-      genesis_proposal: '0xd92004518f6da709dc3e19b6f85ea9a564f5fb13f6a971788c3a1c43a0fef8b6'
+      dola_protocol: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
+      external_interfaces: '0xb639bd39aa68bec7e2e63c8af537d0fabbeec16becc7e4106a0340285e2021e5'
+      genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pools:
@@ -132,14 +132,14 @@ networks:
         coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         decimals: 9
         dola_pool_id: 3
-      USDT:
-        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
-        decimals: 6
-        dola_pool_id: 1
       USDC:
         coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
         decimals: 6
         dola_pool_id: 2
+      USDT:
+        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+        decimals: 6
+        dola_pool_id: 1
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443

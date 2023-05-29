@@ -1575,7 +1575,7 @@ if __name__ == "__main__":
     # init.claim_test_coin(usdt())
     # portal_supply(usdt()['coin_type'], int(1e5))
     # portal_withdraw_local(usdt(), int(1e8))
-    portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
-                           list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
+    # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
+    #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    # export_objects()
+    export_objects()
