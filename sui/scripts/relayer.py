@@ -339,6 +339,8 @@ def eth_portal_watcher(network="polygon-test"):
                         })
 
                     local_logger.info(f"Have a {call_name} transaction from {network}, sequence: {nonce}")
+        except ValueError as e:
+            local_logger.warning(f"Warning: {e}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
             traceback.print_exc()
@@ -456,7 +458,9 @@ def sui_pool_executor():
                     core_cost_fee = 0
                 relay_fee_value = withdraw_tx['relay_fee'] - core_cost_fee
 
-                available_gas_amount = get_fee_amount(relay_fee_value, 'sui')
+                # available_gas_amount = get_fee_amount(relay_fee_value, 'sui')
+                # todo: use relay fee
+                available_gas_amount = ZERO_FEE
 
                 source_chain_id = withdraw_tx['src_chain_id']
                 source_nonce = withdraw_tx['nonce']
@@ -507,7 +511,7 @@ def eth_pool_executor():
     gas_record = db['GasRecord']
 
     while True:
-        relay_transactions = relay_record.find({"executed": "withdraw", "withdraw_chain_id": {"$ne", 0}})
+        relay_transactions = relay_record.find({"executed": "withdraw", "withdraw_chain_id": {"$ne": 0}})
         for withdraw_tx in relay_transactions:
             try:
                 dola_chain_id = withdraw_tx['withdraw_chain_id']
@@ -529,7 +533,9 @@ def eth_pool_executor():
                 else:
                     core_cost_fee = 0
                 relay_fee_value = withdraw_tx['relay_fee'] - core_cost_fee
-                available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+                # available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+                # todo: use relay fee
+                available_gas_amount = ZERO_FEE
 
                 gas_price = float(dola_ethereum_init.get_gas_price(network)['SafeGasPrice']) * G_wei
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
@@ -736,7 +742,7 @@ def mongodb():
 
 
 def main():
-    pt = ProcessExecutor(executor=6)
+    pt = ProcessExecutor(executor=2)
 
     pt.run([
         sui_core_executor,

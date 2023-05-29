@@ -39,7 +39,6 @@ networks:
       feed_id:
         BTC/USD: '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'
         ETH/USD: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace'
-        MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
         SUI/USD: '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744'
         USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
@@ -72,18 +71,18 @@ networks:
         supply_cap_ceiling: 5
         treasury: 0
         treasury_factor: 0.23
-      MATIC:
+      ETH:
         base_borrow_rate: 0.02
         borrow_cap_ceiling: 0
-        borrow_coefficient: 1.4
+        borrow_coefficient: 1.09
         borrow_rate_slope1: 0.07
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
-        collateral_coefficient: 0
+        collateral_coefficient: 0.88
         dola_pool_id: 4
-        is_isolated_asset: true
+        is_isolated_asset: false
         optimal_utilization: 0.45
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 50
         treasury: 0
         treasury_factor: 0.23
       SUI:
