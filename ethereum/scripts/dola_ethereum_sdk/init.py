@@ -15,6 +15,8 @@ def get_scan_api_key(net="polygon-test"):
         return os.getenv("POLYGON_ZK_API_KEY")
     elif "bsc" in net:
         return os.getenv("BSC_API_KEY")
+    elif "arbitrum" in net:
+        return os.getenv("ARBITRUM_API_KEY")
     elif "polygon" in net:
         return os.getenv("POLYGON_API_KEY")
 
@@ -99,13 +101,15 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
 
 
 def relay_events(lending_portal, system_portal, start_block=0, end_block=99999999, limit=10, net="polygon-test"):
-    topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
+    topic = brownie.web3.keccak(text="RelayEvent(uint64,uint64,uint256)").hex()
     api_key = get_scan_api_key(net)
 
     base_url = scan_rpc_url()
 
-    system_rpc_params = build_rpc_params(system_portal, topic, api_key, start_block, end_block, limit)
-    lending_rpc_params = build_rpc_params(lending_portal, topic, api_key, start_block, end_block, limit)
+    system_rpc_params = build_rpc_params(
+        system_portal, topic, api_key, start_block, end_block, limit)
+    lending_rpc_params = build_rpc_params(
+        lending_portal, topic, api_key, start_block, end_block, limit)
     headers = {}
     if "bsc" in net:
         headers = {
@@ -162,7 +166,7 @@ def get_gas_price(net):
 
 def decode_relay_events(data):
     events = {int(d['blockNumber'], 16): d['data'] for d in data['result']}
-    return {block: [int(events[block][2:66], 16), int(events[block][66:], 16)] for block in events}
+    return {block: [int(events[block][2:66], 16), int(events[block][66:130], 16), int(events[block][130:], 16)] for block in events}
 
 
 def current_block_number():
@@ -170,5 +174,7 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-main")
-    get_gas_price("polygon-main")
+    set_ethereum_network("arbitrum-main")
+    lending_portal = load.lending_portal_package('arbitrum-main').address
+    system_portal = load.system_portal_package('arbitrum-main').address
+    print(relay_events(lending_portal, system_portal, net='arbitrum-main'))

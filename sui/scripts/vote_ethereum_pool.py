@@ -57,5 +57,5 @@ if __name__ == "__main__":
 
     # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
-    dola_ethereum_sdk.set_ethereum_network("arbitrum-main")
+    dola_ethereum_sdk.set_ethereum_network("polygon-main")
     main()

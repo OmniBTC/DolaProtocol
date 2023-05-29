@@ -1,9 +1,9 @@
 compiler:
   solc:
     remappings:
-    - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
+      - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
 dependencies:
-- OpenZeppelin/openzeppelin-contracts@4.6.0
+  - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
   arbitrum-main:
@@ -87,16 +87,10 @@ networks:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
   polygon-main:
-    core_emitter: '0xdef592d077e939fdf83f3a06cbd2b701d16d87fe255bfc834b851d70f062e95d'
+    core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 5
     lending_portal: '0x5E8B51907646cc2F1A77662B906e8709cbbF124a'
     pools:
-      MATIC:
-        dola_chain_id: 5
-        dola_pool_id: 4
-        pool_address: '0x0000000000000000000000000000000000000000'
-        pool_name: MATIC
-        pool_weight: 1
       USDC:
         dola_chain_id: 5
         dola_pool_id: 2

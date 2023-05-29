@@ -49,6 +49,12 @@ def get_zero_coin():
         return result['effects']['created'][0]['reference']['objectId']
 
 
+def check_amount_coin_exist(amount: int):
+    sui_coins = sui_project.get_account_sui()
+    balances = [int(coin['balance']) for coin in sui_coins.values()]
+    return amount in balances
+
+
 def get_owned_zero_coin():
     sui_coins = sui_project.get_account_sui()
     return [coin_object for coin_object, coin in sui_coins.items() if coin['balance'] == '0'][0]

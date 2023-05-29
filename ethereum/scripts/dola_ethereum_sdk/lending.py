@@ -82,10 +82,12 @@ def portal_supply(token, amount, relay_fee=0):
 
     lending_portal = load.lending_portal_package(network.show_active())
     if "test" in network.show_active():
-        token = Contract.from_abi("MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
+        token = Contract.from_abi(
+            "MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
         token.mint(account.address, amount, {'from': account})
     else:
-        token = Contract.from_abi("ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+        token = Contract.from_abi(
+            "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.supply(
         token,
@@ -148,7 +150,8 @@ def pool_withdraw(vaa):
     :return:
     """
     account = get_account()
-    wormhole_adapter_pool = load.wormhole_adapter_pool_package(network.show_active())
+    wormhole_adapter_pool = load.wormhole_adapter_pool_package(
+        network.show_active())
     wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
@@ -182,7 +185,8 @@ def portal_repay(token, amount):
     account = get_account()
     lending_portal = load.lending_portal_package()
 
-    token = Contract.from_abi("ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    token = Contract.from_abi(
+        "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.repay(
         token,
@@ -206,7 +210,8 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     account = get_account()
     lending_portal = load.lending_portal_package(network.show_active())
 
-    token = Contract.from_abi("ERC20", debt_pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    token = Contract.from_abi(
+        "ERC20", debt_pool, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.liquidate(
         str(receiver),
@@ -220,14 +225,15 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
 
 
 def main():
-    # portal_supply(usdt()['address'], 0.1 * 1e6)
+    # portal_supply(usdt()['address'], 0.5 * 1e6)
     # portal_cancel_as_collateral([1, 2])
-    portal_withdraw(usdt()['address'], 0.01 * 1e8, 5)
-    # portal_binding("0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0)
+    portal_withdraw(usdt()['address'], 0.1 * 1e8, 5, relay_fee=int(1e14))
+    # portal_binding(
+    #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, fee=int(1e14))
     # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
     # monitor_repay(usdt_pool())
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-main")
+    set_ethereum_network("arbitrum-main")
     main()
