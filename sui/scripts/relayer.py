@@ -278,6 +278,7 @@ def eth_portal_watcher(network="polygon-test"):
     wormhole = dola_ethereum_load.womrhole_package(network)
     lending_portal = dola_ethereum_load.lending_portal_package(network).address
     system_portal = dola_ethereum_load.system_portal_package(network).address
+    emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
 
     while True:
         try:
@@ -297,7 +298,7 @@ def eth_portal_watcher(network="polygon-test"):
 
                 # get vaa
                 vaa = get_signed_vaa_by_wormhole(
-                    WORMHOLE_EMITTER_ADDRESS[network], nonce, network)
+                    emitter_address, nonce, network)
                 # parse vaa
                 vm = wormhole.parseVM(vaa)
                 # parse payload
@@ -429,6 +430,19 @@ def sui_core_executor():
                 gas, executed, status, feed_nums = execute_sui_core(
                     call_name, tx['vaa'], ZERO_FEE)
 
+                gas_price = int(
+                    sui_project.client.suix_getReferenceGasPrice())
+                gas_limit = int(gas / gas_price)
+                gas_record.insert_one({
+                    'src_chain_id': tx['src_chain_id'],
+                    'nonce': tx['nonce'],
+                    'dst_chain_id': 0,
+                    'call_name': call_name,
+                    'core_gas': gas_limit,
+                    'withdraw_gas': 0,
+                    'feed_nums': feed_nums
+                })
+
                 if executed and status == 'success':
                     core_costed_fee = get_fee_value(gas, 'sui')
                     if call_name in ["withdraw", "borrow"]:
@@ -437,19 +451,6 @@ def sui_core_executor():
                     else:
                         relay_record.update_one({'vaa': tx['vaa']},
                                                 {"$set": {'executed': 'true', 'core_costed_fee': core_costed_fee}})
-
-                    gas_price = int(
-                        sui_project.client.suix_getReferenceGasPrice())
-                    gas_limit = int(gas / gas_price)
-                    gas_record.insert_one({
-                        'src_chain_id': tx['src_chain_id'],
-                        'nonce': tx['nonce'],
-                        'dst_chain_id': 0,
-                        'call_name': call_name,
-                        'core_gas': gas_limit,
-                        'withdraw_gas': 0,
-                        'feed_nums': feed_nums
-                    })
 
                     local_logger.info("Execute sui core success! ")
                 else:
@@ -505,17 +506,18 @@ def sui_pool_executor():
                     vaa, token_name, available_gas_amount)
 
                 tx_gas_amount = gas_used
+
+                gas_price = int(
+                    sui_project.client.suix_getReferenceGasPrice())
+                gas_limit = int(tx_gas_amount / gas_price)
+                gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
+                                      {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
+
                 if executed:
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
                     relay_record.update_one({'withdraw_vaa': vaa},
                                             {"$set": {'executed': 'true', 'withdraw_cost_fee': withdraw_cost_fee}})
-
-                    gas_price = int(
-                        sui_project.client.suix_getReferenceGasPrice())
-                    gas_limit = int(tx_gas_amount / gas_price)
-                    gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                          {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
 
                     local_logger.info("Execute sui withdraw success! ")
                     local_logger.info(
@@ -581,6 +583,9 @@ def eth_pool_executor():
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
+                gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
+                                      {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
+
                 tx_gas_amount = int(gas_used) * int(gas_price)
                 if available_gas_amount > tx_gas_amount:
                     ethereum_wormhole_bridge.receiveWithdraw(
@@ -589,9 +594,6 @@ def eth_pool_executor():
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
                     relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
                                             {"$set": {'executed': 'true', 'withdraw_cost_fee': withdraw_cost_fee}})
-
-                    gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                          {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
 
                     local_logger.info(f"Execute {network} withdraw success! ")
                     local_logger.info(
@@ -714,7 +716,7 @@ NET_TO_WORMHOLE_CHAINID = {
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
     "arbitrum-main": "0x135557d220cC24E09e82B3A4C4C526138B9d3824",
-    "polygon-main": "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8",
+    "polygon-main": "0x6A028B4911078F80A20c8De434316C427E3A6Fa5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     # testnet
     "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",

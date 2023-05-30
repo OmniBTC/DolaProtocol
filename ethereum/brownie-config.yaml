@@ -113,10 +113,6 @@ networks:
     scan_rpc_url: https://api.polygonscan.com/api
     system_portal: '0x0B94dd8186A706f708770Ade991ca5E8B3648340'
     tokens:
-      MATIC:
-        address: '0x0000000000000000000000000000000000000000'
-        decimals: 18
-        dola_pool_id: 4
       USDC:
         address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
         decimals: 6
