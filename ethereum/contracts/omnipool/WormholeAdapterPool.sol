@@ -14,18 +14,19 @@ contract WormholeAdapterPool {
     /// Storage
 
     // Wormhole address
-    IWormhole immutable wormhole;
+    IWormhole public immutable wormhole;
     // Dola chain id
     uint16 public immutable dolaChainId;
     // Dola pool
-    DolaPool immutable dolaPool;
+    DolaPool public immutable dolaPool;
 
     // Wormhole required number of block confirmations to assume finality
-    uint8 wormholeFinality;
+    uint8 public wormholeInstantConsistency;
+    uint8 public wormholeFinalityConsistency;
     // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
-    mapping(uint16 => bytes32) registeredEmitters;
+    mapping(uint16 => bytes32) public registeredEmitters;
     // Used to verify that the VAA has been processed
-    mapping(bytes32 => bool) consumedVaas;
+    mapping(bytes32 => bool) public consumedVaas;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -39,14 +40,16 @@ contract WormholeAdapterPool {
     constructor(
         IWormhole _wormhole,
         uint16 _dolaChainId,
-        uint8 _wormholeFinality,
+        uint8 _wormholeInstantConsistency,
+        uint8 _wormholeFinalityConsistency,
         uint16 _emitterChainId,
         bytes32 _emitterAddress
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
         dolaPool = new DolaPool(_dolaChainId, address(this));
-        wormholeFinality = _wormholeFinality;
+        wormholeInstantConsistency = _wormholeInstantConsistency;
+        wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
     }
 
@@ -156,7 +159,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: wormholeFee}(
                 0,
                 payload,
-                wormholeFinality
+                wormholeFinalityConsistency
             );
     }
 
@@ -173,7 +176,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: msg.value}(
                 0,
                 payload,
-                wormholeFinality
+                wormholeInstantConsistency
             );
     }
 

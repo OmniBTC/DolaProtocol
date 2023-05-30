@@ -49,10 +49,17 @@ def get_zero_coin():
         return result['effects']['created'][0]['reference']['objectId']
 
 
-def check_amount_coin_exist(amount: int):
+def get_amount_coins_if_exist(amounts: [int]):
     sui_coins = sui_project.get_account_sui()
     balances = [int(coin['balance']) for coin in sui_coins.values()]
-    return amount in balances
+    coins = [coin_object for coin_object, coin in sui_coins.items() if int(coin['balance']) in amounts]
+    for amount in amounts:
+        if amount not in balances:
+            sui_project.pay_all_sui()
+            result = sui_project.pay_sui(amounts)
+            return [coin['reference']['objectId'] for coin in result['effects']['created']]
+
+    return coins
 
 
 def get_owned_zero_coin():
@@ -216,6 +223,7 @@ def core_supply(vaa, relay_fee=0):
         init.clock(),
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
 
     executed = False
     if relay_fee > gas:
@@ -231,7 +239,11 @@ def core_supply(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_withdraw_local(coin_type, amount):
@@ -344,6 +356,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
         clock: &Clock,
         ctx: &mut TxContext
     )
+    :param relay_fee:
     :param coin_type:
     :param vaa:
     :return:
@@ -365,6 +378,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
 
     executed = False
     if relay_fee > gas:
@@ -378,7 +392,11 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
             init.clock(),
             type_arguments=[coin_type]
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_withdraw(vaa, relay_fee=0):
@@ -411,15 +429,14 @@ def core_withdraw(vaa, relay_fee=0):
     pyth_state = sui_project.network_config['objects']['PythState']
 
     asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
     symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
 
-    sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    fee_coins = get_amount_coins_if_exist(fee_amounts + [0])
     zero_coin = get_owned_zero_coin()
     fee_coins.remove(zero_coin)
 
@@ -481,8 +498,11 @@ def core_withdraw(vaa, relay_fee=0):
             actual_params=basic_params + feed_params,
             transactions=feed_transaction_blocks + withdraw_transaction_block,
         )
-
-    return gas, executed
+        return gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas, executed, status, feed_nums
 
 
 def portal_borrow_local(coin_type, amount):
@@ -618,15 +638,14 @@ def core_borrow(vaa, relay_fee=0):
     pyth_state = sui_project.network_config['objects']['PythState']
 
     asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
     symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
 
-    sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    fee_coins = get_amount_coins_if_exist(fee_amounts + [0])
     zero_coin = get_owned_zero_coin()
     fee_coins.remove(zero_coin)
 
@@ -689,7 +708,11 @@ def core_borrow(vaa, relay_fee=0):
             transactions=feed_transaction_blocks + withdraw_transaction_block,
         )
 
-    return gas, executed
+        return gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas, executed, status, feed_nums
 
 
 def portal_repay(coin_type, repay_amount):
@@ -778,6 +801,8 @@ def core_repay(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
+
     executed = False
     if relay_fee > gas:
         executed = True
@@ -792,7 +817,11 @@ def core_repay(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id):
@@ -876,15 +905,14 @@ def core_liquidate(vaa, relay_fee=0):
     pyth_state = sui_project.network_config['objects']['PythState']
 
     asset_ids = get_violator_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
     symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
 
-    sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts)
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    fee_coins = get_amount_coins_if_exist(fee_amounts)
 
     basic_params = [
         pool_manager_info,  # 0
@@ -943,7 +971,11 @@ def core_liquidate(vaa, relay_fee=0):
             transactions=feed_transaction_blocks + liquidate_transaction_block,
         )
 
-    return gas, executed
+        return gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas, executed, status, feed_nums
 
 
 def portal_binding(bind_address, dola_chain_id=0):
@@ -1006,6 +1038,7 @@ def core_binding(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
     if relay_fee > gas:
         executed = True
@@ -1018,7 +1051,11 @@ def core_binding(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock()
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_unbinding(unbind_address, dola_chain_id=0):
@@ -1081,6 +1118,7 @@ def core_unbinding(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
     if relay_fee > gas:
         executed = True
@@ -1093,7 +1131,11 @@ def core_unbinding(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock()
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_as_collateral(vaa, relay_fee=0):
@@ -1138,6 +1180,7 @@ def core_as_collateral(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
     if relay_fee > gas:
         executed = True
@@ -1152,7 +1195,11 @@ def core_as_collateral(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_cancel_as_collateral(vaa, relay_fee=0):
@@ -1182,9 +1229,9 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = cancel_as_collateral_sender_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
@@ -1192,8 +1239,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
 
     sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    fee_coins = get_amount_coins_if_exist(fee_amounts)
 
     basic_params = [
         pool_manager_info,  # 0
@@ -1252,7 +1298,11 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
             transactions=feed_transaction_blocks + cancel_as_collateral_transaction_block,
         )
 
-    return gas, executed
+        return gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas, executed, status, feed_nums
 
 
 def export_objects():

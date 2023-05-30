@@ -61,8 +61,8 @@ contract LendingPortal {
         }
 
         uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-                value: msg.value - fee
-            }(token, amount, LENDING_APP_ID, appPayload);
+            value: msg.value - fee
+        }(token, amount, LENDING_APP_ID, appPayload);
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
@@ -190,8 +190,8 @@ contract LendingPortal {
         }
 
         uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-                value: msg.value
-            }(token, amount, LENDING_APP_ID, appPayload);
+            value: msg.value
+        }(token, amount, LENDING_APP_ID, appPayload);
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
@@ -257,8 +257,8 @@ contract LendingPortal {
     }
 
     function as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-    external
-    payable
+        external
+        payable
     {
         uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
@@ -289,8 +289,8 @@ contract LendingPortal {
     }
 
     function cancel_as_collateral(uint16[] memory dolaPoolIds, uint256 fee)
-    external
-    payable
+        external
+        payable
     {
         uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
