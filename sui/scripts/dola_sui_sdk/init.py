@@ -1010,7 +1010,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
     # 2. remote register new owner
     genesis_proposal = load.genesis_proposal_package()
 
-    create_proposal()
+    # create_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -1044,7 +1044,8 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
             Argument("Input", U16(7)),
             Argument("Input", U16(4)),
             Argument("Input", U16(5)),
-        ]
+        ],
+        []
     ]
 
     vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
@@ -1086,7 +1087,8 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
             Argument("Input", U16(7)),
             Argument("Input", U16(4)),
             Argument("Input", U16(5)),
-        ]
+        ],
+        []
     ]
 
     vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
@@ -1107,8 +1109,12 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
+    # batch_init()
 
     # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)
+    upgrade_evm_adapter(5,
+                        1133182507050339124644115852317452972906547646813,
+                        182596349493168418790494029185198919829464896680
+                        )

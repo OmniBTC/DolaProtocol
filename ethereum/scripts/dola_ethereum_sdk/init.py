@@ -53,27 +53,27 @@ def scan_rpc_url():
     return config["networks"][network.show_active()]["scan_rpc_url"]
 
 
-def register_owner(vaa):
+def register_owner(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.registerOwner(vaa, {'from': account})
 
 
-def delete_owner(vaa):
+def delete_owner(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteOwner(vaa, {'from': account})
 
 
-def register_spender(vaa):
+def register_spender(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.registerSpender(vaa, {'from': account})
 
 
-def delete_spender(vaa):
+def delete_spender(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteSpender(vaa, {'from': account})
 
 
@@ -174,7 +174,8 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("arbitrum-main")
-    lending_portal = load.lending_portal_package('arbitrum-main').address
-    system_portal = load.system_portal_package('arbitrum-main').address
-    print(relay_events(lending_portal, system_portal, net='arbitrum-main'))
+    set_ethereum_network("polygon-main")
+
+    # lending_portal = load.lending_portal_package('polygon-main').address
+    # system_portal = load.system_portal_package('polygon-main').address
+    # print(relay_events(lending_portal, system_portal, net='polygon-main'))

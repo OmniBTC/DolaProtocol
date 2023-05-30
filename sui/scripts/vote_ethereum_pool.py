@@ -1,13 +1,22 @@
 from pathlib import Path
 
 from sui_brownie import SuiObject
-
+from brownie import network
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
+from dola_ethereum_sdk import load as dola_ethereum_load
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
+
+
+def get_dola_contract(new_dola_contract, old_dola_contract):
+    new_dola_contract = dola_ethereum_load.wormhole_adapter_pool_package(network.show_active(),
+                                                                         new_dola_contract).getDolaContract()
+    old_dola_contract = dola_ethereum_load.wormhole_adapter_pool_package(network.show_active(),
+                                                                         old_dola_contract).getDolaContract()
+    return new_dola_contract, old_dola_contract
 
 
 def main():
@@ -58,4 +67,5 @@ if __name__ == "__main__":
     # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
     dola_ethereum_sdk.set_ethereum_network("polygon-main")
-    main()
+    # main()
+    print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))

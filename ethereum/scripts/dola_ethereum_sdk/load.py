@@ -9,8 +9,9 @@ def womrhole_package(network):
                              getattr(DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"].interface, "IWormhole").abi)
 
 
-def wormhole_adapter_pool_package(network):
-    package_address = config["networks"][network]["wormhole_adapter_pool"]
+def wormhole_adapter_pool_package(network, package_address=None):
+    if package_address is None:
+        package_address = config["networks"][network]["wormhole_adapter_pool"]
     return Contract.from_abi("WormholeAdapterPool", package_address,
                              DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].abi)
 
