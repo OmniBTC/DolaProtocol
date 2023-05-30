@@ -311,15 +311,14 @@ def vote_remote_register_owner(dola_chain_id, dola_contract):
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
     wormhole = load.wormhole_package()
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    dola_protocol = load.dola_protocol_package()
 
-    genesis_proposal.genesis_proposal.vote_remote_register_owner(
-        governance.governance_v1.GovernanceInfo[-1],
+    genesis_proposal.genesis_proposal.remote_register_owner(
+        dola_protocol.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
-        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_protocol.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
         dola_contract,
         0
@@ -341,15 +340,14 @@ def vote_remote_delete_owner(dola_chain_id, dola_contract):
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    governance = load.governance_package()
     wormhole = load.wormhole_package()
-    wormhole_adapter_core = load.wormhole_adapter_core_package()
+    dola_protocol = load.dola_protocol_package()
 
-    genesis_proposal.genesis_proposal.vote_remote_delete_owner(
-        governance.governance_v1.GovernanceInfo[-1],
+    genesis_proposal.genesis_proposal.remote_delete_owner(
+        dola_protocol.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
-        wormhole_adapter_core.wormhole_adapter_core.CoreState[-1],
+        dola_protocol.wormhole_adapter_core.CoreState[-1],
         dola_chain_id,
         dola_contract,
         0
@@ -660,8 +658,10 @@ def build_vote_proposal_final_tx_block(genesis_proposal):
 def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
     return [[
         genesis_proposal.genesis_proposal.destory,
-        [Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
-         Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))],
+        [
+            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
+            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))
+        ],
         []
     ]]
 
@@ -1003,6 +1003,100 @@ def construct_register_token_price_param(symbol, token_name):
         sui_project.network_config['oracle']['feed_id'][symbol]
     )
     return [btc_dola_pool_id, btc_feed_id, btc_price, btc_price_decimal]
+
+
+def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
+    # 1. deploy new evm adapter
+    # 2. remote register new owner
+    genesis_proposal = load.genesis_proposal_package()
+
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    core_state = sui_project.network_config['objects']['CoreState']
+
+    result = sui_project.pay_sui([0])
+    zero_coin = [coin['reference']['objectId'] for coin in result['effects']['created']][0]
+
+    basic_params = [
+        governance_info,  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        wormhole_state,  # 2
+        core_state,  # 3
+        zero_coin,  # 4
+        clock(),  # 5
+    ]
+
+    contract_params = [
+        dola_chain_id,  # 6
+        new_dola_contract,  # 7
+    ]
+
+    remote_register_owner = [
+        genesis_proposal.genesis_proposal.remote_register_owner,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(6)),
+            Argument("Input", U16(7)),
+            Argument("Input", U16(4)),
+            Argument("Input", U16(5)),
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + contract_params,
+        transactions=vote_proposal_final_tx_block + [remote_register_owner] + finish_proposal_tx_block
+    )
+    # 3. remote remove old owner
+    create_proposal()
+
+    result = sui_project.pay_sui([0])
+    zero_coin = [coin['reference']['objectId'] for coin in result['effects']['created']][0]
+
+    basic_params = [
+        governance_info,  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        wormhole_state,  # 2
+        core_state,  # 3
+        zero_coin,  # 4
+        clock(),  # 5
+    ]
+
+    contract_params = [
+        dola_chain_id,  # 6
+        old_dola_contract,  # 7
+    ]
+
+    remote_delete_owner = [
+        genesis_proposal.genesis_proposal.remote_delete_owner,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(6)),
+            Argument("Input", U16(7)),
+            Argument("Input", U16(4)),
+            Argument("Input", U16(5)),
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + contract_params,
+        transactions=vote_proposal_final_tx_block + [remote_delete_owner] + finish_proposal_tx_block
+    )
 
 
 def batch_init():
