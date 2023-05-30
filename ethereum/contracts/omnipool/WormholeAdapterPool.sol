@@ -48,7 +48,7 @@ contract WormholeAdapterPool {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
         // First deploy pool
-         dolaPool = new DolaPool(_dolaChainId, address(this));
+        dolaPool = new DolaPool(_dolaChainId, address(this));
         // Upgrade
         // dolaPool = _dolaPool;
         wormholeInstantConsistency = _wormholeInstantConsistency;
@@ -60,43 +60,6 @@ contract WormholeAdapterPool {
 
     function getDolaContract() public view returns (uint256) {
         return uint256(uint160(address(this)));
-    }
-
-    function registerOwner(bytes memory encodedVm) external {
-        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-            .parseVerifyAndReplayProtect(
-                wormhole,
-                registeredEmitters,
-                consumedVaas,
-                encodedVm
-            );
-
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(vaa.payload);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.registerOwner(address(uint160(payload.dolaContract)));
-    }
-
-    function deleteOwner(bytes memory encodedVm) external {
-        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-            .parseVerifyAndReplayProtect(
-                wormhole,
-                registeredEmitters,
-                consumedVaas,
-                encodedVm
-            );
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(vaa.payload);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.deleteOwner(address(uint160(payload.dolaContract)));
     }
 
     function registerSpender(bytes memory encodedVm) external {
@@ -118,6 +81,8 @@ contract WormholeAdapterPool {
     }
 
     function deleteSpender(bytes memory encodedVm) external {
+        /// @notice To prevent the pool from locking up
+        require(dolaPool.spendersLength() > 1, "CANNOT DELETE LAST SPENDER");
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
                 wormhole,

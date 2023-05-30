@@ -647,6 +647,54 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
     )
 
 
+def delete_remote_bridge(wormhole_chain_id):
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    create_proposal()
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+    ]
+
+    bridge_params = [
+        sui_project.network_config['objects']['CoreState'],
+        wormhole_chain_id,
+    ]
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + bridge_params,
+        transactions=[
+            [
+                genesis_proposal.genesis_proposal.vote_proposal_final,
+                [
+                    Argument("Input", U16(0)), Argument("Input", U16(1))
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.register_remote_bridge,
+                [
+                    Argument("NestedResult", NestedResult(U16(0), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                ],
+                []
+            ],
+            [
+                genesis_proposal.genesis_proposal.destory,
+                [
+                    Argument("NestedResult", NestedResult(U16(1), U16(0))),
+                    Argument("NestedResult", NestedResult(U16(1), U16(1)))
+                ],
+                []
+            ]
+        ]
+    )
+
+
 def build_vote_proposal_final_tx_block(genesis_proposal):
     return [[
         genesis_proposal.genesis_proposal.vote_proposal_final,
@@ -1056,6 +1104,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
         actual_params=basic_params + contract_params,
         transactions=vote_proposal_final_tx_block + [remote_register_owner] + finish_proposal_tx_block
     )
+    
     # 3. remote remove old owner
     create_proposal()
 
