@@ -57,7 +57,8 @@ networks:
     wormhole: '0xa5f208e072434bC67592E4C49C1B991BA79BCA46'
     wormhole_adapter_pool: '0x135557d220cC24E09e82B3A4C4C526138B9d3824'
     wormhole_chainid: 23
-    wormhole_finality: 1
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 1
   arbitrum-test:
     core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
     scan_rpc_url: https://api-goerli.arbiscan.io/api
@@ -131,7 +132,8 @@ networks:
     wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
     wormhole_adapter_pool: '0x1FFBE74B4665037070E734daf9F79fa33B6d54a8'
     wormhole_chainid: 5
-    wormhole_finality: 1
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 1
   polygon-test:
     core_emitter: '0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e'
     lending_portal: '0x56Cf618fC2FB892b74C5850B391F381423d667b7'
