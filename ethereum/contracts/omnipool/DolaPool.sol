@@ -34,11 +34,6 @@ contract DolaPool {
         spenders[_basicBridge] = allSpenders.length;
     }
 
-    /// View functions
-    function spendersLength() public view returns (uint256) {
-        return allSpenders.length;
-    }
-
     /// Call by governance
 
     /// Register spender by owner
@@ -53,6 +48,8 @@ contract DolaPool {
         public
         isSpender(msg.sender)
     {
+        /// @notice To prevent the pool from locking up
+        require(allSpenders.length > 1, "CANNOT DELETE LAST SPENDER");
         require(spenders[deletedSpender] != 0, "NOT REGISTER SPENDER");
         uint256 index = spenders[deletedSpender];
         spenders[deletedSpender] = 0;

@@ -81,8 +81,6 @@ contract WormholeAdapterPool {
     }
 
     function deleteSpender(bytes memory encodedVm) external {
-        /// @notice To prevent the pool from locking up
-        require(dolaPool.spendersLength() > 1, "CANNOT DELETE LAST SPENDER");
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
                 wormhole,
