@@ -674,7 +674,7 @@ def delete_remote_bridge(wormhole_chain_id):
                 []
             ],
             [
-                genesis_proposal.genesis_proposal.register_remote_bridge,
+                genesis_proposal.genesis_proposal.delete_remote_bridge,
                 [
                     Argument("NestedResult", NestedResult(U16(0), U16(0))),
                     Argument("NestedResult", NestedResult(U16(0), U16(1))),
@@ -1104,7 +1104,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
         actual_params=basic_params + contract_params,
         transactions=vote_proposal_final_tx_block + [remote_register_owner] + finish_proposal_tx_block
     )
-    
+
     # 3. remote remove old owner
     create_proposal()
 
@@ -1160,10 +1160,7 @@ def batch_init():
 if __name__ == '__main__':
     # batch_init()
 
-    # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
+    delete_remote_bridge(5)
+    register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)
-    upgrade_evm_adapter(5,
-                        1133182507050339124644115852317452972906547646813,
-                        182596349493168418790494029185198919829464896680
-                        )
