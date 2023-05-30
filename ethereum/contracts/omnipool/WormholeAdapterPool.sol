@@ -47,7 +47,10 @@ contract WormholeAdapterPool {
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
-        dolaPool = new DolaPool(_dolaChainId, address(this));
+        // First deploy pool
+         dolaPool = new DolaPool(_dolaChainId, address(this));
+        // Upgrade
+        // dolaPool = _dolaPool;
         wormholeInstantConsistency = _wormholeInstantConsistency;
         wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;

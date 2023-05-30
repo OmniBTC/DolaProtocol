@@ -130,7 +130,9 @@ networks:
         decimals: 8
         dola_pool_id: 0
     wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
-    wormhole_adapter_pool: '0x1FFBE74B4665037070E734daf9F79fa33B6d54a8'
+    # wormhole_adapter_pool: 0x1FFBE74B4665037070E734daf9F79fa33B6d54a8
+    dola_pool: "0x1B6391cbbfFE6d9C6745B29fF9b04C00A605D634"
+    wormhole_adapter_pool: '0xC67Da938b884d022aF82C42abF76E7C089fA115D'
     wormhole_chainid: 5
     wormhole_instant_consistency: 200
     wormhole_finality_consistency: 1

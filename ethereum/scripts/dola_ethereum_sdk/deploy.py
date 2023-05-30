@@ -45,8 +45,9 @@ def deploy():
         config_file = yaml.safe_load(f)
 
     config_file["networks"][cur_net]["wormhole_adapter_pool"] = wormhole_adapter_pool.address
-    config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
-    config_file["networks"][cur_net]["system_portal"] = system_portal.address
+    # config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
+    # config_file["networks"][cur_net]["system_portal"] = system_portal.address
+    config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
 
     if "test" in cur_net:
         wbtc = deploy_token("WBTC")
