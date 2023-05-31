@@ -243,7 +243,7 @@ def sui_portal_watcher():
                         "withdraw_vaa": vaa,
                         "withdraw_pool": dst_pool_address,
                         "withdraw_costed_fee": 0,
-                        "executed": "withdraw",
+                        "status": "withdraw",
                         "reason": "Unknown"
                     })
 
@@ -265,6 +265,83 @@ def sui_portal_watcher():
         time.sleep(3)
 
 
+def wormhole_vaa_guardian(network="polygon-test"):
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network(network)
+
+    local_logger = logger.getChild(f"[{network}_wormhole_vaa_guardian]")
+    local_logger.info("Start to wait wormhole vaa ^-^")
+
+    db = mongodb()
+    relay_record = db['RelayRecord']
+
+    src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
+    emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
+    wormhole = dola_ethereum_load.womrhole_package(network)
+
+    while True:
+        wait_vaa_txs = list(relay_record.find({'status': 'waitForVaa', 'src_chain_id': src_chain_id}).sort(
+            "block_number", 1))
+
+        for tx in wait_vaa_txs:
+            try:
+                nonce = tx['nonce']
+                sequence = tx['sequence']
+                block_number = tx['block_number']
+
+                vaa = get_signed_vaa_by_wormhole(
+                    emitter_address, nonce, network)
+
+                vm = wormhole.parseVM(vaa)
+                # parse payload
+                payload = list(vm)[7]
+
+                app_id = payload[1]
+                call_type = payload[-1]
+                call_name = get_call_name(app_id, call_type)
+
+                relay_fee = tx['relay_fee']
+
+                if call_name in ['withdraw', 'borrow']:
+                    relay_record.insert_one({
+                        "src_chain_id": src_chain_id,
+                        "nonce": nonce,
+                        "call_name": call_name,
+                        "block_number": block_number,
+                        "sequence": sequence,
+                        "vaa": vaa,
+                        "relay_fee": relay_fee,
+                        "core_costed_fee": 0,
+                        "withdraw_chain_id": "",
+                        "withdraw_sequence": 0,
+                        "withdraw_vaa": "",
+                        "withdraw_pool": "",
+                        "withdraw_costed_fee": 0,
+                        "status": "false",
+                        "reason": "Unknown"
+                    })
+                else:
+                    relay_record.insert_one({
+                        "src_chain_id": src_chain_id,
+                        "nonce": nonce,
+                        "call_name": call_name,
+                        "block_number": block_number,
+                        "sequence": sequence,
+                        "vaa": vaa,
+                        "relay_fee": relay_fee,
+                        "core_costed_fee": 0,
+                        "status": "false",
+                        "reason": "Unknown"
+                    })
+                relay_record.update_one({'status': 'waitForVaa', 'src_chain_id': src_chain_id, 'nonce': nonce},
+                                        {'$set': {'status': 'dropped'}})
+                local_logger.info(
+                    f"Have a {call_name} transaction from {network}, sequence: {nonce}")
+            except Exception as e:
+                local_logger.warning(f"Error: {e}")
+        time.sleep(5)
+
+
 def eth_portal_watcher(network="polygon-test"):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
@@ -275,6 +352,7 @@ def eth_portal_watcher(network="polygon-test"):
     db = mongodb()
     relay_record = db['RelayRecord']
 
+    src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
     wormhole = dola_ethereum_load.womrhole_package(network)
     lending_portal = dola_ethereum_load.lending_portal_package(network).address
     system_portal = dola_ethereum_load.system_portal_package(network).address
@@ -283,23 +361,36 @@ def eth_portal_watcher(network="polygon-test"):
     while True:
         try:
             # query latest block number
-            result = relay_record.find({'network': network}).sort(
-                "block_number", -1).limit(1)
-            latest_relay_block_number = result[0]['block_number'] if list(
-                result) else 0
+            result = list(relay_record.find({'src_chain_id': 5}).sort("block_number", -1).limit(1))
+            latest_relay_block_number = result[0]['block_number'] if result else 0
+
             # query relay events from latest relay block number + 1 to actual latest block number
             relay_events = dola_ethereum_init.relay_events(lending_portal, system_portal,
                                                            start_block=latest_relay_block_number + 1, net=network)
 
             for block_number in sorted(relay_events):
-
                 nonce = relay_events[block_number][0]
                 sequence = relay_events[block_number][1]
 
                 # get vaa
-                vaa = get_signed_vaa_by_wormhole(
-                    emitter_address, nonce, network)
+                try:
+                    vaa = get_signed_vaa_by_wormhole(
+                        emitter_address, nonce, network)
+                except Exception as e:
+                    gas_token = get_gas_token(network)
+                    relay_fee = get_fee_value(relay_events[block_number][2], gas_token)
+                    relay_record.insert_one({
+                        'src_chain_id': src_chain_id,
+                        'nonce': nonce,
+                        'sequence': sequence,
+                        'block_number': block_number,
+                        'relay_fee': relay_fee,
+                        'status': 'waitForVaa'
+                    })
+                    local_logger.warning(f"Warning: {e}")
+                    continue
                 # parse vaa
+
                 vm = wormhole.parseVM(vaa)
                 # parse payload
                 payload = list(vm)[7]
@@ -307,7 +398,6 @@ def eth_portal_watcher(network="polygon-test"):
                 app_id = payload[1]
                 call_type = payload[-1]
                 call_name = get_call_name(app_id, call_type)
-                src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
 
                 if not list(relay_record.find(
                         {
@@ -326,7 +416,7 @@ def eth_portal_watcher(network="polygon-test"):
                             "nonce": nonce,
                             "call_name": call_name,
                             "block_number": block_number,
-                            "sequence": nonce,
+                            "sequence": sequence,
                             "vaa": vaa,
                             "relay_fee": relay_fee,
                             "core_costed_fee": 0,
@@ -335,7 +425,7 @@ def eth_portal_watcher(network="polygon-test"):
                             "withdraw_vaa": "",
                             "withdraw_pool": "",
                             "withdraw_costed_fee": 0,
-                            "executed": "false",
+                            "status": "false",
                             "reason": "Unknown"
                         })
                     else:
@@ -344,18 +434,16 @@ def eth_portal_watcher(network="polygon-test"):
                             "nonce": nonce,
                             "call_name": call_name,
                             "block_number": block_number,
-                            "sequence": nonce,
+                            "sequence": sequence,
                             "vaa": vaa,
                             "relay_fee": relay_fee,
                             "core_costed_fee": 0,
-                            "executed": "false",
+                            "status": "false",
                             "reason": "Unknown"
                         })
 
                     local_logger.info(
-                        f"Have a {call_name} transaction from {network}, sequence: {nonce}")
-        except ValueError as e:
-            local_logger.warning(f"Warning: {e}")
+                        f"Have a {call_name} transaction from {network}, sequence: {sequence}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
             traceback.print_exc()
@@ -383,7 +471,7 @@ def pool_withdraw_watcher():
                 source_chain_nonce = int(fields['source_chain_nonce'])
 
                 if relay_record.find_one(
-                        {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'executed': 'wait'}):
+                        {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'status': 'waitForWithdraw'}):
                     call_type = fields["call_type"]
                     call_name = get_call_name(1, int(call_type))
                     src_network = get_dola_network(source_chain_id)
@@ -396,7 +484,7 @@ def pool_withdraw_watcher():
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
                     relay_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_chain_nonce},
-                                            {"$set": {'executed': 'withdraw', 'withdraw_vaa': vaa,
+                                            {"$set": {'status': 'withdraw', 'withdraw_vaa': vaa,
                                                       'withdraw_chain_id': dst_chain_id,
                                                       'withdraw_sequence': sequence,
                                                       'withdraw_pool': dst_pool_address}})
@@ -418,7 +506,7 @@ def sui_core_executor():
     gas_record = db['GasRecord']
 
     while True:
-        relay_transactions = relay_record.find({"executed": "false"})
+        relay_transactions = relay_record.find({"status": "false"})
         for tx in relay_transactions:
             try:
                 relay_fee_value = tx['relay_fee']
@@ -447,21 +535,22 @@ def sui_core_executor():
                     core_costed_fee = get_fee_value(gas, 'sui')
                     if call_name in ["withdraw", "borrow"]:
                         relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'executed': 'wait', 'core_costed_fee': core_costed_fee}})
+                                                {"$set": {'status': 'waitForWithdraw',
+                                                          'core_costed_fee': core_costed_fee}})
                     else:
                         relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'executed': 'true', 'core_costed_fee': core_costed_fee}})
+                                                {"$set": {'status': 'success', 'core_costed_fee': core_costed_fee}})
 
                     local_logger.info("Execute sui core success! ")
                 else:
                     relay_record.update_one({'vaa': tx['vaa']},
-                                            {"$set": {'executed': 'fail', 'reason': status}})
+                                            {"$set": {'status': 'fail', 'reason': status}})
                     local_logger.warning("Execute sui core fail! ")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
                 status = eval(str(e))
                 relay_record.update_one({'vaa': tx['vaa']},
-                                        {"$set": {'executed': 'fail', 'reason': status['effects']['status']['error']}})
+                                        {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
                 local_logger.warning("Execute sui core fail! ")
                 local_logger.warning(f"status: {status}")
             except Exception as e:
@@ -481,7 +570,7 @@ def sui_pool_executor():
 
     while True:
         relay_transactions = relay_record.find(
-            {"executed": "withdraw", "withdraw_chain_id": 0})
+            {"status": "withdraw", "withdraw_chain_id": 0})
         for withdraw_tx in relay_transactions:
             try:
                 core_costed_fee = (
@@ -517,7 +606,7 @@ def sui_pool_executor():
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
                     relay_record.update_one({'withdraw_vaa': vaa},
-                                            {"$set": {'executed': 'true', 'withdraw_cost_fee': withdraw_cost_fee}})
+                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee}})
 
                     local_logger.info("Execute sui withdraw success! ")
                     local_logger.info(
@@ -550,7 +639,7 @@ def eth_pool_executor():
 
     while True:
         relay_transactions = relay_record.find(
-            {"executed": "withdraw", "withdraw_chain_id": {"$ne": 0}})
+            {"status": "withdraw", "withdraw_chain_id": {"$ne": 0}})
         for withdraw_tx in relay_transactions:
             try:
                 dola_chain_id = withdraw_tx['withdraw_chain_id']
@@ -593,7 +682,7 @@ def eth_pool_executor():
 
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
                     relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                            {"$set": {'executed': 'true', 'withdraw_cost_fee': withdraw_cost_fee}})
+                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee}})
 
                     local_logger.info(f"Execute {network} withdraw success! ")
                     local_logger.info(
@@ -602,7 +691,7 @@ def eth_pool_executor():
                         f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
                 else:
                     relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                            {"$set": {'executed': 'fail', 'reason': 'not enough relay fee'}})
+                                            {"$set": {'status': 'fail', 'reason': 'not enough relay fee'}})
                     local_logger.warning(
                         f"Execute withdraw fail on {get_dola_network(dola_chain_id)}, not enough relay fee! ")
                     local_logger.warning(
@@ -613,19 +702,20 @@ def eth_pool_executor():
             except ValueError as e:
                 local_logger.warning(f"Execute eth pool withdraw fail\n {e}")
                 relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                        {"$set": {'executed': 'fail', 'reason': str(e)}})
+                                        {"$set": {'status': 'fail', 'reason': str(e)}})
             except Exception as e:
                 traceback.print_exc()
                 local_logger.error(f"Execute eth pool withdraw fail\n {e}")
 
 
-def calculate_relay_fee(src_chain_id, dst_chain_id, call_name):
+def calculate_relay_fee(src_chain_id, dst_chain_id, call_name, feed_nums):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     db = mongodb()
     gas_record = db['GasRecord']
 
     result = gas_record.find(
-        {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).limit(10)
+        {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name,
+         "feed_nums": feed_nums}).limit(10)
 
     records = list(result)
     if not records:
@@ -794,11 +884,12 @@ def mongodb():
 
 
 def main():
-    pt = ProcessExecutor(executor=5)
+    pt = ProcessExecutor(executor=6)
 
     pt.run([
         sui_core_executor,
         # functools.partial(eth_portal_watcher, "arbitrum-main"),
+        functools.partial(wormhole_vaa_guardian, "polygon-main"),
         functools.partial(eth_portal_watcher, "polygon-main"),
         # sui_portal_watcher,
         pool_withdraw_watcher,

@@ -1237,7 +1237,6 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
     symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
 
-    sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
     fee_coins = get_amount_coins_if_exist(fee_amounts)
 
