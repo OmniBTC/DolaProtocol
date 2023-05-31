@@ -111,7 +111,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.polygonscan.com/api
-    system_portal: '0x0B94dd8186A706f708770Ade991ca5E8B3648340'
+    system_portal: '0x25433392d5c86852ac1644709fd4b9228e72a5a5'
     tokens:
       USDC:
         address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'

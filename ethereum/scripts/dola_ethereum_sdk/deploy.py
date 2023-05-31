@@ -36,7 +36,7 @@ def deploy():
 
     print("deploy system portal...")
     system_portal = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["SystemPortal"].deploy(
-        "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8",
+        wormhole_adapter_pool.address,
         {'from': account}
     )
 
