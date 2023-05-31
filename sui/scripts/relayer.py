@@ -9,6 +9,13 @@ from pathlib import Path
 from pprint import pprint
 
 import ccxt
+import requests
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
+
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -16,13 +23,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -514,8 +515,7 @@ def sui_core_executor():
 
                 rotate_accounts()
                 # If no gas record exists, relay once for free.
-                if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'dst_chain_id': tx['dst_chain_id'],
-                                             'call_name': call_name})):
+                if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
                 gas, executed, status, feed_nums = execute_sui_core(
                     call_name, tx['vaa'], relay_fee)
