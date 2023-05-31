@@ -1,15 +1,14 @@
 from pathlib import Path
 from pprint import pprint
 
-import yaml
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 import dola_sui_sdk.oracle
+import yaml
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -226,7 +225,7 @@ def core_supply(vaa, relay_fee=0):
     status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.supply(
             genesis,
@@ -381,7 +380,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
     status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.wormhole_adapter_pool.receive_withdraw(
             genesis,
@@ -492,7 +491,7 @@ def core_withdraw(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
         sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
@@ -701,7 +700,7 @@ def core_borrow(vaa, relay_fee=0):
     status = result['results']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
         sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
@@ -804,7 +803,7 @@ def core_repay(vaa, relay_fee=0):
     status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.repay(
             genesis,
@@ -964,7 +963,7 @@ def core_liquidate(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
         sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
@@ -1040,7 +1039,7 @@ def core_binding(vaa, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.system_core_wormhole_adapter.bind_user_address(
             genesis,
@@ -1120,7 +1119,7 @@ def core_unbinding(vaa, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.system_core_wormhole_adapter.unbind_user_address(
             genesis,
@@ -1182,7 +1181,7 @@ def core_as_collateral(vaa, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.as_collateral(
             genesis,
@@ -1290,7 +1289,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
         sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
