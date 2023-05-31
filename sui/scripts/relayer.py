@@ -745,10 +745,10 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id, call_name):
     core_fee = get_fee_value(core_fee_amount, 'sui')
 
     dst_net = get_dola_network(dst_chain_id)
-    dola_ethereum_sdk.set_ethereum_network(dst_net)
     if int(dst_chain_id) == 0:
         gas_price = sui_gas_price
     else:
+        dola_ethereum_sdk.set_ethereum_network(dst_net)
         gas_price = eval(dola_ethereum_init.get_gas_price(dst_net)['SafeGasPrice']) * G_wei
     withdraw_fee_amount = average_withdraw_gas * gas_price
     withdraw_fee = get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
