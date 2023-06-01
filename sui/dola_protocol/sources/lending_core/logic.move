@@ -285,8 +285,7 @@ module dola_protocol::lending_logic {
 
         assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
         assert!(!is_liquid_asset(storage, dola_user_id, borrow_pool_id), ELIQUID_AS_LOAN);
-        // todo: Isolated assets cannot be borrowed, directly determine the isolated assets.
-        assert!(is_borrowable_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
+        assert!(!is_isolated_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
 
         // In isolation mode, can only borrow the allowed assets
         if (is_isolation_mode(storage, dola_user_id)) {
