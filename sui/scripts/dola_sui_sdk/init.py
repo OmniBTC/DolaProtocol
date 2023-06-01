@@ -1293,6 +1293,57 @@ def set_reserve_coefficient(reserve: str = 'SUI'):
     )
 
 
+def set_is_isolated_asset(reserve):
+    reserve_proposal = load.reserve_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    create_reserve_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    certificate = f"{dola_protocol.package_id}::governance_v1::Proposal<{reserve_proposal.package_id}" \
+                  f"::reserve_proposal::Certificate>"
+    proposal_id = sui_project[SuiObject.from_type(certificate)][-1]
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+
+    basic_params = [
+        governance_info,  # 0
+        proposal_id,  # 1
+        lending_storage,  # 2
+    ]
+
+    dola_pool_id = int(sui_project.network_config['reserves'][reserve]['dola_pool_id'])
+    reserve_is_isolated_asset = sui_project.network_config['reserves'][reserve]['is_isolated_asset']
+
+    reserve_params = [
+        dola_pool_id,  # 3
+        reserve_is_isolated_asset,  # 4
+    ]
+
+    set_is_isolated_asset_tx_block = [
+        reserve_proposal.reserve_proposal.set_is_isolated_asset,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(4))
+        ],
+        []
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(reserve_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(reserve_proposal, 1)
+
+    actual_params = basic_params + reserve_params
+    transactions = vote_proposal_final_tx_block + [set_is_isolated_asset_tx_block] + finish_proposal_tx_block
+
+    sui_project.batch_transaction(
+        actual_params=actual_params,
+        transactions=transactions
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1303,6 +1354,7 @@ def batch_init():
 # todo list:
 #  - [X] Register matic reserve
 #  - [X] Register matic pool
+#  - [X] Set sui as normal asset
 #  - [X] Deploy new proposal fix sui reserve params
 #  - [] Redeploy arbitrum adapter contract
 
