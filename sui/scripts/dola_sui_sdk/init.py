@@ -1157,6 +1157,12 @@ def batch_init():
     batch_execute_proposal()
 
 
+# todo list:
+#  - [] Register matic reserve
+#  - [] Register matic pool
+#  - [] Deploy new proposal fix sui reserve params
+#  - [] Redeploy arbitrum adapter contract
+
 if __name__ == '__main__':
     # batch_init()
 

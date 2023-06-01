@@ -92,6 +92,12 @@ networks:
     dola_chain_id: 5
     lending_portal: '0x14920b19238F79E41Da046EAb64d01dc2D6d49f3'
     pools:
+      MATIC:
+        dola_chain_id: 5
+        dola_pool_id: 5
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: MATIC
+        pool_weight: 1
       USDC:
         dola_chain_id: 5
         dola_pool_id: 2
@@ -113,6 +119,10 @@ networks:
     scan_rpc_url: https://api.polygonscan.com/api
     system_portal: '0x25433392d5c86852ac1644709fd4b9228e72a5a5'
     tokens:
+      MATIC:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 5
       USDC:
         address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
         decimals: 6
