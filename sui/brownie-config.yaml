@@ -47,6 +47,7 @@ networks:
       external_interfaces: '0xb639bd39aa68bec7e2e63c8af537d0fabbeec16becc7e4106a0340285e2021e5'
       genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
+      reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pools:
       SUI:

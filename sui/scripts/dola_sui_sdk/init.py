@@ -3,10 +3,10 @@ from typing import List
 
 import requests
 # 1e27
+import sui_brownie
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
-from utils import sui_brownie
 
 RAY = 1000000000000000000000000000
 
@@ -715,9 +715,28 @@ def build_vote_proposal_final_tx_block(genesis_proposal):
     ]]
 
 
+def build_reserve_proposal_final_tx_block(genesis_proposal):
+    return [[
+        genesis_proposal.reserve_proposal.vote_proposal_final,
+        [Argument("Input", U16(0)), Argument("Input", U16(1))],
+        []
+    ]]
+
+
 def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
     return [[
         genesis_proposal.genesis_proposal.destory,
+        [
+            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
+            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))
+        ],
+        []
+    ]]
+
+
+def build_reserve_proposal_tx_block(genesis_proposal, tx_block_num):
+    return [[
+        genesis_proposal.reserve_proposal.destory,
         [
             Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
             Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))
@@ -1280,9 +1299,9 @@ def set_reserve_coefficient(reserve: str = 'SUI'):
 
     set_coefficient_tx_block = [set_borrow_coefficient_tx_block, set_collateral_coefficient_tx_block]
 
-    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(reserve_proposal)
+    vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_finish_proposal_tx_block(reserve_proposal, 2)
+    finish_proposal_tx_block = build_reserve_proposal_tx_block(reserve_proposal, 2)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + set_coefficient_tx_block + finish_proposal_tx_block
@@ -1331,9 +1350,9 @@ def set_is_isolated_asset(reserve):
         []
     ]
 
-    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(reserve_proposal)
+    vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_finish_proposal_tx_block(reserve_proposal, 1)
+    finish_proposal_tx_block = build_reserve_proposal_tx_block(reserve_proposal, 1)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + [set_is_isolated_asset_tx_block] + finish_proposal_tx_block
@@ -1366,5 +1385,7 @@ if __name__ == '__main__':
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)
 
-    deploy_reserve_proposal()
-    set_reserve_coefficient("SUI")
+    # deploy_reserve_proposal()
+    # set_reserve_coefficient("SUI")
+    # set_is_isolated_asset("SUI")
+    register_new_reserve(reserve="MATIC")

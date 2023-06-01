@@ -23,7 +23,7 @@ def get_dola_contract(new_dola_contract, old_dola_contract):
 def register_new_pool(pool: str = "MATIC"):
     genesis_proposal = dola_sui_load.genesis_proposal_package()
 
-    dola_sui_init.create_proposal()
+    # dola_sui_init.create_proposal()
 
     pools = dola_ethereum_init.pools()
     pool_address = pools[pool]['pool_address']
@@ -109,4 +109,5 @@ if __name__ == "__main__":
     dola_sui_sdk.sui_project.active_account("TestAccount")
     dola_ethereum_sdk.set_ethereum_network("polygon-main")
     # main()
-    print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))
+    # print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))
+    register_new_pool()
