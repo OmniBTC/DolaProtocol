@@ -1,7 +1,7 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 
-module genesis_proposal::genesis_proposal {
+module reserve_proposal::reserve_proposal {
     use std::option;
 
     use sui::tx_context::TxContext;

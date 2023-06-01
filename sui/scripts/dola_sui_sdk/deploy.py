@@ -2,6 +2,7 @@ from pathlib import Path
 
 import sui_brownie
 import yaml
+
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -19,6 +20,19 @@ def export_to_config():
     config["networks"][current_network]["packages"]["dola_protocol"] = sui_project.DolaProtocol[-1]
     config["networks"][current_network]["packages"]["genesis_proposal"] = sui_project.GenesisProposal[-1]
     config["networks"][current_network]["packages"]["external_interfaces"] = sui_project.ExternalInterfaces[-1]
+
+    with open(path, "w") as f:
+        yaml.safe_dump(config, f)
+
+
+def export_package_to_config(package_name, package_id):
+    path = Path(__file__).parent.parent.parent.joinpath("brownie-config.yaml")
+    with open(path, "r") as f:
+        config = yaml.safe_load(f)
+
+    current_network = sui_project.network
+
+    config["networks"][current_network]["packages"][package_name] = package_id
 
     with open(path, "w") as f:
         yaml.safe_dump(config, f)

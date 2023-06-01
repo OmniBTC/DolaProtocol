@@ -3,7 +3,7 @@ name = "ReserveProposal"
 version = "0.0.1"
 
 [addresses]
-genesis_proposal = "0x0"
+reserve_proposal = "0x0"
 dola_protocol = "0x0"
 
 [dependencies.Sui]

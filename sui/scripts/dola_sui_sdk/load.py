@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
+
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -76,6 +77,12 @@ def genesis_proposal_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.network_config['packages']['genesis_proposal']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/genesis_proposal"))
+
+
+def reserve_proposal_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = sui_project.network_config['packages']['reserve_proposal']
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/reserve_params_proposal"))
 
 
 def upgrade_proposal_template_package(package_id: str = None):

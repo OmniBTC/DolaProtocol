@@ -98,7 +98,7 @@ module dola_protocol::lending_core_storage {
     }
 
     /// === Initial Functions ===
-    
+
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,
@@ -137,6 +137,7 @@ module dola_protocol::lending_core_storage {
         table::add(&mut storage.reserves, dola_pool_id, ReserveData {
             is_isolated_asset,
             borrowable_in_isolation,
+            // todo: use input
             isolate_debt: 0,
             last_update_timestamp: get_timestamp(clock),
             treasury,
@@ -165,6 +166,8 @@ module dola_protocol::lending_core_storage {
             },
         });
     }
+
+    // todo: add call to set isolate_debt
 
     public fun set_is_isolated_asset(
         _: &GovernanceCap,

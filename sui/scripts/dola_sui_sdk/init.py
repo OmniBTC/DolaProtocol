@@ -5,7 +5,8 @@ import requests
 # 1e27
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
-from dola_sui_sdk import load, sui_project
+from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
+from utils import sui_brownie
 
 RAY = 1000000000000000000000000000
 
@@ -185,6 +186,15 @@ def create_proposal():
     dola_protocol = load.dola_protocol_package()
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
+    )
+
+
+def create_reserve_proposal():
+    reserve_proposal = load.reserve_proposal_package()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    reserve_proposal.reserve_proposal.create_proposal(
+        governance_info
     )
 
 
@@ -1150,6 +1160,88 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
     )
 
 
+def deploy_reserve_proposal():
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    reserve_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            "proposals/reserve_params_proposal")
+    )
+
+    reserve_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=dola_protocol,
+    ))
+
+    deploy.export_package_to_config('reserve_proposal', reserve_proposal_package.package_id)
+
+
+def set_reserve_coefficient(reserve: str = 'SUI'):
+    reserve_proposal = load.reserve_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    create_reserve_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    certificate = f"{dola_protocol.package_id}::governance_v1::Proposal<{reserve_proposal.package_id}" \
+                  f"::reserve_proposal::Certificate>"
+    proposal_id = sui_project[SuiObject.from_type(certificate)][-1]
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+
+    basic_params = [
+        governance_info,  # 0
+        proposal_id,  # 1
+        lending_storage,  # 2
+    ]
+
+    dola_pool_id = int(sui_project.network_config['reserves'][reserve]['dola_pool_id'])
+    reserve_borrow_coefficient = int(sui_project.network_config['reserves'][reserve]['borrow_coefficient'] * RAY)
+    reserve_collateral_coefficient = int(
+        sui_project.network_config['reserves'][reserve]['collateral_coefficient'] * RAY)
+
+    reserve_params = [
+        dola_pool_id,  # 3
+        reserve_borrow_coefficient,  # 4
+        reserve_collateral_coefficient,  # 5
+    ]
+
+    set_borrow_coefficient_tx_block = [
+        reserve_proposal.reserve_proposal.set_borrow_coefficient,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))),
+            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(4))
+        ],
+        []
+    ]
+
+    set_collateral_coefficient_tx_block = [
+        reserve_proposal.reserve_proposal.set_collateral_coefficient,
+        [
+            Argument("NestedResult", NestedResult(U16(1), U16(0))),
+            Argument("NestedResult", NestedResult(U16(1), U16(1))),
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(5))
+        ],
+        []
+    ]
+
+    set_coefficient_tx_block = [set_borrow_coefficient_tx_block, set_collateral_coefficient_tx_block]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(reserve_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(reserve_proposal, 2)
+
+    actual_params = basic_params + reserve_params
+    transactions = vote_proposal_final_tx_block + set_coefficient_tx_block + finish_proposal_tx_block
+
+    sui_project.batch_transaction(
+        actual_params=actual_params,
+        transactions=transactions
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1160,13 +1252,16 @@ def batch_init():
 # todo list:
 #  - [] Register matic reserve
 #  - [] Register matic pool
-#  - [] Deploy new proposal fix sui reserve params
+#  - [X] Deploy new proposal fix sui reserve params
 #  - [] Redeploy arbitrum adapter contract
 
 if __name__ == '__main__':
     # batch_init()
 
-    delete_remote_bridge(5)
-    register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
+    # delete_remote_bridge(5)
+    # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)
+
+    deploy_reserve_proposal()
+    set_reserve_coefficient("SUI")
