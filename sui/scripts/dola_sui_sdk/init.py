@@ -1302,7 +1302,7 @@ def batch_init():
 
 # todo list:
 #  - [X] Register matic reserve
-#  - [] Register matic pool
+#  - [X] Register matic pool
 #  - [X] Deploy new proposal fix sui reserve params
 #  - [] Redeploy arbitrum adapter contract
 
