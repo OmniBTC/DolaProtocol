@@ -88,13 +88,13 @@ networks:
       MATIC:
         base_borrow_rate: 0.02
         borrow_cap_ceiling: 0
-        borrow_coefficient: 0
+        borrow_coefficient: 1.33
         borrow_rate_slope1: 0.07
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
         dola_pool_id: 5
-        is_isolated_asset: true
+        is_isolated_asset: false
         optimal_utilization: 0.45
         supply_cap_ceiling: 100000
         treasury: 0
@@ -102,13 +102,13 @@ networks:
       SUI:
         base_borrow_rate: 0.02
         borrow_cap_ceiling: 0
-        borrow_coefficient: 0
+        borrow_coefficient: 1.33
         borrow_rate_slope1: 0.07
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
         dola_pool_id: 3
-        is_isolated_asset: true
+        is_isolated_asset: false
         optimal_utilization: 0.45
         supply_cap_ceiling: 100000
         treasury: 0
