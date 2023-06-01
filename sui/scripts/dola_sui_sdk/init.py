@@ -534,7 +534,9 @@ def pool_id(coin_type):
 
 
 def proposal():
-    return f"{sui_project.DolaProtocol[-1]}::governance_v1::Proposal<{sui_project.GenesisProposal[-1]}" \
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
+    return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
 
 
@@ -946,6 +948,55 @@ def batch_execute_proposal():
     )
 
 
+def register_new_reserve(reserve: str = "MATIC"):
+    genesis_proposal = load.genesis_proposal_package()
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+
+    basic_params = [
+        governance_info,  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        lending_storage,  # 2
+        clock()  # 3
+    ]
+
+    reserve_pool_id = sui_project.network_config['reserves'][reserve]['dola_pool_id']
+    reserve_is_isolated_asset = sui_project.network_config['reserves'][reserve]['is_isolated_asset']
+    reserve_borrowable_in_isolation = sui_project.network_config['reserves'][reserve]['borrowable_in_isolation']
+    reserve_treasury = sui_project.network_config['reserves'][reserve]['treasury']
+    reserve_treasury_factor = int(sui_project.network_config['reserves'][reserve]['treasury_factor'] * RAY)
+    reserve_supply_cap_ceiling = int(sui_project.network_config['reserves'][reserve]['supply_cap_ceiling'] * 1e8)
+    reserve_borrow_cap_ceiling = int(sui_project.network_config['reserves'][reserve]['borrow_cap_ceiling'] * 1e8)
+    reserve_collateral_coefficient = int(
+        sui_project.network_config['reserves'][reserve]['collateral_coefficient'] * RAY)
+    reserve_borrow_coefficient = int(sui_project.network_config['reserves'][reserve]['borrow_coefficient'] * RAY)
+    reserve_base_borrow_rate = int(sui_project.network_config['reserves'][reserve]['base_borrow_rate'] * RAY)
+    reserve_borrow_rate_slope1 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope1'] * RAY)
+    reserve_borrow_rate_slope2 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope2'] * RAY)
+    reserve_optimal_utilization = int(sui_project.network_config['reserves'][reserve]['optimal_utilization'] * RAY)
+    reserve_param = [reserve_pool_id, reserve_is_isolated_asset, reserve_borrowable_in_isolation, reserve_treasury,
+                     reserve_treasury_factor, reserve_supply_cap_ceiling, reserve_borrow_cap_ceiling,
+                     reserve_collateral_coefficient,
+                     reserve_borrow_coefficient, reserve_base_borrow_rate, reserve_borrow_rate_slope1,
+                     reserve_borrow_rate_slope2, reserve_optimal_utilization]
+    reserve_params = list(reserve_param)
+    register_new_reserve_tx_block = build_register_new_reserve_tx_block(genesis_proposal, len(basic_params), 0)
+    register_new_reserve_tx_blocks = [register_new_reserve_tx_block]
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    actual_params = basic_params + reserve_params
+    transactions = vote_proposal_final_tx_block + register_new_reserve_tx_blocks + finish_proposal_tx_block
+
+    sui_project.batch_transaction(
+        actual_params=actual_params,
+        transactions=transactions
+    )
+
+
 def get_price(symbol):
     pyth_service_url = sui_project.network_config['pyth_service_url']
     feed_id = sui_project.network_config['oracle']['feed_id'][symbol].replace("0x", "")
@@ -1250,7 +1301,7 @@ def batch_init():
 
 
 # todo list:
-#  - [] Register matic reserve
+#  - [X] Register matic reserve
 #  - [] Register matic pool
 #  - [X] Deploy new proposal fix sui reserve params
 #  - [] Redeploy arbitrum adapter contract

@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from sui_brownie import SuiObject
 from brownie import network
+from sui_brownie import SuiObject
+
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
