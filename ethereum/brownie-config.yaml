@@ -9,7 +9,7 @@ networks:
   arbitrum-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 23
-    lending_portal: '0x2C71E71aeF2E68c2cc87498Dab3278104cfBaF4e'
+    lending_portal: '0xD7026De1e1B80175d1Fdb094cE36f90a25F18505'
     pools:
       ETH:
         dola_chain_id: 23
@@ -36,7 +36,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.arbiscan.io/api
-    system_portal: '0xb647E037df9E22C49F9cCDE908FB14426afF39db'
+    system_portal: '0x3177D291386899F0674Ef494015E132e54b7A973'
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
@@ -55,7 +55,7 @@ networks:
         decimals: 8
         dola_pool_id: 0
     wormhole: '0xa5f208e072434bC67592E4C49C1B991BA79BCA46'
-    wormhole_adapter_pool: '0x135557d220cC24E09e82B3A4C4C526138B9d3824'
+    wormhole_adapter_pool: '0x37c15055bf8146E2BF904DACF71b53cc3779Bf49'
     wormhole_chainid: 23
     wormhole_instant_consistency: 200
     wormhole_finality_consistency: 1
