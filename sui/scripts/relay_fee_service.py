@@ -1,11 +1,13 @@
 from pathlib import Path
 
 from flask import Flask
+from flask_cors import CORS
 
 import dola_ethereum_sdk
 import relayer
 
 app = Flask(__name__)
+CORS(app)
 
 
 @app.route('/relay_fee/<src_chain_id>/<dst_chain_id>/<call_name>')
