@@ -1,14 +1,15 @@
 from pathlib import Path
 from pprint import pprint
 
-import dola_sui_sdk.oracle
 import yaml
+from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
-from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -24,13 +25,13 @@ def dola_pool_id_to_symbol(dola_pool_id):
     elif dola_pool_id == 1:
         return 'USDT/USD'
     elif dola_pool_id == 2:
-        return 'USDT/USD'
+        return 'USDC/USD'
     elif dola_pool_id == 3:
-        return 'ETH/USD'
-    elif dola_pool_id == 4:
-        return 'MATIC/USD'
-    elif dola_pool_id == 5:
         return 'SUI/USD'
+    elif dola_pool_id == 4:
+        return 'ETH/USD'
+    elif dola_pool_id == 5:
+        return 'MATIC/USD'
     else:
         raise ValueError('dola_pool_id must be 0, 1, 2, 3, 4 or 5')
 
@@ -264,23 +265,26 @@ def portal_withdraw_local(coin_type, amount):
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    storage = sui_project.network_config['objects']['LendingStorage']
+    lending_portal = sui_project.network_config['objects']['LendingPortal']
+
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
 
     dola_protocol.lending_portal.withdraw_local(
         genesis,
         storage,
-        oracle,
+        price_oracle,
         init.clock(),
         lending_portal,
         pool_manager_info,
         user_manager_info,
-        init.pool_id(coin_type),
+        init.pool_id(coin_type['coin_type']),
         amount,
-        type_arguments=[coin_type]
+        type_arguments=[coin_type['coin_type']]
     )
 
 
@@ -1628,8 +1632,8 @@ if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
     # portal_supply(usdt()['coin_type'], int(1e5))
-    # portal_withdraw_local(usdt(), int(1e8))
+    portal_withdraw_local(init.sui(), int(1e7))
     # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
     #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    export_objects()
+    # export_objects()

@@ -42,6 +42,7 @@ networks:
         SUI/USD: '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744'
         USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
+        MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
     packages:
       dola_protocol: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
       external_interfaces: '0xb639bd39aa68bec7e2e63c8af537d0fabbeec16becc7e4106a0340285e2021e5'

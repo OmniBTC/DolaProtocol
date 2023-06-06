@@ -126,6 +126,7 @@ def batch_feed_token_price_by_pyth(symbols):
     sui_project.batch_transaction(
         actual_params=basic_params + feed_params,
         transactions=transaction_blocks,
+        gas_budget=1000000000
     )
 
 
@@ -159,8 +160,10 @@ def get_pool_id(symbol):
         return 2
     elif symbol == "SUI/USD":
         return 3
-    elif symbol == "MATIC/USD":
+    elif symbol == "ETH/USD":
         return 4
+    elif symbol == "MATIC/USD":
+        return 5
 
 
 def get_market_prices(symbols=("BTC/USDT", "ETH/USDT")):
@@ -208,4 +211,4 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 if __name__ == '__main__':
     # deploy_oracle()
     # feed_token_price_by_pyth('SUI/USD')
-    print(get_price_info_object('SUI/USD'))
+    batch_feed_token_price_by_pyth(['USDT/USD', 'SUI/USD'])
