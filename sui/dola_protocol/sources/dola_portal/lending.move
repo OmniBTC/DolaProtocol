@@ -145,6 +145,7 @@ module dola_protocol::lending_portal {
         };
     }
 
+    /// todo: add remote call
     public entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
         storage: &mut Storage,

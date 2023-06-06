@@ -714,7 +714,7 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
         {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).sort(
         'feed_nums', -1).limit(10))
 
-    return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id), call_name)
+    return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
 
 def get_relay_fee(src_chain_id, dst_chain_id, call_name):
@@ -723,10 +723,10 @@ def get_relay_fee(src_chain_id, dst_chain_id, call_name):
 
     result = list(gas_record.find(
         {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).limit(10))
-    return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id), call_name)
+    return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
 
-def calculate_relay_fee(records, src_chain_id, dst_chain_id, call_name):
+def calculate_relay_fee(records, src_chain_id, dst_chain_id):
     if not records:
         return {'relay_fee': '0'}
 
