@@ -5,7 +5,6 @@ version = 0
 
 dependencies = [
   { name = "Pyth" },
-  { name = "PythWormhole" },
   { name = "Sui" },
   { name = "Wormhole" },
 ]
@@ -16,19 +15,11 @@ source = { git = "https://github.com/MystenLabs/sui.git", rev = "09b2081498366df
 
 [[move.package]]
 name = "Pyth"
-source = { git = "https://github.com/OmniBTC/pyth-crosschain.git", rev = "pyth-testnet", subdir = "target_chains/sui/contracts" }
-
-dependencies = [
-  { name = "PythWormhole" },
-  { name = "Sui" },
-]
-
-[[move.package]]
-name = "PythWormhole"
-source = { git = "https://github.com/OmniBTC/wormhole.git", rev = "pyth-testnet", subdir = "sui/wormhole" }
+source = { git = "https://github.com/pyth-network/pyth-crosschain.git", rev = "7dab308f961746890faf1ac0b52e283b31112bf6", subdir = "target_chains/sui/contracts" }
 
 dependencies = [
   { name = "Sui" },
+  { name = "Wormhole" },
 ]
 
 [[move.package]]
@@ -41,7 +32,7 @@ dependencies = [
 
 [[move.package]]
 name = "Wormhole"
-source = { git = "https://github.com/wormhole-foundation/wormhole.git", rev = "d050ad1d67a5b7da9fb65030aad12ef5d774ccad", subdir = "sui/wormhole" }
+source = { git = "https://github.com/wormhole-foundation/wormhole.git", rev = "fcfe551da0f46b704b76b09ae11dca3dd9387837", subdir = "sui/wormhole" }
 
 dependencies = [
   { name = "Sui" },

@@ -14,7 +14,8 @@ contract LendingPortal {
     IWormholeAdapterPool public immutable wormholeAdapterPool;
     address payable public relayer;
 
-    event RelayEvent(uint64 nonce, uint256 amount);
+    /// RelayEvent(transaction nonce, wormhole sequence, relay fee amount)
+    event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
 
     event LendingPortalEvent(
         uint64 nonce,
@@ -65,7 +66,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -105,7 +106,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -145,7 +146,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -194,7 +195,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -241,7 +242,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -273,7 +274,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,
@@ -305,7 +306,7 @@ contract LendingPortal {
 
         LibAsset.transferAsset(address(0), relayer, fee);
 
-        emit RelayEvent(sequence, fee);
+        emit RelayEvent(nonce, sequence, fee);
 
         emit LendingPortalEvent(
             nonce,

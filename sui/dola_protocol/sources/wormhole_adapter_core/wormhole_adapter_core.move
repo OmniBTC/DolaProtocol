@@ -74,18 +74,6 @@ module dola_protocol::wormhole_adapter_core {
         wormhole_emitter_address: vector<u8>
     }
 
-    /// Event for register owner
-    struct RegisterOwner has copy, drop {
-        dola_chain_id: u16,
-        dola_contract: u256
-    }
-
-    /// Event for delete owner
-    struct DeleteOwner has copy, drop {
-        dola_chain_id: u16,
-        dola_contract: u256
-    }
-
     /// Event for register spender
     struct RegisterSpender has copy, drop {
         dola_chain_id: u16,
@@ -155,38 +143,6 @@ module dola_protocol::wormhole_adapter_core {
         });
     }
 
-    /// Register owner for remote bridge through governance
-    public fun remote_register_owner(
-        _: &GovernanceCap,
-        wormhole_state: &mut State,
-        core_state: &mut CoreState,
-        dola_chain_id: u16,
-        dola_contract: u256,
-        wormhole_message_fee: Coin<SUI>,
-        clock: &Clock,
-    ) {
-        let msg = pool_codec::encode_manage_pool_payload(
-            dola_chain_id,
-            dola_contract,
-            pool_codec::get_register_owner_type()
-        );
-
-        let message_ticket = publish_message::prepare_message(
-            &mut core_state.wormhole_emitter,
-            0,
-            msg,
-        );
-
-        publish_message::publish_message(
-            wormhole_state,
-            wormhole_message_fee,
-            message_ticket,
-            clock
-        );
-
-        event::emit(RegisterOwner { dola_chain_id, dola_contract });
-    }
-
     /// Register spender for remote bridge through governance
     public fun remote_register_spender(
         _: &GovernanceCap,
@@ -215,36 +171,6 @@ module dola_protocol::wormhole_adapter_core {
             clock
         );
         event::emit(RegisterSpender { dola_chain_id, dola_contract });
-    }
-
-    /// Delete owner for remote bridge through governance
-    public fun remote_delete_owner(
-        _: &GovernanceCap,
-        wormhole_state: &mut State,
-        core_state: &mut CoreState,
-        dola_chain_id: u16,
-        dola_contract: u256,
-        wormhole_message_fee: Coin<SUI>,
-        clock: &Clock
-    ) {
-        let msg = pool_codec::encode_manage_pool_payload(
-            dola_chain_id,
-            dola_contract,
-            pool_codec::get_delete_owner_type()
-        );
-        let message_ticket = publish_message::prepare_message(
-            &mut core_state.wormhole_emitter,
-            0,
-            msg,
-        );
-
-        publish_message::publish_message(
-            wormhole_state,
-            wormhole_message_fee,
-            message_ticket,
-            clock
-        );
-        event::emit(DeleteOwner { dola_chain_id, dola_contract });
     }
 
     /// Delete spender for remote bridge through governance

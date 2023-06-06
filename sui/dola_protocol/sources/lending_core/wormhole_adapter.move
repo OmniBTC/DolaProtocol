@@ -28,6 +28,8 @@ module dola_protocol::lending_core_wormhole_adapter {
 
     const ENOT_FIND_POOL: u64 = 2;
 
+    /// Events
+
     struct LendingCoreEvent has drop, copy {
         nonce: u64,
         sender_user_id: u64,
@@ -40,11 +42,17 @@ module dola_protocol::lending_core_wormhole_adapter {
         call_type: u8
     }
 
+    /// Relay Event
     struct RelayEvent has drop, copy {
+        // Wormhole vaa sequence
         sequence: u64,
-        dst_pool: DolaAddress,
+        // Source chain id
         source_chain_id: u16,
+        // Source chain transaction nonce
         source_chain_nonce: u64,
+        // Withdraw pool
+        dst_pool: DolaAddress,
+        // Confirm that nonce is in the pool or core
         call_type: u8
     }
 

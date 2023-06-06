@@ -70,42 +70,6 @@ contract MockWormholeAdapterPool {
         return uint256(uint160(address(this)));
     }
 
-    function registerOwner(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.registerOwner(address(uint160(payload.dolaContract)));
-    }
-
-    function deleteOwner(bytes memory encodedVm) external {
-        //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-        //            .parseVerifyAndReplayProtect(
-        //                wormhole,
-        //                registeredEmitters,
-        //                consumedVaas,
-        //                encodedVm
-        //            );
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(encodedVm);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.deleteOwner(address(uint160(payload.dolaContract)));
-    }
-
     function registerSpender(bytes memory encodedVm) external {
         //        IWormhole.VM memory vaa = LibWormholeAdapterVerify
         //            .parseVerifyAndReplayProtect(

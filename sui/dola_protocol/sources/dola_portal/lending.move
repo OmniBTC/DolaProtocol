@@ -14,7 +14,7 @@ module dola_protocol::lending_portal {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    use dola_protocol::dola_address;
+    use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::dola_pool::{Self, Pool};
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::lending_codec;
@@ -54,8 +54,12 @@ module dola_protocol::lending_portal {
 
     /// Relay Event
     struct RelayEvent has drop, copy {
-        // Wormhole sequence
+        // Wormhole vaa sequence
         sequence: u64,
+        // Transaction nonce
+        nonce: u64,
+        // Withdraw pool
+        dst_pool: DolaAddress,
         // Relay fee amount
         fee_amount: u64,
         // Confirm that nonce is in the pool or core
@@ -141,6 +145,7 @@ module dola_protocol::lending_portal {
         };
     }
 
+    // todo: add remote call
     public entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
         storage: &mut Storage,
@@ -349,14 +354,6 @@ module dola_protocol::lending_portal {
         let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, dst_pool);
         assert!(pool_liquidity >= actual_amount, ENOT_ENOUGH_LIQUIDITY);
 
-        // Remove pool liquidity for dst ppol
-        let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            pool_manager_info,
-            dst_pool,
-            LENDING_APP_ID,
-            actual_amount
-        );
-
         // Bridge fee = relay fee + wormhole feee
         let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
         let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
@@ -375,13 +372,15 @@ module dola_protocol::lending_portal {
             receiver,
             dola_address::get_native_dola_chain_id(),
             nonce,
-            withdraw_amount,
+            actual_amount,
             wormhole_fee,
             clock
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            nonce,
+            dst_pool,
             fee_amount: relay_fee_amount,
             call_type: lending_codec::get_withdraw_type()
         });
@@ -506,13 +505,6 @@ module dola_protocol::lending_portal {
             dola_pool_id,
             (amount as u256)
         );
-        // Remove pool liquidity
-        let (withdraw_amount, _) = pool_manager::remove_liquidity(
-            pool_manager_info,
-            dst_pool,
-            LENDING_APP_ID,
-            (amount as u256)
-        );
 
         // Bridge fee = relay fee + wormhole feee
         let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
@@ -532,7 +524,7 @@ module dola_protocol::lending_portal {
             receiver,
             dola_address::get_native_dola_chain_id(),
             nonce,
-            withdraw_amount,
+            (amount as u256),
             wormhole_fee,
             clock
         );
@@ -540,8 +532,10 @@ module dola_protocol::lending_portal {
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
             sequence,
+            nonce,
+            dst_pool,
             fee_amount: relay_fee_amount,
-            call_type: lending_codec::get_borrow_type()
+            call_type: lending_codec::get_withdraw_type()
         });
 
         emit(LendingPortalEvent {

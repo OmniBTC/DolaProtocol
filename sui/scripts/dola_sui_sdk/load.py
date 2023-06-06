@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union
 
 import sui_brownie
+
 from dola_sui_sdk import DOLA_CONFIG, sui_project
 
 sui_project.active_account("TestAccount")
@@ -55,28 +56,20 @@ def wormhole_package(package_id: str = None):
         package_id: str = sui_project.network_config['packages']['wormhole']
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
-
-
-def pyth_wormhole_package(package_id: str = None):
-    if package_id is None:
-        package_id: str = sui_project.network_config['packages']['wormhole']
-    return sui_package(package_id,
-                       Path.home().joinpath(Path(
-                           ".move/https___github_com_OmniBTC_wormhole_git_pyth-testnet/sui/wormhole")))
+                           ".move/https___github_com_wormhole-foundation_wormhole_git_fcfe551da0f46b704b76b09ae11dca3dd9387837/sui/wormhole")))
 
 
 def pyth_package():
     return sui_brownie.SuiPackage(
         package_id=sui_project.network_config['packages']['pyth'],
         package_path=Path.home().joinpath(Path(
-            ".move/https___github_com_OmniBTC_pyth-crosschain_git_pyth-testnet/target_chains/sui/contracts")),
+            ".move/https___github_com_pyth-network_pyth-crosschain_git_7dab308f961746890faf1ac0b52e283b31112bf6/target_chains/sui/contracts")),
     )
 
 
 def external_interfaces_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.ExternalInterfaces[-1]
+        package_id: str = sui_project.network_config['packages']['external_interfaces']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces"))
 
 
@@ -84,6 +77,12 @@ def genesis_proposal_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.network_config['packages']['genesis_proposal']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/genesis_proposal"))
+
+
+def reserve_proposal_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = sui_project.network_config['packages']['reserve_proposal']
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/reserve_params_proposal"))
 
 
 def upgrade_proposal_template_package(package_id: str = None):

@@ -1,6 +1,6 @@
-import pprint
+from pprint import pprint
 
-from dola_sui_sdk import load
+from dola_sui_sdk import load, sui_project
 
 
 # btc -> dola_pool_id 0
@@ -30,9 +30,11 @@ def get_dola_user_id(user_address, dola_chain_id=0):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
-    result = external_interfaces.interfaces.get_dola_user_id.simulate(
-        user_manager.user_manager.UserManagerInfo[-1],
+
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+
+    result = external_interfaces.interfaces.get_dola_user_id.inspect(
+        user_manager_info,
         dola_chain_id,
         list(bytes.fromhex(user_address))
     )
@@ -48,9 +50,10 @@ def get_dola_user_addresses(dola_user_id):
     :return:
     '''
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
-    result = external_interfaces.interfaces.get_dola_user_addresses.simulate(
-        user_manager.user_manager.UserManagerInfo[-1],
+
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    result = external_interfaces.interfaces.get_dola_user_addresses.inspect(
+        user_manager_info,
         dola_user_id
     )
 
@@ -252,15 +255,17 @@ def get_reserve_info(dola_pool_id):
         storage: &mut Storage,
         dola_pool_id: u16
     )
-    :param token_name:
+    :param dola_pool_id:
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    lending = load.lending_core_package()
-    pool_manager = load.pool_manager_package()
-    result = external_interfaces.interfaces.get_reserve_info.simulate(
-        pool_manager.pool_manager.PoolManagerInfo[-1],
-        lending.storage.Storage[-1],
+
+    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+
+    result = external_interfaces.interfaces.get_reserve_info.inspect(
+        pool_manager_info,
+        lending_storage,
         dola_pool_id
     )
 
@@ -298,11 +303,11 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
 
 if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
-    # pprint.pp(get_dola_user_id("B6B12aDA59a8Ac44Ded72e03693dd14614224349", 5))
-    dola_addresses = get_dola_user_addresses(1)
-    result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
-              dola_addresses['dola_user_addresses']]
-    pprint.pp(result)
+    # dola_addresses = get_dola_user_addresses(1)
+    # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
+    #           dola_addresses['dola_user_addresses']]
+    pprint(get_reserve_info(5))
+    # pprint.pp(result)
     # pprint.pp(get_user_all_collateral(1))
     # pprint.pp(get_user_health_factor(1))
     # pprint.pp(get_reserve_info(1))
@@ -313,3 +318,4 @@ if __name__ == "__main__":
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
     # pprint.pp(get_user_allowed_borrow(5, 6, 1))
+

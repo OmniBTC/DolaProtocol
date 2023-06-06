@@ -98,7 +98,7 @@ module dola_protocol::lending_core_storage {
     }
 
     /// === Initial Functions ===
-    
+
     public fun initialize_cap_with_governance(
         governance: &GovernanceCap,
         total_app_info: &mut TotalAppInfo,

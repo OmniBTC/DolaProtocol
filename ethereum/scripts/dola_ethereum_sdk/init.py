@@ -6,6 +6,7 @@ import requests
 from brownie import (
     network,
     config, )
+
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -14,6 +15,8 @@ def get_scan_api_key(net="polygon-test"):
         return os.getenv("POLYGON_ZK_API_KEY")
     elif "bsc" in net:
         return os.getenv("BSC_API_KEY")
+    elif "arbitrum" in net:
+        return os.getenv("ARBITRUM_API_KEY")
     elif "polygon" in net:
         return os.getenv("POLYGON_API_KEY")
 
@@ -27,46 +30,50 @@ def get_wormhole():
 
 
 def usdt():
-    return config["networks"][network.show_active()]["usdt"]
+    return config["networks"][network.show_active()]["tokens"]["USDT"]
 
 
 def wbtc():
-    return config["networks"][network.show_active()]["wbtc"]
+    return config["networks"][network.show_active()]["tokens"]["WBTC"]
 
 
 def usdc():
-    return config["networks"][network.show_active()]["usdc"]
+    return config["networks"][network.show_active()]["tokens"]["USDC"]
 
 
 def eth():
     return "0x0000000000000000000000000000000000000000"
 
 
+def pools():
+    return config["networks"][network.show_active()]["pools"]
+
+
 def scan_rpc_url():
     return config["networks"][network.show_active()]["scan_rpc_url"]
 
 
-def register_owner(vaa):
+def register_owner(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.registerOwner(vaa, {'from': account})
 
 
-def delete_owner(vaa):
+def delete_owner(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteOwner(vaa, {'from': account})
 
 
-def register_spender(vaa):
+def register_spender(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.registerSpender(vaa, {'from': account})
 
 
-def delete_spender(vaa):
+def delete_spender(vaa, package_address):
     account = get_account()
-    omnipool = load.wormhole_adapter_pool_package()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteSpender(vaa, {'from': account})
 
 
@@ -94,13 +101,15 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
 
 
 def relay_events(lending_portal, system_portal, start_block=0, end_block=99999999, limit=10, net="polygon-test"):
-    topic = brownie.web3.keccak(text="RelayEvent(uint64,uint256)").hex()
+    topic = brownie.web3.keccak(text="RelayEvent(uint64,uint64,uint256)").hex()
     api_key = get_scan_api_key(net)
 
     base_url = scan_rpc_url()
 
-    system_rpc_params = build_rpc_params(system_portal, topic, api_key, start_block, end_block, limit)
-    lending_rpc_params = build_rpc_params(lending_portal, topic, api_key, start_block, end_block, limit)
+    system_rpc_params = build_rpc_params(
+        system_portal, topic, api_key, start_block, end_block, limit)
+    lending_rpc_params = build_rpc_params(
+        lending_portal, topic, api_key, start_block, end_block, limit)
     headers = {}
     if "bsc" in net:
         headers = {
@@ -143,9 +152,21 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
     return lending_relay_events
 
 
+def get_gas_price(net):
+    api_key = get_scan_api_key(net)
+
+    base_url = scan_rpc_url()
+
+    request_url = f"{base_url}?module=gastracker&action=gasoracle&apikey={api_key}"
+
+    response = requests.get(request_url)
+
+    return response.json()['result']
+
+
 def decode_relay_events(data):
     events = {int(d['blockNumber'], 16): d['data'] for d in data['result']}
-    return {block: [int(events[block][2:66], 16), int(events[block][66:], 16)] for block in events}
+    return {block: [int(events[block][2:66], 16), int(events[block][66:130], 16), int(events[block][130:], 16)] for block in events}
 
 
 def current_block_number():
@@ -153,5 +174,8 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
-    print(relay_events(start_block=33494168))
+    set_ethereum_network("polygon-main")
+
+    # lending_portal = load.lending_portal_package('polygon-main').address
+    # system_portal = load.system_portal_package('polygon-main').address
+    # print(relay_events(lending_portal, system_portal, net='polygon-main'))

@@ -4,9 +4,10 @@ from pprint import pprint
 import yaml
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
+import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
+from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
-from dola_sui_sdk.init import wbtc, usdt, usdc, sui, clock
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
 
@@ -24,15 +25,59 @@ def dola_pool_id_to_symbol(dola_pool_id):
     elif dola_pool_id == 1:
         return 'USDT/USD'
     elif dola_pool_id == 2:
-        return 'USDT/USD'
+        return 'USDC/USD'
     elif dola_pool_id == 3:
-        return 'ETH/USD'
-    elif dola_pool_id == 4:
-        return 'MATIC/USD'
-    elif dola_pool_id == 5:
         return 'SUI/USD'
+    elif dola_pool_id == 4:
+        return 'ETH/USD'
+    elif dola_pool_id == 5:
+        return 'MATIC/USD'
     else:
         raise ValueError('dola_pool_id must be 0, 1, 2, 3, 4 or 5')
+
+
+def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
+    dola_protocol = load.dola_protocol_package()
+
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    pyth_state = sui_project.network_config['objects']['PythState']
+    pyth_fee_amount = 1
+
+    feed_gas = 0
+    for pool_id in asset_ids:
+        result = sui_project.pay_sui([pyth_fee_amount])
+        fee_coin = result['objectChanges'][-1]['objectId']
+        symbol = dola_pool_id_to_symbol(pool_id)
+
+        result = dola_protocol.oracle.feed_token_price_by_pyth.simulate(
+            governance_genesis,
+            wormhole_state,
+            pyth_state,
+            get_price_info_object(symbol),
+            price_oracle,
+            pool_id,
+            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+            init.clock(),
+            fee_coin
+        )
+        gas = calculate_sui_gas(result['effects']['gasUsed'])
+        feed_gas += gas
+        if relay_fee > int(0.9 * gas):
+            dola_protocol.oracle.feed_token_price_by_pyth(
+                governance_genesis,
+                wormhole_state,
+                pyth_state,
+                get_price_info_object(symbol),
+                price_oracle,
+                pool_id,
+                list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+                init.clock(),
+                fee_coin
+            )
+            relay_fee -= gas
+    return relay_fee, feed_gas
 
 
 def get_zero_coin():
@@ -46,6 +91,19 @@ def get_zero_coin():
         sui_project.pay_all_sui()
         result = sui_project.pay_sui([0])
         return result['effects']['created'][0]['reference']['objectId']
+
+
+def get_amount_coins_if_exist(amounts: [int]):
+    sui_coins = sui_project.get_account_sui()
+    balances = [int(coin['balance']) for coin in sui_coins.values()]
+    coins = [coin_object for coin_object, coin in sui_coins.items() if int(coin['balance']) in amounts]
+    for amount in amounts:
+        if amount not in balances:
+            sui_project.pay_all_sui()
+            result = sui_project.pay_sui(amounts)
+            return [coin['reference']['objectId'] for coin in result['effects']['created']]
+
+    return coins
 
 
 def get_owned_zero_coin():
@@ -209,9 +267,10 @@ def core_supply(vaa, relay_fee=0):
         init.clock(),
     )
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.supply(
             genesis,
@@ -224,7 +283,11 @@ def core_supply(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_withdraw_local(coin_type, amount):
@@ -246,27 +309,30 @@ def portal_withdraw_local(coin_type, amount):
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    storage = sui_project.network_config['objects']['LendingStorage']
+    lending_portal = sui_project.network_config['objects']['LendingPortal']
+
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
 
     dola_protocol.lending_portal.withdraw_local(
         genesis,
         storage,
-        oracle,
+        price_oracle,
         init.clock(),
         lending_portal,
         pool_manager_info,
         user_manager_info,
-        init.pool_id(coin_type),
+        init.pool_id(coin_type['coin_type']),
         amount,
-        type_arguments=[coin_type]
+        type_arguments=[coin_type['coin_type']]
     )
 
 
-def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver=None):
+def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
     """
     public entry fun withdraw_remote(
         genesis: &GovernanceGenesis,
@@ -303,6 +369,8 @@ def portal_withdraw_remote(pool_addr, amount, relay_fee=0, dst_chain=0, receiver
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
+
     gas_coin = get_zero_coin()
 
     dola_protocol.lending_portal.withdraw_remote(
@@ -335,6 +403,7 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
         clock: &Clock,
         ctx: &mut TxContext
     )
+    :param relay_fee:
     :param coin_type:
     :param vaa:
     :return:
@@ -356,9 +425,10 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.wormhole_adapter_pool.receive_withdraw(
             genesis,
@@ -369,7 +439,11 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
             init.clock(),
             type_arguments=[coin_type]
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_withdraw(vaa, relay_fee=0):
@@ -390,92 +464,56 @@ def core_withdraw(vaa, relay_fee=0):
     :return:
     """
     dola_protocol = load.dola_protocol_package()
-    pyth = load.pyth_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
-    pyth_state = sui_project.network_config['objects']['PythState']
 
     asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
-    result = pyth.state.get_base_update_fee.inspect(pyth_state)
-    pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
-    symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
+    left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
+    zero_coin = get_zero_coin()
 
-    sui_project.pay_all_sui()
-    fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
-    zero_coin = get_owned_zero_coin()
-    fee_coins.remove(zero_coin)
-
-    basic_params = [
-        pool_manager_info,  # 0
-        user_manager_info,  # 1
-        core_state,  # 2
-        storage,  # 3
-        zero_coin,  # 4
-        list(bytes.fromhex(vaa.replace('0x', ''))),  # 5
-        wormhole_state,  # 6
-        genesis,  # 7
-        pyth_wormhole_state,  # 8
-        pyth_state,  # 9
-        oracle,  # 10
-        init.clock(),  # 11
-    ]
-
-    feed_params = []
-    feed_transaction_blocks = []
-
-    for i, symbol in enumerate(symbols):
-        feed_params += [
-            get_price_info_object(symbol),
-            asset_ids[i],
-            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            fee_coins[i]
-        ]
-        feed_transaction_blocks.append(
-            build_feed_transaction_block(dola_protocol, len(basic_params), len(feed_transaction_blocks)))
-
-    withdraw_transaction_block = [[
-        dola_protocol.lending_core_wormhole_adapter.withdraw,
-        [
-            Argument("Input", U16(7)),
-            Argument("Input", U16(0)),
-            Argument("Input", U16(1)),
-            Argument("Input", U16(6)),
-            Argument("Input", U16(2)),
-            Argument("Input", U16(10)),
-            Argument("Input", U16(3)),
-            Argument("Input", U16(4)),
-            Argument("Input", U16(5)),
-            Argument("Input", U16(11)),
-        ],
-        []
-    ]]
-
-    result = sui_project.batch_transaction_simulate(
-        actual_params=basic_params + feed_params,
-        transactions=feed_transaction_blocks + withdraw_transaction_block,
+    result = dola_protocol.lending_core_wormhole_adapter.withdraw.simulate(
+        genesis,
+        pool_manager_info,
+        user_manager_info,
+        wormhole_state,
+        core_state,
+        oracle,
+        storage,
+        zero_coin,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
+        init.clock(),
     )
 
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if left_relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
-        sui_project.batch_transaction(
-            actual_params=basic_params + feed_params,
-            transactions=feed_transaction_blocks + withdraw_transaction_block,
+        dola_protocol.lending_core_wormhole_adapter.withdraw(
+            genesis,
+            pool_manager_info,
+            user_manager_info,
+            wormhole_state,
+            core_state,
+            oracle,
+            storage,
+            zero_coin,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
+            init.clock(),
         )
-
-    return gas, executed
+        return gas + feed_gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas + feed_gas, executed, status, feed_nums
 
 
 def portal_borrow_local(coin_type, amount):
@@ -499,26 +537,24 @@ def portal_borrow_local(coin_type, amount):
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     storage = sui_project.network_config['objects']['LendingStorage']
     oracle = sui_project.network_config['objects']['PriceOracle']
-    clock = sui_project.network_config['objects']['Clock']
     lending_portal = sui_project.network_config['objects']['LendingPortal']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
-    gas_coin = get_zero_coin()
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
 
     dola_protocol.lending_portal.borrow_local(
         genesis,
         storage,
         oracle,
-        clock,
+        init.clock(),
         lending_portal,
         pool_manager_info,
         user_manager_info,
-        init.pool_id(coin_type),
+        init.pool_id(coin_type['coin_type']),
         amount,
-        [gas_coin],
-        0,
-        type_arguments=[coin_type]
+        type_arguments=[coin_type['coin_type']]
     )
 
 
@@ -599,7 +635,6 @@ def core_borrow(vaa, relay_fee=0):
     :return:
     """
     dola_protocol = load.dola_protocol_package()
-    pyth = load.pyth_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
@@ -608,83 +643,49 @@ def core_borrow(vaa, relay_fee=0):
     core_state = sui_project.network_config['objects']['CoreState']
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
-    pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
-    result = pyth.state.get_base_update_fee.inspect(pyth_state)
-    pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
-    symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
+    left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
+    zero_coin = get_zero_coin()
 
-    sui_project.pay_all_sui()
-    fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
-    zero_coin = get_owned_zero_coin()
-    fee_coins.remove(zero_coin)
-
-    basic_params = [
-        pool_manager_info,  # 0
-        user_manager_info,  # 1
-        core_state,  # 2
-        storage,  # 3
-        zero_coin,  # 4
-        list(bytes.fromhex(vaa.replace('0x', ''))),  # 5
-        wormhole_state,  # 6
-        genesis,  # 7
-        pyth_wormhole_state,  # 8
-        pyth_state,  # 9
-        oracle,  # 10
-        init.clock(),  # 11
-    ]
-
-    feed_params = []
-    feed_transaction_blocks = []
-
-    for i, symbol in enumerate(symbols):
-        feed_params += [
-            get_price_info_object(symbol),
-            asset_ids[i],
-            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            fee_coins[i]
-        ]
-        feed_transaction_blocks.append(
-            build_feed_transaction_block(dola_protocol, len(basic_params), len(feed_transaction_blocks)))
-
-    withdraw_transaction_block = [[
-        dola_protocol.lending_core_wormhole_adapter.borrow,
-        [
-            Argument("Input", U16(7)),
-            Argument("Input", U16(0)),
-            Argument("Input", U16(1)),
-            Argument("Input", U16(6)),
-            Argument("Input", U16(2)),
-            Argument("Input", U16(10)),
-            Argument("Input", U16(3)),
-            Argument("Input", U16(4)),
-            Argument("Input", U16(5)),
-            Argument("Input", U16(11)),
-        ],
-        []
-    ]]
-
-    result = sui_project.batch_transaction_simulate(
-        actual_params=basic_params + feed_params,
-        transactions=feed_transaction_blocks + withdraw_transaction_block,
+    result = dola_protocol.lending_core_wormhole_adapter.borrow.simulate(
+        genesis,
+        pool_manager_info,
+        user_manager_info,
+        wormhole_state,
+        core_state,
+        oracle,
+        storage,
+        zero_coin,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
+        init.clock(),
     )
 
-    status = result['results']['status']['status']
+    status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if left_relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
-        sui_project.batch_transaction(
-            actual_params=basic_params + feed_params,
-            transactions=feed_transaction_blocks + withdraw_transaction_block,
+        dola_protocol.lending_core_wormhole_adapter.borrow(
+            genesis,
+            pool_manager_info,
+            user_manager_info,
+            wormhole_state,
+            core_state,
+            oracle,
+            storage,
+            zero_coin,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
+            init.clock(),
         )
 
-    return gas, executed
+        return gas + feed_gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas + feed_gas, executed, status, feed_nums
 
 
 def portal_repay(coin_type, repay_amount):
@@ -773,8 +774,10 @@ def core_repay(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
+
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.repay(
             genesis,
@@ -787,7 +790,11 @@ def core_repay(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id):
@@ -869,18 +876,16 @@ def core_liquidate(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = get_violator_user_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
     pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
     symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
 
-    sui_project.pay_all_sui()
     fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    fee_coins = get_amount_coins_if_exist(fee_amounts)
 
     basic_params = [
         pool_manager_info,  # 0
@@ -888,12 +893,11 @@ def core_liquidate(vaa, relay_fee=0):
         core_state,  # 2
         storage,  # 3
         list(bytes.fromhex(vaa.replace('0x', ''))),  # 4
-        wormhole_state,  # 5
-        genesis,  # 6
-        pyth_wormhole_state,  # 7
-        pyth_state,  # 8
-        oracle,  # 9
-        init.clock(),  # 10
+        genesis,  # 5
+        wormhole_state,  # 6
+        pyth_state,  # 7
+        oracle,  # 8
+        init.clock(),  # 9
     ]
 
     feed_params = []
@@ -912,15 +916,15 @@ def core_liquidate(vaa, relay_fee=0):
     liquidate_transaction_block = [[
         dola_protocol.lending_core_wormhole_adapter.liquidate,
         [
-            Argument("Input", U16(6)),
+            Argument("Input", U16(5)),
             Argument("Input", U16(0)),
             Argument("Input", U16(1)),
-            Argument("Input", U16(5)),
+            Argument("Input", U16(6)),
             Argument("Input", U16(2)),
-            Argument("Input", U16(9)),
+            Argument("Input", U16(8)),
             Argument("Input", U16(3)),
             Argument("Input", U16(4)),
-            Argument("Input", U16(10)),
+            Argument("Input", U16(9)),
         ],
         []
     ]]
@@ -933,14 +937,18 @@ def core_liquidate(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
         sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
             transactions=feed_transaction_blocks + liquidate_transaction_block,
         )
 
-    return gas, executed
+        return gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas, executed, status, feed_nums
 
 
 def portal_binding(bind_address, dola_chain_id=0):
@@ -990,33 +998,37 @@ def core_binding(vaa, relay_fee=0):
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    clock = sui_project.network_config['objects']['Clock']
+    system_storage = sui_project.network_config['objects']['SystemStorage']
 
     result = dola_protocol.system_core_wormhole_adapter.bind_user_address.simulate(
         genesis,
         user_manager_info,
         wormhole_state,
         core_state,
-        storage,
+        system_storage,
         list(bytes.fromhex(vaa.replace('0x', ''))),
-        clock
+        init.clock()
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.system_core_wormhole_adapter.bind_user_address(
             genesis,
             user_manager_info,
             wormhole_state,
             core_state,
-            storage,
+            system_storage,
             list(bytes.fromhex(vaa.replace('0x', ''))),
-            clock
+            init.clock()
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def portal_unbinding(unbind_address, dola_chain_id=0):
@@ -1066,33 +1078,37 @@ def core_unbinding(vaa, relay_fee=0):
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     core_state = sui_project.network_config['objects']['CoreState']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    clock = sui_project.network_config['objects']['Clock']
+    system_storage = sui_project.network_config['objects']['SystemStorage']
 
     result = dola_protocol.system_core_wormhole_adapter.unbind_user_address.simulate(
         genesis,
         user_manager_info,
         wormhole_state,
         core_state,
-        storage,
+        system_storage,
         list(bytes.fromhex(vaa.replace('0x', ''))),
-        clock
+        init.clock()
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.system_core_wormhole_adapter.unbind_user_address(
             genesis,
             user_manager_info,
             wormhole_state,
             core_state,
-            storage,
+            system_storage,
             list(bytes.fromhex(vaa.replace('0x', ''))),
-            clock
+            init.clock()
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_as_collateral(vaa, relay_fee=0):
@@ -1137,8 +1153,9 @@ def core_as_collateral(vaa, relay_fee=0):
     )
 
     gas = calculate_sui_gas(result['effects']['gasUsed'])
+    status = result['effects']['status']['status']
     executed = False
-    if relay_fee > gas:
+    if relay_fee > int(0.9 * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.as_collateral(
             genesis,
@@ -1151,7 +1168,11 @@ def core_as_collateral(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
-    return gas, executed
+        return gas, executed, status
+    elif status == 'failure':
+        return gas, executed, result['effects']['status']['error']
+    else:
+        return gas, executed, status
 
 
 def core_cancel_as_collateral(vaa, relay_fee=0):
@@ -1171,7 +1192,6 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     :return:
     """
     dola_protocol = load.dola_protocol_package()
-    pyth = load.pyth_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
@@ -1180,89 +1200,54 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     core_state = sui_project.network_config['objects']['CoreState']
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
-    pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_wormhole_state = sui_project.network_config['objects']['PythWormholeState']
 
     asset_ids = cancel_as_collateral_sender_asset_ids_from_vaa(vaa)
+    feed_nums = len(asset_ids)
 
-    result = pyth.state.get_base_update_fee.inspect(pyth_state)
-    pyth_fee_amount = int(parse_u64(result['results'][0]['returnValues'][0][0]) / 5 + 1)
-    symbols = [dola_pool_id_to_symbol(asset_id) for asset_id in asset_ids]
+    left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
 
-    sui_project.pay_all_sui()
-    fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts + [0])
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
-
-    basic_params = [
-        pool_manager_info,  # 0
-        user_manager_info,  # 1
-        core_state,  # 2
-        storage,  # 3
-        list(bytes.fromhex(vaa.replace('0x', ''))),  # 4
-        wormhole_state,  # 5
-        genesis,  # 6
-        pyth_wormhole_state,  # 7
-        pyth_state,  # 8
-        oracle,  # 9
-        init.clock(),  # 10
-    ]
-
-    feed_params = []
-    feed_transaction_blocks = []
-
-    for i, symbol in enumerate(symbols):
-        feed_params += [
-            get_price_info_object(symbol),
-            asset_ids[i],
-            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            fee_coins[i]
-        ]
-        feed_transaction_blocks.append(
-            build_feed_transaction_block(dola_protocol, len(basic_params), len(feed_transaction_blocks)))
-
-    cancel_as_collateral_transaction_block = [[
-        dola_protocol.lending_core_wormhole_adapter.cancel_as_collateral,
-        [
-            Argument("Input", U16(6)),
-            Argument("Input", U16(0)),
-            Argument("Input", U16(1)),
-            Argument("Input", U16(5)),
-            Argument("Input", U16(2)),
-            Argument("Input", U16(9)),
-            Argument("Input", U16(3)),
-            Argument("Input", U16(4)),
-            Argument("Input", U16(10)),
-        ],
-        []
-    ]]
-
-    result = sui_project.batch_transaction_simulate(
-        actual_params=basic_params + feed_params,
-        transactions=feed_transaction_blocks + cancel_as_collateral_transaction_block,
+    result = dola_protocol.lending_core_wormhole_adapter.cancel_as_collateral.simulate(
+        genesis,
+        pool_manager_info,
+        user_manager_info,
+        wormhole_state,
+        core_state,
+        oracle,
+        storage,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
+        init.clock()
     )
 
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > gas and status == 'success':
+    if left_relay_fee > int(0.9 * gas) and status == 'success':
         executed = True
-        sui_project.batch_transaction(
-            actual_params=basic_params + feed_params,
-            transactions=feed_transaction_blocks + cancel_as_collateral_transaction_block,
+        dola_protocol.lending_core_wormhole_adapter.cancel_as_collateral(
+            genesis,
+            pool_manager_info,
+            user_manager_info,
+            wormhole_state,
+            core_state,
+            oracle,
+            storage,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
+            init.clock()
         )
 
-    return gas, executed
+        return gas + feed_gas, executed, status, feed_nums
+    elif status == 'failure':
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums
+    else:
+        return gas + feed_gas, executed, status, feed_nums
 
 
 def export_objects():
     # Package id
     dola_protocol = load.dola_protocol_package()
     external_interfaces = load.external_interfaces_package()
-    test_coins = load.test_coins_package()
     print(f"dola_protocol={dola_protocol.package_id}")
     print(f"external_interfaces={external_interfaces.package_id}")
-    print(f"test_coins={test_coins.package_id}")
 
     data = {
         "GovernanceGenesis": dola_protocol.genesis.GovernanceGenesis[-1],
@@ -1274,20 +1259,19 @@ def export_objects():
         "SystemPortal": dola_protocol.system_portal.SystemPortal[-1],
         "PriceOracle": dola_protocol.oracle.PriceOracle[-1],
         "LendingStorage": dola_protocol.lending_core_storage.Storage[-1],
-        "Faucet": test_coins.faucet.Faucet[-1],
+        "SystemStorage": dola_protocol.system_core_storage.Storage[-1],
         "PoolManagerInfo": dola_protocol.pool_manager.PoolManagerInfo[-1],
         "UserManagerInfo": dola_protocol.user_manager.UserManagerInfo[-1],
         "Clock": clock(),
     }
 
-    coin_types = [wbtc(), usdt(), usdc(), "0x2::sui::SUI"]
-    for k in coin_types:
-        coin_key = k.split("::")[-1]
-        data[coin_key] = k.replace("0x", "")
-        dk = f'Pool<{k.split("::")[-1]}>'
-        data[dk] = sui_project[SuiObject.from_type(pool(k))][-1]
+    tokens = sui_project.network_config['tokens']
 
-    data['SUI'] = sui().removeprefix("0x")
+    for token in tokens:
+        coin_type = tokens[token]['coin_type']
+        data[token] = coin_type.replace("0x", "")
+        dk = f'Pool<{token}>'
+        data[dk] = sui_project[SuiObject.from_type(pool(coin_type))][-1]
 
     pprint(data)
 
@@ -1568,11 +1552,23 @@ def cancel_as_collateral_sender_asset_ids_from_vaa(vaa):
     return collateral_ids + loan_ids
 
 
+def get_wormhole_fee():
+    wormhole = load.wormhole_package()
+
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+
+    result = wormhole.state.message_fee.inspect(
+        wormhole_state
+    )
+    return parse_u64(result['results'][0]['returnValues'][0][0])
+
+
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
-    # portal_supply(usdt(), int(1e8))
-
-    # portal_withdraw_local(usdt(), int(1e8))
+    # portal_supply(usdt()['coin_type'], int(1e5))
+    # portal_withdraw_local(init.sui(), int(1e7))
+    # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
+    #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
     export_objects()

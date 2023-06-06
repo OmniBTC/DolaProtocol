@@ -12,14 +12,150 @@ networks:
   sui-localnet:
     node_url: http://127.0.0.1:9000
   sui-mainnet:
+    dola_chain_id: 0
     node_url: https://fullnode.mainnet.sui.io:443
     objects:
+      Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
+      CoreState: '0xffee67f1fc55a72caab7d150abef55625ac6420ca43c5798f5d52db31fb800a7'
+      GovernanceGenesis: '0x42ef90066e649215e6ab91399a83e1a5467fd7cc436e8b83adb8743a0efba621'
+      GovernanceInfo: '0x79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d'
+      LendingPortal: '0x28447d90e392185e81afbfea980be7d1c95d1afe5a93281b180841b90697f303'
+      LendingStorage: '0xe5a189b1858b207f2cf8c05a09d75bae4271c7a9a8f84a8c199c6896dc7c37e6'
+      Pool<SUI>: '0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73'
+      Pool<USDC>: '0xe3544997abc93c211ef7e35cd5e0af719bed4810cec8d2d3bf4b7653310a75fb'
+      Pool<USDT>: '0x00c9b245490fb92d7eb8967ecb401b34b96e835bb27b911f539f0b034a9e1b49'
+      PoolManagerInfo: '0x1be839a23e544e8d4ba7fab09eab50626c5cfed80f6a22faf7ff71b814689cfb'
+      PoolState: '0x5c9d9db2dd5f34154ee59686334f3504026809fa67afe5332837191ee6220586'
+      PriceOracle: '0x42afbffd3479b06f40c5576799b02ea300df36cf967adcd1ae15445270f572e2'
       PythState: '0xf9ff3ef935ef6cdfb659a203bf2754cebeb63346e29114a535ea6f41315e5a3f'
+      SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+      SystemPortal: '0xbad5ab9b0cefa1a002073e06fd8cb2fb8397151e4bd0014b42513e0c742d5cc3'
+      SystemStorage: '0xd09aaaf78ad366c47d0f4976093133d6c61bfd9152c8700870f3ce4a26af565c'
+      USDC: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+      USDT: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+      UserManagerInfo: '0xee633dc3fd1218d3bd9703fb9b98e6c8d7fdd8c8bf1ca2645ee40d65fb533a3e'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
+    oracle:
+      feed_id:
+        BTC/USD: '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'
+        ETH/USD: '0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace'
+        SUI/USD: '0x23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744'
+        USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
+        USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
+        MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
     packages:
+      dola_protocol: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
+      external_interfaces: '0xb639bd39aa68bec7e2e63c8af537d0fabbeec16becc7e4106a0340285e2021e5'
+      genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
+      reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
+    pools:
+      SUI:
+        dola_chain_id: 0
+        dola_pool_id: 3
+        pool_address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+        pool_name: SUI
+        pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
+    reserves:
+      BTC:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.09
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.88
+        dola_pool_id: 0
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 5
+        treasury: 0
+        treasury_factor: 0.23
+      ETH:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.09
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.88
+        dola_pool_id: 4
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 50
+        treasury: 0
+        treasury_factor: 0.23
+      MATIC:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.33
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.66
+        dola_pool_id: 5
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      SUI:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.33
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.66
+        dola_pool_id: 3
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      USDC:
+        base_borrow_rate: 0.01
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.005
+        borrow_rate_slope2: 0.75
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 2
+        is_isolated_asset: false
+        optimal_utilization: 0.8
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      USDT:
+        base_borrow_rate: 0.01
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.005
+        borrow_rate_slope2: 0.75
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 1
+        is_isolated_asset: false
+        optimal_utilization: 0.8
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.05
+    tokens:
+      SUI:
+        coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
+        decimals: 9
+        dola_pool_id: 3
+      USDC:
+        coin_type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
+        decimals: 6
+        dola_pool_id: 1
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443

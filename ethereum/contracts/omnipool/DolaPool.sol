@@ -9,12 +9,9 @@ import "../libraries/LibDolaTypes.sol";
 
 contract DolaPool {
     // Dola chain id
-    uint16 immutable dolaChainId;
-    // Save the dola contract address that allows to manage spender
-    address[] allOwners;
-    mapping(address => uint256) public owners;
+    uint16 public immutable dolaChainId;
     // Save the dola contract address that allows withdrawals
-    address[] allSpenders;
+    address[] public allSpenders;
     mapping(address => uint256) public spenders;
     uint64 public nonce;
 
@@ -31,51 +28,28 @@ contract DolaPool {
         _;
     }
 
-    modifier isOwner(address owner) {
-        require(owners[owner] != 0, "NOT REGISTER OWNER");
-        _;
-    }
-
     constructor(uint16 _dolaChainId, address _basicBridge) {
         dolaChainId = _dolaChainId;
-        allOwners.push(_basicBridge);
-        owners[_basicBridge] = allOwners.length;
         allSpenders.push(_basicBridge);
         spenders[_basicBridge] = allSpenders.length;
     }
 
     /// Call by governance
 
-    /// Register owner by owner
-    function registerOwner(address newOwner) public isOwner(msg.sender) {
-        require(owners[newOwner] == 0, "HAS REGISTER OWNER");
-        allOwners.push(newOwner);
-        owners[newOwner] = allOwners.length;
-    }
-
-    /// Delete owner by owner
-    function deleteOwner(address deletedOwner) public isOwner(msg.sender) {
-        require(owners[deletedOwner] != 0, "NOT REGISTER OWNER");
-        uint256 index = owners[deletedOwner];
-        owners[deletedOwner] = 0;
-
-        if (index != allOwners.length) {
-            address needMoved = allOwners[allOwners.length - 1];
-            allOwners[index - 1] = needMoved;
-            owners[needMoved] = index;
-        }
-        allOwners.pop();
-    }
-
     /// Register spender by owner
-    function registerSpender(address newSpender) public isOwner(msg.sender) {
+    function registerSpender(address newSpender) public isSpender(msg.sender) {
         require(spenders[newSpender] == 0, "HAS REGISTER SPENDER");
         allSpenders.push(newSpender);
         spenders[newSpender] = allSpenders.length;
     }
 
     /// Delete spender by owner
-    function deleteSpender(address deletedSpender) public isOwner(msg.sender) {
+    function deleteSpender(address deletedSpender)
+        public
+        isSpender(msg.sender)
+    {
+        /// @notice To prevent the pool from locking up
+        require(allSpenders.length > 1, "CANNOT DELETE LAST SPENDER");
         require(spenders[deletedSpender] != 0, "NOT REGISTER SPENDER");
         uint256 index = spenders[deletedSpender];
         spenders[deletedSpender] = 0;
@@ -145,6 +119,7 @@ contract DolaPool {
             );
     }
 
+    /// Get chain-unique nonce
     function getNonce() external returns (uint64) {
         return nonce++;
     }

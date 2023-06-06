@@ -14,18 +14,19 @@ contract WormholeAdapterPool {
     /// Storage
 
     // Wormhole address
-    IWormhole immutable wormhole;
+    IWormhole public immutable wormhole;
     // Dola chain id
     uint16 public immutable dolaChainId;
     // Dola pool
-    DolaPool immutable dolaPool;
+    DolaPool public immutable dolaPool;
 
     // Wormhole required number of block confirmations to assume finality
-    uint8 wormholeFinality;
+    uint8 public wormholeInstantConsistency;
+    uint8 public wormholeFinalityConsistency;
     // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
-    mapping(uint16 => bytes32) registeredEmitters;
+    mapping(uint16 => bytes32) public registeredEmitters;
     // Used to verify that the VAA has been processed
-    mapping(bytes32 => bool) consumedVaas;
+    mapping(bytes32 => bool) public consumedVaas;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -39,14 +40,19 @@ contract WormholeAdapterPool {
     constructor(
         IWormhole _wormhole,
         uint16 _dolaChainId,
-        uint8 _wormholeFinality,
+        uint8 _wormholeInstantConsistency,
+        uint8 _wormholeFinalityConsistency,
         uint16 _emitterChainId,
         bytes32 _emitterAddress
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
+        // First deploy pool
         dolaPool = new DolaPool(_dolaChainId, address(this));
-        wormholeFinality = _wormholeFinality;
+        // Upgrade
+        // dolaPool = _dolaPool;
+        wormholeInstantConsistency = _wormholeInstantConsistency;
+        wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
     }
 
@@ -54,43 +60,6 @@ contract WormholeAdapterPool {
 
     function getDolaContract() public view returns (uint256) {
         return uint256(uint160(address(this)));
-    }
-
-    function registerOwner(bytes memory encodedVm) external {
-        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-            .parseVerifyAndReplayProtect(
-                wormhole,
-                registeredEmitters,
-                consumedVaas,
-                encodedVm
-            );
-
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(vaa.payload);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_REGISTER_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.registerOwner(address(uint160(payload.dolaContract)));
-    }
-
-    function deleteOwner(bytes memory encodedVm) external {
-        IWormhole.VM memory vaa = LibWormholeAdapterVerify
-            .parseVerifyAndReplayProtect(
-                wormhole,
-                registeredEmitters,
-                consumedVaas,
-                encodedVm
-            );
-        LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
-            .decodeManagePoolPayload(vaa.payload);
-        require(
-            payload.poolCallType == LibPoolCodec.POOL_DELETE_OWNER,
-            "INVALID CALL TYPE"
-        );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
-        dolaPool.deleteOwner(address(uint160(payload.dolaContract)));
     }
 
     function registerSpender(bytes memory encodedVm) external {
@@ -156,7 +125,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: wormholeFee}(
                 0,
                 payload,
-                wormholeFinality
+                wormholeFinalityConsistency
             );
     }
 
@@ -173,7 +142,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: msg.value}(
                 0,
                 payload,
-                wormholeFinality
+                wormholeInstantConsistency
             );
     }
 

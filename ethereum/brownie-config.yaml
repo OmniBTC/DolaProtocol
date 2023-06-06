@@ -6,6 +6,59 @@ dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
+  arbitrum-main:
+    core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
+    dola_chain_id: 23
+    lending_portal: '0xD7026De1e1B80175d1Fdb094cE36f90a25F18505'
+    pools:
+      ETH:
+        dola_chain_id: 23
+        dola_pool_id: 4
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: ETH
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 23
+        dola_pool_id: 2
+        pool_address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 23
+        dola_pool_id: 1
+        pool_address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 23
+        dola_pool_id: 0
+        pool_address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f'
+        pool_name: WBTC
+        pool_weight: 1
+    scan_rpc_url: https://api.arbiscan.io/api
+    system_portal: '0x3177D291386899F0674Ef494015E132e54b7A973'
+    tokens:
+      ETH:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 4
+      USDC:
+        address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9'
+        decimals: 6
+        dola_pool_id: 1
+      WBTC:
+        address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f'
+        decimals: 8
+        dola_pool_id: 0
+    wormhole: '0xa5f208e072434bC67592E4C49C1B991BA79BCA46'
+    wormhole_adapter_pool: '0x37c15055bf8146E2BF904DACF71b53cc3779Bf49'
+    wormhole_chainid: 23
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 1
   arbitrum-test:
     core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
     scan_rpc_url: https://api-goerli.arbiscan.io/api
@@ -34,6 +87,59 @@ networks:
   goerli:
     wormhole: '0x706abc4E45D419950511e474C7B9Ed348A4a716c'
     wormhole_chainid: 2
+  polygon-main:
+    core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
+    dola_chain_id: 5
+    lending_portal: '0x14920b19238F79E41Da046EAb64d01dc2D6d49f3'
+    pools:
+      MATIC:
+        dola_chain_id: 5
+        dola_pool_id: 5
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: MATIC
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 5
+        dola_pool_id: 2
+        pool_address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 5
+        dola_pool_id: 1
+        pool_address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 5
+        dola_pool_id: 0
+        pool_address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6'
+        pool_name: WBTC
+        pool_weight: 1
+    scan_rpc_url: https://api.polygonscan.com/api
+    system_portal: '0x25433392d5c86852ac1644709fd4b9228e72a5a5'
+    tokens:
+      MATIC:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 5
+      USDC:
+        address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F'
+        decimals: 6
+        dola_pool_id: 1
+      WBTC:
+        address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6'
+        decimals: 8
+        dola_pool_id: 0
+    wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
+    wormhole_adapter_pool: '0x6A028B4911078F80A20c8De434316C427E3A6Fa5'
+    wormhole_chainid: 5
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 1
   polygon-test:
     core_emitter: '0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e'
     lending_portal: '0x56Cf618fC2FB892b74C5850B391F381423d667b7'

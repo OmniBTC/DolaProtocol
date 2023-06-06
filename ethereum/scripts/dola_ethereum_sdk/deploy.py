@@ -11,16 +11,18 @@ def deploy():
 
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
-    wormhole_finality = config["networks"][cur_net]["wormhole_finality"]
+    wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
+    wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
-    DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
+    # DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
 
     print("deploy wormhole adapter pool...")
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
-        wormhole_finality,
+        wormhole_instant_consistency,
+        wormhole_finality_consistency,
         21,
         core_emitter,
         {'from': account}
@@ -45,6 +47,7 @@ def deploy():
     config_file["networks"][cur_net]["wormhole_adapter_pool"] = wormhole_adapter_pool.address
     config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
     config_file["networks"][cur_net]["system_portal"] = system_portal.address
+    config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
 
     if "test" in cur_net:
         wbtc = deploy_token("WBTC")
@@ -71,5 +74,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("arbitrum-main")
     deploy()

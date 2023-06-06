@@ -118,8 +118,8 @@ module genesis_proposal::genesis_proposal {
         governance_cap: GovernanceCap,
         certificate: Certificate,
         price_oracle: &mut PriceOracle,
-        feed_id: vector<u8>,
         dola_pool_id: u16,
+        feed_id: vector<u8>,
         price_value: u256,
         price_decimal: u8,
         clock: &Clock
@@ -194,28 +194,6 @@ module genesis_proposal::genesis_proposal {
         (governance_cap, certificate)
     }
 
-    public fun remote_register_owner(
-        governance_cap: GovernanceCap,
-        certificate: Certificate,
-        wormhole_state: &mut State,
-        core_state: &mut CoreState,
-        dola_chain_id: u16,
-        dola_contract: u256,
-        wormhole_message_fee: Coin<SUI>,
-        clock: &Clock,
-    ): (GovernanceCap, Certificate) {
-        wormhole_adapter_core::remote_register_owner(
-            &governance_cap,
-            wormhole_state,
-            core_state,
-            dola_chain_id,
-            dola_contract,
-            wormhole_message_fee,
-            clock
-        );
-        (governance_cap, certificate)
-    }
-
     public fun remote_register_spender(
         governance_cap: GovernanceCap,
         certificate: Certificate,
@@ -227,28 +205,6 @@ module genesis_proposal::genesis_proposal {
         clock: &Clock,
     ): (GovernanceCap, Certificate) {
         wormhole_adapter_core::remote_register_spender(
-            &governance_cap,
-            wormhole_state,
-            core_state,
-            dola_chain_id,
-            dola_contract,
-            wormhole_message_fee,
-            clock
-        );
-        (governance_cap, certificate)
-    }
-
-    public fun remote_delete_owner(
-        governance_cap: GovernanceCap,
-        certificate: Certificate,
-        wormhole_state: &mut State,
-        core_state: &mut CoreState,
-        dola_chain_id: u16,
-        dola_contract: u256,
-        wormhole_message_fee: Coin<SUI>,
-        clock: &Clock,
-    ): (GovernanceCap, Certificate) {
-        wormhole_adapter_core::remote_delete_owner(
             &governance_cap,
             wormhole_state,
             core_state,
