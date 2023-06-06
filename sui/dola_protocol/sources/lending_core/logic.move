@@ -283,9 +283,6 @@ module dola_protocol::lending_logic {
 
         update_state(storage, clock, borrow_pool_id);
 
-        // todo: allow user supply and borrow the same asset at the same time
-        assert!(!is_collateral(storage, dola_user_id, borrow_pool_id), ECOLLATERAL_AS_LOAN);
-        assert!(!is_liquid_asset(storage, dola_user_id, borrow_pool_id), ELIQUID_AS_LOAN);
         assert!(!is_isolated_asset(storage, borrow_pool_id), ENOT_BORROWABLE);
 
         // In isolation mode, can only borrow the allowed assets
