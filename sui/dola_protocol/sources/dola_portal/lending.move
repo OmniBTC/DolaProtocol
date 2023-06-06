@@ -25,6 +25,7 @@ module dola_protocol::lending_portal {
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
+    use dola_protocol::wormhole_adapter_pool::{Self, PoolState};
     use wormhole::state::State as WormholeState;
 
     /// Errors
@@ -145,7 +146,6 @@ module dola_protocol::lending_portal {
         };
     }
 
-    // todo: add remote call
     public entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
         storage: &mut Storage,
@@ -175,6 +175,53 @@ module dola_protocol::lending_portal {
             );
             i = i + 1;
         };
+    }
+
+    entry fun cancel_as_collateral_remote(
+        genesis: &GovernanceGenesis,
+        clock: &Clock,
+        pool_state: &mut PoolState,
+        lending_portal: &mut LendingPortal,
+        wormhole_state: &mut WormholeState,
+        dola_pool_ids: vector<u16>,
+        bridge_fee_coins: vector<Coin<SUI>>,
+        bridge_fee_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        genesis::check_latest_version(genesis);
+
+        // Bridge fee = relay fee + wormhole fee
+        let bridge_fee = merge_coins::merge_coin(bridge_fee_coins, bridge_fee_amount, ctx);
+        let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
+        assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
+        let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
+        let relay_fee_amount = coin::value(&bridge_fee);
+
+        let payload = lending_codec::encode_manage_collateral_payload(
+            dola_pool_ids,
+            lending_codec::get_cancel_as_colleteral_type()
+        );
+
+        let nonce = get_nonce(lending_portal);
+        // Cross-chain withdraw
+        let sequence = wormhole_adapter_pool::send_message(
+            pool_state,
+            wormhole_state,
+            wormhole_fee,
+            LENDING_APP_ID,
+            payload,
+            clock,
+            ctx
+        );
+        transfer::public_transfer(bridge_fee, lending_portal.relayer);
+
+        emit(RelayEvent {
+            sequence,
+            nonce,
+            dst_pool: dola_address::convert_address_to_dola(@dola_protocol),
+            fee_amount: relay_fee_amount,
+            call_type: lending_codec::get_cancel_as_colleteral_type()
+        });
     }
 
     public entry fun supply<CoinType>(

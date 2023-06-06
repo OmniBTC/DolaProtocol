@@ -28,6 +28,8 @@ module dola_protocol::wormhole_adapter_pool {
     use wormhole::state::State as WormholeState;
     use wormhole::vaa;
 
+    friend dola_protocol::lending_portal;
+
     /// Errors
 
     const EINVALIE_DOLA_CONTRACT: u64 = 0;
@@ -165,7 +167,7 @@ module dola_protocol::wormhole_adapter_pool {
         app_payload: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         let msg = dola_pool::send_message(
             app_id,
             app_payload,
@@ -182,7 +184,7 @@ module dola_protocol::wormhole_adapter_pool {
             wormhole_message_fee,
             message_ticket,
             clock
-        );
+        )
     }
 
     /// === Entry Functions ===
