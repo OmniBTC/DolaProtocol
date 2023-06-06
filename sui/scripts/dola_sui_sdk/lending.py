@@ -529,26 +529,24 @@ def portal_borrow_local(coin_type, amount):
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     storage = sui_project.network_config['objects']['LendingStorage']
     oracle = sui_project.network_config['objects']['PriceOracle']
-    clock = sui_project.network_config['objects']['Clock']
     lending_portal = sui_project.network_config['objects']['LendingPortal']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
-    gas_coin = get_zero_coin()
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
+    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
 
     dola_protocol.lending_portal.borrow_local(
         genesis,
         storage,
         oracle,
-        clock,
+        init.clock(),
         lending_portal,
         pool_manager_info,
         user_manager_info,
-        init.pool_id(coin_type),
+        init.pool_id(coin_type['coin_type']),
         amount,
-        [gas_coin],
-        0,
-        type_arguments=[coin_type]
+        type_arguments=[coin_type['coin_type']]
     )
 
 
