@@ -224,6 +224,11 @@ def portal_liquidate(debt_pool, collateral_pool, amount, dst_chain=1, receiver=N
     )
 
 
+def get_account_balance():
+    account = get_account()
+    return account.balance()
+
+
 def main():
     portal_supply(usdt()['address'], 0.1 * 1e6)
     # portal_cancel_as_collateral([1, 2])

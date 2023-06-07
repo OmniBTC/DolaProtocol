@@ -146,6 +146,46 @@ def portal_as_collateral(pool_ids=None):
     )
 
 
+def portal_cancel_as_collateral_remote(pool_ids):
+    """
+    entry fun cancel_as_collateral_remote(
+        genesis: &GovernanceGenesis,
+        clock: &Clock,
+        pool_state: &mut PoolState,
+        lending_portal: &mut LendingPortal,
+        wormhole_state: &mut WormholeState,
+        dola_pool_ids: vector<u16>,
+        bridge_fee_coins: vector<Coin<SUI>>,
+        bridge_fee_amount: u64,
+        ctx: &mut TxContext
+    )
+
+    :return:
+    """
+    dola_protocol = load.dola_protocol_package()
+
+    if pool_ids is None:
+        pool_ids = []
+
+    genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    lending_portal = sui_project.network_config['objects']['LendingPortal']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+
+    zero_coin = get_zero_coin()
+
+    dola_protocol.lending_portal.cancel_as_collateral_remote(
+        genesis,
+        init.clock(),
+        pool_state,
+        lending_portal,
+        wormhole_state,
+        pool_ids,
+        [zero_coin],
+        0
+    )
+
+
 def portal_cancel_as_collateral(pool_ids=None):
     """
     public entry fun cancel_as_collateral(
@@ -1571,4 +1611,6 @@ if __name__ == "__main__":
     # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
     #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    export_objects()
+    portal_cancel_as_collateral_remote([1])
+
+    # export_objects()

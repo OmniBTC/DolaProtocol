@@ -541,16 +541,16 @@ def proposal():
 
 
 def query_portal_relay_event(limit=5):
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
     return sui_project.client.suix_queryEvents(
-        {"MoveEventType": f"{dola_protocol.package_id}::lending_portal::RelayEvent"}, limit=limit,
+        {"MoveEventType": f"{dola_protocol}::lending_portal::RelayEvent"}, limit=limit,
         cursor=None, descending_order=None)['data']
 
 
 def query_core_relay_event(limit=5):
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
     return sui_project.client.suix_queryEvents(
-        {"MoveEventType": f"{dola_protocol.package_id}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
+        {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
         cursor=None, descending_order=None)['data']
 
 
@@ -575,9 +575,8 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
 
 @functools.lru_cache()
 def get_wormhole_adapter_pool_emitter() -> List[int]:
-    dola_protocol = load.dola_protocol_package()
     result = sui_project.client.sui_getObject(
-        dola_protocol.wormhole_adapter_pool.PoolState[-1],
+        sui_project.network_config['objects']['PoolState'],
         {
             "showType": True,
             "showOwner": True,

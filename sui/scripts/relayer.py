@@ -190,9 +190,7 @@ def rotate_accounts():
     index = account_index.get()
     index += 1
     num = index % 4
-    # todo: change to real account
-    sui_project.active_account("TestAccount")
-    # sui_project.active_account(f"Relayer{num}")
+    sui_project.active_account(f"Relayer{num}")
     account_index.set(index)
     index_lock.release()
 
@@ -203,6 +201,7 @@ ZERO_FEE = int(1e18)
 def sui_portal_watcher():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
+    local_logger.info("Start to watch sui portal ^-^")
 
     db = mongodb()
     relay_record = db['RelayRecord']
@@ -220,32 +219,47 @@ def sui_portal_watcher():
                 call_name = get_call_name(1, int(call_type))
                 nonce = fields['nonce']
 
-                if relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
+                if not relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
                     relay_fee_amount = int(fields['fee_amount'])
                     relay_fee = get_fee_value(relay_fee_amount, 'sui')
 
                     sequence = fields['sequence']
-                    vaa = get_signed_vaa_by_wormhole(
-                        WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
-
                     dst_pool = fields['dst_pool']
                     dst_chain_id = int(dst_pool['dola_chain_id'])
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
-                    relay_record.insert_one({
-                        "src_chain_id": 0,
-                        "nonce": nonce,
-                        "call_name": call_name,
-                        "sequence": nonce,
-                        "relay_fee": relay_fee,
-                        "withdraw_chain_id": "",
-                        "withdraw_sequence": 0,
-                        "withdraw_vaa": vaa,
-                        "withdraw_pool": dst_pool_address,
-                        "withdraw_costed_fee": 0,
-                        "status": "withdraw",
-                        "reason": "Unknown"
-                    })
+                    if call_name in ['withdraw', 'borrow']:
+                        vaa = get_signed_vaa_by_wormhole(
+                            WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
+
+                        relay_record.insert_one({
+                            "src_chain_id": 0,
+                            "nonce": nonce,
+                            "call_name": call_name,
+                            "sequence": nonce,
+                            "relay_fee": relay_fee,
+                            "withdraw_chain_id": "",
+                            "withdraw_sequence": 0,
+                            "withdraw_vaa": vaa,
+                            "withdraw_pool": dst_pool_address,
+                            "withdraw_costed_fee": 0,
+                            "status": "withdraw",
+                            "reason": "Unknown"
+                        })
+                    else:
+                        vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS['sui-mainnet-pool'], sequence,
+                                                         sui_network)
+                        relay_record.insert_one({
+                            "src_chain_id": 0,
+                            "nonce": nonce,
+                            "call_name": call_name,
+                            "sequence": sequence,
+                            "vaa": vaa,
+                            "relay_fee": relay_fee,
+                            "core_costed_fee": 0,
+                            "status": "false",
+                            "reason": "Unknown"
+                        })
 
                     gas_record.insert_one({
                         'src_chain_id': 0,
@@ -257,9 +271,8 @@ def sui_portal_watcher():
                         'feed_nums': 0
                     })
 
-                    source_chain_nonce = fields['source_chain_nonce']
                     local_logger.info(
-                        f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
+                        f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {nonce}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
         time.sleep(3)
@@ -514,6 +527,13 @@ def sui_core_executor():
                 call_name = tx['call_name']
 
                 rotate_accounts()
+                # check relayer balance
+                if sui_total_balance() < relay_fee:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {relay_fee_value} sui")
+                    time.sleep(5)
+                    continue
+
                 # If no gas record exists, relay once for free.
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
@@ -590,6 +610,12 @@ def sui_pool_executor():
                 vaa = withdraw_tx['withdraw_vaa']
 
                 rotate_accounts()
+                # check relayer balance
+                if sui_total_balance() < available_gas_amount:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {relay_fee_value} sui")
+                    time.sleep(5)
+                    continue
 
                 gas_used, executed = dola_sui_lending.pool_withdraw(
                     vaa, token_name, available_gas_amount)
@@ -664,6 +690,12 @@ def eth_pool_executor():
                 )
                 relay_fee_value = withdraw_tx['relay_fee'] - core_costed_fee
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+                # check relayer balance
+                if int(ethereum_account.balance()) > available_gas_amount:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {available_gas_amount} {get_gas_token(network)}")
+                    time.sleep(5)
+                    continue
 
                 gas_price = float(dola_ethereum_init.get_gas_price(
                     network)['SafeGasPrice']) * G_wei
@@ -712,7 +744,7 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
 
     result = list(gas_record.find(
         {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).sort(
-        'feed_nums', -1).limit(10))
+        'feed_nums', -1).limit(1))
 
     return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
@@ -723,7 +755,7 @@ def get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_num):
     if call_name in ['borrow', 'withdraw', 'cancel_as_collateral']:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name,
-             "feed_nums": feed_num}).limit(10))
+             "feed_nums": int(feed_num)}).limit(10))
     else:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).limit(10))
@@ -821,6 +853,7 @@ WORMHOLE_EMITTER_ADDRESS = {
     "arbitrum-main": "0x135557d220cC24E09e82B3A4C4C526138B9d3824",
     "polygon-main": "0x6A028B4911078F80A20c8De434316C427E3A6Fa5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
+    "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
     "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",
     "sui-testnet": "0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e",
@@ -896,15 +929,19 @@ def mongodb():
     return client['DolaProtocol']
 
 
+def sui_total_balance():
+    return int(sui_project.client.suix_getBalance(sui_project.account.account_address, '0x2::sui::SUI')['totalBalance'])
+
+
 def main():
-    pt = ProcessExecutor(executor=6)
+    pt = ProcessExecutor(executor=7)
 
     pt.run([
         sui_core_executor,
         # functools.partial(eth_portal_watcher, "arbitrum-main"),
         functools.partial(wormhole_vaa_guardian, "polygon-main"),
         functools.partial(eth_portal_watcher, "polygon-main"),
-        # sui_portal_watcher,
+        sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,
         eth_pool_executor,
