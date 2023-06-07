@@ -34,7 +34,7 @@ def deploy_upgrade_proposal():
     )
 
 
-def deploy_migrade_proposal():
+def deploy_migrate_proposal():
     upgrade_proposal_template_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal")
     )

@@ -1,6 +1,6 @@
 [package]
 name = "DolaProtocol"
-version = "1.0.0"
+version = "1.0.1"
 
 [addresses]
 dola_protocol = "0x0"

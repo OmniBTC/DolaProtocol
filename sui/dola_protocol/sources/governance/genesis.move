@@ -46,6 +46,13 @@ module dola_protocol::genesis {
     /// Version 1.0.0
     struct Version_1_0_0 has store, drop, copy {}
 
+    /// Version 1.0.1
+    struct Version_1_0_1 has store, drop, copy {}
+
+    public fun get_version_1_0_1(): Version_1_0_1 {
+        Version_1_0_1 {}
+    }
+
     /// Add a new version structure when upgrading, and upgrade
     /// the version through version migration.
     ///
