@@ -204,7 +204,7 @@ def sui_portal_watcher():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
     local_logger.info("Start to watch sui portal ^-^")
-    
+
     db = mongodb()
     relay_record = db['RelayRecord']
     gas_record = db['GasRecord']
@@ -221,7 +221,7 @@ def sui_portal_watcher():
                 call_name = get_call_name(1, int(call_type))
                 nonce = fields['nonce']
 
-                if not list(relay_record.find_one({'src_chain_id': 0, 'nonce': nonce})):
+                if not relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
                     relay_fee_amount = int(fields['fee_amount'])
                     relay_fee = get_fee_value(relay_fee_amount, 'sui')
 
