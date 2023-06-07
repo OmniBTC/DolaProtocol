@@ -1,6 +1,7 @@
 from pathlib import Path
 from pprint import pprint
 
+import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
@@ -1603,6 +1604,14 @@ def get_wormhole_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
+def get_unrelay_txs(src_chian_id, call_name, limit=0):
+    base_url = 'https://lending-relay-fee.omnibtc.finance'
+    url = f'{base_url}/unrelay_txs/{src_chian_id}/{call_name}/{limit}'
+
+    response = requests.get(url)
+    return response.json()
+
+
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
@@ -1611,6 +1620,5 @@ if __name__ == "__main__":
     # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
     #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    portal_cancel_as_collateral_remote([1])
-
+    get_unrelay_txs(5, 'supply')
     # export_objects()

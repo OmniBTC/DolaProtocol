@@ -749,14 +749,14 @@ def get_unrelay_txs(src_chain_id, call_name, limit):
     else:
         result = list(relay_record.find(
             {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'}))
-    return result
+    return {'result': result}
 
 
 def get_unrelay_tx_by_sequence(src_chain_id, sequence):
     db = mongodb()
     relay_record = db['RelayRecord']
 
-    return list(
+    return {'result': list(
         relay_record.find(
             {
                 'src_chain_id': int(src_chain_id),
@@ -765,7 +765,7 @@ def get_unrelay_tx_by_sequence(src_chain_id, sequence):
                 'sequence': int(sequence),
             }
         )
-    )
+    )}
 
 
 def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
