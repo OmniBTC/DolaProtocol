@@ -117,8 +117,8 @@ def dola_upgrade_test():
 
 
 def migrate_version_test():
-    # deploy_migrade_proposal()
-    # migrate_create_proposal()
+    deploy_migrate_proposal()
+    migrate_create_proposal()
     migrate_version()
 
 
