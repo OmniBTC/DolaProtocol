@@ -167,34 +167,6 @@ module dola_protocol::wormhole_adapter_pool {
         app_payload: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {
-        let msg = dola_pool::send_message(
-            app_id,
-            app_payload,
-            ctx
-        );
-        let message_ticket = publish_message::prepare_message(
-            &mut pool_state.wormhole_emitter,
-            0,
-            msg
-        );
-
-        publish_message::publish_message(
-            wormhole_state,
-            wormhole_message_fee,
-            message_ticket,
-            clock
-        );
-    }
-
-    public(friend) fun send_message_with_sequence(
-        pool_state: &mut PoolState,
-        wormhole_state: &mut WormholeState,
-        wormhole_message_fee: Coin<SUI>,
-        app_id: u16,
-        app_payload: vector<u8>,
-        clock: &Clock,
-        ctx: &mut TxContext
     ): u64 {
         let msg = dola_pool::send_message(
             app_id,
