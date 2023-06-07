@@ -220,32 +220,47 @@ def sui_portal_watcher():
                 call_name = get_call_name(1, int(call_type))
                 nonce = fields['nonce']
 
-                if relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
+                if not list(relay_record.find_one({'src_chain_id': 0, 'nonce': nonce})):
                     relay_fee_amount = int(fields['fee_amount'])
                     relay_fee = get_fee_value(relay_fee_amount, 'sui')
 
                     sequence = fields['sequence']
-                    vaa = get_signed_vaa_by_wormhole(
-                        WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
-
                     dst_pool = fields['dst_pool']
                     dst_chain_id = int(dst_pool['dola_chain_id'])
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
-                    relay_record.insert_one({
-                        "src_chain_id": 0,
-                        "nonce": nonce,
-                        "call_name": call_name,
-                        "sequence": nonce,
-                        "relay_fee": relay_fee,
-                        "withdraw_chain_id": "",
-                        "withdraw_sequence": 0,
-                        "withdraw_vaa": vaa,
-                        "withdraw_pool": dst_pool_address,
-                        "withdraw_costed_fee": 0,
-                        "status": "withdraw",
-                        "reason": "Unknown"
-                    })
+                    if call_name in ['withdraw', 'borrow']:
+                        vaa = get_signed_vaa_by_wormhole(
+                            WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
+
+                        relay_record.insert_one({
+                            "src_chain_id": 0,
+                            "nonce": nonce,
+                            "call_name": call_name,
+                            "sequence": nonce,
+                            "relay_fee": relay_fee,
+                            "withdraw_chain_id": "",
+                            "withdraw_sequence": 0,
+                            "withdraw_vaa": vaa,
+                            "withdraw_pool": dst_pool_address,
+                            "withdraw_costed_fee": 0,
+                            "status": "withdraw",
+                            "reason": "Unknown"
+                        })
+                    else:
+                        vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS['sui-mainnet-pool'], sequence,
+                                                         sui_network)
+                        relay_record.insert_one({
+                            "src_chain_id": 0,
+                            "nonce": nonce,
+                            "call_name": call_name,
+                            "sequence": sequence,
+                            "vaa": vaa,
+                            "relay_fee": relay_fee,
+                            "core_costed_fee": 0,
+                            "status": "false",
+                            "reason": "Unknown"
+                        })
 
                     gas_record.insert_one({
                         'src_chain_id': 0,
@@ -257,9 +272,8 @@ def sui_portal_watcher():
                         'feed_nums': 0
                     })
 
-                    source_chain_nonce = fields['source_chain_nonce']
                     local_logger.info(
-                        f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
+                        f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {nonce}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
         time.sleep(3)
@@ -821,6 +835,7 @@ WORMHOLE_EMITTER_ADDRESS = {
     "arbitrum-main": "0x135557d220cC24E09e82B3A4C4C526138B9d3824",
     "polygon-main": "0x6A028B4911078F80A20c8De434316C427E3A6Fa5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
+    "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
     "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",
     "sui-testnet": "0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e",
@@ -904,7 +919,7 @@ def main():
         # functools.partial(eth_portal_watcher, "arbitrum-main"),
         functools.partial(wormhole_vaa_guardian, "polygon-main"),
         functools.partial(eth_portal_watcher, "polygon-main"),
-        # sui_portal_watcher,
+        sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,
         eth_pool_executor,

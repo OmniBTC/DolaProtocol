@@ -575,9 +575,8 @@ def get_wormhole_adapter_core_emitter() -> List[int]:
 
 @functools.lru_cache()
 def get_wormhole_adapter_pool_emitter() -> List[int]:
-    dola_protocol = load.dola_protocol_package()
     result = sui_project.client.sui_getObject(
-        dola_protocol.wormhole_adapter_pool.PoolState[-1],
+        sui_project.network_config['objects']['PoolState'],
         {
             "showType": True,
             "showOwner": True,
