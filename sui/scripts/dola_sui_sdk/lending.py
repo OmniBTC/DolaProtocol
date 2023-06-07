@@ -146,6 +146,46 @@ def portal_as_collateral(pool_ids=None):
     )
 
 
+def portal_cancel_as_collateral_remote(pool_ids):
+    """
+    entry fun cancel_as_collateral_remote(
+        genesis: &GovernanceGenesis,
+        clock: &Clock,
+        pool_state: &mut PoolState,
+        lending_portal: &mut LendingPortal,
+        wormhole_state: &mut WormholeState,
+        dola_pool_ids: vector<u16>,
+        bridge_fee_coins: vector<Coin<SUI>>,
+        bridge_fee_amount: u64,
+        ctx: &mut TxContext
+    )
+
+    :return:
+    """
+    dola_protocol = load.dola_protocol_package()
+
+    if pool_ids is None:
+        pool_ids = []
+
+    genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+
+    zero_coin = get_zero_coin()
+
+    dola_protocol.lending_portal.cancel_as_collateral_remote(
+        genesis,
+        init.clock(),
+        pool_state,
+        pool_manager_info,
+        user_manager_info,
+        pool_ids,
+        [zero_coin],
+        0
+    )
+
+
 def portal_cancel_as_collateral(pool_ids=None):
     """
     public entry fun cancel_as_collateral(

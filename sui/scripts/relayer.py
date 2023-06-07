@@ -912,7 +912,7 @@ def mongodb():
 
 
 def main():
-    pt = ProcessExecutor(executor=6)
+    pt = ProcessExecutor(executor=7)
 
     pt.run([
         sui_core_executor,
