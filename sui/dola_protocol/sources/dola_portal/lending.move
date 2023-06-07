@@ -204,7 +204,7 @@ module dola_protocol::lending_portal {
 
         let nonce = get_nonce(lending_portal);
         // Cross-chain withdraw
-        let sequence = wormhole_adapter_pool::send_message(
+        let sequence = wormhole_adapter_pool::send_message_with_sequence(
             pool_state,
             wormhole_state,
             wormhole_fee,
