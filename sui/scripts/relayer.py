@@ -190,9 +190,7 @@ def rotate_accounts():
     index = account_index.get()
     index += 1
     num = index % 4
-    # todo: change to real account
-    sui_project.active_account("TestAccount")
-    # sui_project.active_account(f"Relayer{num}")
+    sui_project.active_account(f"Relayer{num}")
     account_index.set(index)
     index_lock.release()
 
@@ -529,6 +527,13 @@ def sui_core_executor():
                 call_name = tx['call_name']
 
                 rotate_accounts()
+                # check relayer balance
+                if sui_total_balance() < relay_fee:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {relay_fee_value} sui")
+                    time.sleep(5)
+                    continue
+
                 # If no gas record exists, relay once for free.
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
@@ -605,6 +610,12 @@ def sui_pool_executor():
                 vaa = withdraw_tx['withdraw_vaa']
 
                 rotate_accounts()
+                # check relayer balance
+                if sui_total_balance() < available_gas_amount:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {relay_fee_value} sui")
+                    time.sleep(5)
+                    continue
 
                 gas_used, executed = dola_sui_lending.pool_withdraw(
                     vaa, token_name, available_gas_amount)
@@ -679,6 +690,12 @@ def eth_pool_executor():
                 )
                 relay_fee_value = withdraw_tx['relay_fee'] - core_costed_fee
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
+                # check relayer balance
+                if int(ethereum_account.balance()) > available_gas_amount:
+                    local_logger.warning(
+                        f"Relayer balance is not enough, need {available_gas_amount} {get_gas_token(network)}")
+                    time.sleep(5)
+                    continue
 
                 gas_price = float(dola_ethereum_init.get_gas_price(
                     network)['SafeGasPrice']) * G_wei
@@ -910,6 +927,10 @@ def mongodb():
     client = MongoClient(mongo_uri)
 
     return client['DolaProtocol']
+
+
+def sui_total_balance():
+    return int(sui_project.client.suix_getBalance(sui_project.account.account_address, '0x2::sui::SUI')['totalBalance'])
 
 
 def main():
