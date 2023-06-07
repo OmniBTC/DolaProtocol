@@ -744,7 +744,7 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
 
     result = list(gas_record.find(
         {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).sort(
-        'feed_nums', -1).limit(10))
+        'feed_nums', -1).limit(1))
 
     return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
@@ -755,7 +755,7 @@ def get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_num):
     if call_name in ['borrow', 'withdraw', 'cancel_as_collateral']:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name,
-             "feed_nums": feed_num}).limit(10))
+             "feed_nums": int(feed_num)}).limit(10))
     else:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).limit(10))
