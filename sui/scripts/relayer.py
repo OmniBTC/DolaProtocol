@@ -744,11 +744,14 @@ def get_unrelay_txs(src_chain_id, call_name, limit):
 
     if int(limit) > 0:
         result = list(relay_record.find(
-            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'}).limit(
+            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'},
+            {'_id': False}).limit(
             int(limit)))
     else:
         result = list(relay_record.find(
-            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'}))
+            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'},
+            {'_id': False}))
+        
     return {'result': result}
 
 
@@ -763,7 +766,8 @@ def get_unrelay_tx_by_sequence(src_chain_id, sequence):
                 'status': 'fail',
                 'reason': 'success',
                 'sequence': int(sequence),
-            }
+            },
+            {'_id': False}
         )
     )}
 
