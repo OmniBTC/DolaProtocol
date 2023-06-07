@@ -34,7 +34,7 @@ def deploy_upgrade_proposal():
     )
 
 
-def deploy_migrade_proposal():
+def deploy_migrate_proposal():
     upgrade_proposal_template_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal")
     )
@@ -104,7 +104,7 @@ def migrate_version():
 
 def check_version(package_id=None):
     dola_protocol = load.dola_protocol_package(package_id)
-    result = dola_protocol.genesis.check_version.simulate(
+    result = dola_protocol.genesis.check_latest_version.simulate(
         sui_project.network_config['objects']['GovernanceGenesis']
     )
     print(result['effects']['status']['status'])
@@ -117,8 +117,8 @@ def dola_upgrade_test():
 
 
 def migrate_version_test():
-    # deploy_migrade_proposal()
-    # migrate_create_proposal()
+    deploy_migrate_proposal()
+    migrate_create_proposal()
     migrate_version()
 
 

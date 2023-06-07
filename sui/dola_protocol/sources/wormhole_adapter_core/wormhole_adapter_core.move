@@ -74,6 +74,20 @@ module dola_protocol::wormhole_adapter_core {
         wormhole_emitter_address: vector<u8>
     }
 
+    /// Deprecated
+    /// Event for register owner
+    struct RegisterOwner has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
+    /// Deprecated
+    /// Event for delete owner
+    struct DeleteOwner has copy, drop {
+        dola_chain_id: u16,
+        dola_contract: u256
+    }
+
     /// Event for register spender
     struct RegisterSpender has copy, drop {
         dola_chain_id: u16,
@@ -141,6 +155,34 @@ module dola_protocol::wormhole_adapter_core {
             wormhole_emitter_chain,
             wormhole_emitter_address: external_address::to_bytes(wormhole_emitter_address)
         });
+    }
+
+    /// Deprecated
+    /// Register owner for remote bridge through governance
+    public fun remote_register_owner(
+        _: &GovernanceCap,
+        _wormhole_state: &mut State,
+        _core_state: &mut CoreState,
+        _dola_chain_id: u16,
+        _dola_contract: u256,
+        _wormhole_message_fee: Coin<SUI>,
+        _clock: &Clock,
+    ) {
+        abort 0
+    }
+
+    /// Deprecated
+    /// Delete owner for remote bridge through governance
+    public fun remote_delete_owner(
+        _: &GovernanceCap,
+        _wormhole_state: &mut State,
+        _core_state: &mut CoreState,
+        _dola_chain_id: u16,
+        _dola_contract: u256,
+        _wormhole_message_fee: Coin<SUI>,
+        _clock: &Clock
+    ) {
+        abort 0
     }
 
     /// Register spender for remote bridge through governance

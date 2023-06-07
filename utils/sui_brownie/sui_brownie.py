@@ -10,21 +10,19 @@ import os
 import time
 import traceback
 from pathlib import Path
-from typing import Union, Dict
 from pprint import pprint
+from typing import Union, Dict
+
+import toml
+import yaml
+from atomicwrites import atomic_write
+from dotenv import dotenv_values
 from retrying import retry
 
-from dotenv import dotenv_values
-
-from atomicwrites import atomic_write
-
-import yaml
-import toml
-
-from .account import Account
-from .parallelism import ThreadExecutor
 from . import bcs
+from .account import Account
 from .bcs import *
+from .parallelism import ThreadExecutor
 from .sui_client import SuiClient
 
 _load_project = []
@@ -477,7 +475,7 @@ class TransactionBuild:
                  "Struct" in param_type):
             if "Vector" in param_type.get("MutableReference", {}) or "Vector" in param_type.get("Reference",
                                                                                                 {}) or "Vector" in param_type.get(
-                    "Struct", {}):
+                "Struct", {}):
                 assert isinstance(data, list)
                 call_args = []
                 for object_id in data:
@@ -952,14 +950,14 @@ class TransactionBuild:
             proposal_package_id,
             sender,
             governance_info: str,
-            governance_contracts: str,
+            governance_genesis: str,
             proposal: str,
             compiled_modules: list,
             dep_ids,
             gas_price,
             gas_budget
     ):
-        object_infos = cls.get_objects([governance_info, governance_contracts, proposal])
+        object_infos = cls.get_objects([governance_info, governance_genesis, proposal])
         inputs = [
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
@@ -970,15 +968,15 @@ class TransactionBuild:
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
-                                            ObjectID(governance_contracts),
-                                            SequenceNumber(int(object_infos[governance_contracts]["owner"]["Shared"]
+                                            ObjectID(proposal),
+                                            SequenceNumber(int(object_infos[proposal]["owner"]["Shared"]
                                                                ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
             CallArg("Object", ObjectArg("SharedObject",
                                         SharedObject(
-                                            ObjectID(proposal),
-                                            SequenceNumber(int(object_infos[proposal]["owner"]["Shared"]
+                                            ObjectID(governance_genesis),
+                                            SequenceNumber(int(object_infos[governance_genesis]["owner"]["Shared"]
                                                                ["initial_shared_version"])),
                                             Bool(True)
                                         ))),
@@ -1003,7 +1001,7 @@ class TransactionBuild:
                 Identifier("upgrade_proposal"),
                 Identifier("commit_upgrade"),
                 [],
-                [Argument("Input", U16(1)), Argument("Result", U16(1))]
+                [Argument("Input", U16(2)), Argument("Result", U16(1))]
             )),
         ]
 
@@ -1433,7 +1431,7 @@ class SuiPackage:
                                                replace_publish_at=replace_publish_at,
                                                output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
@@ -1492,7 +1490,7 @@ class SuiPackage:
                                                replace_publish_at=replace_publish_at,
                                                output=dict())
         try:
-            cmd = f"sui move build --legacy-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
@@ -1507,7 +1505,7 @@ class SuiPackage:
             self,
             proposal_package_id,
             governance_info: str,
-            governance_contracts: str,
+            governance_genesis: str,
             proposal: str,
             replace_address: dict = None,
             replace_publish_at: dict = None,
@@ -1522,7 +1520,7 @@ class SuiPackage:
                                                replace_publish_at=replace_publish_at,
                                                output=dict())
         try:
-            cmd = f"sui move build --dump-bytecode-as-base64 --legacy-digest " \
+            cmd = f"sui move build --dump-bytecode-as-base64 " \
                   f"--path {self.package_path.absolute()}"
             with os.popen(cmd) as f:
                 result = f.read()
@@ -1548,7 +1546,7 @@ class SuiPackage:
                 move_modules,
                 dep_ids,
                 governance_info,
-                governance_contracts,
+                governance_genesis,
                 proposal,
                 gas_price,
                 gas_budget,
@@ -2291,7 +2289,7 @@ class SuiProject:
             compiled_modules,
             dep_ids,
             governance_info: str,
-            governance_contracts: str,
+            governance_genesis: str,
             proposal: str,
             gas_price=None,
             gas_budget=None
@@ -2307,7 +2305,7 @@ class SuiProject:
             compiled_modules=compiled_modules,
             dep_ids=dep_ids,
             governance_info=governance_info,
-            governance_contracts=governance_contracts,
+            governance_genesis=governance_genesis,
             proposal=proposal,
             gas_price=gas_price,
             gas_budget=gas_budget)

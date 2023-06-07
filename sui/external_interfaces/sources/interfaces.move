@@ -4,7 +4,7 @@
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
-    use std::ascii::{String, string, into_bytes};
+    use std::ascii::{String, into_bytes};
     use std::option::{Self, Option};
     use std::vector;
 
@@ -657,17 +657,6 @@ module external_interfaces::interfaces {
         borrow_pool_id: u16,
     ) {
         let borrow_token = into_bytes(pool_manager::get_pool_name_by_id(pool_manager_info, borrow_pool_id));
-        if (logic::is_collateral(storage, dola_user_id, borrow_pool_id)) {
-            emit(UserAllowedBorrow {
-                borrow_token,
-                max_borrow_amount: 0,
-                max_borrow_value: 0,
-                borrow_amount: 0,
-                borrow_value: 0,
-                reason: option::some(string(b"Borrowed token is collateral"))
-            });
-            return
-        };
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
         let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
         let borrow_coefficient = storage::get_borrow_coefficient(storage, borrow_pool_id);
