@@ -64,6 +64,15 @@ module dola_protocol::genesis {
     /// }
     /// ```
 
+    /// Check current version
+    /// Note: Update the function to set the version limit.
+    public fun check_latest_version(genesis: &GovernanceGenesis) {
+        assert!(
+            dynamic_field::exists_with_type<Version, Version_1_0_1>(&genesis.id, Version {}),
+            E_NOT_LATEST_VERISON
+        );
+    }
+
     /// === Friend Functions ===
     public(friend) fun init_genesis(upgrade_cap: UpgradeCap, ctx: &mut TxContext): GovernanceManagerCap {
         let governance_genesis = GovernanceGenesis {
@@ -148,15 +157,6 @@ module dola_protocol::genesis {
         vector::remove(&mut governance_genesis.manager_ids, index);
         let GovernanceManagerCap { id } = governance_manager_cap;
         object::delete(id);
-    }
-
-    /// Check current version
-    /// Note: Update the function to set the version limit.
-    public fun check_latest_version(genesis: &GovernanceGenesis) {
-        assert!(
-            dynamic_field::exists_with_type<Version, Version_1_0_0>(&genesis.id, Version {}),
-            E_NOT_LATEST_VERISON
-        );
     }
 
 

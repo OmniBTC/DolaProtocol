@@ -104,7 +104,7 @@ def migrate_version():
 
 def check_version(package_id=None):
     dola_protocol = load.dola_protocol_package(package_id)
-    result = dola_protocol.genesis.check_version.simulate(
+    result = dola_protocol.genesis.check_latest_version.simulate(
         sui_project.network_config['objects']['GovernanceGenesis']
     )
     print(result['effects']['status']['status'])

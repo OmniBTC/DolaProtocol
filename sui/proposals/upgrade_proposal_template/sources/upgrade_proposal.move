@@ -7,7 +7,7 @@ module upgrade_proposal_template::upgrade_proposal {
     use sui::tx_context::TxContext;
 
     /// The digest of the new contract
-    const DIGEST: vector<u8> = x"e1ff85ff1cfe54a4a1b5a102efffa116e6f74b4c55660762de5b8818316c7896";
+    const DIGEST: vector<u8> = x"16ea59a7d86f056989cb4cfd5e01e7989111b930d5ee0eb9f7a67cc8c4f75dd3";
     const POLICY: u8 = 0;
 
     /// Errors
