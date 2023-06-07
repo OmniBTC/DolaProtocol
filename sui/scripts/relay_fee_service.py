@@ -10,8 +10,9 @@ app = Flask(__name__)
 CORS(app)
 
 
+@app.route('/unrelay_txs/<src_chain_id>/<call_name>')
 @app.route('/unrelay_txs/<src_chain_id>/<call_name>/<limit>')
-def unrelay_txs(src_chain_id, call_name, limit):
+def unrelay_txs(src_chain_id, call_name, limit=0):
     return relayer.get_unrelay_txs(src_chain_id, call_name, limit)
 
 
@@ -20,8 +21,9 @@ def unrelay_tx(src_chain_id, sequence):
     return relayer.get_unrelay_tx_by_sequence(src_chain_id, sequence)
 
 
+@app.route('/relay_fee/<src_chain_id>/<dst_chain_id>/<call_name>')
 @app.route('/relay_fee/<src_chain_id>/<dst_chain_id>/<call_name>/<feed_nums>')
-def relay_fee(src_chain_id, dst_chain_id, call_name, feed_nums):
+def relay_fee(src_chain_id, dst_chain_id, call_name, feed_nums=0):
     return relayer.get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_nums)
 
 
