@@ -738,6 +738,36 @@ def eth_pool_executor():
                 local_logger.error(f"Execute eth pool withdraw fail\n {e}")
 
 
+def get_unrelay_txs(src_chain_id, call_name, limit):
+    db = mongodb()
+    relay_record = db['RelayRecord']
+
+    if int(limit) > 0:
+        result = list(relay_record.find(
+            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'}).limit(
+            int(limit)))
+    else:
+        result = list(relay_record.find(
+            {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'}))
+    return result
+
+
+def get_unrelay_tx_by_sequence(src_chain_id, sequence):
+    db = mongodb()
+    relay_record = db['RelayRecord']
+
+    return list(
+        relay_record.find(
+            {
+                'src_chain_id': int(src_chain_id),
+                'status': 'fail',
+                'reason': 'success',
+                'sequence': int(sequence),
+            }
+        )
+    )
+
+
 def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
     db = mongodb()
     gas_record = db['GasRecord']
