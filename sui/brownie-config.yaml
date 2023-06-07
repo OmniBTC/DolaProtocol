@@ -45,7 +45,7 @@ networks:
         MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
     packages:
       dola_protocol: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
-      external_interfaces: '0xb639bd39aa68bec7e2e63c8af537d0fabbeec16becc7e4106a0340285e2021e5'
+      external_interfaces: '0x93b49ef245f169342cb07e70b6a4835d4071594451a9df738acbb5ecdcac2e88'
       genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'

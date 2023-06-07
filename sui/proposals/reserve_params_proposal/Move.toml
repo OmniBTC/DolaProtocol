@@ -4,7 +4,7 @@ version = "0.0.1"
 
 [addresses]
 reserve_proposal = "0x0"
-dola_protocol = "0x0"
+dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
