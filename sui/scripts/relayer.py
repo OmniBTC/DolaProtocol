@@ -203,7 +203,8 @@ ZERO_FEE = int(1e18)
 def sui_portal_watcher():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
-
+    local_logger.info("Start to watch sui portal ^-^")
+    
     db = mongodb()
     relay_record = db['RelayRecord']
     gas_record = db['GasRecord']
