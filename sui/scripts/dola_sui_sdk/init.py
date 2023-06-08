@@ -540,18 +540,18 @@ def proposal():
            f"::genesis_proposal::Certificate>"
 
 
-def query_portal_relay_event(limit=5):
+def query_portal_relay_event(limit=10):
     dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_portal::RelayEvent"}, limit=limit,
-        cursor=None, descending_order=None)['data']
+        cursor=None, descending_order=True)['data']
 
 
-def query_core_relay_event(limit=5):
+def query_core_relay_event(limit=10):
     dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
-        cursor=None, descending_order=None)['data']
+        cursor=None, descending_order=True)['data']
 
 
 @functools.lru_cache()
@@ -1370,7 +1370,7 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    # batch_init()
+    batch_init()
 
     # delete_remote_bridge(5)
     # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
@@ -1380,4 +1380,4 @@ if __name__ == '__main__':
     # deploy_reserve_proposal()
     # set_reserve_coefficient("SUI")
     # set_is_isolated_asset("SUI")
-    register_new_reserve(reserve="MATIC")
+    # register_new_reserve(reserve="MATIC")

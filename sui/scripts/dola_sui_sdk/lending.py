@@ -1620,4 +1620,10 @@ if __name__ == "__main__":
     # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
     #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    export_objects()
+    txs = get_unrelay_txs(5, 'binding')
+    for tx in txs:
+        try:
+            core_binding(tx['vaa'], int(1e18))
+        except:
+            continue
+    # export_objects()
