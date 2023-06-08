@@ -691,7 +691,7 @@ def eth_pool_executor():
                 relay_fee_value = withdraw_tx['relay_fee'] - core_costed_fee
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
                 # check relayer balance
-                if int(ethereum_account.balance()) > available_gas_amount:
+                if int(ethereum_account.balance()) < available_gas_amount:
                     local_logger.warning(
                         f"Relayer balance is not enough, need {available_gas_amount} {get_gas_token(network)}")
                     time.sleep(5)
@@ -751,7 +751,7 @@ def get_unrelay_txs(src_chain_id, call_name, limit):
         result = list(relay_record.find(
             {'src_chain_id': int(src_chain_id), 'call_name': call_name, 'status': 'fail', 'reason': 'success'},
             {'_id': False}))
-        
+
     return {'result': result}
 
 
