@@ -765,8 +765,8 @@ def eth_pool_executor():
                     result = ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
 
-                    tx_id = result.tx_id
-                    timestamp = result.timestamp
+                    tx_id = ""
+                    timestamp = time.time()
                     date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
 
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
