@@ -10,6 +10,13 @@ from pathlib import Path
 from pprint import pprint
 
 import ccxt
+import requests
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
+
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -17,13 +24,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -176,7 +177,7 @@ def execute_sui_core(call_name, vaa, relay_fee):
     elif call_name == "cancel_as_collateral":
         gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_cancel_as_collateral(
             vaa, relay_fee)
-    return gas, executed, status, feed_nums, digest, int(timestamp) // 1000
+    return gas, executed, status, feed_nums, digest, timestamp
 
 
 m = multiprocessing.Manager()
@@ -597,7 +598,8 @@ def sui_core_executor():
                     core_costed_fee = get_fee_value(gas, 'sui')
                     relay_fee_value = get_fee_value(relay_fee, 'sui')
 
-                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+                    timestamp = int(time.time())
+                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
                     if call_name in ["withdraw", "borrow"]:
                         relay_record.update_one({'vaa': tx['vaa']},
                                                 {"$set": {'relay_fee': relay_fee_value,
@@ -669,7 +671,8 @@ def sui_pool_executor():
                 gas_used, executed, digest, timestamp = dola_sui_lending.pool_withdraw(
                     vaa, token_name, available_gas_amount)
 
-                timestamp = int(timestamp) // 1000
+                # timestamp = int(timestamp) // 1000
+                timestamp = int(time.time())
                 tx_gas_amount = gas_used
 
                 gas_price = int(
@@ -681,7 +684,7 @@ def sui_pool_executor():
                 if executed:
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
-                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
                     relay_record.update_one({'withdraw_vaa': vaa},
                                             {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
                                                       'end_time': date, 'withdraw_tx_id': digest}})
