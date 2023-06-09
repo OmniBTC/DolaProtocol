@@ -182,7 +182,7 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
     )
@@ -321,7 +321,7 @@ def vote_remote_register_owner(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
 
     genesis_proposal.genesis_proposal.remote_register_owner(
         dola_protocol.governance_v1.GovernanceInfo[-1],
@@ -350,7 +350,7 @@ def vote_remote_delete_owner(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
 
     genesis_proposal.genesis_proposal.remote_delete_owner(
         dola_protocol.governance_v1.GovernanceInfo[-1],
@@ -379,12 +379,12 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
 
     result = sui_project.pay_sui([0])
     zero_coin = result['objectChanges'][-1]['objectId']
 
-    genesis_proposal.genesis_proposal.vote_remote_register_spender(
+    genesis_proposal.genesis_proposal.remote_register_spender(
         dola_protocol.governance_v1.GovernanceInfo[-1],
         sui_project[SuiObject.from_type(proposal())][-1],
         wormhole.state.State[-1],
@@ -533,7 +533,7 @@ def pool_id(coin_type):
 
 
 def proposal():
-    dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
@@ -1073,7 +1073,7 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
 
 def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
 
     create_proposal()
 
@@ -1139,7 +1139,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
     # 2. remote register new owner
     genesis_proposal = load.genesis_proposal_package()
 
-    # create_proposal()
+    create_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -1163,7 +1163,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
     ]
 
     remote_register_owner = [
-        genesis_proposal.genesis_proposal.remote_register_owner,
+        genesis_proposal.genesis_proposal.remote_register_spender,
         [
             Argument("NestedResult", NestedResult(U16(0), U16(0))),
             Argument("NestedResult", NestedResult(U16(0), U16(1))),
@@ -1373,7 +1373,8 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
-    
+    # upgrade_evm_adapter(5, 389767246369475325315697891844518913195186658835, -1)
+
     # delete_remote_bridge(5)
     # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
