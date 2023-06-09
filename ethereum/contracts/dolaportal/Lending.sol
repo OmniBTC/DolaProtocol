@@ -190,7 +190,7 @@ contract LendingPortal {
         }
 
         uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit{
-            value: msg.value
+            value: msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
 
         LibAsset.transferAsset(address(0), relayer, fee);
