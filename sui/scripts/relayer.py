@@ -9,13 +9,6 @@ from pathlib import Path
 from pprint import pprint
 
 import ccxt
-import requests
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
-
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -23,7 +16,13 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import requests
 from dola_sui_sdk.load import sui_project
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -537,8 +536,17 @@ def sui_core_executor():
                 # If no gas record exists, relay once for free.
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
+
                 gas, executed, status, feed_nums = execute_sui_core(
                     call_name, tx['vaa'], relay_fee)
+
+                # Relay not existent feed_num tx for free.
+                if not executed and status == 'success' and not list(gas_record.find(
+                        {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
+                         'feed_nums': feed_nums})):
+                    relay_fee = ZERO_FEE
+                    gas, executed, status, feed_nums = execute_sui_core(
+                        call_name, tx['vaa'], relay_fee)
 
                 gas_price = int(
                     sui_project.client.suix_getReferenceGasPrice())
@@ -555,13 +563,16 @@ def sui_core_executor():
 
                 if executed and status == 'success':
                     core_costed_fee = get_fee_value(gas, 'sui')
+                    relay_fee_value = get_fee_value(relay_fee, 'sui')
                     if call_name in ["withdraw", "borrow"]:
                         relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'status': 'waitForWithdraw',
+                                                {"$set": {'relay_fee': relay_fee_value,
+                                                          'status': 'waitForWithdraw',
                                                           'core_costed_fee': core_costed_fee}})
                     else:
                         relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'status': 'success', 'core_costed_fee': core_costed_fee}})
+                                                {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
+                                                          'core_costed_fee': core_costed_fee}})
 
                     local_logger.info("Execute sui core success! ")
                 else:
