@@ -90,7 +90,7 @@ networks:
   polygon-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 5
-    lending_portal: '0x14920b19238F79E41Da046EAb64d01dc2D6d49f3'
+    lending_portal: '0x1DC59D7f9A2b5CBc63d28A8067Dd21f43A19FD82'
     pools:
       MATIC:
         dola_chain_id: 5
