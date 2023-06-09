@@ -396,7 +396,7 @@ def eth_portal_watcher(network="polygon-test"):
                                                            start_block=latest_relay_block_number + 1, net=network)
 
             for event in relay_events:
-                block_number = event['blockNumber']
+                block_number = event['block_number']
                 nonce = event['nonce']
                 sequence = event['sequence']
                 src_tx_hash = event['tx_hash']
