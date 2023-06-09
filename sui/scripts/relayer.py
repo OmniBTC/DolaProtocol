@@ -305,7 +305,7 @@ def wormhole_vaa_guardian(network="polygon-test"):
                 block_number = tx['block_number']
 
                 vaa = get_signed_vaa_by_wormhole(
-                    emitter_address, nonce, network)
+                    emitter_address, sequence, network)
 
                 vm = wormhole.parseVM(vaa)
                 # parse payload
@@ -407,7 +407,7 @@ def eth_portal_watcher(network="polygon-test"):
                 # get vaa
                 try:
                     vaa = get_signed_vaa_by_wormhole(
-                        emitter_address, nonce, network)
+                        emitter_address, sequence, network)
                 except Exception as e:
                     gas_token = get_gas_token(network)
                     relay_fee_value = get_fee_value(relay_fee, gas_token)
