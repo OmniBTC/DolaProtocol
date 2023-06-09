@@ -1093,6 +1093,9 @@ def batch_init_oracle():
     eth_token_param = construct_register_token_price_param(
         "ETH/USD", 'ETH'
     )
+    matic_token_param = construct_register_token_price_param(
+        "MATIC/USD", 'MATIC'
+    )
 
     basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
@@ -1101,7 +1104,7 @@ def batch_init_oracle():
         clock(),  # 3
     ]
 
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
