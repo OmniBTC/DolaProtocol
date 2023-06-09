@@ -552,8 +552,7 @@ def core_withdraw(vaa, relay_fee=0):
         )
         return gas + feed_gas, executed, status, feed_nums, "", ""
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", result[
-            'timestampMs']
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
     else:
         return gas + feed_gas, executed, status, feed_nums, "", ""
 
@@ -725,8 +724,7 @@ def core_borrow(vaa, relay_fee=0):
 
         return gas + feed_gas, executed, status, feed_nums, "", ""
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", result[
-            'timestampMs']
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
     else:
         return gas + feed_gas, executed, status, feed_nums, "", ""
 
@@ -1281,8 +1279,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
 
         return gas + feed_gas, executed, status, feed_nums, "", ""
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", result[
-            'timestampMs']
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
     else:
         return gas + feed_gas, executed, status, feed_nums, "", ""
 
