@@ -6,7 +6,6 @@ import requests
 from brownie import (
     network,
     config, )
-
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
 
@@ -147,9 +146,7 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
     system_relay_events = decode_relay_events(system_relay_result.json())
     lending_relay_events = decode_relay_events(lending_relay_result.json())
 
-    lending_relay_events.update(system_relay_events)
-
-    return lending_relay_events
+    return sorted(system_relay_events + lending_relay_events, key=lambda x: x['block_number'])
 
 
 def get_gas_price(net):
@@ -164,9 +161,27 @@ def get_gas_price(net):
     return response.json()['result']
 
 
-def decode_relay_events(data):
-    events = {int(d['blockNumber'], 16): d['data'] for d in data['result']}
-    return {block: [int(events[block][2:66], 16), int(events[block][66:130], 16), int(events[block][130:], 16)] for block in events}
+def decode_relay_events(response):
+    events = []
+
+    for event in response['result']:
+        block_number = int(event['blockNumber'], 16)
+        tx_hash = event['transactionHash']
+        timestamp = int(event['timeStamp'], 16)
+        data = event['data']
+        nonce = int(data[2:66], 16)
+        sequence = int(data[66:130], 16)
+        relay_fee = int(data[130:], 16)
+        events.append({
+            'block_number': block_number,
+            'tx_hash': tx_hash,
+            'nonce': nonce,
+            'sequence': sequence,
+            'relay_fee': relay_fee,
+            'timestamp': timestamp,
+        })
+
+    return events
 
 
 def current_block_number():
@@ -175,7 +190,6 @@ def current_block_number():
 
 if __name__ == "__main__":
     set_ethereum_network("polygon-main")
-
-    # lending_portal = load.lending_portal_package('polygon-main').address
-    # system_portal = load.system_portal_package('polygon-main').address
-    # print(relay_events(lending_portal, system_portal, net='polygon-main'))
+    lending_portal = load.lending_portal_package('polygon-main').address
+    system_portal = load.system_portal_package('polygon-main').address
+    events = relay_events(lending_portal, system_portal, net='polygon-main')

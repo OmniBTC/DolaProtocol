@@ -4,9 +4,8 @@ from typing import List
 import requests
 # 1e27
 import sui_brownie
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 RAY = 1000000000000000000000000000
 
@@ -1374,7 +1373,7 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
-
+    
     # delete_remote_bridge(5)
     # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()

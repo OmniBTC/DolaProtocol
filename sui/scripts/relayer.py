@@ -1,4 +1,5 @@
 import base64
+import datetime
 import functools
 import json
 import logging
@@ -154,26 +155,28 @@ def execute_sui_core(call_name, vaa, relay_fee):
     executed = False
     status = "Unknown"
     feed_nums = 0
+    digest = ""
+    timestamp = ""
     if call_name == "binding":
-        gas, executed, status = dola_sui_lending.core_binding(vaa, relay_fee)
+        gas, executed, status, digest, timestamp = dola_sui_lending.core_binding(vaa, relay_fee)
     elif call_name == "unbinding":
-        gas, executed, status = dola_sui_lending.core_unbinding(vaa, relay_fee)
+        gas, executed, status, digest, timestamp = dola_sui_lending.core_unbinding(vaa, relay_fee)
     elif call_name == "supply":
-        gas, executed, status = dola_sui_lending.core_supply(vaa, relay_fee)
+        gas, executed, status, digest, timestamp = dola_sui_lending.core_supply(vaa, relay_fee)
     elif call_name == "withdraw":
-        gas, executed, status, feed_nums = dola_sui_lending.core_withdraw(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_withdraw(vaa, relay_fee)
     elif call_name == "borrow":
-        gas, executed, status, feed_nums = dola_sui_lending.core_borrow(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_borrow(vaa, relay_fee)
     elif call_name == "repay":
-        gas, executed, status = dola_sui_lending.core_repay(vaa, relay_fee)
+        gas, executed, status, digest, timestamp = dola_sui_lending.core_repay(vaa, relay_fee)
     elif call_name == "liquidate":
-        gas, executed, status, feed_nums = dola_sui_lending.core_liquidate(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_liquidate(vaa, relay_fee)
     elif call_name == "as_collateral":
-        gas, executed, status = dola_sui_lending.core_as_collateral(vaa, relay_fee)
+        gas, executed, status, digest, timestamp = dola_sui_lending.core_as_collateral(vaa, relay_fee)
     elif call_name == "cancel_as_collateral":
-        gas, executed, status, feed_nums = dola_sui_lending.core_cancel_as_collateral(
+        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_cancel_as_collateral(
             vaa, relay_fee)
-    return gas, executed, status, feed_nums
+    return gas, executed, status, feed_nums, digest, int(timestamp) // 1000
 
 
 m = multiprocessing.Manager()
@@ -317,36 +320,48 @@ def wormhole_vaa_guardian(network="polygon-test"):
                 if call_name in ['withdraw', 'borrow']:
                     relay_record.insert_one({
                         "src_chain_id": src_chain_id,
+                        "src_tx_id": tx['src_tx_id'],
                         "nonce": nonce,
                         "call_name": call_name,
                         "block_number": block_number,
                         "sequence": sequence,
                         "vaa": vaa,
                         "relay_fee": relay_fee,
+                        "core_tx_id": "",
                         "core_costed_fee": 0,
                         "withdraw_chain_id": "",
+                        "withdraw_tx_id": "",
                         "withdraw_sequence": 0,
                         "withdraw_vaa": "",
                         "withdraw_pool": "",
                         "withdraw_costed_fee": 0,
                         "status": "false",
-                        "reason": "Unknown"
+                        "reason": "Unknown",
+                        "start_time": tx['start_time'],
+                        "end_time": "",
                     })
                 else:
                     relay_record.insert_one({
                         "src_chain_id": src_chain_id,
+                        "src_tx_id": tx['src_tx_id'],
                         "nonce": nonce,
                         "call_name": call_name,
                         "block_number": block_number,
                         "sequence": sequence,
                         "vaa": vaa,
                         "relay_fee": relay_fee,
+                        "core_tx_id": "",
                         "core_costed_fee": 0,
                         "status": "false",
-                        "reason": "Unknown"
+                        "reason": "Unknown",
+                        "start_time": tx['start_time'],
+                        "end_time": "",
                     })
+
+                current_timestamp = int(time.time())
+                date = str(datetime.datetime.fromtimestamp(current_timestamp))
                 relay_record.update_one({'status': 'waitForVaa', 'src_chain_id': src_chain_id, 'nonce': nonce},
-                                        {'$set': {'status': 'dropped'}})
+                                        {'$set': {'status': 'dropped', 'end_time': date}})
                 local_logger.info(
                     f"Have a {call_name} transaction from {network}, sequence: {nonce}")
             except Exception as e:
@@ -380,9 +395,14 @@ def eth_portal_watcher(network="polygon-test"):
             relay_events = dola_ethereum_init.relay_events(lending_portal, system_portal,
                                                            start_block=latest_relay_block_number + 1, net=network)
 
-            for block_number in sorted(relay_events):
-                nonce = relay_events[block_number][0]
-                sequence = relay_events[block_number][1]
+            for event in relay_events:
+                block_number = event['blockNumber']
+                nonce = event['nonce']
+                sequence = event['sequence']
+                src_tx_hash = event['tx_hash']
+                timestamp = event['timestamp']
+                relay_fee = event['relay_fee']
+                date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
 
                 # get vaa
                 try:
@@ -390,14 +410,17 @@ def eth_portal_watcher(network="polygon-test"):
                         emitter_address, nonce, network)
                 except Exception as e:
                     gas_token = get_gas_token(network)
-                    relay_fee = get_fee_value(relay_events[block_number][2], gas_token)
+                    relay_fee_value = get_fee_value(relay_fee, gas_token)
                     relay_record.insert_one({
                         'src_chain_id': src_chain_id,
+                        'src_tx_id': src_tx_hash,
                         'nonce': nonce,
                         'sequence': sequence,
                         'block_number': block_number,
-                        'relay_fee': relay_fee,
-                        'status': 'waitForVaa'
+                        'relay_fee': relay_fee_value,
+                        'status': 'waitForVaa',
+                        'start_time': date,
+                        'end_time': "",
                     })
                     local_logger.warning(f"Warning: {e}")
                     continue
@@ -419,39 +442,48 @@ def eth_portal_watcher(network="polygon-test"):
                         }
                 )):
                     gas_token = get_gas_token(network)
-                    relay_fee = get_fee_value(
-                        relay_events[block_number][2], gas_token)
+                    relay_fee_value = get_fee_value(
+                        relay_fee, gas_token)
 
                     if call_name in ['withdraw', 'borrow']:
                         relay_record.insert_one({
                             "src_chain_id": src_chain_id,
+                            'src_tx_id': src_tx_hash,
                             "nonce": nonce,
                             "call_name": call_name,
                             "block_number": block_number,
                             "sequence": sequence,
                             "vaa": vaa,
-                            "relay_fee": relay_fee,
+                            "relay_fee": relay_fee_value,
+                            "core_tx_id": "",
                             "core_costed_fee": 0,
                             "withdraw_chain_id": "",
+                            "withdraw_tx_id": "",
                             "withdraw_sequence": 0,
                             "withdraw_vaa": "",
                             "withdraw_pool": "",
                             "withdraw_costed_fee": 0,
                             "status": "false",
-                            "reason": "Unknown"
+                            "reason": "Unknown",
+                            "start_time": date,
+                            "end_time": "",
                         })
                     else:
                         relay_record.insert_one({
                             "src_chain_id": src_chain_id,
+                            'src_tx_id': src_tx_hash,
                             "nonce": nonce,
                             "call_name": call_name,
                             "block_number": block_number,
                             "sequence": sequence,
                             "vaa": vaa,
-                            "relay_fee": relay_fee,
+                            "relay_fee": relay_fee_value,
+                            "core_tx_id": "",
                             "core_costed_fee": 0,
                             "status": "false",
-                            "reason": "Unknown"
+                            "reason": "Unknown",
+                            "start_time": date,
+                            "end_time": "",
                         })
 
                     local_logger.info(
@@ -537,7 +569,7 @@ def sui_core_executor():
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
 
-                gas, executed, status, feed_nums = execute_sui_core(
+                gas, executed, status, feed_nums, digest, timestamp = execute_sui_core(
                     call_name, tx['vaa'], relay_fee)
 
                 # Relay not existent feed_num tx for free.
@@ -545,7 +577,7 @@ def sui_core_executor():
                         {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
                          'feed_nums': feed_nums})):
                     relay_fee = ZERO_FEE
-                    gas, executed, status, feed_nums = execute_sui_core(
+                    gas, executed, status, feed_nums, digest, timestamp = execute_sui_core(
                         call_name, tx['vaa'], relay_fee)
 
                 gas_price = int(
@@ -564,15 +596,21 @@ def sui_core_executor():
                 if executed and status == 'success':
                     core_costed_fee = get_fee_value(gas, 'sui')
                     relay_fee_value = get_fee_value(relay_fee, 'sui')
+
+                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
                     if call_name in ["withdraw", "borrow"]:
                         relay_record.update_one({'vaa': tx['vaa']},
                                                 {"$set": {'relay_fee': relay_fee_value,
                                                           'status': 'waitForWithdraw',
+                                                          'end_time': date,
+                                                          'core_tx_id': digest,
                                                           'core_costed_fee': core_costed_fee}})
                     else:
                         relay_record.update_one({'vaa': tx['vaa']},
                                                 {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
-                                                          'core_costed_fee': core_costed_fee}})
+                                                          'core_tx_id': digest,
+                                                          'core_costed_fee': core_costed_fee,
+                                                          'end_time': date}})
 
                     local_logger.info("Execute sui core success! ")
                 else:
@@ -628,9 +666,10 @@ def sui_pool_executor():
                     time.sleep(5)
                     continue
 
-                gas_used, executed = dola_sui_lending.pool_withdraw(
+                gas_used, executed, digest, timestamp = dola_sui_lending.pool_withdraw(
                     vaa, token_name, available_gas_amount)
 
+                timestamp = int(timestamp) // 1000
                 tx_gas_amount = gas_used
 
                 gas_price = int(
@@ -642,8 +681,10 @@ def sui_pool_executor():
                 if executed:
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
+                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
                     relay_record.update_one({'withdraw_vaa': vaa},
-                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee}})
+                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
+                                                      'end_time': date, 'withdraw_tx_id': digest}})
 
                     local_logger.info("Execute sui withdraw success! ")
                     local_logger.info(
@@ -718,12 +759,17 @@ def eth_pool_executor():
 
                 tx_gas_amount = int(gas_used) * int(gas_price)
                 if available_gas_amount > tx_gas_amount:
-                    ethereum_wormhole_bridge.receiveWithdraw(
+                    result = ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
+
+                    tx_id = result.tx_id
+                    timestamp = result.timestamp
+                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
 
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
                     relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee}})
+                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
+                                                      'end_time': date, 'withdraw_tx_id': tx_id}})
 
                     local_logger.info(f"Execute {network} withdraw success! ")
                     local_logger.info(
