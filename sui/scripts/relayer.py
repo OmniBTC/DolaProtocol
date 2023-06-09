@@ -942,7 +942,7 @@ NET_TO_WORMHOLE_CHAINID = {
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
     "arbitrum-main": "0x135557d220cC24E09e82B3A4C4C526138B9d3824",
-    "polygon-main": "0x6A028B4911078F80A20c8De434316C427E3A6Fa5",
+    "polygon-main": "0x4445c48e9B70F78506E886880a9e09B501ED1E13",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
