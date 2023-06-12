@@ -10,13 +10,6 @@ from pathlib import Path
 from pprint import pprint
 
 import ccxt
-import requests
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
-
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -24,7 +17,13 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import requests
 from dola_sui_sdk.load import sui_project
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -134,6 +133,8 @@ def get_dola_network(dola_chain_id):
         return "polygon-main"
     elif dola_chain_id == 23:
         return "arbitrum-main"
+    elif dola_chain_id == 24:
+        return "optimism-main"
     else:
         return "unknown"
 
@@ -943,7 +944,8 @@ NET_TO_WORMHOLE_CHAINID = {
 
 WORMHOLE_EMITTER_ADDRESS = {
     # mainnet
-    "arbitrum-main": "0x135557d220cC24E09e82B3A4C4C526138B9d3824",
+    "optimism-main": "0x94650D61b940496b1BD88767b7B541b1121e0cCF",
+    "arbitrum-main": "0x098D26E4d2E98C1Dde14C543Eb6804Fd98Af9CB4",
     "polygon-main": "0x4445c48e9B70F78506E886880a9e09B501ED1E13",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
@@ -1027,13 +1029,16 @@ def sui_total_balance():
 
 
 def main():
-    pt = ProcessExecutor(executor=7)
+    pt = ProcessExecutor(executor=11)
 
     pt.run([
         sui_core_executor,
-        # functools.partial(eth_portal_watcher, "arbitrum-main"),
-        functools.partial(wormhole_vaa_guardian, "polygon-main"),
+        functools.partial(eth_portal_watcher, "arbitrum-main"),
+        functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
+        functools.partial(eth_portal_watcher, "optimism-main"),
+        functools.partial(wormhole_vaa_guardian, "optimism-main"),
         functools.partial(eth_portal_watcher, "polygon-main"),
+        functools.partial(wormhole_vaa_guardian, "polygon-main"),
         sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,
