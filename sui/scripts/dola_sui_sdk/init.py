@@ -534,7 +534,7 @@ def pool_id(coin_type):
 
 
 def proposal():
-    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
+    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
     genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
@@ -1365,6 +1365,63 @@ def set_is_isolated_asset(reserve):
     )
 
 
+def register_new_group_chain(chain_ids):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    chain_group_id = 2
+    group_chain_ids = chain_ids
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    total_app_info = sui_project.network_config['objects']['TotalAppInfo']
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+
+    create_proposal()
+    sui_project.batch_transaction(
+        actual_params=[governance_info,  # 0
+                       sui_project[SuiObject.from_type(proposal())][-1],  # 1
+                       total_app_info,  # 2
+                       user_manager_info,  # 3
+                       chain_group_id,  # 4
+                       group_chain_ids,  # 5
+                       ],
+        transactions=[
+            [genesis_proposal.genesis_proposal.vote_proposal_final,
+             [Argument("Input", U16(0)), Argument("Input", U16(1))],
+             []
+             ],  # 0. vote_proposal_final
+            [
+                genesis_proposal.genesis_proposal.init_system_core,
+                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
+                 Argument("Input", U16(2))],
+                []
+            ],  # 1. init_system_core
+            [
+                genesis_proposal.genesis_proposal.init_lending_core,
+                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
+                 Argument("Input", U16(2))],
+                []
+            ],  # 2. init_lending_core
+            [
+                genesis_proposal.genesis_proposal.init_chain_group_id,
+                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
+                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
+                 Argument("Input", U16(3)),
+                 Argument("Input", U16(4)),
+                 Argument("Input", U16(5))],
+                []
+            ],  # 3. init_chain_group_id
+            [genesis_proposal.genesis_proposal.destory,
+             [Argument("NestedResult", NestedResult(U16(3), U16(0))),
+              Argument("NestedResult", NestedResult(U16(3), U16(1)))],
+             []
+             ]
+        ]
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1385,3 +1442,5 @@ if __name__ == '__main__':
     # set_reserve_coefficient("SUI")
     # set_is_isolated_asset("SUI")
     # register_new_reserve(reserve="MATIC")
+
+    # register_new_group_chain([24])
