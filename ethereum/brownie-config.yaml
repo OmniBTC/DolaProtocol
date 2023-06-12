@@ -6,10 +6,63 @@ dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
 networks:
+  optimism-main:
+    dola_chain_id: 24
+    core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
+    pools:
+      ETH:
+        dola_chain_id: 24
+        dola_pool_id: 4
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: ETH
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 24
+        dola_pool_id: 2
+        pool_address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 24
+        dola_pool_id: 1
+        pool_address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 24
+        dola_pool_id: 0
+        pool_address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095'
+        pool_name: WBTC
+        pool_weight: 1
+    scan_rpc_url: https://api-optimistic.etherscan.io/api
+    tokens:
+      ETH:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 4
+      USDC:
+        address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607'
+        decimals: 6
+        dola_pool_id: 2
+      USDT:
+        address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58'
+        decimals: 6
+        dola_pool_id: 1
+      WBTC:
+        address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095'
+        decimals: 8
+        dola_pool_id: 0
+    wormhole: '0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722'
+    wormhole_chainid: 24
+    wormhole_adapter_pool: '0x94650D61b940496b1BD88767b7B541b1121e0cCF'
+    lending_portal: '0xD3588acd2A3b69E84a127F92dA3b5f8d81951c16'
+    system_portal: '0x3dd7b63a9b52761F89bd1bBBd31324242A0DaE01'
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 200
   arbitrum-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 23
-    lending_portal: '0xD7026De1e1B80175d1Fdb094cE36f90a25F18505'
+    lending_portal: '0xEBb6a1d17Ae9A276EdE95bF6B8fC6527fa2dF737'
     pools:
       ETH:
         dola_chain_id: 23
@@ -36,7 +89,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.arbiscan.io/api
-    system_portal: '0x3177D291386899F0674Ef494015E132e54b7A973'
+    system_portal: '0x6F5b4Bc793aE7213564501aB22c714e39f5D2BAC'
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
@@ -55,10 +108,10 @@ networks:
         decimals: 8
         dola_pool_id: 0
     wormhole: '0xa5f208e072434bC67592E4C49C1B991BA79BCA46'
-    wormhole_adapter_pool: '0x37c15055bf8146E2BF904DACF71b53cc3779Bf49'
+    wormhole_adapter_pool: '0x098D26E4d2E98C1Dde14C543Eb6804Fd98Af9CB4'
     wormhole_chainid: 23
     wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 1
+    wormhole_finality_consistency: 200
   arbitrum-test:
     core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
     scan_rpc_url: https://api-goerli.arbiscan.io/api
