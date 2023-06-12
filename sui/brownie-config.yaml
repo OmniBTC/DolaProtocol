@@ -90,6 +90,34 @@ networks:
         supply_cap_ceiling: 50
         treasury: 0
         treasury_factor: 0.23
+      OP:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.33
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.66
+        dola_pool_id: 7
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      ARB:
+        base_borrow_rate: 0.02
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.33
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.66
+        dola_pool_id: 6
+        is_isolated_asset: false
+        optimal_utilization: 0.45
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
       MATIC:
         base_borrow_rate: 0.02
         borrow_cap_ceiling: 0
