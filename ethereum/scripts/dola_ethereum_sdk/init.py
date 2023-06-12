@@ -16,6 +16,8 @@ def get_scan_api_key(net="polygon-test"):
         return os.getenv("BSC_API_KEY")
     elif "arbitrum" in net:
         return os.getenv("ARBITRUM_API_KEY")
+    elif "optimism" in net:
+        return os.getenv("OPTIMISM_API_KEY")
     elif "polygon" in net:
         return os.getenv("POLYGON_API_KEY")
 
