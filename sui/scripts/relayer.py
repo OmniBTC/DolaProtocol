@@ -157,27 +157,26 @@ def execute_sui_core(call_name, vaa, relay_fee):
     status = "Unknown"
     feed_nums = 0
     digest = ""
-    timestamp = ""
     if call_name == "binding":
-        gas, executed, status, digest, timestamp = dola_sui_lending.core_binding(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_binding(vaa, relay_fee)
     elif call_name == "unbinding":
-        gas, executed, status, digest, timestamp = dola_sui_lending.core_unbinding(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_unbinding(vaa, relay_fee)
     elif call_name == "supply":
-        gas, executed, status, digest, timestamp = dola_sui_lending.core_supply(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_supply(vaa, relay_fee)
     elif call_name == "withdraw":
-        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_withdraw(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_withdraw(vaa, relay_fee)
     elif call_name == "borrow":
-        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_borrow(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_borrow(vaa, relay_fee)
     elif call_name == "repay":
-        gas, executed, status, digest, timestamp = dola_sui_lending.core_repay(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_repay(vaa, relay_fee)
     elif call_name == "liquidate":
-        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_liquidate(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_liquidate(vaa, relay_fee)
     elif call_name == "as_collateral":
-        gas, executed, status, digest, timestamp = dola_sui_lending.core_as_collateral(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_as_collateral(vaa, relay_fee)
     elif call_name == "cancel_as_collateral":
-        gas, executed, status, feed_nums, digest, timestamp = dola_sui_lending.core_cancel_as_collateral(
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_cancel_as_collateral(
             vaa, relay_fee)
-    return gas, executed, status, feed_nums, digest, timestamp
+    return gas, executed, status, feed_nums, digest
 
 
 m = multiprocessing.Manager()
@@ -570,7 +569,7 @@ def sui_core_executor():
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
                     relay_fee = ZERO_FEE
 
-                gas, executed, status, feed_nums, digest, timestamp = execute_sui_core(
+                gas, executed, status, feed_nums, digest = execute_sui_core(
                     call_name, tx['vaa'], relay_fee)
 
                 # Relay not existent feed_num tx for free.
@@ -578,7 +577,7 @@ def sui_core_executor():
                         {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
                          'feed_nums': feed_nums})):
                     relay_fee = ZERO_FEE
-                    gas, executed, status, feed_nums, digest, timestamp = execute_sui_core(
+                    gas, executed, status, feed_nums, digest = execute_sui_core(
                         call_name, tx['vaa'], relay_fee)
 
                 gas_price = int(
@@ -765,7 +764,7 @@ def eth_pool_executor():
                     result = ethereum_wormhole_bridge.receiveWithdraw(
                         vaa, {"from": ethereum_account})
 
-                    tx_id = ""
+                    tx_id = result.txid
                     timestamp = time.time()
                     date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
 

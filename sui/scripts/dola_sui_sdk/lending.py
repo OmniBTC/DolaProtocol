@@ -324,11 +324,11 @@ def core_supply(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def portal_withdraw_local(coin_type, amount):
@@ -480,11 +480,11 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
             init.clock(),
             type_arguments=[coin_type]
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def core_withdraw(vaa, relay_fee=0):
@@ -550,11 +550,11 @@ def core_withdraw(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
         )
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, ""
     else:
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, ""
 
 
 def portal_borrow_local(coin_type, amount):
@@ -722,11 +722,11 @@ def core_borrow(vaa, relay_fee=0):
             init.clock(),
         )
 
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, ""
     else:
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, ""
 
 
 def portal_repay(coin_type, repay_amount):
@@ -831,11 +831,11 @@ def core_repay(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock,
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id):
@@ -985,11 +985,11 @@ def core_liquidate(vaa, relay_fee=0):
             transactions=feed_transaction_blocks + liquidate_transaction_block,
         )
 
-        return gas, executed, status, feed_nums, "", ""
+        return gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], feed_nums, "", ""
+        return gas, executed, result['effects']['status']['error'], feed_nums, ""
     else:
-        return gas, executed, status, feed_nums, "", ""
+        return gas, executed, status, feed_nums, ""
 
 
 def portal_binding(bind_address, dola_chain_id=0):
@@ -1066,11 +1066,11 @@ def core_binding(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock()
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def portal_unbinding(unbind_address, dola_chain_id=0):
@@ -1146,11 +1146,11 @@ def core_unbinding(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock()
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def core_as_collateral(vaa, relay_fee=0):
@@ -1210,11 +1210,11 @@ def core_as_collateral(vaa, relay_fee=0):
             list(bytes.fromhex(vaa.replace('0x', ''))),
             clock
         )
-        return gas, executed, status, "", ""
+        return gas, executed, status, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], "", ""
+        return gas, executed, result['effects']['status']['error'], ""
     else:
-        return gas, executed, status, "", ""
+        return gas, executed, status, ""
 
 
 def core_cancel_as_collateral(vaa, relay_fee=0):
@@ -1277,11 +1277,11 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
             init.clock()
         )
 
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
-        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, "", ""
+        return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, ""
     else:
-        return gas + feed_gas, executed, status, feed_nums, "", ""
+        return gas + feed_gas, executed, status, feed_nums, ""
 
 
 def export_objects():
