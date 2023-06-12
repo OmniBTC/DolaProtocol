@@ -34,12 +34,22 @@ networks:
         pool_address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095'
         pool_name: WBTC
         pool_weight: 1
+      OP:
+        dola_chain_id: 24
+        dola_pool_id: 7
+        pool_address: '0x4200000000000000000000000000000000000042'
+        pool_name: OP
+        pool_weight: 1
     scan_rpc_url: https://api-optimistic.etherscan.io/api
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
         decimals: 18
         dola_pool_id: 4
+      OP:
+        address: '0x4200000000000000000000000000000000000042'
+        decimals: 18
+        dola_pool_id: 7
       USDC:
         address: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607'
         decimals: 6
@@ -70,6 +80,12 @@ networks:
         pool_address: '0x0000000000000000000000000000000000000000'
         pool_name: ETH
         pool_weight: 1
+      ARB:
+        dola_chain_id: 23
+        dola_pool_id: 6
+        pool_address: '0x912CE59144191C1204E64559FE8253a0e49E6548'
+        pool_name: ARB
+        pool_weight: 1
       USDC:
         dola_chain_id: 23
         dola_pool_id: 2
@@ -95,6 +111,10 @@ networks:
         address: '0x0000000000000000000000000000000000000000'
         decimals: 18
         dola_pool_id: 4
+      ARB:
+        address: '0x912CE59144191C1204E64559FE8253a0e49E6548'
+        decimals: 18
+        dola_pool_id: 6
       USDC:
         address: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8'
         decimals: 6
