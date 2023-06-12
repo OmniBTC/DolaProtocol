@@ -101,7 +101,7 @@ def build_rpc_params(address, topic, api_key, start_block=0, end_block=99999999,
     }
 
 
-def relay_events(lending_portal, system_portal, start_block=0, end_block=99999999, limit=10, net="polygon-test"):
+def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999999, limit=10, net="polygon-test"):
     topic = brownie.web3.keccak(text="RelayEvent(uint64,uint64,uint256)").hex()
     api_key = get_scan_api_key(net)
 
@@ -191,7 +191,8 @@ def current_block_number():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-main")
-    lending_portal = load.lending_portal_package('polygon-main').address
-    system_portal = load.system_portal_package('polygon-main').address
-    events = relay_events(lending_portal, system_portal, net='polygon-main')
+    set_ethereum_network("arbitrum-main")
+    lending_portal = load.lending_portal_package('arbitrum-main').address
+    system_portal = load.system_portal_package('arbitrum-main').address
+    events = relay_events(lending_portal, system_portal, net='arbitrum-main')
+    print(events)
