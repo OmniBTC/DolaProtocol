@@ -35,6 +35,7 @@ networks:
       USDT: c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
       UserManagerInfo: '0xee633dc3fd1218d3bd9703fb9b98e6c8d7fdd8c8bf1ca2645ee40d65fb533a3e'
       WormholeState: '0xaeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c'
+      TotalAppInfo: "0x75cc9507f3f4e6937741a3d1387cc5e071bd1b75d7f43c2e7d03f99a6402cf6e"
     oracle:
       feed_id:
         BTC/USD: '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'
@@ -44,7 +45,9 @@ networks:
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
         MATIC/USD: '0x5de33a9112c2b700b8d30b8a3402c103578ccfa2765696471cc672bd5cf6ac52'
     packages:
-      dola_protocol: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
+      # origin: "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+      # latest: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
+      dola_protocol: "0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72"
       external_interfaces: '0x93b49ef245f169342cb07e70b6a4835d4071594451a9df738acbb5ecdcac2e88'
       genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
