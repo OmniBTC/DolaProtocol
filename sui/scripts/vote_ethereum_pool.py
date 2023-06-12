@@ -107,7 +107,7 @@ if __name__ == "__main__":
 
     # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
-    dola_ethereum_sdk.set_ethereum_network("polygon-main")
-    # main()
+    dola_ethereum_sdk.set_ethereum_network("optimism-main")
+    main()
     # print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))
-    register_new_pool()
+    # register_new_pool()
