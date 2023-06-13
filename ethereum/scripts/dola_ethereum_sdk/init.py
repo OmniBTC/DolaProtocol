@@ -156,8 +156,7 @@ def get_gas_price(net):
 
     base_url = scan_rpc_url()
 
-    request_url = f"{base_url}?module=gastracker&action=gasoracle&apikey={api_key}"
-
+    request_url = f'{base_url}?module=proxy&action=eth_gasPrice&apikey={api_key}'
     response = requests.get(request_url)
 
     return response.json()['result']

@@ -752,8 +752,7 @@ def eth_pool_executor():
                     time.sleep(5)
                     continue
 
-                gas_price = float(dola_ethereum_init.get_gas_price(
-                    network)['SafeGasPrice']) * G_wei
+                gas_price = int(dola_ethereum_init.get_gas_price(network), 16)
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
