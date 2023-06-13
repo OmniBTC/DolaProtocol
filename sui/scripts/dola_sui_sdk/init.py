@@ -4,9 +4,8 @@ from typing import List
 import requests
 # 1e27
 import sui_brownie
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 RAY = 1000000000000000000000000000
 
@@ -1096,6 +1095,12 @@ def batch_init_oracle():
     matic_token_param = construct_register_token_price_param(
         "MATIC/USD", 'MATIC'
     )
+    op_token_param = construct_register_token_price_param(
+        "OP/USD", 'OP'
+    )
+    arb_token_param = construct_register_token_price_param(
+        "ARB/USD", 'ARB'
+    )
 
     basic_params = [
         dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
@@ -1104,7 +1109,7 @@ def batch_init_oracle():
         clock(),  # 3
     ]
 
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param + arb_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
@@ -1442,5 +1447,8 @@ if __name__ == '__main__':
     # set_reserve_coefficient("SUI")
     # set_is_isolated_asset("SUI")
     # register_new_reserve(reserve="MATIC")
+
+    # register_new_reserve(reserve="OP")
+    # register_new_reserve(reserve="ARB")
 
     # register_new_group_chain([24])

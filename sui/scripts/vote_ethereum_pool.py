@@ -1,15 +1,14 @@
 from pathlib import Path
 
-from brownie import network
-from sui_brownie import SuiObject
-
 import dola_ethereum_sdk
 import dola_sui_sdk
+from brownie import network
 from dola_ethereum_sdk import init as dola_ethereum_init
 from dola_ethereum_sdk import load as dola_ethereum_load
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
+from sui_brownie import SuiObject
 
 
 def get_dola_contract(new_dola_contract, old_dola_contract):
@@ -110,4 +109,7 @@ if __name__ == "__main__":
     dola_ethereum_sdk.set_ethereum_network("optimism-main")
     main()
     # print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))
-    # register_new_pool()
+    # dola_ethereum_sdk.set_ethereum_network("optimism-main")
+    # register_new_pool("OP")
+    # dola_ethereum_sdk.set_ethereum_network("arbitrum-main")
+    # register_new_pool("ARB")
