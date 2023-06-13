@@ -1,16 +1,15 @@
 from pathlib import Path
 from pprint import pprint
 
+import dola_sui_sdk.oracle
 import requests
 import yaml
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
-import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -33,6 +32,10 @@ def dola_pool_id_to_symbol(dola_pool_id):
         return 'ETH/USD'
     elif dola_pool_id == 5:
         return 'MATIC/USD'
+    elif dola_pool_id == 6:
+        return 'ARB/USD'
+    elif dola_pool_id == 7:
+        return 'OP/USD'
     else:
         raise ValueError('dola_pool_id must be 0, 1, 2, 3, 4 or 5')
 
