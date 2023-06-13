@@ -560,7 +560,7 @@ def sui_core_executor():
 
                 rotate_accounts()
                 # check relayer balance
-                if sui_total_balance() < relay_fee:
+                if sui_total_balance() < int(1e9):
                     local_logger.warning(
                         f"Relayer balance is not enough, need {relay_fee_value} sui")
                     time.sleep(5)
@@ -662,7 +662,7 @@ def sui_pool_executor():
 
                 rotate_accounts()
                 # check relayer balance
-                if sui_total_balance() < available_gas_amount:
+                if sui_total_balance() < int(1e9):
                     local_logger.warning(
                         f"Relayer balance is not enough, need {relay_fee_value} sui")
                     time.sleep(5)
@@ -746,7 +746,7 @@ def eth_pool_executor():
                 relay_fee_value = withdraw_tx['relay_fee'] - core_costed_fee
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
                 # check relayer balance
-                if int(ethereum_account.balance()) < available_gas_amount:
+                if int(ethereum_account.balance()) < int(0.5 * 1e18):
                     local_logger.warning(
                         f"Relayer balance is not enough, need {available_gas_amount} {get_gas_token(network)}")
                     time.sleep(5)
