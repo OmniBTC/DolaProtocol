@@ -746,9 +746,9 @@ def eth_pool_executor():
                 relay_fee_value = withdraw_tx['relay_fee'] - core_costed_fee
                 available_gas_amount = get_fee_amount(relay_fee_value, get_gas_token(network))
                 # check relayer balance
-                if int(ethereum_account.balance()) < int(0.5 * 1e18):
+                if network in ['arbitrum-main', 'optimism-main'] and int(ethereum_account.balance()) < int(0.01 * 1e18):
                     local_logger.warning(
-                        f"Relayer balance is not enough, need {available_gas_amount} {get_gas_token(network)}")
+                        f"Relayer balance is not enough, need 0.01 {get_gas_token(network)}, but available {ethereum_account.balance()}")
                     time.sleep(5)
                     continue
 
