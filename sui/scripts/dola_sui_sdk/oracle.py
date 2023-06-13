@@ -3,9 +3,8 @@ import time
 
 import ccxt
 import requests
-from sui_brownie import Argument, U16
-
 from dola_sui_sdk import load, sui_project, init
+from sui_brownie import Argument, U16
 
 
 def parse_u64(data: list):
@@ -144,7 +143,7 @@ def get_token_price(symbol):
     dola_protocol = load.dola_protocol_package()
 
     result = dola_protocol.oracle.get_token_price.inspect(
-        dola_protocol.oracle.PriceOracle[-1],
+        sui_project.network_config['objects']['PriceOracle'],
         get_pool_id(symbol)
     )
     decimal = int(result['results'][0]['returnValues'][1][0][0])
@@ -211,4 +210,4 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 if __name__ == '__main__':
     # deploy_oracle()
     # feed_token_price_by_pyth('SUI/USD')
-    batch_feed_token_price_by_pyth(['USDT/USD', 'SUI/USD'])
+    print(get_token_price('ETH/USD'))

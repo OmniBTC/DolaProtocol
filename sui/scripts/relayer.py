@@ -9,6 +9,7 @@ import traceback
 from pathlib import Path
 from pprint import pprint
 
+import brownie
 import ccxt
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
@@ -752,7 +753,7 @@ def eth_pool_executor():
                     time.sleep(5)
                     continue
 
-                gas_price = int(dola_ethereum_init.get_gas_price(network), 16)
+                gas_price = int(brownie.web3.eth.gas_price)
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
@@ -878,7 +879,7 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id):
         gas_price = sui_gas_price
     else:
         dola_ethereum_sdk.set_ethereum_network(dst_net)
-        gas_price = eval(dola_ethereum_init.get_gas_price(dst_net)['SafeGasPrice']) * G_wei
+        gas_price = int(brownie.web3.eth.gas_price)
     withdraw_fee_amount = average_withdraw_gas * gas_price
     withdraw_fee = get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
 
