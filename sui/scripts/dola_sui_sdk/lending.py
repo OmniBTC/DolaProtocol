@@ -51,8 +51,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
 
     feed_gas = 0
     for pool_id in asset_ids:
-        result = sui_project.pay_sui([pyth_fee_amount])
-        fee_coin = result['objectChanges'][-1]['objectId']
+        fee_coin = get_amount_coins_if_exist([pyth_fee_amount])[0]
         symbol = dola_pool_id_to_symbol(pool_id)
 
         result = dola_protocol.oracle.feed_token_price_by_pyth.simulate(
@@ -103,7 +102,8 @@ def get_amount_coins_if_exist(amounts: [int]):
     coins = [coin_object for coin_object, coin in sui_coins.items() if int(coin['balance']) in amounts]
     for amount in amounts:
         if amount not in balances:
-            sui_project.pay_all_sui()
+            if sui_coins.__len__() > 1:
+                sui_project.pay_all_sui()
             result = sui_project.pay_sui(amounts)
             return [coin['reference']['objectId'] for coin in result['effects']['created']]
 
