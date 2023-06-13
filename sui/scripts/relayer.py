@@ -398,44 +398,10 @@ def eth_portal_watcher(network="polygon-test"):
                                                            start_block=latest_relay_block_number + 1, net=network)
 
             for event in relay_events:
-                block_number = event['block_number']
                 nonce = event['nonce']
                 sequence = event['sequence']
-                src_tx_hash = event['tx_hash']
-                timestamp = event['timestamp']
-                relay_fee = event['relay_fee']
-                date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
-
-                # get vaa
-                try:
-                    vaa = get_signed_vaa_by_wormhole(
-                        emitter_address, sequence, network)
-                except Exception as e:
-                    gas_token = get_gas_token(network)
-                    relay_fee_value = get_fee_value(relay_fee, gas_token)
-                    relay_record.insert_one({
-                        'src_chain_id': src_chain_id,
-                        'src_tx_id': src_tx_hash,
-                        'nonce': nonce,
-                        'sequence': sequence,
-                        'block_number': block_number,
-                        'relay_fee': relay_fee_value,
-                        'status': 'waitForVaa',
-                        'start_time': date,
-                        'end_time': "",
-                    })
-                    local_logger.warning(f"Warning: {e}")
-                    continue
-                # parse vaa
-
-                vm = wormhole.parseVM(vaa)
-                # parse payload
-                payload = list(vm)[7]
-
-                app_id = payload[1]
-                call_type = payload[-1]
-                call_name = get_call_name(app_id, call_type)
-
+                
+                # check if the event has been recorded
                 if not list(relay_record.find(
                         {
                             'src_chain_id': src_chain_id,
@@ -443,6 +409,42 @@ def eth_portal_watcher(network="polygon-test"):
                             "sequence": sequence,
                         }
                 )):
+                    block_number = event['block_number']
+                    src_tx_hash = event['tx_hash']
+                    timestamp = event['timestamp']
+                    relay_fee = event['relay_fee']
+                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+
+                    # get vaa
+                    try:
+                        vaa = get_signed_vaa_by_wormhole(
+                            emitter_address, sequence, network)
+                    except Exception as e:
+                        gas_token = get_gas_token(network)
+                        relay_fee_value = get_fee_value(relay_fee, gas_token)
+                        relay_record.insert_one({
+                            'src_chain_id': src_chain_id,
+                            'src_tx_id': src_tx_hash,
+                            'nonce': nonce,
+                            'sequence': sequence,
+                            'block_number': block_number,
+                            'relay_fee': relay_fee_value,
+                            'status': 'waitForVaa',
+                            'start_time': date,
+                            'end_time': "",
+                        })
+                        local_logger.warning(f"Warning: {e}")
+                        continue
+                    # parse vaa
+
+                    vm = wormhole.parseVM(vaa)
+                    # parse payload
+                    payload = list(vm)[7]
+
+                    app_id = payload[1]
+                    call_type = payload[-1]
+                    call_name = get_call_name(app_id, call_type)
+
                     gas_token = get_gas_token(network)
                     relay_fee_value = get_fee_value(
                         relay_fee, gas_token)
@@ -672,7 +674,6 @@ def sui_pool_executor():
                 gas_used, executed, digest, timestamp = dola_sui_lending.pool_withdraw(
                     vaa, token_name, available_gas_amount)
 
-                # timestamp = int(timestamp) // 1000
                 timestamp = int(time.time())
                 tx_gas_amount = gas_used
 
@@ -779,8 +780,8 @@ def eth_pool_executor():
                     f"source: {source_chain} nonce: {source_nonce}")
                 local_logger.info(
                     f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
-                
-                if available_gas_amount > tx_gas_amount:
+
+                if available_gas_amount < tx_gas_amount:
                     local_logger.warning(
                         f"Execute withdraw success on {get_dola_network(dola_chain_id)}, but not enough relay fee! ")
                     local_logger.warning(
