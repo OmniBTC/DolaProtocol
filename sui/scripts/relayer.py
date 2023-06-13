@@ -390,7 +390,7 @@ def eth_portal_watcher(network="polygon-test"):
     while True:
         try:
             # query latest block number
-            result = list(relay_record.find({'src_chain_id': 5}).sort("block_number", -1).limit(1))
+            result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
             latest_relay_block_number = result[0]['block_number'] if result else 0
 
             # query relay events from latest relay block number + 1 to actual latest block number
@@ -761,29 +761,28 @@ def eth_pool_executor():
                                       {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
 
                 tx_gas_amount = int(gas_used) * int(gas_price)
+
+                result = ethereum_wormhole_bridge.receiveWithdraw(
+                    vaa, {"from": ethereum_account})
+
+                tx_id = result.txid
+                timestamp = time.time()
+                date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+
+                withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
+                relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
+                                        {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
+                                                  'end_time': date, 'withdraw_tx_id': tx_id}})
+
+                local_logger.info(f"Execute {network} withdraw success! ")
+                local_logger.info(
+                    f"source: {source_chain} nonce: {source_nonce}")
+                local_logger.info(
+                    f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
+                
                 if available_gas_amount > tx_gas_amount:
-                    result = ethereum_wormhole_bridge.receiveWithdraw(
-                        vaa, {"from": ethereum_account})
-
-                    tx_id = result.txid
-                    timestamp = time.time()
-                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
-
-                    withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
-                    relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
-                                                      'end_time': date, 'withdraw_tx_id': tx_id}})
-
-                    local_logger.info(f"Execute {network} withdraw success! ")
-                    local_logger.info(
-                        f"source: {source_chain} nonce: {source_nonce}")
-                    local_logger.info(
-                        f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
-                else:
-                    relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                            {"$set": {'status': 'fail', 'reason': 'not enough relay fee'}})
                     local_logger.warning(
-                        f"Execute withdraw fail on {get_dola_network(dola_chain_id)}, not enough relay fee! ")
+                        f"Execute withdraw success on {get_dola_network(dola_chain_id)}, but not enough relay fee! ")
                     local_logger.warning(
                         f"Need gas fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}, but available gas fee: {relay_fee_value}")
                     call_name = withdraw_tx['call_name']
