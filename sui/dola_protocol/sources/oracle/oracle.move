@@ -60,6 +60,13 @@ module dola_protocol::oracle {
         last_update_timestamp: u64
     }
 
+    /// Set detailed expiration times for the prices of some tokens
+    struct PriceGuard has key {
+        id: UID,
+        // dola_pool_id => expiration timestamp
+        price_fresh_times: Table<u16, u64>
+    }
+
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PriceOracle {
             id: object::new(ctx),
@@ -67,6 +74,16 @@ module dola_protocol::oracle {
             price_fresh_time: MINUATE,
             price_identifiers: table::new(ctx),
             price_oracles: table::new(ctx)
+        });
+    }
+
+    /// Remove after initialization
+    entry fun init_price_guard(
+        ctx: &mut TxContext
+    ) {
+        transfer::share_object(PriceGuard {
+            id: object::new(ctx),
+            price_fresh_times: table::new(ctx)
         });
     }
 
@@ -82,6 +99,19 @@ module dola_protocol::oracle {
     }
 
     /// === Governance Functions ===
+
+    public fun set_price_guard(
+        _: &GovernanceCap,
+        price_guard: &mut PriceGuard,
+        dola_pool_id: u16,
+        price_fresh_time: u64
+    ) {
+        let price_fresh_times = &mut price_guard.price_fresh_times;
+        if (table::contains(price_fresh_times, dola_pool_id)) {
+            table::remove(price_fresh_times, dola_pool_id);
+        };
+        table::add(price_fresh_times, dola_pool_id, price_fresh_time);
+    }
 
     public fun set_price_guard_time(
         _: &GovernanceCap,
@@ -137,6 +167,30 @@ module dola_protocol::oracle {
             let price = table::borrow(price_oracles, *dola_pool_id);
             // check fresh price
             assert!(current_timestamp - price.last_update_timestamp < price_oracle.price_fresh_time, ENOT_FRESH_PRICE);
+            index = index + 1;
+        }
+    }
+
+    public fun check_fresh_price_with_guard(
+        price_oracle: &mut PriceOracle,
+        price_guard: &mut PriceGuard,
+        dola_pool_ids: vector<u16>,
+        clock: &Clock
+    ) {
+        let price_oracles = &mut price_oracle.price_oracles;
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+
+        let index = 0;
+        while (index < vector::length(&dola_pool_ids)) {
+            let dola_pool_id = vector::borrow(&dola_pool_ids, index);
+            let price = table::borrow(price_oracles, *dola_pool_id);
+            // check fresh price
+            let price_fresh_time = if (table::contains(&price_guard.price_fresh_times, *dola_pool_id)) {
+                table::borrow(&price_guard.price_fresh_times, *dola_pool_id)
+            } else {
+                &price_oracle.price_fresh_time
+            };
+            assert!(current_timestamp - price.last_update_timestamp < *price_fresh_time, ENOT_FRESH_PRICE);
             index = index + 1;
         }
     }
