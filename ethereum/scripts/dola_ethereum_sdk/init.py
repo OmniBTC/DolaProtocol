@@ -146,8 +146,12 @@ def relay_events(lending_portal, system_portal, start_block=0, end_block=9999999
         headers=headers
     )
 
-    system_relay_events = decode_relay_events(system_relay_result.json())
-    lending_relay_events = decode_relay_events(lending_relay_result.json())
+    if system_relay_result.status_code == 200 and lending_relay_result.status_code == 200:
+        system_relay_events = decode_relay_events(system_relay_result.json())
+        lending_relay_events = decode_relay_events(lending_relay_result.json())
+    else:
+        system_relay_events = []
+        lending_relay_events = []
 
     return sorted(system_relay_events + lending_relay_events, key=lambda x: x['block_number'])
 
@@ -166,22 +170,23 @@ def get_gas_price(net):
 def decode_relay_events(response):
     events = []
 
-    for event in response['result']:
-        block_number = int(event['blockNumber'], 16)
-        tx_hash = event['transactionHash']
-        timestamp = int(event['timeStamp'], 16)
-        data = event['data']
-        nonce = int(data[2:66], 16)
-        sequence = int(data[66:130], 16)
-        relay_fee = int(data[130:], 16)
-        events.append({
-            'block_number': block_number,
-            'tx_hash': tx_hash,
-            'nonce': nonce,
-            'sequence': sequence,
-            'relay_fee': relay_fee,
-            'timestamp': timestamp,
-        })
+    if response:
+        for event in response['result']:
+            block_number = int(event['blockNumber'], 16)
+            tx_hash = event['transactionHash']
+            timestamp = int(event['timeStamp'], 16)
+            data = event['data']
+            nonce = int(data[2:66], 16)
+            sequence = int(data[66:130], 16)
+            relay_fee = int(data[130:], 16)
+            events.append({
+                'block_number': block_number,
+                'tx_hash': tx_hash,
+                'nonce': nonce,
+                'sequence': sequence,
+                'relay_fee': relay_fee,
+                'timestamp': timestamp,
+            })
 
     return events
 
