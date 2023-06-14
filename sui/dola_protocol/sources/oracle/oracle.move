@@ -136,7 +136,18 @@ module dola_protocol::oracle {
             let dola_pool_id = vector::borrow(&dola_pool_ids, index);
             let price = table::borrow(price_oracles, *dola_pool_id);
             // check fresh price
-            assert!(current_timestamp - price.last_update_timestamp < price_oracle.price_fresh_time, ENOT_FRESH_PRICE);
+            // if dola_pool_id is 1 or 2, check guard price, 1 is usdt, 2 is usdc
+            if (dola_pool_id == &1 || dola_pool_id == &2) {
+                assert!(
+                    current_timestamp - price.last_update_timestamp < price_oracle.price_guard_time,
+                    ENOT_RECENT_PRICE
+                );
+            } else {
+                assert!(
+                    current_timestamp - price.last_update_timestamp < price_oracle.price_fresh_time,
+                    ENOT_FRESH_PRICE
+                );
+            };
             index = index + 1;
         }
     }
