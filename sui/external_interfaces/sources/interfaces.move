@@ -13,15 +13,21 @@ module external_interfaces::interfaces {
 
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::equilibrium_fee;
+    use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
     use dola_protocol::lending_logic as logic;
     use dola_protocol::oracle::{Self, PriceOracle};
+    use dola_protocol::pool_codec;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
+    use wormhole::state::State;
+    use wormhole::vaa;
 
     const HOUR: u64 = 60 * 60;
+
+    const MINUATE: u64 = 60;
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -655,6 +661,86 @@ module external_interfaces::interfaces {
         })
     }
 
+    public fun get_feed_tokens_for_relayer(
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        wormhole_state: &mut State,
+        storage: &mut Storage,
+        price_oracle: &mut PriceOracle,
+        vaa: vector<u8>,
+        is_withdraw: bool,
+        is_liquidate: bool,
+        is_cancel_collateral: bool,
+        clock: &Clock
+    ): vector<u16> {
+        let vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
+        let payload = vaa::take_payload(vaa);
+        let dola_pool_ids = vector[];
+
+        if (is_withdraw) {
+            let (user_address, _, _, app_payload) =
+                pool_codec::decode_send_message_payload(payload);
+            let (_, _, _, pool, _, _) = lending_codec::decode_withdraw_payload(
+                app_payload
+            );
+            let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+            let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+            let loans = storage::get_user_loans(storage, dola_user_id);
+            if (!vector::contains(&loans, &dola_pool_id)) {
+                vector::push_back(&mut dola_pool_ids, dola_pool_id);
+            };
+
+            if (vector::length(&loans) > 0) {
+                vector::append(&mut dola_pool_ids, collaterals);
+                vector::append(&mut dola_pool_ids, loans);
+            };
+        };
+
+        if (is_liquidate) {
+            let (_, _, _, _, _, app_payload) =
+                pool_codec::decode_deposit_payload(payload);
+            let (_, _, _, liquidate_user_id, _) = lending_codec::decode_liquidate_payload(
+                app_payload
+            );
+            let collaterals = storage::get_user_collaterals(storage, liquidate_user_id);
+            let loans = storage::get_user_loans(storage, liquidate_user_id);
+
+            vector::append(&mut dola_pool_ids, collaterals);
+            vector::append(&mut dola_pool_ids, loans);
+        };
+
+        if (is_cancel_collateral) {
+            let (user_address, _, _, _) =
+                pool_codec::decode_send_message_payload(payload);
+            let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+            let loans = storage::get_user_loans(storage, dola_user_id);
+
+            if (vector::length(&loans) > 0) {
+                vector::append(&mut dola_pool_ids, collaterals);
+                vector::append(&mut dola_pool_ids, loans);
+            };
+        };
+
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        let (ok, index) = vector::index_of(&dola_pool_ids, &1);
+        if (ok) {
+            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
+            if (current_timestamp - timestamp < HOUR - MINUATE) {
+                vector::remove(&mut dola_pool_ids, index);
+            }
+        };
+        let (ok, index) = vector::index_of(&dola_pool_ids, &2);
+        if (ok) {
+            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
+            if (current_timestamp - timestamp < HOUR - MINUATE) {
+                vector::remove(&mut dola_pool_ids, index);
+            }
+        };
+        dola_pool_ids
+    }
+
     public entry fun get_feed_tokens(
         storage: &mut Storage,
         price_oracle: &mut PriceOracle,
@@ -683,14 +769,14 @@ module external_interfaces::interfaces {
         let (ok, index) = vector::index_of(&dola_pool_ids, &1);
         if (ok) {
             let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
-            if (current_timestamp - timestamp < HOUR) {
+            if (current_timestamp - timestamp < HOUR - MINUATE) {
                 vector::remove(&mut dola_pool_ids, index);
             }
         };
         let (ok, index) = vector::index_of(&dola_pool_ids, &2);
         if (ok) {
             let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
-            if (current_timestamp - timestamp < HOUR) {
+            if (current_timestamp - timestamp < HOUR - MINUATE) {
                 vector::remove(&mut dola_pool_ids, index);
             }
         };

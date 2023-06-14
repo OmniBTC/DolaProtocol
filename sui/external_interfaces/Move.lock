@@ -6,6 +6,7 @@ version = 0
 dependencies = [
   { name = "DolaProtocol" },
   { name = "Sui" },
+  { name = "Wormhole" },
 ]
 
 [[move.package]]
