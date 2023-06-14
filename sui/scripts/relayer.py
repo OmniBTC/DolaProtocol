@@ -11,6 +11,13 @@ from pprint import pprint
 
 import brownie
 import ccxt
+import requests
+from dotenv import dotenv_values
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
+
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -18,13 +25,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import requests
 from dola_sui_sdk.load import sui_project
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -67,6 +68,8 @@ logger.addHandler(ch)
 
 kucoin = ccxt.kucoin()
 kucoin.load_markets()
+
+requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
 
 
 @retry
@@ -400,7 +403,7 @@ def eth_portal_watcher(network="polygon-test"):
             for event in relay_events:
                 nonce = event['nonce']
                 sequence = event['sequence']
-                
+
                 # check if the event has been recorded
                 if not list(relay_record.find(
                         {
@@ -761,7 +764,7 @@ def eth_pool_executor():
                 gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
                                       {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
 
-                tx_gas_amount = int(gas_used) * int(gas_price)
+                tx_gas_amount = int(gas_used) * gas_price
 
                 result = ethereum_wormhole_bridge.receiveWithdraw(
                     vaa, {"from": ethereum_account})
