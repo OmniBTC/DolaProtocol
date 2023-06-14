@@ -512,8 +512,10 @@ module dola_protocol::lending_logic {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let loans = storage::get_user_loans(storage, dola_user_id);
 
-        check_fresh_price(price_oracle, collaterals, clock);
-        check_fresh_price(price_oracle, loans, clock);
+        if (vector::length(&loans) > 0) {
+            check_fresh_price(price_oracle, collaterals, clock);
+            check_fresh_price(price_oracle, loans, clock);
+        }
     }
 
     public fun has_collateral(storage: &mut Storage, dola_user_id: u64): bool {
