@@ -301,12 +301,51 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
     return result['events'][-1]['parsedJson']
 
 
+def get_eq_fee(dola_chain_id, pool_address, withdraw_amount):
+    external_interface = load.external_interfaces_package()
+
+    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+
+    result = external_interface.interfaces.get_equilibrium_fee.inspect(
+        pool_manager_info,
+        dola_chain_id,
+        list(bytes.fromhex(pool_address.replace('0x', ''))),
+        withdraw_amount
+    )
+
+    return result['events'][-1]['parsedJson']
+
+
+def calculate_changed_health_factor(dola_user_id, dola_pool_id, amount):
+    external_interface = load.external_interfaces_package()
+
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    result = external_interface.interfaces.calculate_changed_health_factor.inspect(
+        lending_storage,
+        price_oracle,
+        dola_user_id,
+        dola_pool_id,
+        amount,
+        False,
+        False,
+        False,
+        True,
+        False,
+        False
+    )
+
+    return result['events'][-1]['parsedJson']
+
+
 if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
     # dola_addresses = get_dola_user_addresses(1)
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
-    pprint(get_reserve_info(5))
+    # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
+    pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
     # pprint.pp(result)
     # pprint.pp(get_user_all_collateral(1))
     # pprint.pp(get_user_health_factor(1))
@@ -318,4 +357,3 @@ if __name__ == "__main__":
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
     # pprint.pp(get_user_allowed_borrow(5, 6, 1))
-

@@ -677,7 +677,7 @@ module external_interfaces::interfaces {
         is_cancel_collateral: bool,
     ) {
         let health_collateral_value = logic::user_health_collateral_value(storage, price_oracle, dola_user_id);
-        let health_loan_value = logic::user_health_collateral_value(storage, price_oracle, dola_user_id);
+        let health_loan_value = logic::user_health_loan_value(storage, price_oracle, dola_user_id);
 
         let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
         let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
@@ -731,7 +731,7 @@ module external_interfaces::interfaces {
         };
 
         let health_factor = if (health_loan_value > 0) {
-            ray_math::ray_div((health_collateral_value), (health_loan_value))
+            ray_math::ray_div(health_collateral_value, health_loan_value)
         } else {
             U256_MAX
         };
