@@ -69,8 +69,8 @@ ch.setFormatter(ColorFormatter(FORMAT))
 
 logger.addHandler(ch)
 
-gql_client_logs.setLevel(logging.DEBUG)
-gql_logs.setLevel(logging.DEBUG)
+gql_client_logs.setLevel(logging.WARNING)
+gql_logs.setLevel(logging.WARNING)
 
 kucoin = ccxt.kucoin()
 kucoin.load_markets()
