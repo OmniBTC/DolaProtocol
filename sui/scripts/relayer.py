@@ -15,6 +15,7 @@ import requests
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import log as gql_logs
 from pymongo import MongoClient
 from retrying import retry
 from sui_brownie import Argument, U16
@@ -65,6 +66,8 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 
 ch.setFormatter(ColorFormatter(FORMAT))
+
+gql_logs.setLevel(logging.DEBUG)
 
 logger.addHandler(ch)
 
