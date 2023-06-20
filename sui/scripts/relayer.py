@@ -14,6 +14,7 @@ import ccxt
 import requests
 from dotenv import dotenv_values
 from gql import gql, Client
+from gql.client import log as gql_client_logs
 from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
 from pymongo import MongoClient
 from retrying import retry
@@ -66,9 +67,10 @@ ch.setLevel(logging.INFO)
 
 ch.setFormatter(ColorFormatter(FORMAT))
 
-gql_logs.setLevel(logging.DEBUG)
-
 logger.addHandler(ch)
+
+gql_client_logs.setLevel(logging.DEBUG)
+gql_logs.setLevel(logging.DEBUG)
 
 kucoin = ccxt.kucoin()
 kucoin.load_markets()
