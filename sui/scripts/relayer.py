@@ -1,3 +1,4 @@
+import asyncio.exceptions
 import base64
 import datetime
 import functools
@@ -509,6 +510,8 @@ def eth_portal_watcher(network="polygon-test"):
 
                     local_logger.info(
                         f"Have a {call_name} transaction from {network}, sequence: {sequence}")
+        except asyncio.exceptions.TimeoutError:
+            local_logger.warning("GraphQL request timeout")
         except Exception as e:
             local_logger.error(f"Error: {e}")
             traceback.print_exc()
