@@ -416,8 +416,8 @@ def eth_portal_watcher(network="polygon-test"):
                 latest_relay_block_number = result[0]['block_number'] if result else 0
 
             for event in relay_events:
-                nonce = event['nonce']
-                sequence = event['sequence']
+                nonce = int(event['nonce'])
+                sequence = int(event['sequence'])
 
                 # check if the event has been recorded
                 if not list(relay_record.find(
@@ -427,11 +427,11 @@ def eth_portal_watcher(network="polygon-test"):
                             "sequence": sequence,
                         }
                 )):
-                    block_number = event['blockNumber']
+                    block_number = int(event['blockNumber'])
                     src_tx_hash = event['transactionHash']
-                    timestamp = event['blockTimestamp']
-                    relay_fee = event['amount']
-                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+                    timestamp = int(event['blockTimestamp'])
+                    relay_fee = int(event['amount'])
+                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
 
                     # get vaa
                     try:
