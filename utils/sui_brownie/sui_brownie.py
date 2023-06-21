@@ -858,7 +858,6 @@ class TransactionBuild:
             # format param
             abi = cls.format_abi_param(abi, type_args)
 
-            commands = []
             for i in range(len(call_args)):
                 call_arg = call_args[i]
                 assert isinstance(call_arg, Argument), f"Not support:{call_arg}"
@@ -879,6 +878,7 @@ class TransactionBuild:
                         ))
                     )
                     call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
+                    batch_parameters[-1] = "U64"
             # generate commands
             type_arguments = [
                 cls.generate_type_arg(v) for v in type_args
