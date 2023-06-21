@@ -12,7 +12,15 @@ from pprint import pprint
 
 import brownie
 import ccxt
+import dola_ethereum_sdk
+import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_sui_sdk
+import dola_sui_sdk.init as dola_sui_init
+import dola_sui_sdk.lending as dola_sui_lending
+import dola_sui_sdk.load as dola_sui_load
 import requests
+from dola_sui_sdk.load import sui_project
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.client import log as gql_client_logs
@@ -21,15 +29,6 @@ from pymongo import MongoClient
 from retrying import retry
 from sui_brownie import Argument, U16
 from sui_brownie.parallelism import ProcessExecutor
-
-import dola_ethereum_sdk
-import dola_ethereum_sdk.init as dola_ethereum_init
-import dola_ethereum_sdk.load as dola_ethereum_load
-import dola_sui_sdk
-import dola_sui_sdk.init as dola_sui_init
-import dola_sui_sdk.lending as dola_sui_lending
-import dola_sui_sdk.load as dola_sui_load
-from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
@@ -1052,7 +1051,7 @@ def sui_total_balance():
 def graph_query(block_number, limit=5):
     return gql(
         f"{{ \
-              relayEvents(where: {{blockNumber_gt: {block_number}}},orderDirection: desc, orderBy: nonce, first: {limit}) {{ \
+              relayEvents(where: {{blockNumber_gt: {block_number}}}, orderDirection: asc, orderBy: nonce, first: {limit}) {{ \
                 transactionHash \
                 blockNumber \
                 blockTimestamp \
