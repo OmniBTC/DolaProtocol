@@ -559,7 +559,6 @@ def core_withdraw(vaa, relay_fee=0):
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
-    zero_coin = get_zero_coin()
 
     result = sui_project.batch_transaction_simulate(
         actual_params=[
