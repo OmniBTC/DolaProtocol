@@ -858,6 +858,7 @@ class TransactionBuild:
             # format param
             abi = cls.format_abi_param(abi, type_args)
 
+            commands = []
             for i in range(len(call_args)):
                 call_arg = call_args[i]
                 assert isinstance(call_arg, Argument), f"Not support:{call_arg}"
@@ -867,6 +868,17 @@ class TransactionBuild:
                     batch_call_args.append(actual_params[actual_params_index])
                     batch_parameters.append(abi["parameters"][i])
                     has_actual_params[actual_params_index] = True
+                if "Struct" in abi["parameters"][i] and abi["parameters"][i]["Struct"]["address"] == "0x2" and \
+                        abi["parameters"][i]["Struct"]["module"] == "coin" \
+                        and abi["parameters"][i]["Struct"]["name"] == "Coin" and \
+                        abi["parameters"][i]["Struct"]["typeArguments"][0]["Struct"]['module'] == "sui":
+                    batch_commands.append(
+                        Command("SplitCoins", SplitCoins(
+                            Argument("GasCoin", NONE()),
+                            [call_arg]
+                        ))
+                    )
+                    call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
             # generate commands
             type_arguments = [
                 cls.generate_type_arg(v) for v in type_args
