@@ -600,14 +600,15 @@ class TransactionBuild:
         if payment is None:
             gases = cls.prepare_gas()
             gas_amount = 0
+            payment = []
             for gas in gases:
                 if gas_amount >= gas_budget:
                     break
-                payment = [ObjectRef(
+                payment.append(ObjectRef(
                     ObjectID(gas["coinObjectId"]),
                     SequenceNumber(int(gas["version"])),
                     ObjectDigest(gas["digest"])
-                )]
+                ))
                 gas_amount += int(gas["balance"])
 
         owner = SuiAddress(sender)
