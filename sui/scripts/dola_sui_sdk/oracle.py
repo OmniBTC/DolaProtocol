@@ -5,8 +5,9 @@ from pprint import pprint
 import ccxt
 import requests
 import sui_brownie
-from dola_sui_sdk import load, sui_project, init
 from sui_brownie import Argument, U16
+
+from dola_sui_sdk import load, sui_project, init
 
 
 def parse_u64(data: list):
@@ -125,10 +126,6 @@ def batch_feed_token_price_by_pyth(symbols):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts)
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
-
     basic_params = [
         governance_genesis,
         wormhole_state,
@@ -139,17 +136,17 @@ def batch_feed_token_price_by_pyth(symbols):
 
     feed_params = []
     transaction_blocks = []
-    for i, symbol in enumerate(symbols):
+    for symbol in symbols:
         feed_params += [
             get_price_info_object(symbol),
             get_pool_id(symbol),
             list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            fee_coins[i]
+            pyth_fee_amount
         ]
         transaction_blocks.append(
             build_feed_transaction_block(dola_protocol, len(basic_params), len(transaction_blocks)))
 
-    result = sui_project.batch_transaction_simulate(
+    result = sui_project.batch_transaction(
         actual_params=basic_params + feed_params,
         transactions=transaction_blocks,
         gas_budget=2000000000
@@ -241,4 +238,5 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 
 if __name__ == '__main__':
     # deploy_oracle()
-    print(get_price_info_object('ETH/USD'))
+    # print(get_price_info_object('ETH/USD'))
+    batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
