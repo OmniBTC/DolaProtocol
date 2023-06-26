@@ -1689,6 +1689,10 @@ class SuiProject:
         assert "node_url" in self.network_config, "Endpoint not config"
         self.client = SuiClient(base_url=self.network_config["node_url"], timeout=30)
 
+    def generate_account(self, account_name):
+        assert account_name not in self.accounts
+        self.accounts[account_name] = Account.generate()
+
     def reload_cache(self):
         data = self.read_cache()
         for k1 in data:
