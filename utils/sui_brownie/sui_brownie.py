@@ -417,6 +417,9 @@ class TransactionBuild:
         for i in range(len(call_arg)):
             param_type = parameters[i]
             if isinstance(param_type, dict):
+                if "Struct" in param_type and param_type["Struct"]["address"] == "0x1" and param_type["Struct"][
+                    "module"] == "string" and param_type["Struct"]["name"] == "String":
+                    continue
                 if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
                         and isinstance(call_arg[i], str):
                     object_ids.append(call_arg[i])
@@ -431,7 +434,7 @@ class TransactionBuild:
 
     @classmethod
     def generate_pure_value(cls, param_type, data):
-        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256", "String"]:
             return getattr(bcs, param_type)(data)
         elif isinstance(param_type, dict) and "Vector" in param_type:
             output = []
@@ -469,6 +472,10 @@ class TransactionBuild:
 
     @classmethod
     def generate_call_arg(cls, param_type, data, object_infos):
+        if isinstance(param_type, dict) and "Struct" in param_type and param_type["Struct"]["address"] == "0x1" \
+                and param_type["Struct"]["module"] == "string" and param_type["Struct"]["name"] == "String":
+            param_type = "String"
+
         if isinstance(param_type, dict) and \
                 ("MutableReference" in param_type or
                  "Reference" in param_type or
