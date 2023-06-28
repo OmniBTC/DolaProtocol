@@ -103,6 +103,16 @@ class U64:
         return stream.getvalue()
 
 
+class String:
+    def __init__(self, v0: str):
+        assert isinstance(v0, str)
+        self.v0 = v0
+
+    @property
+    def encode(self) -> bytes:
+        return uleb128(len(self.v0)) + self.v0.encode()
+
+
 class U128:
     def __init__(self, v0: int):
         assert v0 <= MAX_U128

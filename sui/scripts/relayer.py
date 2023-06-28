@@ -1,3 +1,4 @@
+import asyncio.exceptions
 import base64
 import datetime
 import functools
@@ -11,13 +12,6 @@ from pprint import pprint
 
 import brownie
 import ccxt
-import requests
-from dotenv import dotenv_values
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
-
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -25,7 +19,16 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import requests
 from dola_sui_sdk.load import sui_project
+from dotenv import dotenv_values
+from gql import gql, Client
+from gql.client import log as gql_client_logs
+from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -65,6 +68,9 @@ ch.setLevel(logging.INFO)
 ch.setFormatter(ColorFormatter(FORMAT))
 
 logger.addHandler(ch)
+
+gql_client_logs.setLevel(logging.WARNING)
+gql_logs.setLevel(logging.WARNING)
 
 kucoin = ccxt.kucoin()
 kucoin.load_markets()
@@ -386,23 +392,31 @@ def eth_portal_watcher(network="polygon-test"):
 
     src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
     wormhole = dola_ethereum_load.womrhole_package(network)
-    lending_portal = dola_ethereum_load.lending_portal_package(network).address
-    system_portal = dola_ethereum_load.system_portal_package(network).address
     emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
+
+    graphql_url = dola_ethereum_init.graphql_url(network)
+    transport = AIOHTTPTransport(url=graphql_url)
+
+    # Create a GraphQL client using the defined transport
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+
+    # query latest block number
+    result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
+    latest_relay_block_number = result[0]['block_number'] if result else 0
+    limit = 5
 
     while True:
         try:
-            # query latest block number
-            result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
-            latest_relay_block_number = result[0]['block_number'] if result else 0
-
             # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = dola_ethereum_init.relay_events(lending_portal, system_portal,
-                                                           start_block=latest_relay_block_number + 1, net=network)
+            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents'])
+
+            if len(relay_events) == limit:
+                result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
+                latest_relay_block_number = result[0]['block_number'] if result else 0
 
             for event in relay_events:
-                nonce = event['nonce']
-                sequence = event['sequence']
+                nonce = int(event['nonce'])
+                sequence = int(event['sequence'])
 
                 # check if the event has been recorded
                 if not list(relay_record.find(
@@ -412,11 +426,11 @@ def eth_portal_watcher(network="polygon-test"):
                             "sequence": sequence,
                         }
                 )):
-                    block_number = event['block_number']
-                    src_tx_hash = event['tx_hash']
-                    timestamp = event['timestamp']
-                    relay_fee = event['relay_fee']
-                    date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
+                    block_number = int(event['blockNumber'])
+                    src_tx_hash = event['transactionHash']
+                    timestamp = int(event['blockTimestamp'])
+                    relay_fee = int(event['amount'])
+                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
 
                     # get vaa
                     try:
@@ -495,6 +509,8 @@ def eth_portal_watcher(network="polygon-test"):
 
                     local_logger.info(
                         f"Have a {call_name} transaction from {network}, sequence: {sequence}")
+        except asyncio.exceptions.TimeoutError:
+            local_logger.warning("GraphQL request timeout")
         except Exception as e:
             local_logger.error(f"Error: {e}")
             traceback.print_exc()
@@ -959,7 +975,7 @@ WORMHOLE_EMITTER_ADDRESS = {
 }
 
 
-@retry(stop_max_attempt_number=5, wait_random_min=1000, wait_random_max=10000)
+@retry
 def get_signed_vaa_by_wormhole(
         emitter: str,
         sequence: int,
@@ -1030,6 +1046,21 @@ def mongodb():
 
 def sui_total_balance():
     return int(sui_project.client.suix_getBalance(sui_project.account.account_address, '0x2::sui::SUI')['totalBalance'])
+
+
+def graph_query(block_number, limit=5):
+    return gql(
+        f"{{ \
+              relayEvents(where: {{blockNumber_gt: {block_number}}}, orderDirection: asc, orderBy: nonce, first: {limit}) {{ \
+                transactionHash \
+                blockNumber \
+                blockTimestamp \
+                nonce \
+                sequence \
+                amount \
+              }} \
+            }}"
+    )
 
 
 def main():

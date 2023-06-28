@@ -55,6 +55,10 @@ def scan_rpc_url():
     return config["networks"][network.show_active()]["scan_rpc_url"]
 
 
+def graphql_url(net):
+    return config["networks"][net]["graphql_url"]
+
+
 def register_owner(vaa, package_address):
     account = get_account()
     omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
