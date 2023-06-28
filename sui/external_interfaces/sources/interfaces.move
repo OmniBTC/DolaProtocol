@@ -139,16 +139,10 @@ module external_interfaces::interfaces {
 
     struct UserTotalBorrowInfo has copy, drop {
         dola_pool_id: u16,
-        omnichain_borrow_info: vector<SingleBorrowInfo>,
         total_avaliable_borrow_amount: u256,
         total_avaliable_borrow_value: u256
     }
 
-    struct SingleBorrowInfo has copy, drop {
-        dola_chain_id: u16,
-        avaliable_borrow_amount: u256,
-        avaliable_borrow_value: u256
-    }
 
     struct DolaUserId has copy, drop {
         dola_user_id: u64
@@ -967,33 +961,8 @@ module external_interfaces::interfaces {
                 total_avaliable_borrow_amount
             );
 
-            let omnichain_borrow_info = vector::empty<SingleBorrowInfo>();
-
-            let pools = pool_manager::get_pools_by_id(pool_manager_info, borrow_pool_id);
-            let pool_length = vector::length(&pools);
-            let j = 0;
-            while (j < pool_length) {
-                let pool_address = vector::borrow(&pools, j);
-                let dola_chain_id = dola_address::get_dola_chain_id(pool_address);
-                let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, *pool_address);
-                let avaliable_borrow_amount = ray_math::min(borrow_amount, pool_liquidity);
-                let avaliable_borrow_value = logic::calculate_value(
-                    oracle,
-                    borrow_pool_id,
-                    avaliable_borrow_amount
-                );
-
-                let single_borrow_info = SingleBorrowInfo {
-                    dola_chain_id,
-                    avaliable_borrow_amount,
-                    avaliable_borrow_value
-                };
-                vector::push_back(&mut omnichain_borrow_info, single_borrow_info);
-            };
-
             let user_total_borrow_info = UserTotalBorrowInfo {
                 dola_pool_id: borrow_pool_id,
-                omnichain_borrow_info,
                 total_avaliable_borrow_amount,
                 total_avaliable_borrow_value
             };
