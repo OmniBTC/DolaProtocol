@@ -417,6 +417,9 @@ class TransactionBuild:
         for i in range(len(call_arg)):
             param_type = parameters[i]
             if isinstance(param_type, dict):
+                if "Struct" in param_type and param_type["Struct"]["address"] == "0x1" and param_type["Struct"][
+                    "module"] == "string" and param_type["Struct"]["name"] == "String":
+                    continue
                 if ("Reference" in param_type or "MutableReference" in param_type or "Struct" in param_type) \
                         and isinstance(call_arg[i], str):
                     object_ids.append(call_arg[i])
@@ -431,7 +434,7 @@ class TransactionBuild:
 
     @classmethod
     def generate_pure_value(cls, param_type, data):
-        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256"]:
+        if param_type in ["Bool", "U8", "U64", "U128", "Address", "Signer", "U16", "U32", "U256", "String"]:
             return getattr(bcs, param_type)(data)
         elif isinstance(param_type, dict) and "Vector" in param_type:
             output = []
@@ -469,6 +472,10 @@ class TransactionBuild:
 
     @classmethod
     def generate_call_arg(cls, param_type, data, object_infos):
+        if isinstance(param_type, dict) and "Struct" in param_type and param_type["Struct"]["address"] == "0x1" \
+                and param_type["Struct"]["module"] == "string" and param_type["Struct"]["name"] == "String":
+            param_type = "String"
+
         if isinstance(param_type, dict) and \
                 ("MutableReference" in param_type or
                  "Reference" in param_type or
@@ -600,14 +607,15 @@ class TransactionBuild:
         if payment is None:
             gases = cls.prepare_gas()
             gas_amount = 0
+            payment = []
             for gas in gases:
                 if gas_amount >= gas_budget:
                     break
-                payment = [ObjectRef(
+                payment.append(ObjectRef(
                     ObjectID(gas["coinObjectId"]),
                     SequenceNumber(int(gas["version"])),
                     ObjectDigest(gas["digest"])
-                )]
+                ))
                 gas_amount += int(gas["balance"])
 
         owner = SuiAddress(sender)
@@ -867,6 +875,18 @@ class TransactionBuild:
                     batch_call_args.append(actual_params[actual_params_index])
                     batch_parameters.append(abi["parameters"][i])
                     has_actual_params[actual_params_index] = True
+                if "Struct" in abi["parameters"][i] and abi["parameters"][i]["Struct"]["address"] == "0x2" and \
+                        abi["parameters"][i]["Struct"]["module"] == "coin" \
+                        and abi["parameters"][i]["Struct"]["name"] == "Coin" and \
+                        abi["parameters"][i]["Struct"]["typeArguments"][0]["Struct"]['module'] == "sui":
+                    batch_commands.append(
+                        Command("SplitCoins", SplitCoins(
+                            Argument("GasCoin", NONE()),
+                            [call_arg]
+                        ))
+                    )
+                    call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
+                    batch_parameters[-1] = "U64"
             # generate commands
             type_arguments = [
                 cls.generate_type_arg(v) for v in type_args
@@ -1675,6 +1695,10 @@ class SuiProject:
         # Create client
         assert "node_url" in self.network_config, "Endpoint not config"
         self.client = SuiClient(base_url=self.network_config["node_url"], timeout=30)
+
+    def generate_account(self, account_name):
+        assert account_name not in self.accounts
+        self.accounts[account_name] = Account.generate()
 
     def reload_cache(self):
         data = self.read_cache()

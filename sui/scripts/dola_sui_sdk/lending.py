@@ -51,24 +51,10 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
 
     feed_gas = 0
     for pool_id in asset_ids:
-        fee_coin = get_amount_coins_if_exist([pyth_fee_amount])[0]
         symbol = dola_pool_id_to_symbol(pool_id)
 
-        result = dola_protocol.oracle.feed_token_price_by_pyth.simulate(
-            governance_genesis,
-            wormhole_state,
-            pyth_state,
-            get_price_info_object(symbol),
-            price_oracle,
-            pool_id,
-            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            init.clock(),
-            fee_coin
-        )
-        gas = calculate_sui_gas(result['effects']['gasUsed'])
-        feed_gas += gas
-        if relay_fee > int(0.9 * gas):
-            dola_protocol.oracle.feed_token_price_by_pyth(
+        result = sui_project.batch_transaction_simulate(
+            actual_params=[
                 governance_genesis,
                 wormhole_state,
                 pyth_state,
@@ -77,7 +63,59 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
                 pool_id,
                 list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
                 init.clock(),
-                fee_coin
+                pyth_fee_amount
+            ],
+            transactions=[
+                [
+                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    [
+                        Argument("Input", U16(0)),
+                        Argument("Input", U16(1)),
+                        Argument("Input", U16(2)),
+                        Argument("Input", U16(3)),
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                        Argument("Input", U16(6)),
+                        Argument("Input", U16(7)),
+                        Argument("Input", U16(8)),
+                    ],
+                    []
+                ]
+            ]
+        )
+
+        gas = calculate_sui_gas(result['effects']['gasUsed'])
+        feed_gas += gas
+        if relay_fee > int(0.9 * gas):
+            sui_project.batch_transaction(
+                actual_params=[
+                    governance_genesis,
+                    wormhole_state,
+                    pyth_state,
+                    get_price_info_object(symbol),
+                    price_oracle,
+                    pool_id,
+                    list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+                    init.clock(),
+                    pyth_fee_amount
+                ],
+                transactions=[
+                    [
+                        dola_protocol.oracle.feed_token_price_by_pyth,
+                        [
+                            Argument("Input", U16(0)),
+                            Argument("Input", U16(1)),
+                            Argument("Input", U16(2)),
+                            Argument("Input", U16(3)),
+                            Argument("Input", U16(4)),
+                            Argument("Input", U16(5)),
+                            Argument("Input", U16(6)),
+                            Argument("Input", U16(7)),
+                            Argument("Input", U16(8)),
+                        ],
+                        []
+                    ]
+                ]
             )
             relay_fee -= gas
     return relay_fee, feed_gas
@@ -521,27 +559,9 @@ def core_withdraw(vaa, relay_fee=0):
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
-    zero_coin = get_zero_coin()
 
-    result = dola_protocol.lending_core_wormhole_adapter.withdraw.simulate(
-        genesis,
-        pool_manager_info,
-        user_manager_info,
-        wormhole_state,
-        core_state,
-        oracle,
-        storage,
-        zero_coin,
-        list(bytes.fromhex(vaa.replace('0x', ''))),
-        init.clock(),
-    )
-
-    status = result['effects']['status']['status']
-    gas = calculate_sui_gas(result['effects']['gasUsed'])
-    executed = False
-    if left_relay_fee > int(0.9 * gas) and status == 'success':
-        executed = True
-        result = dola_protocol.lending_core_wormhole_adapter.withdraw(
+    result = sui_project.batch_transaction_simulate(
+        actual_params=[
             genesis,
             pool_manager_info,
             user_manager_info,
@@ -549,9 +569,66 @@ def core_withdraw(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            zero_coin,
+            0,
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
+        ],
+        transactions=[
+            [
+                dola_protocol.lending_core_wormhole_adapter.withdraw,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(7)),
+                    Argument("Input", U16(8)),
+                    Argument("Input", U16(9)),
+                ],
+                []
+            ]
+        ]
+    )
+
+    status = result['effects']['status']['status']
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
+    executed = False
+    if left_relay_fee > int(0.9 * gas) and status == 'success':
+        executed = True
+        result = sui_project.batch_transaction(
+            actual_params=[
+                genesis,
+                pool_manager_info,
+                user_manager_info,
+                wormhole_state,
+                core_state,
+                oracle,
+                storage,
+                0,
+                list(bytes.fromhex(vaa.replace('0x', ''))),
+                init.clock(),
+            ],
+            transactions=[
+                [
+                    dola_protocol.lending_core_wormhole_adapter.withdraw,
+                    [
+                        Argument("Input", U16(0)),
+                        Argument("Input", U16(1)),
+                        Argument("Input", U16(2)),
+                        Argument("Input", U16(3)),
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                        Argument("Input", U16(6)),
+                        Argument("Input", U16(7)),
+                        Argument("Input", U16(8)),
+                        Argument("Input", U16(9)),
+                    ],
+                    []
+                ]
+            ]
         )
         return gas + feed_gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
@@ -692,27 +769,9 @@ def core_borrow(vaa, relay_fee=0):
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
-    zero_coin = get_zero_coin()
 
-    result = dola_protocol.lending_core_wormhole_adapter.borrow.simulate(
-        genesis,
-        pool_manager_info,
-        user_manager_info,
-        wormhole_state,
-        core_state,
-        oracle,
-        storage,
-        zero_coin,
-        list(bytes.fromhex(vaa.replace('0x', ''))),
-        init.clock(),
-    )
-
-    status = result['effects']['status']['status']
-    gas = calculate_sui_gas(result['effects']['gasUsed'])
-    executed = False
-    if left_relay_fee > int(0.9 * gas) and status == 'success':
-        executed = True
-        result = dola_protocol.lending_core_wormhole_adapter.borrow(
+    result = sui_project.batch_transaction_simulate(
+        actual_params=[
             genesis,
             pool_manager_info,
             user_manager_info,
@@ -720,11 +779,67 @@ def core_borrow(vaa, relay_fee=0):
             core_state,
             oracle,
             storage,
-            zero_coin,
+            0,
             list(bytes.fromhex(vaa.replace('0x', ''))),
             init.clock(),
-        )
+        ],
+        transactions=[
+            [
+                dola_protocol.lending_core_wormhole_adapter.borrow,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(7)),
+                    Argument("Input", U16(8)),
+                    Argument("Input", U16(9)),
+                ],
+                []
+            ]
+        ]
+    )
 
+    status = result['effects']['status']['status']
+    gas = calculate_sui_gas(result['effects']['gasUsed'])
+    executed = False
+    if left_relay_fee > int(0.9 * gas) and status == 'success':
+        executed = True
+        result = sui_project.batch_transaction(
+            actual_params=[
+                genesis,
+                pool_manager_info,
+                user_manager_info,
+                wormhole_state,
+                core_state,
+                oracle,
+                storage,
+                0,
+                list(bytes.fromhex(vaa.replace('0x', ''))),
+                init.clock(),
+            ],
+            transactions=[
+                [
+                    dola_protocol.lending_core_wormhole_adapter.borrow,
+                    [
+                        Argument("Input", U16(0)),
+                        Argument("Input", U16(1)),
+                        Argument("Input", U16(2)),
+                        Argument("Input", U16(3)),
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                        Argument("Input", U16(6)),
+                        Argument("Input", U16(7)),
+                        Argument("Input", U16(8)),
+                        Argument("Input", U16(9)),
+                    ],
+                    []
+                ]
+            ]
+        )
         return gas + feed_gas, executed, status, feed_nums, result['effects']['transactionDigest']
     elif status == 'failure':
         return gas + feed_gas, executed, result['effects']['status']['error'], feed_nums, ""

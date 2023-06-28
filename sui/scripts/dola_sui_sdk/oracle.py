@@ -1,10 +1,13 @@
 import base64
 import time
+from pprint import pprint
 
 import ccxt
 import requests
-from dola_sui_sdk import load, sui_project, init
+import sui_brownie
 from sui_brownie import Argument, U16
+
+from dola_sui_sdk import load, sui_project, init
 
 
 def parse_u64(data: list):
@@ -42,6 +45,13 @@ def get_price_info_object(symbol):
     return f"0x{bytes(result['results'][0]['returnValues'][0][0]).hex()}"
 
 
+def load_sui_package():
+    return sui_brownie.SuiPackage(
+        package_id="0x2",
+        package_name="Sui"
+    )
+
+
 def get_pyth_fee():
     pyth = load.pyth_package()
 
@@ -51,25 +61,42 @@ def get_pyth_fee():
 
 def feed_token_price_by_pyth(symbol):
     dola_protocol = load.dola_protocol_package()
+    sui_package = load_sui_package()
 
-    pyth_fee_amount = get_pyth_fee() / 5 + 1
+    pyth_fee_amount = int(get_pyth_fee() / 5 + 1)
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    result = sui_project.pay_sui([pyth_fee_amount])
-    fee_coin = result['objectChanges'][-1]['objectId']
-
-    dola_protocol.oracle.feed_token_price_by_pyth(
-        governance_genesis,
-        wormhole_state,
-        pyth_state(),
-        get_price_info_object(symbol),
-        price_oracle,
-        get_pool_id(symbol),
-        list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-        init.clock(),
-        fee_coin
+    sui_project.batch_transaction(
+        actual_params=[
+            governance_genesis,
+            wormhole_state,
+            pyth_state(),
+            get_price_info_object(symbol),
+            price_oracle,
+            get_pool_id(symbol),
+            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+            init.clock(),
+            pyth_fee_amount
+        ],
+        transactions=[
+            [
+                dola_protocol.oracle.feed_token_price_by_pyth,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(7)),
+                    Argument("Input", U16(8)),
+                ],
+                []
+            ]
+        ]
     )
 
 
@@ -97,36 +124,34 @@ def batch_feed_token_price_by_pyth(symbols):
     pyth_fee_amount = get_pyth_fee() / 5 + 1
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
-
-    fee_amounts = [pyth_fee_amount] * len(symbols)
-    result = sui_project.pay_sui(fee_amounts)
-    fee_coins = [coin['reference']['objectId'] for coin in result['effects']['created']]
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
 
     basic_params = [
         governance_genesis,
         wormhole_state,
         pyth_state(),
-        dola_protocol.oracle.PriceOracle[-1],
+        price_oracle,
         init.clock(),
     ]
 
     feed_params = []
     transaction_blocks = []
-    for i, symbol in enumerate(symbols):
+    for symbol in symbols:
         feed_params += [
             get_price_info_object(symbol),
             get_pool_id(symbol),
             list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            fee_coins[i]
+            pyth_fee_amount
         ]
         transaction_blocks.append(
             build_feed_transaction_block(dola_protocol, len(basic_params), len(transaction_blocks)))
 
-    sui_project.batch_transaction(
+    result = sui_project.batch_transaction(
         actual_params=basic_params + feed_params,
         transactions=transaction_blocks,
-        gas_budget=1000000000
+        gas_budget=2000000000
     )
+    pprint(result)
 
 
 def check_fresh_price(symbol):
@@ -163,6 +188,10 @@ def get_pool_id(symbol):
         return 4
     elif symbol == "MATIC/USD":
         return 5
+    elif symbol == "ARB/USD":
+        return 6
+    elif symbol == "OP/USD":
+        return 7
 
 
 def get_market_prices(symbols=("BTC/USDT", "ETH/USDT")):
@@ -209,5 +238,5 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 
 if __name__ == '__main__':
     # deploy_oracle()
-    # feed_token_price_by_pyth('SUI/USD')
-    print(get_token_price('ETH/USD'))
+    # print(get_price_info_object('ETH/USD'))
+    batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
