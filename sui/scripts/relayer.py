@@ -12,15 +12,7 @@ from pprint import pprint
 
 import brownie
 import ccxt
-import dola_ethereum_sdk
-import dola_ethereum_sdk.init as dola_ethereum_init
-import dola_ethereum_sdk.load as dola_ethereum_load
-import dola_sui_sdk
-import dola_sui_sdk.init as dola_sui_init
-import dola_sui_sdk.lending as dola_sui_lending
-import dola_sui_sdk.load as dola_sui_load
 import requests
-from dola_sui_sdk.load import sui_project
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.client import log as gql_client_logs
@@ -29,6 +21,15 @@ from pymongo import MongoClient
 from retrying import retry
 from sui_brownie import Argument, U16
 from sui_brownie.parallelism import ProcessExecutor
+
+import dola_ethereum_sdk
+import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_sui_sdk
+import dola_sui_sdk.init as dola_sui_init
+import dola_sui_sdk.lending as dola_sui_lending
+import dola_sui_sdk.load as dola_sui_load
+from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
@@ -393,6 +394,8 @@ def eth_portal_watcher(network="polygon-test"):
     src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
     wormhole = dola_ethereum_load.womrhole_package(network)
     emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
+    lending_portal = dola_ethereum_load.lending_portal_package(network).address
+    system_portal = dola_ethereum_load.system_portal_package(network).address
 
     graphql_url = dola_ethereum_init.graphql_url(network)
     transport = AIOHTTPTransport(url=graphql_url)
@@ -407,12 +410,13 @@ def eth_portal_watcher(network="polygon-test"):
 
     while True:
         try:
-            # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents'])
+            result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
+            latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
-            if len(relay_events) == limit:
-                result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
-                latest_relay_block_number = result[0]['block_number'] if result else 0
+            # query relay events from latest relay block number + 1 to actual latest block number
+            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents']) \
+                           or dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
+                                                                               latest_relay_block_number)
 
             for event in relay_events:
                 nonce = int(event['nonce'])
