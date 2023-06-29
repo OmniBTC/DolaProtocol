@@ -209,7 +209,7 @@ def decode_relay_logs(logs):
     if logs:
         for log in logs:
             block_number = int(log['blockNumber'])
-            tx_hash = log['transactionHash']
+            tx_hash = log['transactionHash'].hex()
             timestamp = int(time.time())
             data = log['data']
             nonce = int(data[2:66], 16)
