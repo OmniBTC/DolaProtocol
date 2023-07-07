@@ -1,4 +1,5 @@
 import os
+import time
 import urllib.parse
 
 import brownie
@@ -184,14 +185,44 @@ def decode_relay_events(response):
             sequence = int(data[66:130], 16)
             relay_fee = int(data[130:], 16)
             events.append({
-                'block_number': block_number,
-                'tx_hash': tx_hash,
+                'blockNumber': block_number,
+                'transactionHash': tx_hash,
                 'nonce': nonce,
                 'sequence': sequence,
-                'relay_fee': relay_fee,
-                'timestamp': timestamp,
+                'amount': relay_fee,
+                'blockTimestamp': timestamp,
             })
 
+    return events
+
+
+def query_relay_event_by_get_logs(lending_portal: str, system_portal: str, start_block=0):
+    log_filter = {'fromBlock': start_block, 'address': [lending_portal, system_portal],
+                  'topics': ['0x262e3a296d702e5f4781f85336010cc0549f5344a6f46b406efdce9a120f6598']}
+    logs = brownie.web3.eth.get_logs(log_filter)
+    return decode_relay_logs(logs)
+
+
+def decode_relay_logs(logs):
+    events = []
+
+    if logs:
+        for log in logs:
+            block_number = int(log['blockNumber'])
+            tx_hash = log['transactionHash'].hex()
+            timestamp = int(time.time())
+            data = log['data']
+            nonce = int(data[2:66], 16)
+            sequence = int(data[66:130], 16)
+            relay_fee = int(data[130:], 16)
+            events.append({
+                'blockNumber': block_number,
+                'transactionHash': tx_hash,
+                'nonce': nonce,
+                'sequence': sequence,
+                'amount': relay_fee,
+                'blockTimestamp': timestamp,
+            })
     return events
 
 
@@ -201,6 +232,5 @@ def current_block_number():
 
 if __name__ == "__main__":
     set_ethereum_network("arbitrum-main")
-    lending_portal = load.lending_portal_package('arbitrum-main').address
-    system_portal = load.system_portal_package('arbitrum-main').address
-    events = relay_events(lending_portal, system_portal, net='arbitrum-main')
+    print(query_relay_event_by_get_logs('0xEBb6a1d17Ae9A276EdE95bF6B8fC6527fa2dF737',
+                                        '0x6F5b4Bc793aE7213564501aB22c714e39f5D2BAC', 105951218))
