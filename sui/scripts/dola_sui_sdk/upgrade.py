@@ -140,7 +140,7 @@ if __name__ == "__main__":
         3. after the front-end upgrade, migrate_version_test
     """
     generate_dola_protocol_package_info()
-    dola_upgrade_test()
+    # dola_upgrade_test()
     # migrate_version_test()
     # check_version(sui_project.network_config['packages']['dola_protocol'])
     # check_version(get_latest_dola_protocol())
