@@ -30,7 +30,7 @@ module dola_protocol::rates {
             dola_pool_id
         );
         if (utilization < optimal_utilization) {
-            base_borrow_rate + math::ray_mul(utilization, borrow_rate_slope1)
+            base_borrow_rate + math::ray_mul(math::ray_div(utilization, optimal_utilization), borrow_rate_slope1)
         } else {
             base_borrow_rate + borrow_rate_slope1 + math::ray_mul(
                 borrow_rate_slope2,
