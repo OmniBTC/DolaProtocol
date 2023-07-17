@@ -7,6 +7,7 @@ from dola_sui_sdk import DOLA_CONFIG, sui_project, load
 
 
 def generate_package_info(package, replace_address: dict = None, replace_publish_at: dict = None):
+    # note
     package: SuiPackage = getattr(load, f"{package}_package")()
     result = package.generate_digest(replace_address=replace_address, replace_publish_at=replace_publish_at)
     digest = bytes(json.loads(result)['digest']).hex()
@@ -129,8 +130,17 @@ def get_latest_dola_protocol():
 
 
 if __name__ == "__main__":
-    # generate_dola_protocol_package_info()
+    """
+    Upgrade step:
+        1. generate_dola_protocol_package_info to generate digest:
+            - note: dola_protocol is 0x0, publish at is latest
+        2. dola_upgrade_test to upgrade:
+            - deploy upgrade:  dola_protocol is origin, publish at is latest
+            - call upgrade:  dola_protocol is 0x0, publish at is latest
+        3. after the front-end upgrade, migrate_version_test
+    """
+    generate_dola_protocol_package_info()
     # dola_upgrade_test()
     # migrate_version_test()
-    check_version(sui_project.network_config['packages']['dola_protocol'])
-    check_version(get_latest_dola_protocol())
+    # check_version(sui_project.network_config['packages']['dola_protocol'])
+    # check_version(get_latest_dola_protocol())
