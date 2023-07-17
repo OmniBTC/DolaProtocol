@@ -59,24 +59,31 @@ class ColorFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
-logger = logging.getLogger()
-logger.setLevel("INFO")
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+def init_logger():
+    global logger
+    FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
+    logger = logging.getLogger()
+    logger.setLevel("INFO")
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
 
-ch.setFormatter(ColorFormatter(FORMAT))
+    ch.setFormatter(ColorFormatter(FORMAT))
 
-logger.addHandler(ch)
+    logger.addHandler(ch)
 
-gql_client_logs.setLevel(logging.WARNING)
-gql_logs.setLevel(logging.WARNING)
+    gql_client_logs.setLevel(logging.WARNING)
+    gql_logs.setLevel(logging.WARNING)
 
-kucoin = ccxt.kucoin()
-kucoin.load_markets()
 
-requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
+def init_markets():
+    global kucoin
+    kucoin = ccxt.kucoin()
+    kucoin.load_markets()
+
+
+def fix_requests_ssl():
+    requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS = 'ALL'
 
 
 @retry
@@ -191,11 +198,14 @@ def execute_sui_core(call_name, vaa, relay_fee):
     return gas, executed, status, feed_nums, digest
 
 
-m = multiprocessing.Manager()
+def init_accounts_and_lock():
+    global account_index
+    global index_lock
 
-index_lock = m.Lock()
+    m = multiprocessing.Manager()
 
-account_index = m.Value('i', 0)
+    index_lock = m.Lock()
+    account_index = m.Value('i', 0)
 
 
 def rotate_accounts():
@@ -209,6 +219,138 @@ def rotate_accounts():
     index_lock.release()
 
 
+class RelayRecord:
+
+    def __init__(self):
+        db = mongodb()
+        self.db = db['RelayRecord']
+
+    def add_other_record(self, src_chain_id, src_tx_id, nonce, call_name, block_number, sequence, vaa, relay_fee,
+                         start_time):
+        record = {
+            "src_chain_id": src_chain_id,
+            "src_tx_id": src_tx_id,
+            "nonce": nonce,
+            "call_name": call_name,
+            "block_number": block_number,
+            "sequence": sequence,
+            "vaa": vaa,
+            "relay_fee": relay_fee,
+            "core_tx_id": "",
+            "core_costed_fee": 0,
+            "status": "false",
+            "reason": "Unknown",
+            "start_time": start_time,
+            "end_time": "",
+        }
+        self.db.insert_one(record)
+
+    def add_sui_withdraw_record(self, nonce, call_name, vaa, relay_fee, dst_pool_address):
+        record = {
+            "src_chain_id": 0,
+            "nonce": nonce,
+            "call_name": call_name,
+            "sequence": nonce,
+            "relay_fee": relay_fee,
+            "withdraw_chain_id": "",
+            "withdraw_sequence": 0,
+            "withdraw_vaa": vaa,
+            "withdraw_pool": dst_pool_address,
+            "withdraw_costed_fee": 0,
+            "status": "withdraw",
+            "reason": "Unknown"
+        }
+        self.db.insert_one(record)
+
+    def add_sui_other_record(self, nonce, call_name, sequence, vaa, relay_fee):
+        record = {
+            "src_chain_id": 0,
+            "nonce": nonce,
+            "call_name": call_name,
+            "sequence": sequence,
+            "vaa": vaa,
+            "relay_fee": relay_fee,
+            "core_costed_fee": 0,
+            "status": "false",
+            "reason": "Unknown"
+        }
+        self.db.insert_one(record)
+
+    def add_withdraw_record(self, src_chain_id, src_tx_id, nonce, call_name, block_number, sequence, vaa, relay_fee,
+                            start_time):
+        record = {
+            "src_chain_id": src_chain_id,
+            "src_tx_id": src_tx_id,
+            "nonce": nonce,
+            "call_name": call_name,
+            "block_number": block_number,
+            "sequence": sequence,
+            "vaa": vaa,
+            "relay_fee": relay_fee,
+            "core_tx_id": "",
+            "core_costed_fee": 0,
+            "withdraw_chain_id": "",
+            "withdraw_tx_id": "",
+            "withdraw_sequence": 0,
+            "withdraw_vaa": "",
+            "withdraw_pool": "",
+            "withdraw_costed_fee": 0,
+            "status": "false",
+            "reason": "Unknown",
+            "start_time": start_time,
+            "end_time": "",
+        }
+        self.db.insert_one(record)
+
+    def add_wait_record(self, src_chain_id, src_tx_hash, nonce, sequence, block_number, relay_fee_value, date):
+        record = {
+            'src_chain_id': src_chain_id,
+            'src_tx_id': src_tx_hash,
+            'nonce': nonce,
+            'sequence': sequence,
+            'block_number': block_number,
+            'relay_fee': relay_fee_value,
+            'status': 'waitForVaa',
+            'start_time': date,
+            'end_time': "",
+        }
+        self.db.insert_one(record)
+
+    def update_record(self, filter, update):
+        self.db.update_one(filter, update)
+
+    def find_one(self, filter):
+        return self.db.find_one(filter)
+
+    def find(self, filter):
+        return self.db.find(filter)
+
+
+class GasRecord:
+
+    def __init__(self):
+        db = mongodb()
+        self.db = db['GasRecord']
+
+    def add_gas_record(self, src_chain_id, nonce, dst_chain_id, call_name, core_gas=0, feed_nums=0):
+        record = {
+            'src_chain_id': src_chain_id,
+            'nonce': nonce,
+            'dst_chain_id': dst_chain_id,
+            'call_name': call_name,
+            'core_gas': core_gas,
+            'withdraw_gas': 0,
+            'feed_nums': feed_nums
+        }
+        self.db.insert_one(record)
+
+    def update_record(self, filter, update):
+        self.db.update_one(filter, update)
+
+    def find(self, filter):
+        return self.db.find(filter)
+
+
 ZERO_FEE = int(1e18)
 
 
@@ -217,9 +359,8 @@ def sui_portal_watcher():
     local_logger = logger.getChild("[sui_portal_watcher]")
     local_logger.info("Start to watch sui portal ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
-    gas_record = db['GasRecord']
+    relay_record = RelayRecord()
+    gas_record = GasRecord()
 
     sui_network = sui_project.network
     while True:
@@ -245,45 +386,13 @@ def sui_portal_watcher():
                     if call_name in ['withdraw', 'borrow']:
                         vaa = get_signed_vaa_by_wormhole(
                             WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
-
-                        relay_record.insert_one({
-                            "src_chain_id": 0,
-                            "nonce": nonce,
-                            "call_name": call_name,
-                            "sequence": nonce,
-                            "relay_fee": relay_fee,
-                            "withdraw_chain_id": "",
-                            "withdraw_sequence": 0,
-                            "withdraw_vaa": vaa,
-                            "withdraw_pool": dst_pool_address,
-                            "withdraw_costed_fee": 0,
-                            "status": "withdraw",
-                            "reason": "Unknown"
-                        })
+                        relay_record.add_sui_withdraw_record(nonce, call_name, vaa, relay_fee, dst_pool_address)
                     else:
                         vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS['sui-mainnet-pool'], sequence,
                                                          sui_network)
-                        relay_record.insert_one({
-                            "src_chain_id": 0,
-                            "nonce": nonce,
-                            "call_name": call_name,
-                            "sequence": sequence,
-                            "vaa": vaa,
-                            "relay_fee": relay_fee,
-                            "core_costed_fee": 0,
-                            "status": "false",
-                            "reason": "Unknown"
-                        })
+                        relay_record.add_sui_other_record(nonce, call_name, sequence, vaa, relay_fee)
 
-                    gas_record.insert_one({
-                        'src_chain_id': 0,
-                        'nonce': nonce,
-                        'dst_chain_id': dst_chain_id,
-                        'call_name': call_name,
-                        'core_gas': 0,
-                        'withdraw_gas': 0,
-                        'feed_nums': 0
-                    })
+                    gas_record.add_gas_record(0, nonce, dst_chain_id, call_name)
 
                     local_logger.info(
                         f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {nonce}")
@@ -299,8 +408,7 @@ def wormhole_vaa_guardian(network="polygon-test"):
     local_logger = logger.getChild(f"[{network}_wormhole_vaa_guardian]")
     local_logger.info("Start to wait wormhole vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
+    relay_record = RelayRecord()
 
     src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
     emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
@@ -330,50 +438,18 @@ def wormhole_vaa_guardian(network="polygon-test"):
                 relay_fee = tx['relay_fee']
 
                 if call_name in ['withdraw', 'borrow']:
-                    relay_record.insert_one({
-                        "src_chain_id": src_chain_id,
-                        "src_tx_id": tx['src_tx_id'],
-                        "nonce": nonce,
-                        "call_name": call_name,
-                        "block_number": block_number,
-                        "sequence": sequence,
-                        "vaa": vaa,
-                        "relay_fee": relay_fee,
-                        "core_tx_id": "",
-                        "core_costed_fee": 0,
-                        "withdraw_chain_id": "",
-                        "withdraw_tx_id": "",
-                        "withdraw_sequence": 0,
-                        "withdraw_vaa": "",
-                        "withdraw_pool": "",
-                        "withdraw_costed_fee": 0,
-                        "status": "false",
-                        "reason": "Unknown",
-                        "start_time": tx['start_time'],
-                        "end_time": "",
-                    })
+                    relay_record.add_withdraw_record(src_chain_id, tx['src_tx_id'], nonce, call_name, block_number,
+                                                     sequence, vaa,
+                                                     relay_fee, tx['start_time'])
                 else:
-                    relay_record.insert_one({
-                        "src_chain_id": src_chain_id,
-                        "src_tx_id": tx['src_tx_id'],
-                        "nonce": nonce,
-                        "call_name": call_name,
-                        "block_number": block_number,
-                        "sequence": sequence,
-                        "vaa": vaa,
-                        "relay_fee": relay_fee,
-                        "core_tx_id": "",
-                        "core_costed_fee": 0,
-                        "status": "false",
-                        "reason": "Unknown",
-                        "start_time": tx['start_time'],
-                        "end_time": "",
-                    })
+                    relay_record.add_other_record(src_chain_id, tx['src_tx_id'], nonce, call_name, block_number,
+                                                  sequence, vaa,
+                                                  relay_fee, tx['start_time'])
 
                 current_timestamp = int(time.time())
                 date = str(datetime.datetime.fromtimestamp(current_timestamp))
-                relay_record.update_one({'status': 'waitForVaa', 'src_chain_id': src_chain_id, 'nonce': nonce},
-                                        {'$set': {'status': 'dropped', 'end_time': date}})
+                relay_record.update_record({'status': 'waitForVaa', 'src_chain_id': src_chain_id, 'nonce': nonce},
+                                           {'$set': {'status': 'dropped', 'end_time': date}})
                 local_logger.info(
                     f"Have a {call_name} transaction from {network}, sequence: {nonce}")
             except Exception as e:
@@ -388,8 +464,7 @@ def eth_portal_watcher(network="polygon-test"):
     local_logger = logger.getChild(f"[{network}_portal_watcher]")
     local_logger.info(f"Start to read {network} pool vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
+    relay_record = RelayRecord()
 
     src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
     wormhole = dola_ethereum_load.womrhole_package(network)
@@ -433,27 +508,20 @@ def eth_portal_watcher(network="polygon-test"):
                     block_number = int(event['blockNumber'])
                     src_tx_hash = event['transactionHash']
                     timestamp = int(event['blockTimestamp'])
-                    relay_fee = int(event['amount'])
+                    relay_fee_amount = int(event['amount'])
                     date = str(datetime.datetime.utcfromtimestamp(timestamp))
+
+                    gas_token = get_gas_token(network)
+                    relay_fee_value = get_fee_value(relay_fee_amount, gas_token)
 
                     # get vaa
                     try:
                         vaa = get_signed_vaa_by_wormhole(
                             emitter_address, sequence, network)
                     except Exception as e:
-                        gas_token = get_gas_token(network)
-                        relay_fee_value = get_fee_value(relay_fee, gas_token)
-                        relay_record.insert_one({
-                            'src_chain_id': src_chain_id,
-                            'src_tx_id': src_tx_hash,
-                            'nonce': nonce,
-                            'sequence': sequence,
-                            'block_number': block_number,
-                            'relay_fee': relay_fee_value,
-                            'status': 'waitForVaa',
-                            'start_time': date,
-                            'end_time': "",
-                        })
+                        relay_record.add_wait_record(src_chain_id, src_tx_hash, nonce, sequence, block_number,
+                                                     relay_fee_value,
+                                                     date)
                         local_logger.warning(f"Warning: {e}")
                         continue
                     # parse vaa
@@ -466,50 +534,12 @@ def eth_portal_watcher(network="polygon-test"):
                     call_type = payload[-1]
                     call_name = get_call_name(app_id, call_type)
 
-                    gas_token = get_gas_token(network)
-                    relay_fee_value = get_fee_value(
-                        relay_fee, gas_token)
-
                     if call_name in ['withdraw', 'borrow']:
-                        relay_record.insert_one({
-                            "src_chain_id": src_chain_id,
-                            'src_tx_id': src_tx_hash,
-                            "nonce": nonce,
-                            "call_name": call_name,
-                            "block_number": block_number,
-                            "sequence": sequence,
-                            "vaa": vaa,
-                            "relay_fee": relay_fee_value,
-                            "core_tx_id": "",
-                            "core_costed_fee": 0,
-                            "withdraw_chain_id": "",
-                            "withdraw_tx_id": "",
-                            "withdraw_sequence": 0,
-                            "withdraw_vaa": "",
-                            "withdraw_pool": "",
-                            "withdraw_costed_fee": 0,
-                            "status": "false",
-                            "reason": "Unknown",
-                            "start_time": date,
-                            "end_time": "",
-                        })
+                        relay_record.add_withdraw_record(src_chain_id, src_tx_hash, nonce, call_name, block_number,
+                                                         sequence, vaa, relay_fee_value, date)
                     else:
-                        relay_record.insert_one({
-                            "src_chain_id": src_chain_id,
-                            'src_tx_id': src_tx_hash,
-                            "nonce": nonce,
-                            "call_name": call_name,
-                            "block_number": block_number,
-                            "sequence": sequence,
-                            "vaa": vaa,
-                            "relay_fee": relay_fee_value,
-                            "core_tx_id": "",
-                            "core_costed_fee": 0,
-                            "status": "false",
-                            "reason": "Unknown",
-                            "start_time": date,
-                            "end_time": "",
-                        })
+                        relay_record.add_other_record(src_chain_id, src_tx_hash, nonce, call_name, block_number,
+                                                      sequence, vaa, relay_fee_value, date)
 
                     local_logger.info(
                         f"Have a {call_name} transaction from {network}, sequence: {sequence}")
@@ -527,8 +557,7 @@ def pool_withdraw_watcher():
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
+    relay_record = RelayRecord()
 
     sui_network = sui_project.network
     while True:
@@ -554,11 +583,11 @@ def pool_withdraw_watcher():
                     dst_chain_id = int(dst_pool['dola_chain_id'])
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
-                    relay_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_chain_nonce},
-                                            {"$set": {'status': 'withdraw', 'withdraw_vaa': vaa,
-                                                      'withdraw_chain_id': dst_chain_id,
-                                                      'withdraw_sequence': sequence,
-                                                      'withdraw_pool': dst_pool_address}})
+                    relay_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_chain_nonce},
+                                               {"$set": {'status': 'withdraw', 'withdraw_vaa': vaa,
+                                                         'withdraw_chain_id': dst_chain_id,
+                                                         'withdraw_sequence': sequence,
+                                                         'withdraw_pool': dst_pool_address}})
 
                     local_logger.info(
                         f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
@@ -572,9 +601,8 @@ def sui_core_executor():
     local_logger = logger.getChild("[sui_core_executor]")
     local_logger.info("Start to relay pool vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
-    gas_record = db['GasRecord']
+    relay_record = RelayRecord()
+    gas_record = GasRecord()
 
     while True:
         relay_transactions = relay_record.find({"status": "false"})
@@ -610,15 +638,8 @@ def sui_core_executor():
                 gas_price = int(
                     sui_project.client.suix_getReferenceGasPrice())
                 gas_limit = int(gas / gas_price)
-                gas_record.insert_one({
-                    'src_chain_id': tx['src_chain_id'],
-                    'nonce': tx['nonce'],
-                    'dst_chain_id': 0,
-                    'call_name': call_name,
-                    'core_gas': gas_limit,
-                    'withdraw_gas': 0,
-                    'feed_nums': feed_nums
-                })
+
+                gas_record.add_gas_record(tx['src_chain_id'], tx['nonce'], 0, call_name, gas_limit, feed_nums)
 
                 if executed and status == 'success':
                     core_costed_fee = get_fee_value(gas, 'sui')
@@ -627,29 +648,29 @@ def sui_core_executor():
                     timestamp = int(time.time())
                     date = str(datetime.datetime.utcfromtimestamp(timestamp))
                     if call_name in ["withdraw", "borrow"]:
-                        relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'relay_fee': relay_fee_value,
-                                                          'status': 'waitForWithdraw',
-                                                          'end_time': date,
-                                                          'core_tx_id': digest,
-                                                          'core_costed_fee': core_costed_fee}})
+                        relay_record.update_record({'vaa': tx['vaa']},
+                                                   {"$set": {'relay_fee': relay_fee_value,
+                                                             'status': 'waitForWithdraw',
+                                                             'end_time': date,
+                                                             'core_tx_id': digest,
+                                                             'core_costed_fee': core_costed_fee}})
                     else:
-                        relay_record.update_one({'vaa': tx['vaa']},
-                                                {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
-                                                          'core_tx_id': digest,
-                                                          'core_costed_fee': core_costed_fee,
-                                                          'end_time': date}})
+                        relay_record.update_record({'vaa': tx['vaa']},
+                                                   {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
+                                                             'core_tx_id': digest,
+                                                             'core_costed_fee': core_costed_fee,
+                                                             'end_time': date}})
 
                     local_logger.info("Execute sui core success! ")
                 else:
-                    relay_record.update_one({'vaa': tx['vaa']},
-                                            {"$set": {'status': 'fail', 'reason': status}})
+                    relay_record.update_record({'vaa': tx['vaa']},
+                                               {"$set": {'status': 'fail', 'reason': status}})
                     local_logger.warning("Execute sui core fail! ")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
                 status = eval(str(e))
-                relay_record.update_one({'vaa': tx['vaa']},
-                                        {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
+                relay_record.update_record({'vaa': tx['vaa']},
+                                           {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
                 local_logger.warning("Execute sui core fail! ")
                 local_logger.warning(f"status: {status}")
             except Exception as e:
@@ -663,9 +684,8 @@ def sui_pool_executor():
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
-    gas_record = db['GasRecord']
+    relay_record = RelayRecord()
+    gas_record = GasRecord()
 
     while True:
         relay_transactions = relay_record.find(
@@ -703,16 +723,16 @@ def sui_pool_executor():
                 gas_price = int(
                     sui_project.client.suix_getReferenceGasPrice())
                 gas_limit = int(tx_gas_amount / gas_price)
-                gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                      {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
+                gas_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_nonce},
+                                         {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
 
                 if executed:
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
                     date = str(datetime.datetime.utcfromtimestamp(timestamp))
-                    relay_record.update_one({'withdraw_vaa': vaa},
-                                            {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
-                                                      'end_time': date, 'withdraw_tx_id': digest}})
+                    relay_record.update_record({'withdraw_vaa': vaa},
+                                               {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
+                                                         'end_time': date, 'withdraw_tx_id': digest}})
 
                     local_logger.info("Execute sui withdraw success! ")
                     local_logger.info(
@@ -739,9 +759,8 @@ def eth_pool_executor():
     local_logger = logger.getChild("[eth_pool_executor]")
     local_logger.info("Start to relay eth withdraw vaa ^-^")
 
-    db = mongodb()
-    relay_record = db['RelayRecord']
-    gas_record = db['GasRecord']
+    relay_record = RelayRecord()
+    gas_record = GasRecord()
 
     while True:
         relay_transactions = relay_record.find(
@@ -781,8 +800,8 @@ def eth_pool_executor():
                 gas_used = ethereum_wormhole_bridge.receiveWithdraw.estimate_gas(
                     vaa, {"from": ethereum_account})
 
-                gas_record.update_one({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                      {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
+                gas_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_nonce},
+                                         {"$set": {'withdraw_gas': gas_used, 'dst_chain_id': dola_chain_id}})
 
                 tx_gas_amount = int(gas_used) * gas_price
 
@@ -794,9 +813,9 @@ def eth_pool_executor():
                 date = str(datetime.datetime.utcfromtimestamp(int(timestamp)))
 
                 withdraw_cost_fee = get_fee_value(tx_gas_amount, get_gas_token(network))
-                relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                        {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
-                                                  'end_time': date, 'withdraw_tx_id': tx_id}})
+                relay_record.update_record({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
+                                           {"$set": {'status': 'success', 'withdraw_cost_fee': withdraw_cost_fee,
+                                                     'end_time': date, 'withdraw_tx_id': tx_id}})
 
                 local_logger.info(f"Execute {network} withdraw success! ")
                 local_logger.info(
@@ -814,8 +833,8 @@ def eth_pool_executor():
                         f"call: {call_name} source: {source_chain}, nonce: {source_nonce}")
             except ValueError as e:
                 local_logger.warning(f"Execute eth pool withdraw fail\n {e}")
-                relay_record.update_one({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
-                                        {"$set": {'status': 'fail', 'reason': str(e)}})
+                relay_record.update_record({'withdraw_vaa': withdraw_tx['withdraw_vaa']},
+                                           {"$set": {'status': 'fail', 'reason': str(e)}})
             except Exception as e:
                 traceback.print_exc()
                 local_logger.error(f"Execute eth pool withdraw fail\n {e}")
@@ -1055,19 +1074,24 @@ def sui_total_balance():
 def graph_query(block_number, limit=5):
     return gql(
         f"{{ \
-              relayEvents(where: {{blockNumber_gt: {block_number}}}, orderDirection: asc, orderBy: nonce, first: {limit}) {{ \
-                transactionHash \
-                blockNumber \
-                blockTimestamp \
-                nonce \
-                sequence \
-                amount \
-              }} \
-            }}"
+			  relayEvents(where: {{blockNumber_gt: {block_number}}}, orderDirection: asc, orderBy: nonce, first: {limit}) {{ \
+				transactionHash \
+				blockNumber \
+				blockTimestamp \
+				nonce \
+				sequence \
+				amount \
+			  }} \
+			}}"
     )
 
 
 def main():
+    init_logger()
+    init_markets()
+    # Use when you need to improve concurrency
+    init_accounts_and_lock()
+
     pt = ProcessExecutor(executor=11)
 
     pt.run([
