@@ -4,7 +4,7 @@
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
-    use std::ascii::{String, into_bytes};
+    use std::ascii::{into_bytes, String};
     use std::option::{Self, Option};
     use std::vector;
 
@@ -30,6 +30,8 @@ module external_interfaces::interfaces {
     const MINUATE: u64 = 60;
 
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
+    const TARGET_HF: u256 = 1050000000000000000000000000;
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -130,6 +132,17 @@ module external_interfaces::interfaces {
         borrow_value: u256,
         reason: Option<String>
     }
+
+    struct UserTotalAllowedBorrow has copy, drop {
+        total_allowed_borrow: vector<UserTotalBorrowInfo>
+    }
+
+    struct UserTotalBorrowInfo has copy, drop {
+        dola_pool_id: u16,
+        total_avaliable_borrow_amount: u256,
+        total_avaliable_borrow_value: u256
+    }
+
 
     struct DolaUserId has copy, drop {
         dola_user_id: u64
@@ -677,7 +690,7 @@ module external_interfaces::interfaces {
         is_cancel_collateral: bool,
     ) {
         let health_collateral_value = logic::user_health_collateral_value(storage, price_oracle, dola_user_id);
-        let health_loan_value = logic::user_health_collateral_value(storage, price_oracle, dola_user_id);
+        let health_loan_value = logic::user_health_loan_value(storage, price_oracle, dola_user_id);
 
         let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
         let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
@@ -731,7 +744,7 @@ module external_interfaces::interfaces {
         };
 
         let health_factor = if (health_loan_value > 0) {
-            ray_math::ray_div((health_collateral_value), (health_loan_value))
+            ray_math::ray_div(health_collateral_value, health_loan_value)
         } else {
             U256_MAX
         };
@@ -876,7 +889,10 @@ module external_interfaces::interfaces {
     ) {
         let borrow_token = into_bytes(pool_manager::get_pool_name_by_id(pool_manager_info, borrow_pool_id));
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
-        let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
+        let health_loan_value = ray_math::ray_mul(
+            logic::user_health_loan_value(storage, oracle, dola_user_id),
+            TARGET_HF
+        );
         let borrow_coefficient = storage::get_borrow_coefficient(storage, borrow_pool_id);
         let can_borrow_value = ray_math::ray_div(
             (health_collateral_value - health_loan_value),
@@ -904,5 +920,59 @@ module external_interfaces::interfaces {
             borrow_value,
             reason: option::none()
         })
+    }
+
+    public entry fun get_user_total_allowed_borrow(
+        pool_manager_info: &mut PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64,
+    ) {
+        let reserve_length = storage::get_reserve_length(storage);
+
+        let user_total_allowed_borrow = vector::empty<UserTotalBorrowInfo>();
+
+        let i = 0;
+        while (i < reserve_length) {
+            let borrow_pool_id = (i as u16);
+            let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
+            let health_loan_value = ray_math::ray_mul(
+                logic::user_health_loan_value(storage, oracle, dola_user_id),
+                TARGET_HF
+            );
+            let borrow_coefficient = storage::get_borrow_coefficient(storage, borrow_pool_id);
+            let can_borrow_value = ray_math::ray_div(
+                (health_collateral_value - health_loan_value),
+                borrow_coefficient
+            );
+            let reserve = pool_manager::get_app_liquidity(
+                pool_manager_info,
+                borrow_pool_id,
+                storage::get_app_id(storage)
+            );
+
+            let borrow_amount = logic::calculate_amount(oracle, borrow_pool_id, can_borrow_value);
+
+
+            let total_avaliable_borrow_amount = ray_math::min(borrow_amount, reserve);
+            let total_avaliable_borrow_value = logic::calculate_value(
+                oracle,
+                borrow_pool_id,
+                total_avaliable_borrow_amount
+            );
+
+            let user_total_borrow_info = UserTotalBorrowInfo {
+                dola_pool_id: borrow_pool_id,
+                total_avaliable_borrow_amount,
+                total_avaliable_borrow_value
+            };
+            vector::push_back(&mut user_total_allowed_borrow, user_total_borrow_info);
+            i = i + 1;
+        };
+        emit(
+            UserTotalAllowedBorrow {
+                total_allowed_borrow: user_total_allowed_borrow
+            }
+        )
     }
 }
