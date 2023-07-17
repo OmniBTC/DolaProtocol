@@ -168,7 +168,8 @@ module dola_protocol::lending_core_wormhole_adapter {
             nonce,
             actual_amount,
             wormhole_message_fee,
-            clock
+            clock,
+            ctx
         );
 
         event::emit(RelayEvent {
@@ -251,7 +252,8 @@ module dola_protocol::lending_core_wormhole_adapter {
             nonce,
             amount,
             wormhole_message_fee,
-            clock
+            clock,
+            ctx
         );
 
         event::emit(RelayEvent {

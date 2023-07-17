@@ -421,7 +421,8 @@ module dola_protocol::lending_portal {
             nonce,
             actual_amount,
             wormhole_fee,
-            clock
+            clock,
+            ctx
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
         emit(RelayEvent {
@@ -573,7 +574,8 @@ module dola_protocol::lending_portal {
             nonce,
             (amount as u256),
             wormhole_fee,
-            clock
+            clock,
+            ctx
         );
 
         transfer::public_transfer(bridge_fee, lending_portal.relayer);

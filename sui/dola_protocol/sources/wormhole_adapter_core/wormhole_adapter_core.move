@@ -5,13 +5,17 @@
 /// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and
 /// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
 module dola_protocol::wormhole_adapter_core {
+    use std::vector;
+
     use sui::clock::Clock;
     use sui::coin::Coin;
+    use sui::dynamic_field;
     use sui::event;
     use sui::object::{Self, UID};
     use sui::object_table;
     use sui::sui::SUI;
     use sui::transfer;
+    use sui::tx_context;
     use sui::tx_context::TxContext;
     use sui::vec_map::{Self, VecMap};
 
@@ -43,6 +47,14 @@ module dola_protocol::wormhole_adapter_core {
     // Invalid App
     const EINVALID_APP: u64 = 2;
 
+    const EDUPLICATED_RELAYER: u64 = 3;
+
+    const ENOT_RELAYER: u64 = 4;
+
+    const ERELAYER_NOT_INIT: u64 = 5;
+
+    const ERELAYER_NOT_EXIST: u64 = 6;
+
     /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
     /// For VAA data, the following validations are required.
     /// For wormhole official library: 1) verify the signature.
@@ -59,6 +71,9 @@ module dola_protocol::wormhole_adapter_core {
         // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
         registered_emitters: VecMap<u16, ExternalAddress>,
     }
+
+    /// Only certain users are allowed to act as Relayer
+    struct Relayer has copy, drop, store {}
 
     /// Events
 
@@ -98,6 +113,16 @@ module dola_protocol::wormhole_adapter_core {
     struct DeleteSpender has copy, drop {
         dola_chain_id: u16,
         dola_contract: u256
+    }
+
+    /// Event for add relayer
+    struct AddRelayer has drop, copy {
+        new_relayer: address
+    }
+
+    /// Event for remove relayer
+    struct RemoveRelayer has drop, copy {
+        removed_relayer: address
     }
 
     /// === Governance Functions ===
@@ -245,6 +270,41 @@ module dola_protocol::wormhole_adapter_core {
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
     }
 
+    public fun add_relayer(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        relayer: address
+    ) {
+        if (dynamic_field::exists_with_type<Relayer, vector<address>>(&mut core_state.id, Relayer {})) {
+            let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut core_state.id, Relayer {});
+            assert!(!vector::contains(relayers, &relayer), EDUPLICATED_RELAYER);
+            vector::push_back(relayers, relayer);
+        } else {
+            dynamic_field::add<Relayer, vector<address>>(&mut core_state.id, Relayer {}, vector[relayer]);
+        };
+        event::emit(AddRelayer {
+            new_relayer: relayer
+        });
+    }
+
+    public fun remove_relayer(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        relayer: address
+    ) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut core_state.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut core_state.id, Relayer {});
+        assert!(vector::contains(relayers, &relayer), ERELAYER_NOT_EXIST);
+        let (_, index) = vector::index_of(relayers, &relayer);
+        vector::remove(relayers, index);
+        event::emit(RemoveRelayer {
+            removed_relayer: relayer
+        });
+    }
+
     /// === Friend Functions ===
 
     /// Receive message without funding
@@ -256,6 +316,7 @@ module dola_protocol::wormhole_adapter_core {
         clock: &Clock,
         ctx: &mut TxContext
     ): (DolaAddress, vector<u8>) {
+        check_relayer(core_state, ctx);
         let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -285,6 +346,7 @@ module dola_protocol::wormhole_adapter_core {
         clock: &Clock,
         ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u256, vector<u8>) {
+        check_relayer(core_state, ctx);
         let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -325,6 +387,7 @@ module dola_protocol::wormhole_adapter_core {
         clock: &Clock,
         ctx: &mut TxContext
     ): (DolaAddress, vector<u8>) {
+        check_relayer(core_state, ctx);
         let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
             wormhole_state,
             &core_state.registered_emitters,
@@ -357,8 +420,10 @@ module dola_protocol::wormhole_adapter_core {
         nonce: u64,
         amount: u256,
         wormhole_message_fee: Coin<SUI>,
-        clock: &Clock
+        clock: &Clock,
+        ctx: &mut TxContext
     ): u64 {
+        check_relayer(core_state, ctx);
         let (actual_amount, _) = pool_manager::remove_liquidity(
             pool_manager_info,
             pool_address,
@@ -384,5 +449,16 @@ module dola_protocol::wormhole_adapter_core {
             message_ticket,
             clock
         )
+    }
+
+    /// === Internal Functions ===
+
+    fun check_relayer(core_state: &mut CoreState, ctx: &mut TxContext) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut core_state.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut core_state.id, Relayer {});
+        assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
     }
 }
