@@ -6,8 +6,11 @@
 /// 1) Receive AppPalod from the application portal, use dola pool encoding, and transmit messages;
 /// 2) Receive withdrawal messages from bridge core for withdrawal
 module dola_protocol::wormhole_adapter_pool {
+    use std::vector;
+
     use sui::clock::Clock;
     use sui::coin::Coin;
+    use sui::dynamic_field;
     use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::object_table;
@@ -18,7 +21,7 @@ module dola_protocol::wormhole_adapter_pool {
 
     use dola_protocol::dola_address;
     use dola_protocol::dola_pool::{Self, Pool};
-    use dola_protocol::genesis::{Self, GovernanceGenesis};
+    use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::pool_codec;
     use dola_protocol::wormhole_adapter_verify::{Self, Unit};
     use wormhole::bytes32::{Self, Bytes32};
@@ -41,6 +44,14 @@ module dola_protocol::wormhole_adapter_pool {
     const EHAS_INIT: u64 = 3;
 
     const EINVALID_CALL_TYPE: u64 = 4;
+
+    const EDUPLICATED_RELAYER: u64 = 5;
+
+    const ENOT_RELAYER: u64 = 6;
+
+    const ERELAYER_NOT_INIT: u64 = 7;
+
+    const ERELAYER_NOT_EXIST: u64 = 8;
 
     /// Reocord genesis of this module
     struct PoolGenesis has key {
@@ -67,6 +78,9 @@ module dola_protocol::wormhole_adapter_pool {
         registered_emitters: VecMap<u16, ExternalAddress>,
     }
 
+    /// Only certain users are allowed to act as Relayer
+    struct Relayer has copy, drop, store {}
+
     /// Events
 
     /// Event for pool withdraw
@@ -79,6 +93,18 @@ module dola_protocol::wormhole_adapter_pool {
         amount: u64
     }
 
+    /// Event for add relayer
+    struct AddRelayer has drop, copy {
+        new_relayer: address
+    }
+
+    /// Event for remove relayer
+    struct RemoveRelayer has drop, copy {
+        removed_relayer: address
+    }
+
+    /// === Initial Functions ===
+
     fun init(ctx: &mut TxContext) {
         transfer::share_object(PoolGenesis {
             id: object::new(ctx),
@@ -86,8 +112,6 @@ module dola_protocol::wormhole_adapter_pool {
             is_init: false
         });
     }
-
-    /// === Initial Functions ===
 
     /// Initialize for remote bridge and dola pool
     public entry fun initialize(
@@ -120,6 +144,43 @@ module dola_protocol::wormhole_adapter_pool {
         };
         transfer::share_object(pool_state);
         pool_genesis.is_init = true;
+    }
+
+    /// === Governance Functions ===
+
+    public fun add_relayer(
+        _: &GovernanceCap,
+        pool_state: &mut PoolState,
+        relayer: address
+    ) {
+        if (dynamic_field::exists_with_type<Relayer, vector<address>>(&mut pool_state.id, Relayer {})) {
+            let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut pool_state.id, Relayer {});
+            assert!(!vector::contains(relayers, &relayer), EDUPLICATED_RELAYER);
+            vector::push_back(relayers, relayer);
+        } else {
+            dynamic_field::add<Relayer, vector<address>>(&mut pool_state.id, Relayer {}, vector[relayer]);
+        };
+        emit(AddRelayer {
+            new_relayer: relayer
+        });
+    }
+
+    public fun remove_relayer(
+        _: &GovernanceCap,
+        pool_state: &mut PoolState,
+        relayer: address
+    ) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut pool_state.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut pool_state.id, Relayer {});
+        assert!(vector::contains(relayers, &relayer), ERELAYER_NOT_EXIST);
+        let (_, index) = vector::index_of(relayers, &relayer);
+        vector::remove(relayers, index);
+        emit(RemoveRelayer {
+            removed_relayer: relayer
+        });
     }
 
     /// === Friend Functions ===
@@ -200,6 +261,7 @@ module dola_protocol::wormhole_adapter_pool {
         ctx: &mut TxContext
     ) {
         genesis::check_latest_version(genesis);
+        check_relayer(pool_state, ctx);
         let vaa = wormhole_adapter_verify::parse_verify_and_replay_protect(
             wormhole_state,
             &pool_state.registered_emitters,
@@ -228,5 +290,16 @@ module dola_protocol::wormhole_adapter_pool {
             receiver: dola_address::get_dola_address(&receiver),
             amount
         })
+    }
+
+    /// === Internal Functions ===
+
+    fun check_relayer(pool_state: &mut PoolState, ctx: &mut TxContext) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut pool_state.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut pool_state.id, Relayer {});
+        assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
     }
 }
