@@ -20,10 +20,12 @@ module dola_protocol::wormhole_adapter_core {
     use sui::vec_map::{Self, VecMap};
 
     use dola_protocol::app_manager::{Self, AppCap};
+    use dola_protocol::dola_address;
     use dola_protocol::dola_address::DolaAddress;
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::pool_codec;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
+    use dola_protocol::remote_gov_codec;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use dola_protocol::wormhole_adapter_verify::{Self, Unit};
     use wormhole::bytes32::{Self, Bytes32};
@@ -270,6 +272,62 @@ module dola_protocol::wormhole_adapter_core {
         event::emit(DeleteSpender { dola_chain_id, dola_contract });
     }
 
+    public fun remote_add_relayer(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        relayer: vector<u8>,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
+    ) {
+        let msg = remote_gov_codec::encode_relayer_payload(
+            dola_address::create_dola_address(dola_chain_id, relayer),
+            remote_gov_codec::get_add_relayer_opcode()
+        );
+
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+    }
+
+    public fun remote_remove_relayer(
+        _: &GovernanceCap,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        relayer: vector<u8>,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock
+    ) {
+        let msg = remote_gov_codec::encode_relayer_payload(
+            dola_address::create_dola_address(dola_chain_id, relayer),
+            remote_gov_codec::get_remove_relayer_opcode()
+        );
+
+        let message_ticket = publish_message::prepare_message(
+            &mut core_state.wormhole_emitter,
+            0,
+            msg,
+        );
+
+        publish_message::publish_message(
+            wormhole_state,
+            wormhole_message_fee,
+            message_ticket,
+            clock
+        );
+    }
+
     public fun add_relayer(
         _: &GovernanceCap,
         core_state: &mut CoreState,
@@ -421,9 +479,12 @@ module dola_protocol::wormhole_adapter_core {
         amount: u256,
         wormhole_message_fee: Coin<SUI>,
         clock: &Clock,
+        from_remote: bool,
         ctx: &mut TxContext
     ): u64 {
-        check_relayer(core_state, ctx);
+        if (from_remote) {
+            check_relayer(core_state, ctx);
+        };
         let (actual_amount, _) = pool_manager::remove_liquidity(
             pool_manager_info,
             pool_address,

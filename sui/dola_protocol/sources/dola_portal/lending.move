@@ -422,6 +422,7 @@ module dola_protocol::lending_portal {
             actual_amount,
             wormhole_fee,
             clock,
+            false,
             ctx
         );
         transfer::public_transfer(bridge_fee, lending_portal.relayer);
@@ -575,6 +576,7 @@ module dola_protocol::lending_portal {
             (amount as u256),
             wormhole_fee,
             clock,
+            false,
             ctx
         );
 
