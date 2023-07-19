@@ -1,15 +1,16 @@
 from pathlib import Path
 from pprint import pprint
 
-import dola_sui_sdk.oracle
 import requests
 import yaml
+from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
-from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 U64_MAX = 18446744073709551615
 
@@ -1463,6 +1464,42 @@ def convert_vec_u16_to_list(vec):
     return [parse_u16(vec[1 + i * 2: 3 + i * 2]) for i in range(length)]
 
 
+def parse_vaa(vaa):
+    wormhole = load.wormhole_package()
+
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+
+    result = sui_project.batch_transaction_inspect(
+        actual_params=[
+            wormhole_state,
+            list(bytes.fromhex(vaa.replace('0x', ''))),
+            init.clock(),
+        ],
+        transactions=[
+            # 0. parse_vaa
+            [
+                wormhole.vaa.parse_and_verify,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                ],
+                []
+            ],
+            # 1. get_payload
+            [
+                wormhole.vaa.payload,
+                [
+                    Argument("Result", U16(0)),
+                ],
+                []
+            ]
+        ]
+    )
+    data = result['results'][1]['returnValues'][0][0][1:]
+    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
+
+
 def get_withdraw_user_asset_ids_from_vaa(vaa):
     dola_protocol = load.dola_protocol_package()
     wormhole = load.wormhole_package()
@@ -1729,6 +1766,12 @@ def get_unrelay_txs(src_chian_id, call_name, limit=0):
 
     response = requests.get(url)
     return response.json()['result']
+
+
+def get_sui_wormhole_payload(tx_hash):
+    events = sui_project.client.sui_getEvents(tx_hash)
+    data = events[0]['parsedJson']['payload']
+    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
 
 
 if __name__ == "__main__":

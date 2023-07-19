@@ -33,6 +33,8 @@ from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
+ZERO_FEE = int(1e18)
+
 
 class ColorFormatter(logging.Formatter):
     grey = '\x1b[38;21m'
@@ -245,39 +247,11 @@ class RelayRecord:
         }
         self.db.insert_one(record)
 
-    def add_sui_withdraw_record(self, nonce, call_name, vaa, relay_fee, dst_pool_address):
-        record = {
-            "src_chain_id": 0,
-            "nonce": nonce,
-            "call_name": call_name,
-            "sequence": nonce,
-            "relay_fee": relay_fee,
-            "withdraw_chain_id": "",
-            "withdraw_sequence": 0,
-            "withdraw_vaa": vaa,
-            "withdraw_pool": dst_pool_address,
-            "withdraw_costed_fee": 0,
-            "status": "withdraw",
-            "reason": "Unknown"
-        }
-        self.db.insert_one(record)
-
-    def add_sui_other_record(self, nonce, call_name, sequence, vaa, relay_fee):
-        record = {
-            "src_chain_id": 0,
-            "nonce": nonce,
-            "call_name": call_name,
-            "sequence": sequence,
-            "vaa": vaa,
-            "relay_fee": relay_fee,
-            "core_costed_fee": 0,
-            "status": "false",
-            "reason": "Unknown"
-        }
-        self.db.insert_one(record)
-
     def add_withdraw_record(self, src_chain_id, src_tx_id, nonce, call_name, block_number, sequence, vaa, relay_fee,
-                            start_time):
+                            start_time, core_tx_id="", core_costed_fee=0, withdraw_chain_id: str | int = "",
+                            withdraw_tx_id="",
+                            withdraw_sequence=0, withdraw_vaa="", withdraw_pool="", withdraw_costed_fee=0,
+                            status='false'):
         record = {
             "src_chain_id": src_chain_id,
             "src_tx_id": src_tx_id,
@@ -287,25 +261,25 @@ class RelayRecord:
             "sequence": sequence,
             "vaa": vaa,
             "relay_fee": relay_fee,
-            "core_tx_id": "",
-            "core_costed_fee": 0,
-            "withdraw_chain_id": "",
-            "withdraw_tx_id": "",
-            "withdraw_sequence": 0,
-            "withdraw_vaa": "",
-            "withdraw_pool": "",
-            "withdraw_costed_fee": 0,
-            "status": "false",
+            "core_tx_id": core_tx_id,
+            "core_costed_fee": core_costed_fee,
+            "withdraw_chain_id": withdraw_chain_id,
+            "withdraw_tx_id": withdraw_tx_id,
+            "withdraw_sequence": withdraw_sequence,
+            "withdraw_vaa": withdraw_vaa,
+            "withdraw_pool": withdraw_pool,
+            "withdraw_costed_fee": withdraw_costed_fee,
+            "status": status,
             "reason": "Unknown",
             "start_time": start_time,
             "end_time": "",
         }
         self.db.insert_one(record)
 
-    def add_wait_record(self, src_chain_id, src_tx_hash, nonce, sequence, block_number, relay_fee_value, date):
+    def add_wait_record(self, src_chain_id, src_tx_id, nonce, sequence, block_number, relay_fee_value, date):
         record = {
             'src_chain_id': src_chain_id,
-            'src_tx_id': src_tx_hash,
+            'src_tx_id': src_tx_id,
             'nonce': nonce,
             'sequence': sequence,
             'block_number': block_number,
@@ -351,9 +325,6 @@ class GasRecord:
         return self.db.find(filter)
 
 
-ZERO_FEE = int(1e18)
-
-
 def sui_portal_watcher():
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
@@ -372,7 +343,7 @@ def sui_portal_watcher():
 
                 call_type = fields["call_type"]
                 call_name = get_call_name(1, int(call_type))
-                nonce = fields['nonce']
+                nonce = int(fields['nonce'])
 
                 if not relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
                     relay_fee_amount = int(fields['fee_amount'])
@@ -382,15 +353,34 @@ def sui_portal_watcher():
                     dst_pool = fields['dst_pool']
                     dst_chain_id = int(dst_pool['dola_chain_id'])
                     dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
+                    timestamp = int(fields['timestampMs'] / 1000)
+                    start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
+                    src_tx_id = fields['id']['txDigest']
+
+                    payload_from_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
 
                     if call_name in ['withdraw', 'borrow']:
                         vaa = get_signed_vaa_by_wormhole(
                             WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
-                        relay_record.add_sui_withdraw_record(nonce, call_name, vaa, relay_fee, dst_pool_address)
+                        payload = dola_sui_lending.parse_vaa(vaa)
+                        if payload_from_chain != payload:
+                            raise ValueError("The data may have been manipulated!")
+
+                        relay_record.add_withdraw_record(0, src_tx_id, nonce, call_name, 0, sequence, vaa, relay_fee,
+                                                         start_time, core_tx_id=src_tx_id,
+                                                         withdraw_chain_id=dst_chain_id, withdraw_pool=dst_pool_address,
+                                                         withdraw_vaa=vaa, withdraw_sequence=sequence,
+                                                         status='withdraw')
                     else:
                         vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS['sui-mainnet-pool'], sequence,
                                                          sui_network)
-                        relay_record.add_sui_other_record(nonce, call_name, sequence, vaa, relay_fee)
+
+                        payload = dola_sui_lending.parse_vaa(vaa)
+                        if payload_from_chain != payload:
+                            raise ValueError("The data may have been manipulated!")
+
+                        relay_record.add_other_record(0, src_tx_id, nonce, call_name, 0, sequence, vaa, relay_fee,
+                                                      start_time)
 
                     gas_record.add_gas_record(0, nonce, dst_chain_id, call_name)
 
@@ -430,6 +420,11 @@ def wormhole_vaa_guardian(network="polygon-test"):
                 vm = wormhole.parseVM(vaa)
                 # parse payload
                 payload = list(vm)[7]
+
+                # check that cross-chain data is consistent with on-chain data
+                payload_from_chain = dola_ethereum_init.get_payload_from_chain(tx['src_tx_id'])
+                if payload_from_chain != payload:
+                    raise ValueError("The data may have been manipulated!")
 
                 app_id = payload[1]
                 call_type = payload[-1]
@@ -506,10 +501,10 @@ def eth_portal_watcher(network="polygon-test"):
                         }
                 )):
                     block_number = int(event['blockNumber'])
-                    src_tx_hash = event['transactionHash']
+                    src_tx_id = event['transactionHash']
                     timestamp = int(event['blockTimestamp'])
                     relay_fee_amount = int(event['amount'])
-                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
+                    start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
 
                     gas_token = get_gas_token(network)
                     relay_fee_value = get_fee_value(relay_fee_amount, gas_token)
@@ -519,9 +514,9 @@ def eth_portal_watcher(network="polygon-test"):
                         vaa = get_signed_vaa_by_wormhole(
                             emitter_address, sequence, network)
                     except Exception as e:
-                        relay_record.add_wait_record(src_chain_id, src_tx_hash, nonce, sequence, block_number,
+                        relay_record.add_wait_record(src_chain_id, src_tx_id, nonce, sequence, block_number,
                                                      relay_fee_value,
-                                                     date)
+                                                     start_time)
                         local_logger.warning(f"Warning: {e}")
                         continue
                     # parse vaa
@@ -530,16 +525,21 @@ def eth_portal_watcher(network="polygon-test"):
                     # parse payload
                     payload = list(vm)[7]
 
+                    # check that cross-chain data is consistent with on-chain data
+                    payload_from_chain = dola_ethereum_init.get_payload_from_chain(src_tx_id)
+                    if payload_from_chain != payload:
+                        raise ValueError("The data may have been manipulated!")
+
                     app_id = payload[1]
                     call_type = payload[-1]
                     call_name = get_call_name(app_id, call_type)
 
                     if call_name in ['withdraw', 'borrow']:
-                        relay_record.add_withdraw_record(src_chain_id, src_tx_hash, nonce, call_name, block_number,
-                                                         sequence, vaa, relay_fee_value, date)
+                        relay_record.add_withdraw_record(src_chain_id, src_tx_id, nonce, call_name, block_number,
+                                                         sequence, vaa, relay_fee_value, start_time)
                     else:
-                        relay_record.add_other_record(src_chain_id, src_tx_hash, nonce, call_name, block_number,
-                                                      sequence, vaa, relay_fee_value, date)
+                        relay_record.add_other_record(src_chain_id, src_tx_id, nonce, call_name, block_number,
+                                                      sequence, vaa, relay_fee_value, start_time)
 
                     local_logger.info(
                         f"Have a {call_name} transaction from {network}, sequence: {sequence}")
@@ -578,6 +578,12 @@ def pool_withdraw_watcher():
                     sequence = int(fields['sequence'])
                     vaa = get_signed_vaa_by_wormhole(
                         WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
+
+                    # check that cross-chain data is consistent with on-chain data
+                    payload = dola_sui_lending.parse_vaa(vaa)
+                    payload_from_chain = dola_sui_lending.get_sui_wormhole_payload(event['id']['txDigest'])
+                    if payload_from_chain != payload:
+                        raise ValueError("The data may have been manipulated!")
 
                     dst_pool = fields['dst_pool']
                     dst_chain_id = int(dst_pool['dola_chain_id'])
@@ -1089,6 +1095,8 @@ def graph_query(block_number, limit=5):
 def main():
     init_logger()
     init_markets()
+    # fix request ssl error
+    fix_requests_ssl()
     # Use when you need to improve concurrency
     init_accounts_and_lock()
 

@@ -230,7 +230,13 @@ def current_block_number():
     return brownie.web3.eth.block_number
 
 
+def get_payload_from_chain(tx_id):
+    tx = brownie.chain.get_transaction(tx_id)
+    return tx.events['LogMessagePublished']['payload']
+
+
 if __name__ == "__main__":
     set_ethereum_network("arbitrum-main")
-    print(query_relay_event_by_get_logs('0xEBb6a1d17Ae9A276EdE95bF6B8fC6527fa2dF737',
-                                        '0x6F5b4Bc793aE7213564501aB22c714e39f5D2BAC', 105951218))
+    tx = brownie.chain.get_transaction("0x0e4a568d0ec91649cfb0dbe2d42f888fbd5a1403cb7361edfeb0b5761adc3d1b")
+    payload = str(tx.events['LogMessagePublished']['payload'])
+    print(payload)
