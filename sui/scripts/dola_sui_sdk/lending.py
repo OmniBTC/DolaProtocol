@@ -1770,8 +1770,13 @@ def get_unrelay_txs(src_chian_id, call_name, limit=0):
 
 def get_sui_wormhole_payload(tx_hash):
     events = sui_project.client.sui_getEvents(tx_hash)
-    data = events[0]['parsedJson']['payload']
-    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
+    for event in events:
+        if event[
+            'type'] == '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a::publish_message::WormholeMessage':
+            data = event['parsedJson']['payload']
+            return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
+
+    return ""
 
 
 if __name__ == "__main__":
