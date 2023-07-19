@@ -6,6 +6,7 @@ import "../libraries/LibAsset.sol";
 import "../libraries/LibPoolCodec.sol";
 import "../libraries/LibLendingCodec.sol";
 import "../libraries/LibSystemCodec.sol";
+import "../libraries/LibGovCodec.sol";
 import "./DolaPool.sol";
 import "../../interfaces/IWormhole.sol";
 import "../libraries/LibWormholeAdapterVerify.sol";
@@ -27,6 +28,8 @@ contract WormholeAdapterPool {
     mapping(uint16 => bytes32) public registeredEmitters;
     // Used to verify that the VAA has been processed
     mapping(bytes32 => bool) public consumedVaas;
+    // Used to verify relayer authority
+    mapping(address => bool) public registeredRelayers;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -43,7 +46,8 @@ contract WormholeAdapterPool {
         uint8 _wormholeInstantConsistency,
         uint8 _wormholeFinalityConsistency,
         uint16 _emitterChainId,
-        bytes32 _emitterAddress
+        bytes32 _emitterAddress,
+        address _initialRelayer
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
@@ -54,6 +58,14 @@ contract WormholeAdapterPool {
         wormholeInstantConsistency = _wormholeInstantConsistency;
         wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
+        registeredRelayers[_initialRelayer] = true;
+    }
+
+    /// Modifiers
+
+    modifier onlyRelayer() {
+        require(registeredRelayers[msg.sender], "NOT RELAYER");
+        _;
     }
 
     /// Call by governance
@@ -96,6 +108,46 @@ contract WormholeAdapterPool {
         );
         require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
         dolaPool.deleteSpender(address(uint160(payload.dolaContract)));
+    }
+
+    function registerRelayer(bytes memory encodedVm) external {
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
+        LibGovCodec.RelayerPayload memory payload = LibGovCodec
+            .decodeRelayerPayload(vaa.payload);
+
+        require(payload.opcode == LibGovCodec.ADD_RELAYER_OPCODE);
+        require(
+            payload.relayer.dolaChainId == dolaChainId,
+            "INVALIE DOLA CHAIN"
+        );
+        address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
+        registeredRelayers[relayer] = true;
+    }
+
+    function removeRelayer(bytes memory encodedVm) external {
+        IWormhole.VM memory vaa = LibWormholeAdapterVerify
+            .parseVerifyAndReplayProtect(
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
+        LibGovCodec.RelayerPayload memory payload = LibGovCodec
+            .decodeRelayerPayload(vaa.payload);
+
+        require(payload.opcode == LibGovCodec.REMOVE_RELAYER_OPCODE);
+        require(
+            payload.relayer.dolaChainId == dolaChainId,
+            "INVALIE DOLA CHAIN"
+        );
+        address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
+        registeredRelayers[relayer] = false;
     }
 
     /// Call by application
@@ -147,7 +199,7 @@ contract WormholeAdapterPool {
     }
 
     /// Receive withdraw
-    function receiveWithdraw(bytes memory encodedVm) public {
+    function receiveWithdraw(bytes memory encodedVm) public onlyRelayer {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
                 wormhole,
