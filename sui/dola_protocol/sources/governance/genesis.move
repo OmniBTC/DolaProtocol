@@ -6,8 +6,8 @@ module dola_protocol::genesis {
     use std::vector;
 
     use sui::dynamic_field;
-    use sui::object::{Self, UID, ID};
-    use sui::package::{Self, UpgradeCap, UpgradeTicket, UpgradeReceipt};
+    use sui::object::{Self, ID, UID};
+    use sui::package::{Self, UpgradeCap, UpgradeReceipt, UpgradeTicket};
     use sui::transfer;
     use sui::tx_context::TxContext;
 
@@ -22,6 +22,10 @@ module dola_protocol::genesis {
     const E_TYPE_NOT_ALLOWED: u64 = 3;
 
     const E_NOT_LATEST_VERISON: u64 = 4;
+
+    const E_INVALID_RESTORED_VERSION: u64 = 5;
+
+    const E_ABNORMAL_SHUTDOWN: u64 = 6;
 
     /// Governance rights struct, responsible for governing all modules of Dola protocol.
     struct GovernanceCap {}
@@ -148,6 +152,40 @@ module dola_protocol::genesis {
 
         // Finally add the new version.
         dynamic_field::add(&mut genesis.id, Version {}, new_version);
+    }
+
+    /// Used to restore the system using the new version after shutting down the system.
+    public fun restore<RestoreVersion: store + drop>(
+        _: &GovernanceCap,
+        genesis: &mut GovernanceGenesis,
+        restore_version: RestoreVersion,
+    ) {
+        assert!(
+            !dynamic_field::exists_<Version>(&mut genesis.id, Version {}),
+            E_INVALID_RESTORED_VERSION
+        );
+        let restore_type = type_name::get<RestoreVersion>();
+        // Also make sure `New` originates from this module.
+        let module_name = into_bytes(type_name::get_module(&restore_type));
+        assert!(module_name == b"genesis", E_TYPE_NOT_ALLOWED);
+
+        dynamic_field::add(&mut genesis.id, Version {}, restore_version);
+    }
+
+    /// Close all external entries to the system by removing the version.
+    public fun shutdown<CurrentVersion: store + drop>(
+        _: &GovernanceCap,
+        genesis: &mut GovernanceGenesis
+    ) {
+        assert!(
+            dynamic_field::exists_with_type<Version, CurrentVersion>(&mut genesis.id, Version {}),
+            E_NOT_LATEST_VERISON
+        );
+        let _ = dynamic_field::remove<Version, CurrentVersion>(&mut genesis.id, Version {});
+        assert!(
+            !dynamic_field::exists_<Version>(&mut genesis.id, Version {}),
+            E_ABNORMAL_SHUTDOWN
+        );
     }
 
     /// === Helper Functions ===
