@@ -3,7 +3,7 @@ from pprint import pprint
 
 import requests
 import yaml
-from sui_brownie import SuiObject, Argument, U16, NestedResult
+from sui_brownie import SuiObject, Argument, U16
 
 import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
@@ -556,7 +556,7 @@ def core_withdraw(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
 
-    asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    asset_ids = get_feed_tokens_for_relayer(vaa, is_withdraw=True)
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
@@ -766,7 +766,7 @@ def core_borrow(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
 
-    asset_ids = get_withdraw_user_asset_ids_from_vaa(vaa)
+    asset_ids = get_feed_tokens_for_relayer(vaa, is_withdraw=True)
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
@@ -1037,7 +1037,7 @@ def core_liquidate(vaa, relay_fee=0):
     storage = sui_project.network_config['objects']['LendingStorage']
     pyth_state = sui_project.network_config['objects']['PythState']
 
-    asset_ids = get_violator_user_asset_ids_from_vaa(vaa)
+    asset_ids = get_feed_tokens_for_relayer(vaa, is_liquidate=True)
     feed_nums = len(asset_ids)
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state)
@@ -1362,7 +1362,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     oracle = sui_project.network_config['objects']['PriceOracle']
     storage = sui_project.network_config['objects']['LendingStorage']
 
-    asset_ids = cancel_as_collateral_sender_asset_ids_from_vaa(vaa)
+    asset_ids = get_feed_tokens_for_relayer(vaa, is_cancel_collateral=True)
     feed_nums = len(asset_ids)
 
     left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee)
@@ -1500,253 +1500,44 @@ def parse_vaa(vaa):
     return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
 
 
-def get_withdraw_user_asset_ids_from_vaa(vaa):
-    dola_protocol = load.dola_protocol_package()
-    wormhole = load.wormhole_package()
+def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_cancel_collateral=False):
+    """
+    public fun get_feed_tokens_for_relayer(
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        wormhole_state: &mut State,
+        storage: &mut Storage,
+        price_oracle: &mut PriceOracle,
+        vaa: vector<u8>,
+        is_withdraw: bool,
+        is_liquidate: bool,
+        is_cancel_collateral: bool,
+        clock: &Clock
+    )
+    :return:
+    """
+    external_interface = load.external_interfaces_package()
 
-    wormhole_state = sui_project.network_config['objects']['WormholeState']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    lending_core_storage = sui_project.network_config['objects']['LendingStorage']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-
-    result = sui_project.batch_transaction_inspect(
-        actual_params=[
-            wormhole_state,
-            list(bytes.fromhex(vaa.replace('0x', ''))),
-            init.clock(),
-            user_manager_info,
-            lending_core_storage,
-            pool_manager_info
-        ],
-        transactions=[
-            # 0. parse_vaa
-            [
-                wormhole.vaa.parse_and_verify,
-                [
-                    Argument("Input", U16(0)),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                ],
-                []
-            ],
-            # 1. get_payload
-            [
-                wormhole.vaa.payload,
-                [
-                    Argument("Result", U16(0)),
-                ],
-                []
-            ],
-            # 2. decode_send_message_payload
-            [
-                dola_protocol.pool_codec.decode_send_message_payload,
-                [
-                    Argument("Result", U16(1)),
-                ],
-                []
-            ],
-            # 3. get dola_user_id
-            [
-                dola_protocol.user_manager.get_dola_user_id,
-                [
-                    Argument("Input", U16(3)),
-                    Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                ],
-                []
-            ],
-            # 4. get user collateral
-            [
-                dola_protocol.lending_core_storage.get_user_collaterals,
-                [
-                    Argument("Input", U16(4)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                ],
-                []
-            ],
-            # 5. get user loans
-            [
-                dola_protocol.lending_core_storage.get_user_loans,
-                [
-                    Argument("Input", U16(4)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                ],
-                []
-            ],
-            # 6. decode_withdraw_payload
-            [
-                dola_protocol.lending_codec.decode_withdraw_payload,
-                [
-                    Argument("NestedResult", NestedResult(U16(2), U16(3))),
-                ],
-                []
-            ],
-            # 7. get withdraw pool id
-            [
-                dola_protocol.pool_manager.get_id_by_pool,
-                [
-                    Argument("Input", U16(5)),
-                    Argument("NestedResult", NestedResult(U16(6), U16(3))),
-                ],
-                []
-            ]
-        ]
-    )
-    collateral_ids = convert_vec_u16_to_list(result["results"][4]["returnValues"][0][0])
-    loan_ids = convert_vec_u16_to_list(result["results"][5]["returnValues"][0][0])
-    withdraw_pool_id = [parse_u16(result["results"][7]["returnValues"][0][0])]
-    return list(set(collateral_ids + loan_ids + withdraw_pool_id))
-
-
-def get_violator_user_asset_ids_from_vaa(vaa):
-    dola_protocol = load.dola_protocol_package()
-    wormhole = load.wormhole_package()
-
-    wormhole_state = sui_project.network_config['objects']['WormholeState']
-    lending_core_storage = sui_project.network_config['objects']['LendingStorage']
-
-    result = sui_project.batch_transaction_inspect(
-        actual_params=[
-            wormhole_state,
-            list(bytes.fromhex(vaa.replace('0x', ''))),
-            init.clock(),
-            lending_core_storage,
-        ],
-        transactions=[
-            # 0. parse_vaa
-            [
-                wormhole.vaa.parse_and_verify,
-                [
-                    Argument("Input", U16(0)),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                ],
-                []
-            ],
-            # 1. get_payload
-            [
-                wormhole.vaa.payload,
-                [
-                    Argument("Result", U16(0)),
-                ],
-                []
-            ],
-            # 2. decode_deposit_payload
-            [
-                dola_protocol.pool_codec.decode_deposit_payload,
-                [
-                    Argument("Result", U16(1)),
-                ],
-                []
-            ],
-            # 3. decode_liquidate_payload
-            [
-                dola_protocol.lending_codec.decode_liquidate_payload,
-                [
-                    Argument("NestedResult", NestedResult(U16(2), U16(5))),
-                ],
-                []
-            ],
-            # 4. get user collateral
-            [
-                dola_protocol.lending_core_storage.get_user_collaterals,
-                [
-                    Argument("Input", U16(3)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(3))),
-                ],
-                []
-            ],
-            # 5. get user loans
-            [
-                dola_protocol.lending_core_storage.get_user_loans,
-                [
-                    Argument("Input", U16(3)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(3))),
-                ],
-                []
-            ],
-        ]
-    )
-
-    collateral_ids = convert_vec_u16_to_list(result["results"][4]["returnValues"][0][0])
-    loan_ids = convert_vec_u16_to_list(result["results"][5]["returnValues"][0][0])
-    return collateral_ids + loan_ids
-
-
-def cancel_as_collateral_sender_asset_ids_from_vaa(vaa):
-    dola_protocol = load.dola_protocol_package()
-    wormhole = load.wormhole_package()
-
-    wormhole_state = sui_project.network_config['objects']['WormholeState']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    lending_core_storage = sui_project.network_config['objects']['LendingStorage']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    result = sui_project.batch_transaction_inspect(
-        actual_params=[
-            wormhole_state,
-            list(bytes.fromhex(vaa.replace('0x', ''))),
-            init.clock(),
-            user_manager_info,
-            lending_core_storage
-        ],
-        transactions=[
-            # 0. parse_vaa
-            [
-                wormhole.vaa.parse_and_verify,
-                [
-                    Argument("Input", U16(0)),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                ],
-                []
-            ],
-            # 1. get_payload
-            [
-                wormhole.vaa.payload,
-                [
-                    Argument("Result", U16(0)),
-                ],
-                []
-            ],
-            # 2. decode_send_message_payload
-            [
-                dola_protocol.pool_codec.decode_send_message_payload,
-                [
-                    Argument("Result", U16(1)),
-                ],
-                []
-            ],
-            # 3. get dola_user_id
-            [
-                dola_protocol.user_manager.get_dola_user_id,
-                [
-                    Argument("Input", U16(3)),
-                    Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                ],
-                []
-            ],
-            # 4. get user collateral
-            [
-                dola_protocol.lending_core_storage.get_user_collaterals,
-                [
-                    Argument("Input", U16(4)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                ],
-                []
-            ],
-            # 5. get user loans
-            [
-                dola_protocol.lending_core_storage.get_user_loans,
-                [
-                    Argument("Input", U16(4)),
-                    Argument("NestedResult", NestedResult(U16(3), U16(0))),
-                ],
-                []
-            ]
-        ]
+    result = external_interface.interfaces.get_feed_tokens_for_relayer.inspect(
+        pool_manager_info,
+        user_manager_info,
+        wormhole_state,
+        lending_storage,
+        price_oracle,
+        list(bytes.fromhex(vaa.replace('0x', ''))),
+        is_withdraw,
+        is_liquidate,
+        is_cancel_collateral,
+        init.clock()
     )
-    collateral_ids = convert_vec_u16_to_list(result["results"][4]["returnValues"][0][0])
-    loan_ids = convert_vec_u16_to_list(result["results"][5]["returnValues"][0][0])
-    return collateral_ids + loan_ids
+
+    return convert_vec_u16_to_list(result['results'][0]['returnValues'][0][0])
 
 
 def get_wormhole_fee():
