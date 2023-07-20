@@ -61,7 +61,6 @@ def get_pyth_fee():
 
 def feed_token_price_by_pyth(symbol):
     dola_protocol = load.dola_protocol_package()
-    sui_package = load_sui_package()
 
     pyth_fee_amount = int(get_pyth_fee() / 5 + 1)
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
@@ -234,6 +233,74 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
                 print(e)
                 continue
         time.sleep(600)
+
+
+def test_verify_oracle():
+    dola_protocol = load.dola_protocol_package()
+    kucoin = ccxt.kucoin()
+    kucoin.load_markets()
+
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    pyth_state = sui_project.network_config['objects']['PythState']
+    pyth_fee_amount = 1
+
+    symbol = "ETH/USD"
+    pool_id = get_pool_id(symbol)
+
+    result = sui_project.batch_transaction_inspect(
+        actual_params=[
+            governance_genesis,
+            wormhole_state,
+            pyth_state,
+            get_price_info_object(symbol),
+            price_oracle,
+            pool_id,
+            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+            init.clock(),
+            pyth_fee_amount
+        ],
+        transactions=[
+            [
+                dola_protocol.oracle.feed_token_price_by_pyth,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1)),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4)),
+                    Argument("Input", U16(5)),
+                    Argument("Input", U16(6)),
+                    Argument("Input", U16(7)),
+                    Argument("Input", U16(8)),
+                ],
+                []
+            ],
+            [
+                dola_protocol.oracle.get_token_price,
+                [
+                    Argument("Input", U16(4)),
+                    Argument("Input", U16(5)),
+                ],
+                []
+            ]
+        ]
+    )
+
+    decimal = int(result['results'][2]['returnValues'][1][0][0])
+
+    pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
+    print("\n")
+    print(f"Pyth price:{pyth_price}")
+    kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+    print(f"Kucoin price:{kucoin_price}")
+    if pyth_price > kucoin_price:
+        bias = 1 - kucoin_price / pyth_price
+    else:
+        bias = 1 - pyth_price / kucoin_price
+    print(f"Bias:{bias}")
+    assert bias < 0.01
 
 
 if __name__ == '__main__':
