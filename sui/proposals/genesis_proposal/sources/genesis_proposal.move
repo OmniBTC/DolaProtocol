@@ -390,4 +390,104 @@ module genesis_proposal::genesis_proposal {
         );
         hot_potato
     }
+
+    public fun add_pool_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        pool_state: &mut PoolState,
+        relayer: address
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_pool::add_relayer(
+            &governance_cap,
+            pool_state,
+            relayer
+        );
+        (governance_cap, certificate)
+    }
+
+    public fun remove_pool_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        pool_state: &mut PoolState,
+        relayer: address
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_pool::remove_relayer(
+            &governance_cap,
+            pool_state,
+            relayer
+        );
+        (governance_cap, certificate)
+    }
+
+    public fun add_core_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        core_state: &mut CoreState,
+        relayer: address
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_core::add_relayer(
+            &governance_cap,
+            core_state,
+            relayer
+        );
+        (governance_cap, certificate)
+    }
+
+    public fun remove_core_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        core_state: &mut CoreState,
+        relayer: address
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_core::remove_relayer(
+            &governance_cap,
+            core_state,
+            relayer
+        );
+        (governance_cap, certificate)
+    }
+
+    public fun remote_add_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        relayer: vector<u8>,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_core::remote_add_relayer(
+            &governance_cap,
+            wormhole_state,
+            core_state,
+            dola_chain_id,
+            relayer,
+            wormhole_message_fee,
+            clock
+        );
+        (governance_cap, certificate)
+    }
+
+    public fun remote_remove_relayer(
+        governance_cap: GovernanceCap,
+        certificate: Certificate,
+        wormhole_state: &mut State,
+        core_state: &mut CoreState,
+        dola_chain_id: u16,
+        relayer: vector<u8>,
+        wormhole_message_fee: Coin<SUI>,
+        clock: &Clock,
+    ): (GovernanceCap, Certificate) {
+        wormhole_adapter_core::remote_remove_relayer(
+            &governance_cap,
+            wormhole_state,
+            core_state,
+            dola_chain_id,
+            relayer,
+            wormhole_message_fee,
+            clock
+        );
+        (governance_cap, certificate)
+    }
 }
