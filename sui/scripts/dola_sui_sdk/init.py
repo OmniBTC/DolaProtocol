@@ -735,8 +735,7 @@ def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
     return [[
         genesis_proposal.genesis_proposal.destory,
         [
-            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
-            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))
+            Argument("Result", U16(tx_block_num)),
         ],
         []
     ]]
@@ -1432,6 +1431,272 @@ def register_new_group_chain(chain_ids):
              []
              ]
         ]
+    )
+
+
+def add_pool_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        pool_state,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.add_pool_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remove_pool_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        pool_state,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remove_pool_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def add_core_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    core_state = sui_project.network_config['objects']['CoreState']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        core_state,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.add_pool_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remove_core_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    core_state = sui_project.network_config['objects']['CoreState']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        core_state,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remove_pool_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remote_add_relayer(dola_chain_id, relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    core_state = sui_project.network_config['objects']['CoreState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    wormhole_fee = 0
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        wormhole_state,
+        core_state,
+        dola_chain_id,
+        relayer_address,
+        wormhole_fee,
+        clock()
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remote_add_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+                Argument("Input", U16(4)),
+                Argument("Input", U16(5)),
+                Argument("Input", U16(6)),
+                Argument("Input", U16(7)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remote_remove_relayer(dola_chain_id, relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    core_state = sui_project.network_config['objects']['CoreState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
+    wormhole_fee = 0
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        wormhole_state,
+        core_state,
+        dola_chain_id,
+        relayer_address,
+        wormhole_fee,
+        clock()
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remote_remove_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+                Argument("Input", U16(4)),
+                Argument("Input", U16(5)),
+                Argument("Input", U16(6)),
+                Argument("Input", U16(7)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
     )
 
 
