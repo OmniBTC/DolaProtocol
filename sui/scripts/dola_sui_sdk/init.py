@@ -183,7 +183,7 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
+    dola_protocol = load.dola_protocol_package()
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
     )
@@ -322,7 +322,7 @@ def vote_remote_register_owner(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
+    dola_protocol = load.dola_protocol_package()
 
     genesis_proposal.genesis_proposal.remote_register_owner(
         dola_protocol.governance_v1.GovernanceInfo[-1],
@@ -351,7 +351,7 @@ def vote_remote_delete_owner(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
+    dola_protocol = load.dola_protocol_package()
 
     genesis_proposal.genesis_proposal.remote_delete_owner(
         dola_protocol.governance_v1.GovernanceInfo[-1],
@@ -380,7 +380,7 @@ def vote_remote_register_spender(dola_chain_id, dola_contract):
     """
     genesis_proposal = load.genesis_proposal_package()
     wormhole = load.wormhole_package()
-    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
+    dola_protocol = load.dola_protocol_package()
 
     result = sui_project.pay_sui([0])
     zero_coin = result['objectChanges'][-1]['objectId']
@@ -534,21 +534,30 @@ def pool_id(coin_type):
 
 
 def proposal():
-    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    if 'mainnet' in sui_project.network:
+        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    else:
+        dola_protocol = sui_project.network_config['packages']['dola_protocol']
     genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
 
 
 def query_portal_relay_event(limit=10):
-    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    if 'mainnet' in sui_project.network:
+        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    else:
+        dola_protocol = sui_project.network_config['packages']['dola_protocol']
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_portal::RelayEvent"}, limit=limit,
         cursor=None, descending_order=True)['data']
 
 
 def query_core_relay_event(limit=10):
-    dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    if 'mainnet' in sui_project.network:
+        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+    else:
+        dola_protocol = sui_project.network_config['packages']['dola_protocol']
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
         cursor=None, descending_order=True)['data']
@@ -1040,11 +1049,9 @@ def batch_create_pool():
     dola_protocol = load.dola_protocol_package()
 
     sui_metadata = sui_project.client.suix_getCoinMetadata(sui()['coin_type'])['id']
-    usdt_metadata = sui_project.client.suix_getCoinMetadata(usdt()['coin_type'])['id']
-    usdc_metadata = sui_project.client.suix_getCoinMetadata(usdc()['coin_type'])['id']
 
-    create_pool_params = [sui_metadata, usdt_metadata, usdc_metadata]
-    coin_types = [sui()['coin_type'], usdt()['coin_type'], usdc()['coin_type']]
+    create_pool_params = [sui_metadata]
+    coin_types = [sui()['coin_type']]
     create_pool_tx_blocks = [
         build_create_pool_tx_block(dola_protocol, i, coin_types[i])
         for i in range(len(create_pool_params))
@@ -1074,7 +1081,7 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
 
 def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package(sui_project.network_config['packages']['dola_protocol']['origin'])
+    dola_protocol = load.dola_protocol_package()
 
     create_proposal()
 
@@ -1110,7 +1117,7 @@ def batch_init_oracle():
         clock(),  # 3
     ]
 
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param + arb_token_param
+    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
