@@ -1,6 +1,7 @@
 from pathlib import Path
 from pprint import pprint
 
+import ccxt
 import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16, NestedResult
@@ -43,6 +44,8 @@ def dola_pool_id_to_symbol(dola_pool_id):
 
 def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
     dola_protocol = load.dola_protocol_package()
+    kucoin = ccxt.kucoin()
+    kucoin.load_markets()
 
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -54,7 +57,8 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
     for pool_id in asset_ids:
         symbol = dola_pool_id_to_symbol(pool_id)
 
-        result = sui_project.batch_transaction_simulate(
+        vaa = get_feed_vaa(symbol)
+        result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
                 wormhole_state,
@@ -62,7 +66,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
                 get_price_info_object(symbol),
                 price_oracle,
                 pool_id,
-                list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+                list(bytes.fromhex(vaa.replace("0x", ""))),
                 init.clock(),
                 pyth_fee_amount
             ],
@@ -81,9 +85,29 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
                         Argument("Input", U16(8)),
                     ],
                     []
+                ],
+                [
+                    dola_protocol.oracle.get_token_price,
+                    [
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                    ],
+                    []
                 ]
             ]
         )
+
+        decimal = int(result['results'][2]['returnValues'][1][0][0])
+
+        pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
+        kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+        if pyth_price > kucoin_price:
+            bias = 1 - kucoin_price / pyth_price
+        else:
+            bias = 1 - pyth_price / kucoin_price
+
+        if bias > 0.01:
+            raise ValueError("The oracle price difference is too large!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
@@ -1456,6 +1480,13 @@ def parse_u64(data: list):
     output = 0
     for i in range(8):
         output = (output << 8) + int(data[7 - i])
+    return output
+
+
+def parse_u256(data: list):
+    output = 0
+    for i in range(32):
+        output = (output << 8) + int(data[31 - i])
     return output
 
 
