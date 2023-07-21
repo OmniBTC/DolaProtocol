@@ -132,6 +132,8 @@ def get_token_price(token):
         return float(kucoin.fetch_ticker("ETH/USDT")['close'])
     elif token == "bnb":
         return float(kucoin.fetch_ticker("BNB/USDT")['close'])
+    elif token == 'avax':
+        return float(kucoin.fetch_ticker("AVAX/USDT")['close'])
     elif token == "matic":
         return float(kucoin.fetch_ticker("MATIC/USDT")['close'])
     elif token == "apt":
@@ -141,7 +143,7 @@ def get_token_price(token):
 
 
 def get_token_decimal(token):
-    if token in ['eth', 'matic', 'bnb']:
+    if token in ['eth', 'matic', 'bnb', 'avax']:
         return 18
     elif token == 'apt':
         return 8
@@ -186,13 +188,15 @@ def get_call_name(app_id, call_type):
 
 def get_dola_network(dola_chain_id):
     if dola_chain_id == 0:
-        return "sui-mainnet"
+        return "sui-testnet"
     elif dola_chain_id == 5:
-        return "polygon-main"
+        return "polygon-test"
+    elif dola_chain_id == 6:
+        return "avax-test"
     elif dola_chain_id == 23:
-        return "arbitrum-main"
+        return "arbitrum-test"
     elif dola_chain_id == 24:
-        return "optimism-main"
+        return "optimism-test"
     else:
         return "unknown"
 
@@ -202,6 +206,8 @@ def get_gas_token(network='polygon-test'):
         return "sui"
     elif "aptos" in network:
         return "apt"
+    elif "avax" in network:
+        return "avax"
     elif "polygon" in network:
         return "matic"
     elif "bsc" in network:
