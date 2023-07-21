@@ -101,17 +101,17 @@ def get_pool_liquidity(dola_chain_id, pool_address):
 
 
 def get_all_pool_liquidity(dola_pool_id):
-    '''
+    """
     public entry fun get_all_pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16
     )
     :return:
-    '''
+    """
     external_interfaces = load.external_interfaces_package()
-    pool_manager = load.pool_manager_package()
+    pool_manager = sui_project.network_config['objects']['PoolManagerInfo']
     result = external_interfaces.interfaces.get_all_pool_liquidity.simulate(
-        pool_manager.pool_manager.PoolManagerInfo[-1],
+        pool_manager,
         dola_pool_id,
     )
 
@@ -381,4 +381,4 @@ if __name__ == "__main__":
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
     # pprint(get_user_allowed_borrow(5, 1, 1))
-    pprint(get_user_total_allowed_borrow(1))
+    pprint(get_all_pool_liquidity(1))

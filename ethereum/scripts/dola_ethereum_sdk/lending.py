@@ -1,7 +1,6 @@
 from brownie import Contract, network
 
-import dola_ethereum_sdk.load as load
-from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
+from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network, init, load
 
 
 def portal_binding(bind_address, dola_chain_id=5, fee=0):
@@ -229,8 +228,7 @@ def get_account_balance():
 
 
 def main():
-    portal_binding('0xa27e571EDd0724ee2245BeCe7DAf52d9c243400E', 6)
-    # portal_supply(init.usdt()['address'], 1 * 1e6)
+    portal_supply(init.usdt()['address'], 1 * 1e18)
     # portal_cancel_as_collateral([1, 2])
     # portal_withdraw(usdt()['address'], 0.1 * 1e8, 23, relay_fee=int(1e14))
     # portal_binding(

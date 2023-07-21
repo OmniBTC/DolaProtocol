@@ -149,19 +149,19 @@ networks:
     graphql_url: https://api.studio.thegraph.com/query/48530/fujidola/version/latest
     pools:
       USDC:
-        dola_chain_id: 5
+        dola_chain_id: 6
         dola_pool_id: 2
         pool_address: '0x92682ce0591b788767dCF2997df74Ac50C0b50CD'
         pool_name: USDC
         pool_weight: 1
       USDT:
-        dola_chain_id: 5
+        dola_chain_id: 6
         dola_pool_id: 1
         pool_address: '0x966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28'
         pool_name: USDT
         pool_weight: 1
       WBTC:
-        dola_chain_id: 5
+        dola_chain_id: 6
         dola_pool_id: 0
         pool_address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
         pool_name: WBTC
