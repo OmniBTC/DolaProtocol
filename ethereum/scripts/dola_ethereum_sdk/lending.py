@@ -1,5 +1,6 @@
-import dola_ethereum_sdk.load as load
 from brownie import Contract, network
+
+import dola_ethereum_sdk.load as load
 from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
 
 
@@ -228,7 +229,8 @@ def get_account_balance():
 
 
 def main():
-    portal_supply(init.usdt()['address'], 1 * 1e6)
+    portal_binding('0xa27e571EDd0724ee2245BeCe7DAf52d9c243400E', 6)
+    # portal_supply(init.usdt()['address'], 1 * 1e6)
     # portal_cancel_as_collateral([1, 2])
     # portal_withdraw(usdt()['address'], 0.1 * 1e8, 23, relay_fee=int(1e14))
     # portal_binding(
@@ -238,5 +240,5 @@ def main():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("avax-test")
     main()
