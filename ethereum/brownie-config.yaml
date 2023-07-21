@@ -221,6 +221,7 @@ networks:
     lending_portal: '0x1aDA087B6c051C77003966d669D1149d0c2dEE5F'
     scan_rpc_url: https://api-testnet.polygonscan.com/api
     system_portal: '0x2c0E6c7F14014F9D5D89F12DaB5c2Ea6eEfc481b'
+    graphql_url: https://api.studio.thegraph.com/query/48530/mumbaidola/version/latest
     pools:
       MATIC:
         dola_chain_id: 5

@@ -4,9 +4,8 @@ from typing import List
 import requests
 # 1e27
 import sui_brownie
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 RAY = 1000000000000000000000000000
 
@@ -1537,7 +1536,7 @@ def add_core_relayer(relayer_address):
 
     tx_blocks = [
         [
-            genesis_proposal.genesis_proposal.add_pool_relayer,
+            genesis_proposal.genesis_proposal.add_core_relayer,
             [
                 Argument("Result", U16(0)),
                 Argument("Input", U16(2)),
@@ -1578,7 +1577,7 @@ def remove_core_relayer(relayer_address):
 
     tx_blocks = [
         [
-            genesis_proposal.genesis_proposal.remove_pool_relayer,
+            genesis_proposal.genesis_proposal.remove_core_relayer,
             [
                 Argument("Result", U16(0)),
                 Argument("Input", U16(2)),

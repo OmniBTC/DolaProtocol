@@ -12,8 +12,16 @@ from pprint import pprint
 
 import brownie
 import ccxt
+import dola_ethereum_sdk
+import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_sui_sdk
+import dola_sui_sdk.init as dola_sui_init
+import dola_sui_sdk.lending as dola_sui_lending
+import dola_sui_sdk.load as dola_sui_load
 import requests
 import xxhash
+from dola_sui_sdk.load import sui_project
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.client import log as gql_client_logs
@@ -22,15 +30,6 @@ from pymongo import MongoClient
 from retrying import retry
 from sui_brownie import Argument, U16
 from sui_brownie.parallelism import ProcessExecutor
-
-import dola_ethereum_sdk
-import dola_ethereum_sdk.init as dola_ethereum_init
-import dola_ethereum_sdk.load as dola_ethereum_load
-import dola_sui_sdk
-import dola_sui_sdk.init as dola_sui_init
-import dola_sui_sdk.lending as dola_sui_lending
-import dola_sui_sdk.load as dola_sui_load
-from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
@@ -67,8 +66,9 @@ WORMHOLE_EMITTER_ADDRESS = {
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
-    "polygon-test": "0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c",
-    "sui-testnet": "0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e",
+    "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
+    "sui-testnet": "0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0",
+    "sui-testnet-pool": "0xf737cbc8e158b1b76b1f161f048e127ae4560a90df1c96002417802d7d23fe3f",
 }
 
 
@@ -520,9 +520,7 @@ def eth_portal_watcher(network="polygon-test"):
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
             # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents']) \
-                           or dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
-                                                                               latest_relay_block_number)
+            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents'])
 
             for event in relay_events:
                 nonce = int(event['nonce'])
@@ -1135,16 +1133,12 @@ def main():
     # Use when you need to improve concurrency
     init_accounts_and_lock()
 
-    pt = ProcessExecutor(executor=11)
+    pt = ProcessExecutor(executor=7)
 
     pt.run([
         sui_core_executor,
-        functools.partial(eth_portal_watcher, "arbitrum-main"),
-        functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
-        functools.partial(eth_portal_watcher, "optimism-main"),
-        functools.partial(wormhole_vaa_guardian, "optimism-main"),
-        functools.partial(eth_portal_watcher, "polygon-main"),
-        functools.partial(wormhole_vaa_guardian, "polygon-main"),
+        functools.partial(eth_portal_watcher, "polygon-test"),
+        functools.partial(wormhole_vaa_guardian, "polygon-test"),
         sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,
