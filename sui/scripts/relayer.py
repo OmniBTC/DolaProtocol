@@ -1024,7 +1024,6 @@ def get_signed_vaa_by_wormhole(
     emitter_chainid = NET_TO_WORMHOLE_CHAINID[src_net]
 
     url = f"{wormhole_url}vaas/{emitter_chainid}/{emitter}/{sequence}"
-    print(url)
     response = requests.get(url)
 
     if 'data' not in response.json():
