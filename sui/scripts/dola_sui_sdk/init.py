@@ -4,8 +4,9 @@ from typing import List
 import requests
 # 1e27
 import sui_brownie
-from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+
+from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 
 RAY = 1000000000000000000000000000
 
@@ -639,7 +640,8 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
             [
                 genesis_proposal.genesis_proposal.vote_proposal_final,
                 [
-                    Argument("Input", U16(0)), Argument("Input", U16(1))
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1))
                 ],
                 []
             ],
@@ -647,7 +649,6 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
                 genesis_proposal.genesis_proposal.register_remote_bridge,
                 [
                     Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(0), U16(1))),
                     Argument("Input", U16(2)),
                     Argument("Input", U16(3)),
                     Argument("Input", U16(4)),
@@ -658,7 +659,6 @@ def register_remote_bridge(wormhole_chain_id, emitter_address):
                 genesis_proposal.genesis_proposal.destory,
                 [
                     Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                    Argument("NestedResult", NestedResult(U16(1), U16(1)))
                 ],
                 []
             ]
@@ -755,8 +755,7 @@ def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence
     return [
         genesis_proposal.genesis_proposal.register_new_pool,
         [
-            Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
-            Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
+            Argument("Result", U16(sequence)),
             Argument("Input", U16(basic_param_num - 1)),
             Argument("Input", U16(basic_param_num + 5 * sequence + 0)),
             Argument("Input", U16(basic_param_num + 5 * sequence + 1)),
@@ -1384,51 +1383,42 @@ def register_new_group_chain(chain_ids):
     group_chain_ids = chain_ids
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
-    total_app_info = sui_project.network_config['objects']['TotalAppInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
     create_proposal()
     sui_project.batch_transaction(
         actual_params=[governance_info,  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
-                       total_app_info,  # 2
-                       user_manager_info,  # 3
-                       chain_group_id,  # 4
-                       group_chain_ids,  # 5
+                       user_manager_info,  # 2
+                       chain_group_id,  # 3
+                       group_chain_ids,  # 4
                        ],
         transactions=[
-            [genesis_proposal.genesis_proposal.vote_proposal_final,
-             [Argument("Input", U16(0)), Argument("Input", U16(1))],
-             []
-             ],  # 0. vote_proposal_final
             [
-                genesis_proposal.genesis_proposal.init_system_core,
-                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
-                 Argument("Input", U16(2))],
+                genesis_proposal.genesis_proposal.vote_proposal_final,
+                [
+                    Argument("Input", U16(0)),
+                    Argument("Input", U16(1))
+                ],
                 []
-            ],  # 1. init_system_core
-            [
-                genesis_proposal.genesis_proposal.init_lending_core,
-                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
-                 Argument("Input", U16(2))],
-                []
-            ],  # 2. init_lending_core
+            ],  # 0. vote_proposal_final
             [
                 genesis_proposal.genesis_proposal.init_chain_group_id,
-                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
-                 Argument("Input", U16(3)),
-                 Argument("Input", U16(4)),
-                 Argument("Input", U16(5))],
+                [
+                    Argument("Result", U16(0)),
+                    Argument("Input", U16(2)),
+                    Argument("Input", U16(3)),
+                    Argument("Input", U16(4))
+                ],
                 []
-            ],  # 3. init_chain_group_id
-            [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-              Argument("NestedResult", NestedResult(U16(3), U16(1)))],
-             []
-             ]
+            ],  # 1. init_chain_group_id
+            [
+                genesis_proposal.genesis_proposal.destory,
+                [
+                    Argument("Result", U16(1)),
+                ],
+                []
+            ]
         ]
     )
 
@@ -1711,7 +1701,7 @@ if __name__ == '__main__':
     # upgrade_evm_adapter(5, 389767246369475325315697891844518913195186658835, -1)
 
     # delete_remote_bridge(5)
-    # register_remote_bridge(5, "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8")
+    # register_remote_bridge(6, "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(0, sui_pool_emitter)
 
@@ -1723,4 +1713,4 @@ if __name__ == '__main__':
     # register_new_reserve(reserve="OP")
     # register_new_reserve(reserve="ARB")
 
-    # register_new_group_chain([24])
+    # register_new_group_chain([6])

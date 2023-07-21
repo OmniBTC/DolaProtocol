@@ -143,6 +143,45 @@ networks:
   avax-test:
     wormhole: '0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C'
     wormhole_chainid: 6
+    core_emitter: '0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0'
+    lending_portal: '0x68bfd18B4e779f1031FF1E259b7D689D94c24Dd6'
+    system_portal: '0x4a5eF9B3f89152CB657083EB011bCCf401F53568'
+    graphql_url: https://api.studio.thegraph.com/query/48530/fujidola/version/latest
+    pools:
+      USDC:
+        dola_chain_id: 5
+        dola_pool_id: 2
+        pool_address: '0x92682ce0591b788767dCF2997df74Ac50C0b50CD'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 5
+        dola_pool_id: 1
+        pool_address: '0x966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 5
+        dola_pool_id: 0
+        pool_address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
+        pool_name: WBTC
+        pool_weight: 1
+    tokens:
+      USDC:
+        address: '0x92682ce0591b788767dCF2997df74Ac50C0b50CD'
+        decimals: 18
+        dola_pool_id: 2
+      USDT:
+        address: '0x966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28'
+        decimals: 18
+        dola_pool_id: 1
+      WBTC:
+        address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
+        decimals: 18
+        dola_pool_id: 0
+    wormhole_adapter_pool: '0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027'
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 200
   bsc-test:
     btc: '0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5'
     lending_portal: '0x3bDCd3dE2FAaEed58Ae5E9FD5e7c92Bfa938B5d0'
