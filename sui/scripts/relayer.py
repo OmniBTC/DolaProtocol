@@ -12,16 +12,8 @@ from pprint import pprint
 
 import brownie
 import ccxt
-import dola_ethereum_sdk
-import dola_ethereum_sdk.init as dola_ethereum_init
-import dola_ethereum_sdk.load as dola_ethereum_load
-import dola_sui_sdk
-import dola_sui_sdk.init as dola_sui_init
-import dola_sui_sdk.lending as dola_sui_lending
-import dola_sui_sdk.load as dola_sui_load
 import requests
 import xxhash
-from dola_sui_sdk.load import sui_project
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.client import log as gql_client_logs
@@ -30,6 +22,15 @@ from pymongo import MongoClient
 from retrying import retry
 from sui_brownie import Argument, U16
 from sui_brownie.parallelism import ProcessExecutor
+
+import dola_ethereum_sdk
+import dola_ethereum_sdk.init as dola_ethereum_init
+import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_sui_sdk
+import dola_sui_sdk.init as dola_sui_init
+import dola_sui_sdk.lending as dola_sui_lending
+import dola_sui_sdk.load as dola_sui_load
+from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
@@ -67,6 +68,7 @@ WORMHOLE_EMITTER_ADDRESS = {
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
     "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
+    "avax-test": "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027",
     "sui-testnet": "0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0",
     "sui-testnet-pool": "0xf737cbc8e158b1b76b1f161f048e127ae4560a90df1c96002417802d7d23fe3f",
 }
@@ -1022,7 +1024,7 @@ def get_signed_vaa_by_wormhole(
     emitter_address = dola_sui_init.format_emitter_address(emitter)
     emitter_chainid = NET_TO_WORMHOLE_CHAINID[src_net]
 
-    url = f"{wormhole_url}/v1/signed_vaa/{emitter_chainid}/{emitter_address}/{sequence}"
+    url = f"{wormhole_url}/vaas/{emitter_chainid}/{emitter_address}/{sequence}"
     response = requests.get(url)
 
     if 'vaaBytes' not in response.json():
@@ -1137,8 +1139,8 @@ def main():
 
     pt.run([
         sui_core_executor,
-        functools.partial(eth_portal_watcher, "polygon-test"),
-        functools.partial(wormhole_vaa_guardian, "polygon-test"),
+        functools.partial(eth_portal_watcher, "avax-test"),
+        functools.partial(wormhole_vaa_guardian, "avax-test"),
         sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,

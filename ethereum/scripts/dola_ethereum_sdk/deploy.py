@@ -50,17 +50,17 @@ def deploy():
     # config_file["networks"][cur_net]["system_portal"] = system_portal.address
     # config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
 
-    # if "test" in cur_net:
-    #     wbtc = deploy_token("WBTC")
-    #
-    #     usdt = deploy_token("USDT")
-    #
-    #     usdc = deploy_token("USDC")
-    #
-    #     config_file["networks"][cur_net]["wbtc"] = wbtc.address
-    #     config_file["networks"][cur_net]["usdt"] = usdt.address
-    #     config_file["networks"][cur_net]["usdc"] = usdc.address
+    if "test" in cur_net:
+        wbtc = deploy_token("WBTC")
 
+        usdt = deploy_token("USDT")
+
+        usdc = deploy_token("USDC")
+
+        # config_file["networks"][cur_net]["wbtc"] = wbtc.address
+        # config_file["networks"][cur_net]["usdt"] = usdt.address
+        # config_file["networks"][cur_net]["usdc"] = usdc.address
+    #
     # with open(path, "w") as f:
     #     yaml.safe_dump(config_file, f)
 
@@ -75,5 +75,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-test")
+    set_ethereum_network("avax-test")
     deploy()

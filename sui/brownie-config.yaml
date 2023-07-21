@@ -187,7 +187,7 @@ networks:
         coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
         decimals: 6
         dola_pool_id: 1
-    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
+    wormhole_url: https://api.wormscan.io/api/v1/
   sui-testnet:
     node_url: https://fullnode.testnet.sui.io:443
     objects:
@@ -351,7 +351,7 @@ networks:
         coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         decimals: 9
         dola_pool_id: 3
-    wormhole_url: https://wormhole-v2-testnet-api.certus.one
+    wormhole_url: https://api.testnet.wormscan.io/api/v1/
 sui_wallets:
   from_mnemonic:
     Oracle: ${ORACLE_MNEMONIC}
