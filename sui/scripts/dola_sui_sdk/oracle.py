@@ -306,4 +306,5 @@ def test_verify_oracle():
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
+    feed_token_price_by_pyth('ETH/USD')
+    # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])

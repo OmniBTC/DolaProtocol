@@ -97,6 +97,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
             ]
         )
 
+        pprint(result)
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)

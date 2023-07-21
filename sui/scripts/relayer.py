@@ -888,9 +888,16 @@ def eth_pool_executor():
                 local_logger.error(f"Execute eth pool withdraw fail\n {e}")
 
 
+def check_valid_call_name(call_name):
+    if call_name not in ['supply', 'withdraw', 'borrow', 'repay', 'liquidate', 'cancel_as_collateral', 'as_collateral']:
+        raise ValueError("Invalid call name!")
+
+
 def get_unrelay_txs(src_chain_id, call_name, limit):
     db = mongodb()
     relay_record = db['RelayRecord']
+
+    check_valid_call_name(call_name)
 
     if int(limit) > 0:
         result = list(relay_record.find(
@@ -926,6 +933,8 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
     db = mongodb()
     gas_record = db['GasRecord']
 
+    check_valid_call_name(call_name)
+
     result = list(gas_record.find(
         {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).sort(
         'core_gas', -1).limit(1))
@@ -936,6 +945,9 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
 def get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_num):
     db = mongodb()
     gas_record = db['GasRecord']
+
+    check_valid_call_name(call_name)
+
     if call_name in ['borrow', 'withdraw', 'cancel_as_collateral']:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name,
