@@ -9,6 +9,7 @@ module dola_protocol::oracle {
     use std::vector;
 
     use sui::clock::{Self, Clock};
+    use sui::coin;
     use sui::coin::Coin;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
@@ -17,14 +18,10 @@ module dola_protocol::oracle {
     use sui::tx_context::TxContext;
 
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
-    use pyth::hot_potato_vector;
-    use pyth::i64;
     use pyth::price_identifier::{Self, PriceIdentifier};
-    use pyth::price_info::{Self, PriceInfoObject};
-    use pyth::pyth;
+    use pyth::price_info::PriceInfoObject;
     use pyth::state::State as PythState;
     use wormhole::state::State as WormholeState;
-    use wormhole::vaa;
 
     const MINUATE: u64 = 60;
 
@@ -170,12 +167,12 @@ module dola_protocol::oracle {
 
     public fun feed_token_price_by_pyth(
         genesis: &GovernanceGenesis,
-        wormhole_state: &mut WormholeState,
-        pyth_state: &mut PythState,
-        price_info_object: &mut PriceInfoObject,
+        _wormhole_state: &mut WormholeState,
+        _pyth_state: &mut PythState,
+        _price_info_object: &mut PriceInfoObject,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,
-        vaa: vector<u8>,
+        _vaa: vector<u8>,
         clock: &Clock,
         fee: Coin<SUI>
     ) {
@@ -184,31 +181,34 @@ module dola_protocol::oracle {
 
         // Check feed token is correct
         assert!(table::contains(&price_oracle.price_identifiers, dola_pool_id), ENONEXISTENT_ORACLE);
-        let price_idetifiers = &mut price_oracle.price_identifiers;
-        let price_identifier = table::borrow(price_idetifiers, dola_pool_id);
-        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
-        let pyth_price_identifier = price_info::get_price_identifier(&price_info);
-        assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
-
-        let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
-        let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
-        let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
-        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        // let price_idetifiers = &mut price_oracle.price_identifiers;
+        // let price_identifier = table::borrow(price_idetifiers, dola_pool_id);
+        // let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
+        // let pyth_price_identifier = price_info::get_price_identifier(&price_info);
+        // assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
+        //
+        // let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
+        // let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
+        // let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
+        // let current_timestamp = clock::timestamp_ms(clock) / 1000;
         let price_oracles = &mut price_oracle.price_oracles;
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
         // get the price of the lastest minute
-        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MINUATE);
-        hot_potato_vector::destroy(hot_potato_vector);
-
-        let price_value = pyth::price::get_price(&pyth_price);
-        let price_value = i64::get_magnitude_if_positive(&price_value);
-        let expo = pyth::price::get_expo(&pyth_price);
-        let expo = i64::get_magnitude_if_negative(&expo);
-
-        price.value = (price_value as u256);
-        price.decimal = (expo as u8);
+        // let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MINUATE);
+        // hot_potato_vector::destroy(hot_potato_vector);
+        //
+        // let price_value = pyth::price::get_price(&pyth_price);
+        // let price_value = i64::get_magnitude_if_positive(&price_value);
+        // let expo = pyth::price::get_expo(&pyth_price);
+        // let expo = i64::get_magnitude_if_negative(&expo);
+        //
+        // price.value = (price_value as u256);
+        // price.decimal = (expo as u8);
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
         price.last_update_timestamp = current_timestamp;
+
+        coin::destroy_zero(fee);
     }
 
     #[test_only]
