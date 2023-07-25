@@ -19,6 +19,7 @@ def generate_dola_protocol_package_info():
         wormhole=sui_project.network_config['packages']['wormhole'],
         pyth=sui_project.network_config['packages']['pyth']
     ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol'],
         wormhole=sui_project.network_config['packages']['wormhole'],
         pyth=sui_project.network_config['packages']['pyth'],
     ))

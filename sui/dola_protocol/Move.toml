@@ -1,12 +1,12 @@
 [package]
 name = "DolaProtocol"
 version = "1.0.2"
-published-at = "0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d"
+published-at = "0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2"
 
 [addresses]
 dola_protocol = "0x0"
-wormhole = "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
-pyth = "0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302"
+wormhole = "0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94"
+pyth = "0x431c1cfb9a4da32c77810a1c48aa19cc2edb03010281e0fe411b4b3b38589df1"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
