@@ -62,7 +62,7 @@ def get_pyth_fee():
 def feed_token_price_by_pyth(symbol):
     dola_protocol = load.dola_protocol_package()
 
-    pyth_fee_amount = int(get_pyth_fee() / 5 + 1)
+    pyth_fee_amount = 0
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
