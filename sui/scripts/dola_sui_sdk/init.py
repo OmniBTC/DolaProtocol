@@ -534,30 +534,21 @@ def pool_id(coin_type):
 
 
 def proposal():
-    if 'mainnet' in sui_project.network:
-        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
-    else:
-        dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
 
 
 def query_portal_relay_event(limit=10):
-    if 'mainnet' in sui_project.network:
-        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
-    else:
-        dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_portal::RelayEvent"}, limit=limit,
         cursor=None, descending_order=True)['data']
 
 
 def query_core_relay_event(limit=10):
-    if 'mainnet' in sui_project.network:
-        dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
-    else:
-        dola_protocol = sui_project.network_config['packages']['dola_protocol']
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
         cursor=None, descending_order=True)['data']

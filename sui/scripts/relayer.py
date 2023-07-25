@@ -624,6 +624,7 @@ def pool_withdraw_watcher():
                     # check that cross-chain data is consistent with on-chain data
                     payload = dola_sui_lending.parse_vaa(vaa)
                     payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(event['id']['txDigest'])
+
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
                         raise ValueError("The data may have been manipulated!")
 
@@ -889,7 +890,8 @@ def eth_pool_executor():
 
 
 def check_valid_call_name(call_name):
-    if call_name not in ['supply', 'withdraw', 'borrow', 'repay', 'liquidate', 'cancel_as_collateral', 'as_collateral']:
+    if call_name not in ['binding', 'unbinding', 'supply', 'withdraw', 'borrow', 'repay', 'liquidate',
+                         'cancel_as_collateral', 'as_collateral']:
         raise ValueError("Invalid call name!")
 
 

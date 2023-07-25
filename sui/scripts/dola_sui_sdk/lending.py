@@ -97,11 +97,14 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
             ]
         )
 
-        pprint(result)
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+        if symbol in ['USDT/USD', 'USDC/USD']:
+            kucoin_price = 1
+        else:
+            kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+
         if pyth_price > kucoin_price:
             bias = 1 - kucoin_price / pyth_price
         else:
@@ -476,8 +479,6 @@ def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
     user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-
-    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
 
     gas_coin = get_zero_coin()
 
@@ -1595,9 +1596,9 @@ def get_unrelay_txs(src_chian_id, call_name, limit=0):
 
 def get_sui_wormhole_payload(tx_hash):
     events = sui_project.client.sui_getEvents(tx_hash)
+    wormhole = sui_project.network_config['packages']['wormhole']['origin']
     for event in events:
-        if event[
-            'type'] == '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a::publish_message::WormholeMessage':
+        if event['type'] == f'{wormhole}::publish_message::WormholeMessage':
             data = event['parsedJson']['payload']
             return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
 
@@ -1609,7 +1610,7 @@ if __name__ == "__main__":
     # init.claim_test_coin(usdt())
     # portal_supply(usdt()['coin_type'], int(1e5))
     # portal_withdraw_local(init.sui(), int(1e7))
-    # portal_withdraw_remote(list(bytes.fromhex("c2132D05D31c914a87C6611C10748AEb04B58e8F")), 0.01 * 1e8, 5,
-    #                        list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
+    portal_withdraw_remote(list(bytes.fromhex("966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28")), 1 * 1e8, 6,
+                           list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    export_objects()
+    # export_objects()
