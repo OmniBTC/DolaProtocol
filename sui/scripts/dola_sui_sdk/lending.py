@@ -2,15 +2,16 @@ from pathlib import Path
 from pprint import pprint
 
 import ccxt
-import dola_sui_sdk.oracle
 import requests
 import yaml
+from sui_brownie import SuiObject, Argument, U16
+
+import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
-from sui_brownie import SuiObject, Argument, U16
 
 U64_MAX = 18446744073709551615
 
@@ -50,7 +51,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_fee_amount = 1
+    pyth_fee_amount = 0
 
     feed_gas = 0
     for pool_id in asset_ids:
