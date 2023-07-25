@@ -3,11 +3,11 @@ module upgrade_proposal_template::upgrade_proposal {
 
     use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
-    use sui::package::{UpgradeTicket, UpgradeReceipt};
+    use sui::package::{UpgradeReceipt, UpgradeTicket};
     use sui::tx_context::TxContext;
 
     /// The digest of the new contract
-    const DIGEST: vector<u8> = x"304ddab187afb818afa887f22e93f7687f2ce2566fc1f6e011db05c3542b5cf2";
+    const DIGEST: vector<u8> = x"e35b3c9b9e53f1e6f30d4a414cd3641e07ffce0beb31d41191b3c14d18ab200a";
     const POLICY: u8 = 0;
 
     /// Errors
