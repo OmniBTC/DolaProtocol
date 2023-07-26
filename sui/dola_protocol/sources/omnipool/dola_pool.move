@@ -24,8 +24,7 @@ module dola_protocol::dola_pool {
     use sui::test_scenario;
 
     friend dola_protocol::wormhole_adapter_pool;
-    friend dola_protocol::lending_portal;
-
+    
     /// Errors
 
     /// Invalid pool
