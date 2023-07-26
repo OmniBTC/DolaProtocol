@@ -222,13 +222,11 @@ networks:
     packages:
       dola_protocol:
         origin: '0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2'
-        latest: '0x3f5e26d90c1f979bd3f4bbdb9b7ba284432551d96c8e37482a1fb8e38786334f'
+        latest: '0x0415de1c03a69d652e64e17c166311c01d7608133c699edf97dd8297e83bf02b'
       external_interfaces: '0x73675fcdcbd224745cb1a105e00479707805e3156ebf82ad3a87b5f8ec06667b'
       genesis_proposal: '0xd95adb1831c7c319bea6a5b7b5ecfbe09eb27ee50bd7e01d8b7b7823da9ba69e'
       pyth: '0x431c1cfb9a4da32c77810a1c48aa19cc2edb03010281e0fe411b4b3b38589df1'
-      wormhole:
-        origin: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
-        latest: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
+      wormhole: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
     pools:
       SUI:
         dola_chain_id: 0

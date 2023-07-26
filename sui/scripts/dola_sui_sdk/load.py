@@ -53,7 +53,7 @@ def dola_protocol_package(package_id: str = None):
 
 def wormhole_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.network_config['packages']['wormhole']['latest']
+        package_id: str = sui_project.network_config['packages']['wormhole']
     return sui_package(package_id,
                        Path.home().joinpath(Path(
                            ".move/https___github_com_wormhole-foundation_wormhole_git_fcfe551da0f46b704b76b09ae11dca3dd9387837/sui/wormhole")))

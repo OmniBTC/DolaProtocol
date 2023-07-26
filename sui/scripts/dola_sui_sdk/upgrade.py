@@ -19,7 +19,7 @@ def generate_dola_protocol_package_info():
         wormhole=sui_project.network_config['packages']['wormhole'],
         pyth=sui_project.network_config['packages']['pyth']
     ), replace_publish_at=dict(
-        dola_protocol=sui_project.network_config['packages']['dola_protocol'],
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
         wormhole=sui_project.network_config['packages']['wormhole'],
         pyth=sui_project.network_config['packages']['pyth'],
     ))
@@ -31,7 +31,7 @@ def deploy_upgrade_proposal():
     )
 
     upgrade_proposal_template_package.program_publish_package(
-        replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']),
+        replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin']),
         replace_publish_at=dict(dola_protocol=get_latest_dola_protocol())
     )
 
@@ -72,7 +72,7 @@ def migrate_create_proposal():
 def upgrade_dola_protocol():
     upgrade_proposal_template = load.upgrade_proposal_template_package()
     dola_protocol = load.dola_protocol_package(get_latest_dola_protocol())
-    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
+    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']['origin']}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
                    f"::upgrade_proposal::Certificate>"
 
     dola_protocol.program_dola_upgrade_package(
