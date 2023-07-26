@@ -17,8 +17,8 @@ contract LendingPortal {
     event RelayEvent(
         uint64 sequence,
         uint64 nonce,
-        LibDolaTypes.DolaAddress dstPool,
         uint256 feeAmount,
+        uint16 appId,
         uint8 callType
     );
 
@@ -76,8 +76,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.SUPPLY
         );
 
@@ -125,8 +125,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dstChainId, token),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.WITHDRAW
         );
 
@@ -174,8 +174,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dstChainId, token),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.BORROW
         );
 
@@ -232,8 +232,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, token),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.REPAY
         );
 
@@ -288,8 +288,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.addressToDolaAddress(dolaChainId, debtToken),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.LIQUIDATE
         );
 
@@ -329,8 +329,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, ""),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.AS_COLLATERAL
         );
 
@@ -370,8 +370,8 @@ contract LendingPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, ""),
             fee,
+            LENDING_APP_ID,
             LibLendingCodec.CANCEL_AS_COLLATERAL
         );
 

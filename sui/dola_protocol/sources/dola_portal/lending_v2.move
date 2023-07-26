@@ -75,8 +75,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            dst_pool,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_as_colleteral_type()
         );
 
@@ -134,8 +134,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            dst_pool,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_cancel_as_colleteral_type()
         );
 
@@ -202,8 +202,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            pool_address,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_supply_type()
         );
 
@@ -269,8 +269,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            pool_address,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_withdraw_type()
         );
 
@@ -338,8 +338,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            pool_address,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_borrow_type()
         );
 
@@ -406,8 +406,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            pool_address,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_repay_type()
         );
 
@@ -481,8 +481,8 @@ module dola_protocol::lending_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            withdraw_pool,
             relay_fee_amount,
+            LENDING_APP_ID,
             lending_codec::get_repay_type()
         );
 

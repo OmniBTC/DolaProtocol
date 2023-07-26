@@ -74,8 +74,8 @@ module dola_protocol::system_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            bind_dola_address,
             relay_fee_amount,
+            SYSTEM_APP_ID,
             system_codec::get_binding_type()
         );
 
@@ -132,8 +132,8 @@ module dola_protocol::system_portal_v2 {
         wormhole_adapter_pool::emit_relay_event(
             sequence,
             nonce,
-            unbind_dola_address,
             relay_fee_amount,
+            SYSTEM_APP_ID,
             system_codec::get_unbinding_type()
         );
 

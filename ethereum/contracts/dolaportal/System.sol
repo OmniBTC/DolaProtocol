@@ -17,8 +17,8 @@ contract SystemPortal {
     event RelayEvent(
         uint64 sequence,
         uint64 nonce,
-        LibDolaTypes.DolaAddress dstPool,
         uint256 feeAmount,
+        uint16 appId,
         uint8 callType
     );
 
@@ -63,8 +63,8 @@ contract SystemPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, ""),
             fee,
+            SYSTEM_APP_ID,
             LibSystemCodec.BINDING
         );
 
@@ -106,8 +106,8 @@ contract SystemPortal {
         emit RelayEvent(
             sequence,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, ""),
             fee,
+            SYSTEM_APP_ID,
             LibSystemCodec.UNBINDING
         );
 

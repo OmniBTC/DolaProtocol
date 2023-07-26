@@ -21,7 +21,6 @@ module dola_protocol::wormhole_adapter_pool {
     use sui::vec_map::{Self, VecMap};
 
     use dola_protocol::dola_address;
-    use dola_protocol::dola_address::DolaAddress;
     use dola_protocol::dola_pool::{Self, Pool};
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use dola_protocol::pool_codec;
@@ -117,10 +116,10 @@ module dola_protocol::wormhole_adapter_pool {
         sequence: u64,
         // Transaction nonce
         nonce: u64,
-        // Withdraw pool
-        dst_pool: DolaAddress,
         // Relay fee amount
         fee_amount: u64,
+        // App id
+        app_id: u16,
         // Confirm that nonce is in the pool or core
         call_type: u8
     }
@@ -298,22 +297,22 @@ module dola_protocol::wormhole_adapter_pool {
         // transfer relay fee to relayer
         let relayer = get_one_relayer(pool_state, nonce);
         transfer::public_transfer(bridge_fee, relayer);
-        
+
         (wormhole_fee, relay_fee_amount)
     }
 
     public(friend) fun emit_relay_event(
         sequence: u64,
         nonce: u64,
-        dst_pool: DolaAddress,
         fee_amount: u64,
+        app_id: u16,
         call_type: u8
     ) {
         emit(RelayEvent {
             sequence,
             nonce,
-            dst_pool,
             fee_amount,
+            app_id,
             call_type
         });
     }
