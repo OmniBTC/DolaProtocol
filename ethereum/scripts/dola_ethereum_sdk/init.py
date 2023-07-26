@@ -249,4 +249,4 @@ def get_dola_contract():
 
 if __name__ == "__main__":
     set_ethereum_network("avax-test")
-    print(get_dola_contract())
+    print(get_dola_pool())

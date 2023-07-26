@@ -108,8 +108,8 @@ if __name__ == "__main__":
     # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
     dola_ethereum_sdk.set_ethereum_network("avax-test")
-    main()
-    # print(get_dola_contract("0xC67Da938b884d022aF82C42abF76E7C089fA115D", "0x1FFBE74B4665037070E734daf9F79fa33B6d54a8"))
+    # main()
+    print(get_dola_contract("0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322", "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027"))
     # dola_ethereum_sdk.set_ethereum_network("optimism-main")
     # register_new_pool("OP")
     # dola_ethereum_sdk.set_ethereum_network("arbitrum-main")
