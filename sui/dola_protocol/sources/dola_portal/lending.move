@@ -70,7 +70,7 @@ module dola_protocol::lending_portal {
         source_chain_id: u16,
         dst_chain_id: u16,
         receiver: vector<u8>,
-        _amount: u64,
+        amount: u64,
         call_type: u8
     }
 
@@ -80,7 +80,7 @@ module dola_protocol::lending_portal {
         nonce: u64,
         sender: address,
         dola_pool_address: vector<u8>,
-        _amount: u64,
+        amount: u64,
         call_type: u8
     }
 
