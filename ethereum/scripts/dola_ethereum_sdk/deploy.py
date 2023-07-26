@@ -21,6 +21,7 @@ def deploy():
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
+        "0xcADD60D3DCF8146c57Df0F8b672696F84E1EEc8e",
         wormhole_instant_consistency,
         wormhole_finality_consistency,
         21,
@@ -50,16 +51,16 @@ def deploy():
     # config_file["networks"][cur_net]["system_portal"] = system_portal.address
     # config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
 
-    if "test" in cur_net:
-        wbtc = deploy_token("WBTC")
+    # if "test" in cur_net:
+    #     wbtc = deploy_token("WBTC")
+    #
+    #     usdt = deploy_token("USDT")
+    #
+    #     usdc = deploy_token("USDC")
 
-        usdt = deploy_token("USDT")
-
-        usdc = deploy_token("USDC")
-
-        # config_file["networks"][cur_net]["wbtc"] = wbtc.address
-        # config_file["networks"][cur_net]["usdt"] = usdt.address
-        # config_file["networks"][cur_net]["usdc"] = usdc.address
+    # config_file["networks"][cur_net]["wbtc"] = wbtc.address
+    # config_file["networks"][cur_net]["usdt"] = usdt.address
+    # config_file["networks"][cur_net]["usdc"] = usdc.address
     #
     # with open(path, "w") as f:
     #     yaml.safe_dump(config_file, f)

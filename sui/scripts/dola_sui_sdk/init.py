@@ -1688,8 +1688,8 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
-    # upgrade_evm_adapter(5, 389767246369475325315697891844518913195186658835, -1)
+    # batch_init()
+    upgrade_evm_adapter(5, 1220929407463987346869993204317422384308374967074, -1)
 
     # delete_remote_bridge(5)
     # register_remote_bridge(6, "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027")
