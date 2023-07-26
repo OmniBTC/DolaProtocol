@@ -13,10 +13,14 @@ contract SystemPortal {
     uint8 public constant SYSTEM_APP_ID = 0;
 
     IWormholeAdapterPool public immutable wormholeAdapterPool;
-    address payable public relayer;
 
-    /// RelayEvent(transaction nonce, wormhole sequence, relay fee amount)
-    event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
+    event RelayEvent(
+        uint64 sequence,
+        uint64 nonce,
+        uint256 feeAmount,
+        uint16 appId,
+        uint8 callType
+    );
 
     event SystemPortalEvent(
         uint64 nonce,
@@ -29,7 +33,6 @@ contract SystemPortal {
 
     constructor(IWormholeAdapterPool _wormholeAdapterPool) {
         wormholeAdapterPool = _wormholeAdapterPool;
-        relayer = payable(msg.sender);
     }
 
     function binding(
@@ -52,9 +55,18 @@ contract SystemPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            SYSTEM_APP_ID,
+            LibSystemCodec.BINDING
+        );
 
         emit SystemPortalEvent(
             nonce,
@@ -86,9 +98,18 @@ contract SystemPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            SYSTEM_APP_ID,
+            LibSystemCodec.UNBINDING
+        );
 
         emit SystemPortalEvent(
             nonce,

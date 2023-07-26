@@ -8,6 +8,8 @@ interface IWormholeAdapterPool {
 
     function getNonce() external returns (uint64);
 
+    function getOneRelayer(uint64 nonce) external view returns (address);
+
     function sendDeposit(
         address pool,
         uint256 amount,
