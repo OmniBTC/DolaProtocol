@@ -30,6 +30,8 @@ contract WormholeAdapterPool {
     mapping(bytes32 => bool) public consumedVaas;
     // Used to verify relayer authority
     mapping(address => bool) public registeredRelayers;
+    // Used to receive relayer fee
+    address[] public relayers;
 
     event PoolWithdrawEvent(
         uint64 nonce,
@@ -59,6 +61,7 @@ contract WormholeAdapterPool {
         wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
         registeredRelayers[_initialRelayer] = true;
+        relayers.push(_initialRelayer);
     }
 
     /// Modifiers
@@ -127,7 +130,9 @@ contract WormholeAdapterPool {
             "INVALIE DOLA CHAIN"
         );
         address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
+        require(!registeredRelayers[relayer], "RELAYER ALREADY REGISTERED");
         registeredRelayers[relayer] = true;
+        relayers.push(relayer);
     }
 
     function removeRelayer(bytes memory encodedVm) external {
@@ -147,7 +152,16 @@ contract WormholeAdapterPool {
             "INVALIE DOLA CHAIN"
         );
         address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
+
+        require(registeredRelayers[relayer], "RELAYER NOT REGISTERED");
         registeredRelayers[relayer] = false;
+        for (uint256 i = 0; i < relayers.length; i++) {
+            if (relayers[i] == relayer) {
+                relayers[i] = relayers[relayers.length - 1];
+                relayers.pop();
+                break;
+            }
+        }
     }
 
     /// Call by application
@@ -221,6 +235,11 @@ contract WormholeAdapterPool {
         );
     }
 
+    function getOneRelayer(uint64 nonce) external view returns (address) {
+        return relayers[nonce % relayers.length];
+    }
+
+    /// Get nonce
     function getNonce() external returns (uint64) {
         return dolaPool.getNonce();
     }
