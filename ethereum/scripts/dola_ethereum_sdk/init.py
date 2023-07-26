@@ -235,8 +235,18 @@ def get_payload_from_chain(tx_id):
     return tx.events['LogMessagePublished']['payload']
 
 
+def get_dola_pool():
+    network = brownie.network.show_active()
+    wormhole_adapter = load.wormhole_adapter_pool_package(network)
+    return wormhole_adapter.dolaPool()
+
+
+def get_dola_contract():
+    network = brownie.network.show_active()
+    wormhole_adapter = load.wormhole_adapter_pool_package(network)
+    return wormhole_adapter.getDolaContract()
+
+
 if __name__ == "__main__":
-    set_ethereum_network("arbitrum-main")
-    tx = brownie.chain.get_transaction("0x0e4a568d0ec91649cfb0dbe2d42f888fbd5a1403cb7361edfeb0b5761adc3d1b")
-    payload = str(tx.events['LogMessagePublished']['payload'])
-    print(payload)
+    set_ethereum_network("avax-test")
+    print(get_dola_contract())
