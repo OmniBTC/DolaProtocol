@@ -6,7 +6,6 @@ import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16
 
-import dola_sui_sdk.oracle
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
@@ -182,16 +181,15 @@ def get_owned_zero_coin():
     return [coin_object for coin_object, coin in sui_coins.items() if coin['balance'] == '0'][0]
 
 
-def portal_as_collateral(pool_ids=None):
+def portal_as_collateral(pool_ids=None, bridge_fee=0):
     """
-    public entry fun as_collateral(
+    entry fun as_collateral(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         dola_pool_ids: vector<u16>,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -201,36 +199,32 @@ def portal_as_collateral(pool_ids=None):
         pool_ids = []
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    dola_protocol.lending_portal.as_collateral(
+    coins = get_amount_coins_if_exist([bridge_fee])
+
+    dola_protocol.lending_portal_v2.as_collateral(
         genesis,
-        storage,
-        oracle,
+        pool_state,
+        wormhole_state,
+        coins[0],
+        pool_ids,
         init.clock(),
-        pool_manager_info,
-        user_manager_info,
-        pool_ids
     )
 
 
-def portal_cancel_as_collateral_remote(pool_ids):
+def portal_cancel_as_collateral(pool_ids=None, bridge_fee=0):
     """
-    entry fun cancel_as_collateral_remote(
+    entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
-        clock: &Clock,
         pool_state: &mut PoolState,
-        lending_portal: &mut LendingPortal,
         wormhole_state: &mut WormholeState,
         dola_pool_ids: vector<u16>,
-        bridge_fee_coins: vector<Coin<SUI>>,
-        bridge_fee_amount: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
-
     :return:
     """
     dola_protocol = load.dola_protocol_package()
@@ -240,100 +234,54 @@ def portal_cancel_as_collateral_remote(pool_ids):
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_state = sui_project.network_config['objects']['PoolState']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    zero_coin = get_zero_coin()
+    coins = get_amount_coins_if_exist([bridge_fee])
 
-    dola_protocol.lending_portal.cancel_as_collateral_remote(
+    dola_protocol.lending_portal_v2.cancel_as_collateral(
         genesis,
-        init.clock(),
         pool_state,
-        lending_portal,
         wormhole_state,
         pool_ids,
-        [zero_coin],
-        0
-    )
-
-
-def portal_cancel_as_collateral(pool_ids=None):
-    """
-    public entry fun cancel_as_collateral(
-        genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
-        dola_pool_ids: vector<u16>,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    dola_protocol = load.dola_protocol_package()
-
-    if pool_ids is None:
-        pool_ids = []
-
-    genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-
-    dola_protocol.lending_portal.cancel_as_collateral(
-        genesis,
-        storage,
-        oracle,
+        coins[0],
         init.clock(),
-        pool_manager_info,
-        user_manager_info,
-        pool_ids
     )
 
 
-def portal_supply(coin_type, amount):
+def portal_supply(coin_type, amount, bridge_fee=0):
     """
-    public entry fun supply<CoinType>(
+    entry fun supply<CoinType>(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        lending_portal: &mut LendingPortal,
-        user_manager_info: &mut UserManagerInfo,
-        pool_manager_info: &mut PoolManagerInfo,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         pool: &mut Pool<CoinType>,
         deposit_coins: vector<Coin<CoinType>>,
         deposit_amount: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
+    :param amount:
     :param coin_type:
     :return: payload
     """
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    result = sui_project.client.suix_getCoins(sui_project.account.account_address, coin_type, None, None)
-    deposit_coins = [c["coinObjectId"] for c in result["data"]]
+    coins = get_amount_coins_if_exist([amount, bridge_fee])
 
-    dola_protocol.lending_portal.supply(
+    dola_protocol.lending_portal_v2.supply(
         genesis,
-        storage,
-        oracle,
-        init.clock(),
-        lending_portal,
-        user_manager_info,
-        pool_manager_info,
+        pool_state,
+        wormhole_state,
         init.pool_id(coin_type),
-        deposit_coins,
+        [coins[0]],
         amount,
+        coins[1],
+        init.clock(),
         type_arguments=[coin_type]
     )
 
@@ -401,66 +349,18 @@ def core_supply(vaa, relay_fee=0):
         return gas, executed, status, ""
 
 
-def portal_withdraw_local(coin_type, amount):
+def portal_withdraw(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee=0):
     """
-    public entry fun withdraw_local<CoinType>(
+    entry fun withdraw(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        lending_portal: &mut LendingPortal,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
-        pool: &mut Pool<CoinType>,
-        amount: u64,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    dola_protocol = load.dola_protocol_package()
-
-    genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    price_oracle = sui_project.network_config['objects']['PriceOracle']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
-
-    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
-    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
-
-    dola_protocol.lending_portal.withdraw_local(
-        genesis,
-        storage,
-        price_oracle,
-        init.clock(),
-        lending_portal,
-        pool_manager_info,
-        user_manager_info,
-        init.pool_id(coin_type['coin_type']),
-        amount,
-        type_arguments=[coin_type['coin_type']]
-    )
-
-
-def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
-    """
-    public entry fun withdraw_remote(
-        genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        core_state: &mut CoreState,
-        lending_portal: &mut LendingPortal,
+        pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
+        dst_chain_id: u16,
         pool: vector<u8>,
-        receiver_addr: vector<u8>,
-        dst_chain: u16,
+        receiver: vector<u8>,
         amount: u64,
-        bridge_fee_coins: vector<Coin<SUI>>,
-        bridge_fee_amount: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -468,36 +368,25 @@ def portal_withdraw_remote(pool_addr, amount, dst_chain=0, receiver=None):
     dola_protocol = load.dola_protocol_package()
     account_address = sui_project.account.account_address
     if receiver is None:
-        assert dst_chain == 0
+        assert dst_chain_id == 0
         receiver = account_address
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    core_state = sui_project.network_config['objects']['CoreState']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
+    pool_state = sui_project.network_config['objects']['PoolState']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
-    gas_coin = get_zero_coin()
+    coins = get_amount_coins_if_exist([bridge_fee])
 
-    dola_protocol.lending_portal.withdraw_remote(
+    dola_protocol.lending_portal_v2.withdraw(
         genesis,
-        storage,
-        oracle,
-        init.clock(),
-        core_state,
-        lending_portal,
+        pool_state,
         wormhole_state,
-        pool_manager_info,
-        user_manager_info,
+        dst_chain_id,
         pool_addr,
         receiver,
-        dst_chain,
         amount,
-        [gas_coin],
-        0,
+        coins[0],
+        init.clock(),
     )
 
 
@@ -664,104 +553,44 @@ def core_withdraw(vaa, relay_fee=0):
         return gas + feed_gas, executed, status, feed_nums, ""
 
 
-def portal_borrow_local(coin_type, amount):
+def portal_borrow(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee=0):
     """
-    public entry fun borrow_local<CoinType>(
+    entry fun borrow(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        lending_portal: &mut LendingPortal,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
-        pool: &mut Pool<CoinType>,
-        amount: u64,
-        ctx: &mut TxContext
-    )
-    :return:
-    """
-    dola_protocol = load.dola_protocol_package()
-
-    genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-
-    dola_sui_sdk.oracle.feed_token_price_by_pyth("USDT/USD")
-    dola_sui_sdk.oracle.feed_token_price_by_pyth("SUI/USD")
-
-    dola_protocol.lending_portal.borrow_local(
-        genesis,
-        storage,
-        oracle,
-        init.clock(),
-        lending_portal,
-        pool_manager_info,
-        user_manager_info,
-        init.pool_id(coin_type['coin_type']),
-        amount,
-        type_arguments=[coin_type['coin_type']]
-    )
-
-
-def portal_borrow_remote(pool_addr, amount, dst_chain=0, receiver=None):
-    """
-    public entry fun borrow_remote(
-        genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        core_state: &mut CoreState,
-        lending_portal: &mut LendingPortal,
+        pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
-        pool_manager_info: &mut PoolManagerInfo,
-        user_manager_info: &mut UserManagerInfo,
+        dst_chain_id: u16,
         pool: vector<u8>,
-        receiver_addr: vector<u8>,
-        dst_chain: u16,
+        receiver: vector<u8>,
         amount: u64,
-        bridge_fee_coins: vector<Coin<SUI>>,
-        bridge_fee_amount: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
     """
     dola_protocol = load.dola_protocol_package()
-    account_address = dola_protocol.account.account_address
+    account_address = sui_project.account.account_address
     if receiver is None:
-        assert dst_chain == 0
+        assert dst_chain_id == 0
         receiver = account_address
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    clock = sui_project.network_config['objects']['Clock']
-    core_state = sui_project.network_config['objects']['CoreState']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
+    pool_state = sui_project.network_config['objects']['PoolState']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
 
-    gas_coin = get_zero_coin()
+    coins = get_amount_coins_if_exist([bridge_fee])
 
-    dola_protocol.lending_portal.borrow_remote(
+    dola_protocol.lending_portal_v2.borrow(
         genesis,
-        storage,
-        oracle,
-        clock,
-        core_state,
-        lending_portal,
+        pool_state,
         wormhole_state,
-        pool_manager_info,
-        user_manager_info,
+        dst_chain_id,
         pool_addr,
         receiver,
-        dst_chain,
         amount,
-        [gas_coin],
-        0
+        coins[0],
+        init.clock(),
     )
 
 
@@ -874,19 +703,17 @@ def core_borrow(vaa, relay_fee=0):
         return gas + feed_gas, executed, status, feed_nums, ""
 
 
-def portal_repay(coin_type, repay_amount):
+def portal_repay(coin_type, repay_amount, bridge_fee=0):
     """
     public entry fun repay<CoinType>(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        lending_portal: &mut LendingPortal,
-        user_manager_info: &mut UserManagerInfo,
-        pool_manager_info: &mut PoolManagerInfo,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         pool: &mut Pool<CoinType>,
         repay_coins: vector<Coin<CoinType>>,
         repay_amount: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -894,28 +721,20 @@ def portal_repay(coin_type, repay_amount):
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    clock = sui_project.network_config['objects']['Clock']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
-    pool = sui_project.network_config['objects']['Pool']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    result = sui_project.client.suix_getCoins(sui_project.account.account_address, coin_type, None, None)
-    repay_coins = [c["coinObjectId"] for c in result["data"]]
+    coins = get_amount_coins_if_exist([repay_amount, bridge_fee])
 
-    dola_protocol.lending_portal.repay(
+    dola_protocol.lending_portal_v2.supply(
         genesis,
-        storage,
-        oracle,
-        clock,
-        lending_portal,
-        user_manager_info,
-        pool_manager_info,
-        pool,
-        repay_coins,
+        pool_state,
+        wormhole_state,
+        init.pool_id(coin_type),
+        [coins[0]],
         repay_amount,
+        coins[1],
+        init.clock(),
         type_arguments=[coin_type]
     )
 
@@ -983,23 +802,22 @@ def core_repay(vaa, relay_fee=0):
         return gas, executed, status, ""
 
 
-def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id):
+def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id,
+                     bridge_fee=0):
     """
-    public entry fun liquidate<DebtCoinType>(
+    entry fun liquidate<DebtCoinType>(
         genesis: &GovernanceGenesis,
-        storage: &mut Storage,
-        oracle: &mut PriceOracle,
-        clock: &Clock,
-        lending_portal: &mut LendingPortal,
-        user_manager_info: &mut UserManagerInfo,
-        pool_manager_info: &mut PoolManagerInfo,
-        debt_pool: &mut Pool<DebtCoinType>,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         // liquidators repay debts to obtain collateral
+        debt_pool: &mut Pool<DebtCoinType>,
         debt_coins: vector<Coin<DebtCoinType>>,
         debt_amount: u64,
         liquidate_chain_id: u16,
         liquidate_pool_address: vector<u8>,
         liquidate_user_id: u64,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -1007,30 +825,23 @@ def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, co
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    storage = sui_project.network_config['objects']['LendingStorage']
-    oracle = sui_project.network_config['objects']['PriceOracle']
-    clock = sui_project.network_config['objects']['Clock']
-    lending_portal = sui_project.network_config['objects']['LendingPortal']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
-    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    result = sui_project.client.suix_getCoins(sui_project.account.account_address, debt_coin_type, None, None)
-    debt_coins = [c["coinObjectId"] for c in result["data"]]
+    coins = get_amount_coins_if_exist([deposit_amount, bridge_fee])
 
     dola_protocol.lending.liquidate(
         genesis,
-        storage,
-        oracle,
-        clock,
-        lending_portal,
-        user_manager_info,
-        pool_manager_info,
+        pool_state,
+        wormhole_state,
         init.pool_id(debt_coin_type),
-        debt_coins,
+        [coins[0]],
         int(deposit_amount),
         int(collateral_chain_id),
         list(bytes.fromhex(collateral_pool_address.replace('0x', ''))),
         int(violator_id),
+        coins[1],
+        init.clock(),
         type_arguments=[debt_coin_type]
     )
 
@@ -1137,14 +948,16 @@ def core_liquidate(vaa, relay_fee=0):
         return gas, executed, status, feed_nums, ""
 
 
-def portal_binding(bind_address, dola_chain_id=0):
+def portal_binding(bind_address, dola_chain_id=0, bridge_fee=0):
     """
-    public entry fun binding(
+    entry fun binding(
         genesis: &GovernanceGenesis,
-        system_portal: &mut SystemPortal,
-        user_manager_info: &mut UserManagerInfo,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         dola_chain_id: u16,
         binded_address: vector<u8>,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -1152,15 +965,19 @@ def portal_binding(bind_address, dola_chain_id=0):
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    system_portal = sui_project.network_config['objects']['SystemPortal']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    dola_protocol.system_portal.binding(
+    coins = get_amount_coins_if_exist([bridge_fee])
+
+    dola_protocol.system_portal_v2.binding(
         genesis,
-        system_portal,
-        user_manager_info,
+        pool_state,
+        wormhole_state,
         int(dola_chain_id),
-        list(bytes.fromhex(bind_address))
+        list(bytes.fromhex(bind_address)),
+        coins[0],
+        init.clock()
     )
 
 
@@ -1218,14 +1035,16 @@ def core_binding(vaa, relay_fee=0):
         return gas, executed, status, ""
 
 
-def portal_unbinding(unbind_address, dola_chain_id=0):
+def portal_unbinding(unbind_address, dola_chain_id=0, bridge_fee=0):
     """
-    public entry fun unbinding(
+    entry fun unbinding(
         genesis: &GovernanceGenesis,
-        system_portal: &mut SystemPortal,
-        user_manager_info: &mut UserManagerInfo,
+        pool_state: &mut PoolState,
+        wormhole_state: &mut WormholeState,
         dola_chain_id: u16,
         unbinded_address: vector<u8>,
+        bridge_fee: Coin<SUI>,
+        clock: &Clock,
         ctx: &mut TxContext
     )
     :return:
@@ -1233,15 +1052,19 @@ def portal_unbinding(unbind_address, dola_chain_id=0):
     dola_protocol = load.dola_protocol_package()
 
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
-    system_portal = sui_project.network_config['objects']['SystemPortal']
-    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    pool_state = sui_project.network_config['objects']['PoolState']
+    wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    dola_protocol.system_portal.unbinding(
+    coins = get_amount_coins_if_exist([bridge_fee])
+
+    dola_protocol.system_portal_v2.binding(
         genesis,
-        system_portal,
-        user_manager_info,
+        pool_state,
+        wormhole_state,
         int(dola_chain_id),
-        list(bytes.fromhex(unbind_address.replace('0x', '')))
+        list(bytes.fromhex(unbind_address)),
+        coins[0],
+        init.clock()
     )
 
 
@@ -1610,7 +1433,5 @@ if __name__ == "__main__":
     # init.claim_test_coin(usdt())
     # portal_supply(usdt()['coin_type'], int(1e5))
     # portal_withdraw_local(init.sui(), int(1e7))
-    portal_withdraw_remote(list(bytes.fromhex("966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28")), 1 * 1e8, 6,
-                           list(bytes.fromhex("a27e571EDd0724ee2245BeCe7DAf52d9c243400E")))
 
-    # export_objects()
+    export_objects()
