@@ -601,16 +601,27 @@ class TransactionBuild:
             gas_price: int,
             gas_budget,
             payment=None,
+            call_args=None
     ) -> IntentMessage:
 
         programmable_transaction = ProgrammableTransaction(inputs, commands)
         if payment is None:
+            if call_args is None:
+                call_args = []
             gases = cls.prepare_gas()
             gas_amount = 0
             payment = []
             for gas in gases:
                 if gas_amount >= gas_budget:
                     break
+                is_filter = False
+                for call_arg in call_args:
+                    if gas["coinObjectId"] == call_arg:
+                        is_filter = True
+                        break
+                if is_filter:
+                    continue
+
                 payment.append(ObjectRef(
                     ObjectID(gas["coinObjectId"]),
                     SequenceNumber(int(gas["version"])),
@@ -654,7 +665,7 @@ class TransactionBuild:
             gas_budget,
     ) -> IntentMessage:
         inputs, commands = cls.command_move_call(package_id, abi, type_args, call_args)
-        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget)
+        return cls.build_intent_message(sender, inputs, commands, gas_price, gas_budget, call_args=call_args)
 
     @classmethod
     def transfer_object(
