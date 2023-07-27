@@ -615,10 +615,12 @@ class TransactionBuild:
                 if gas_amount >= gas_budget:
                     break
                 is_filter = False
+                if gas["coinObjectId"] in call_args:
+                    is_filter = True
                 for call_arg in call_args:
-                    if gas["coinObjectId"] == call_arg:
-                        is_filter = True
-                        break
+                    if isinstance(call_arg, list):
+                        if gas["coinObjectId"] in call_arg:
+                            is_filter = True
                 if is_filter:
                     continue
 
