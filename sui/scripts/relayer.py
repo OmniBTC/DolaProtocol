@@ -1,8 +1,28 @@
 import asyncio.exceptions
 import base64
+import datetime
+import functools
+import json
+import logging
+import multiprocessing
+import time
+import traceback
+from pathlib import Path
+from pprint import pprint
+
 import brownie
 import ccxt
-import datetime
+import requests
+import xxhash
+from dotenv import dotenv_values
+from gql import gql, Client
+from gql.client import log as gql_client_logs
+from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
+
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -10,25 +30,7 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
-import functools
-import json
-import logging
-import multiprocessing
-import requests
-import time
-import traceback
-import xxhash
 from dola_sui_sdk.load import sui_project
-from dotenv import dotenv_values
-from gql import gql, Client
-from gql.client import log as gql_client_logs
-from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
-from pathlib import Path
-from pprint import pprint
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -398,13 +400,16 @@ def sui_portal_watcher():
                     start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
                     src_tx_id = event['id']['txDigest']
 
-                    payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
-
                     vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[f'{sui_network}-pool'], sequence,
                                                      sui_network)
 
-                    payload = dola_sui_lending.parse_vaa(vaa)
+                    payload = dola_sui_lending.parse_vaa(vaa)[4:]
+
+                    payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
+
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
+                        print(payload)
+                        print(payload_on_chain)
                         raise ValueError("The data may have been manipulated!")
 
                     if call_name in ['withdraw', 'borrow']:
@@ -415,7 +420,7 @@ def sui_portal_watcher():
                                                       sequence, vaa, relay_fee_value, start_time)
 
                     local_logger.info(
-                        f"Have a {call_name} from sui, nonce: {nonce}")
+                        f"Have a {call_name} transaction from sui, nonce: {nonce}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
         time.sleep(3)
@@ -454,6 +459,8 @@ def wormhole_vaa_guardian(network="polygon-test"):
                 # check that cross-chain data is consistent with on-chain data
                 payload_on_chain = dola_ethereum_init.get_payload_from_chain(tx['src_tx_id'])
                 if not check_payload_hash(str(payload), str(payload_on_chain)):
+                    local_logger.error(f'payload: {payload}')
+                    local_logger.error(f'payload_on_chain: {payload_on_chain}')
                     raise ValueError("The data may have been manipulated!")
 
                 app_id = payload[1]
@@ -560,6 +567,8 @@ def eth_portal_watcher(network="polygon-test"):
                     # check that cross-chain data is consistent with on-chain data
                     payload_on_chain = dola_ethereum_init.get_payload_from_chain(src_tx_id)
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
+                        local_logger.error(f'payload: {payload}')
+                        local_logger.error(f'payload_on_chain: {payload_on_chain}')
                         raise ValueError("The data may have been manipulated!")
 
                     if call_name in ['withdraw', 'borrow']:
@@ -607,10 +616,16 @@ def pool_withdraw_watcher():
                         WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
 
                     # check that cross-chain data is consistent with on-chain data
-                    payload = dola_sui_lending.parse_vaa(vaa)
+                    if source_chain_id == 0:
+                        payload = dola_sui_lending.parse_vaa(vaa)[4:]
+                    else:
+                        payload = dola_sui_lending.parse_vaa(vaa)[2:]
+
                     payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(event['id']['txDigest'])
 
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
+                        local_logger.error(f'payload: {payload}')
+                        local_logger.error(f'payload_on_chain: {payload_on_chain}')
                         raise ValueError("The data may have been manipulated!")
 
                     dst_pool = fields['dst_pool']
