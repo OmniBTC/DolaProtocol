@@ -4,9 +4,8 @@ from typing import List
 import requests
 # 1e27
 import sui_brownie
-from sui_brownie import SuiObject, Argument, U16, NestedResult
-
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
+from sui_brownie import SuiObject, Argument, U16, NestedResult
 
 RAY = 1000000000000000000000000000
 
@@ -173,10 +172,11 @@ def proposal():
            f"::genesis_proposal::Certificate>"
 
 
-def query_portal_relay_event(limit=10):
-    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
+def query_pool_relay_event(limit=10):
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['latest']
+
     return sui_project.client.suix_queryEvents(
-        {"MoveEventType": f"{dola_protocol}::lending_portal::RelayEvent"}, limit=limit,
+        {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"}, limit=limit,
         cursor=None, descending_order=True)['data']
 
 
@@ -1320,7 +1320,7 @@ if __name__ == '__main__':
     # delete_remote_bridge(6)
     # register_remote_bridge(6, "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
-    # register_remote_bridge(0, sui_pool_emitter)
+    # register_remote_bridge(21, sui_pool_emitter)
 
     # deploy_reserve_proposal()
     # set_reserve_coefficient("SUI")

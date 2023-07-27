@@ -189,7 +189,7 @@ networks:
         dola_pool_id: 1
     wormhole_url: https://api.wormscan.io/api/v1/
   sui-testnet:
-    node_url: https://fullnode.testnet.sui.io:443
+    node_url: https://sui-testnet-endpoint.blockvision.org:443
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       CoreState: '0x203ed644a34bdead51b69a5dfe384f66098bd0a1329108d5abe365211fbb3635'

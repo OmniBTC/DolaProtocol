@@ -1,16 +1,14 @@
-from pathlib import Path
-from pprint import pprint
-
 import ccxt
 import requests
 import yaml
-from sui_brownie import SuiObject, Argument, U16
-
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
+from pathlib import Path
+from pprint import pprint
+from sui_brownie import SuiObject, Argument, U16
 
 U64_MAX = 18446744073709551615
 
@@ -109,8 +107,9 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
         else:
             bias = 1 - pyth_price / kucoin_price
 
-        if bias > 0.01:
-            raise ValueError("The oracle price difference is too large!")
+        # todo: use this for mainnet
+        # if bias > 0.01:
+        #     raise ValueError("The oracle price difference is too large!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
@@ -382,15 +381,15 @@ def portal_withdraw(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee
         pool_state,
         wormhole_state,
         dst_chain_id,
-        pool_addr,
-        receiver,
+        list(bytes(pool_addr.replace('0x', ''), 'ascii')),
+        list(bytes.fromhex(receiver.replace('0x', ''))),
         amount,
         coins[0],
         init.clock(),
     )
 
 
-def pool_withdraw(vaa, coin_type, relay_fee=0):
+def pool_withdraw(vaa, coin_type):
     """
     public entry fun receive_withdraw<CoinType>(
         genesis: &GovernanceGenesis,
@@ -425,23 +424,20 @@ def pool_withdraw(vaa, coin_type, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
 
-    executed = False
-    if relay_fee > int(0.9 * gas):
-        executed = True
-        result = dola_protocol.wormhole_adapter_pool.receive_withdraw(
-            genesis,
-            wormhole_state,
-            pool_state,
-            init.pool_id(coin_type),
-            list(bytes.fromhex(vaa.replace('0x', ''))),
-            init.clock(),
-            type_arguments=[coin_type]
-        )
-        return gas, executed, status, ""
-    elif status == 'failure':
-        return gas, executed, result['effects']['status']['error'], ""
-    else:
-        return gas, executed, status, ""
+    if status != 'success':
+        return gas, False, result['effects']['status']['error'], ""
+
+    result = dola_protocol.wormhole_adapter_pool.receive_withdraw(
+        genesis,
+        wormhole_state,
+        pool_state,
+        init.pool_id(coin_type),
+        list(bytes.fromhex(vaa.replace('0x', ''))),
+        init.clock(),
+        type_arguments=[coin_type]
+    )
+
+    return gas, True, status, result['effects']['transactionDigest']
 
 
 def core_withdraw(vaa, relay_fee=0):
@@ -1352,8 +1348,8 @@ def parse_vaa(vaa):
             ]
         ]
     )
-    data = result['results'][1]['returnValues'][0][0][1:]
-    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
+    data = result['results'][1]['returnValues'][0][0]
+    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])[4:]
 
 
 def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_cancel_collateral=False):
@@ -1419,7 +1415,7 @@ def get_unrelay_txs(src_chian_id, call_name, limit=0):
 
 def get_sui_wormhole_payload(tx_hash):
     events = sui_project.client.sui_getEvents(tx_hash)
-    wormhole = sui_project.network_config['packages']['wormhole']['origin']
+    wormhole = sui_project.network_config['packages']['wormhole']
     for event in events:
         if event['type'] == f'{wormhole}::publish_message::WormholeMessage':
             data = event['parsedJson']['payload']
@@ -1431,7 +1427,7 @@ def get_sui_wormhole_payload(tx_hash):
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
-    # portal_supply(usdt()['coin_type'], int(1e5))
-    # portal_withdraw_local(init.sui(), int(1e7))
+    # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
+    portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=13795000)
 
-    export_objects()
+    # export_objects()

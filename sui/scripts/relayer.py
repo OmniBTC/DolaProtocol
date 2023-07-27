@@ -1,28 +1,8 @@
 import asyncio.exceptions
 import base64
-import datetime
-import functools
-import json
-import logging
-import multiprocessing
-import time
-import traceback
-from pathlib import Path
-from pprint import pprint
-
 import brownie
 import ccxt
-import requests
-import xxhash
-from dotenv import dotenv_values
-from gql import gql, Client
-from gql.client import log as gql_client_logs
-from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
-from pymongo import MongoClient
-from retrying import retry
-from sui_brownie import Argument, U16
-from sui_brownie.parallelism import ProcessExecutor
-
+import datetime
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
@@ -30,7 +10,25 @@ import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
 import dola_sui_sdk.load as dola_sui_load
+import functools
+import json
+import logging
+import multiprocessing
+import requests
+import time
+import traceback
+import xxhash
 from dola_sui_sdk.load import sui_project
+from dotenv import dotenv_values
+from gql import gql, Client
+from gql.client import log as gql_client_logs
+from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
+from pathlib import Path
+from pprint import pprint
+from pymongo import MongoClient
+from retrying import retry
+from sui_brownie import Argument, U16
+from sui_brownie.parallelism import ProcessExecutor
 
 G_wei = 1e9
 
@@ -68,7 +66,7 @@ WORMHOLE_EMITTER_ADDRESS = {
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
     "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
-    "avax-test": "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027",
+    "avax-test": "0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322",
     "sui-testnet": "0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0",
     "sui-testnet-pool": "0xf737cbc8e158b1b76b1f161f048e127ae4560a90df1c96002417802d7d23fe3f",
 }
@@ -375,61 +373,49 @@ def sui_portal_watcher():
     local_logger.info("Start to watch sui portal ^-^")
 
     relay_record = RelayRecord()
-    gas_record = GasRecord()
+
+    src_chain_id = 0
 
     sui_network = sui_project.network
     while True:
         try:
-            relay_events = dola_sui_init.query_portal_relay_event()
+            relay_events = dola_sui_init.query_pool_relay_event()
 
             for event in relay_events:
                 fields = event['parsedJson']
 
+                app_id = fields["app_id"]
                 call_type = fields["call_type"]
-                call_name = get_call_name(1, int(call_type))
+                sequence = int(fields['sequence'])
+                call_name = get_call_name(app_id, int(call_type))
                 nonce = int(fields['nonce'])
 
-                if not relay_record.find_one({'src_chain_id': 0, 'nonce': nonce}):
+                if not relay_record.find_one({'src_chain_id': src_chain_id, 'nonce': nonce, 'sequence': sequence}):
                     relay_fee_amount = int(fields['fee_amount'])
-                    relay_fee = get_fee_value(relay_fee_amount, 'sui')
+                    relay_fee_value = get_fee_value(relay_fee_amount, 'sui')
 
-                    sequence = fields['sequence']
-                    dst_pool = fields['dst_pool']
-                    dst_chain_id = int(dst_pool['dola_chain_id'])
-                    dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
-                    timestamp = int(fields['timestampMs'] / 1000)
+                    timestamp = int(event['timestampMs']) // 1000
                     start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
-                    src_tx_id = fields['id']['txDigest']
+                    src_tx_id = event['id']['txDigest']
 
-                    payload_from_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
+                    payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
+
+                    vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[f'{sui_network}-pool'], sequence,
+                                                     sui_network)
+
+                    payload = dola_sui_lending.parse_vaa(vaa)
+                    if not check_payload_hash(str(payload), str(payload_on_chain)):
+                        raise ValueError("The data may have been manipulated!")
 
                     if call_name in ['withdraw', 'borrow']:
-                        vaa = get_signed_vaa_by_wormhole(
-                            WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
-                        payload = dola_sui_lending.parse_vaa(vaa)
-                        if payload_from_chain != payload:
-                            raise ValueError("The data may have been manipulated!")
-
-                        relay_record.add_withdraw_record(0, src_tx_id, nonce, call_name, 0, sequence, vaa, relay_fee,
-                                                         start_time, core_tx_id=src_tx_id,
-                                                         withdraw_chain_id=dst_chain_id, withdraw_pool=dst_pool_address,
-                                                         withdraw_vaa=vaa, withdraw_sequence=sequence,
-                                                         status='withdraw')
+                        relay_record.add_withdraw_record(src_chain_id, src_tx_id, nonce, call_name, 0,
+                                                         sequence, vaa, relay_fee_value, start_time)
                     else:
-                        vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS['sui-mainnet-pool'], sequence,
-                                                         sui_network)
-
-                        payload = dola_sui_lending.parse_vaa(vaa)
-                        if payload_from_chain != payload:
-                            raise ValueError("The data may have been manipulated!")
-
-                        relay_record.add_other_record(0, src_tx_id, nonce, call_name, 0, sequence, vaa, relay_fee,
-                                                      start_time)
-
-                    gas_record.add_gas_record(0, nonce, dst_chain_id, call_name)
+                        relay_record.add_other_record(src_chain_id, src_tx_id, nonce, call_name, 0,
+                                                      sequence, vaa, relay_fee_value, start_time)
 
                     local_logger.info(
-                        f"Have a {call_name} from sui to {get_dola_network(dst_chain_id)}, nonce: {nonce}")
+                        f"Have a {call_name} from sui, nonce: {nonce}")
         except Exception as e:
             local_logger.error(f"Error: {e}")
         time.sleep(3)
@@ -545,7 +531,11 @@ def eth_portal_watcher(network="polygon-test"):
                     block_number = int(event['blockNumber'])
                     src_tx_id = event['transactionHash']
                     timestamp = int(event['blockTimestamp'])
-                    relay_fee_amount = int(event['amount'])
+
+                    app_id = int(event['appId'])
+                    call_type = int(event['callType'])
+                    call_name = get_call_name(app_id, call_type)
+                    relay_fee_amount = int(event['feeAmount'])
                     start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
 
                     gas_token = get_gas_token(network)
@@ -572,10 +562,6 @@ def eth_portal_watcher(network="polygon-test"):
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
                         raise ValueError("The data may have been manipulated!")
 
-                    app_id = payload[1]
-                    call_type = payload[-1]
-                    call_name = get_call_name(app_id, call_type)
-
                     if call_name in ['withdraw', 'borrow']:
                         relay_record.add_withdraw_record(src_chain_id, src_tx_id, nonce, call_name, block_number,
                                                          sequence, vaa, relay_fee_value, start_time)
@@ -589,7 +575,6 @@ def eth_portal_watcher(network="polygon-test"):
             local_logger.warning("GraphQL request timeout")
         except Exception as e:
             local_logger.error(f"Error: {e}")
-            traceback.print_exc()
         finally:
             time.sleep(2)
 
@@ -630,7 +615,10 @@ def pool_withdraw_watcher():
 
                     dst_pool = fields['dst_pool']
                     dst_chain_id = int(dst_pool['dola_chain_id'])
-                    dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
+                    if dst_chain_id == 0:
+                        dst_pool_address = f"0x{bytes(dst_pool['dola_address']).decode()}"
+                    else:
+                        dst_pool_address = f"0x{bytes(dst_pool['dola_address']).hex()}"
 
                     relay_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_chain_nonce},
                                                {"$set": {'status': 'withdraw', 'withdraw_vaa': vaa,
@@ -763,19 +751,19 @@ def sui_pool_executor():
                     time.sleep(5)
                     continue
 
-                gas_used, executed, digest, timestamp = dola_sui_lending.pool_withdraw(
-                    vaa, token_name, available_gas_amount)
-
-                timestamp = int(time.time())
-                tx_gas_amount = gas_used
-
-                gas_price = int(
-                    sui_project.client.suix_getReferenceGasPrice())
-                gas_limit = int(tx_gas_amount / gas_price)
-                gas_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_nonce},
-                                         {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
+                gas_used, executed, status, digest = dola_sui_lending.pool_withdraw(
+                    vaa, token_name)
 
                 if executed:
+                    timestamp = int(time.time())
+                    tx_gas_amount = gas_used
+
+                    gas_price = int(
+                        sui_project.client.suix_getReferenceGasPrice())
+                    gas_limit = int(tx_gas_amount / gas_price)
+                    gas_record.update_record({'src_chain_id': source_chain_id, 'nonce': source_nonce},
+                                             {"$set": {'withdraw_gas': gas_limit, 'dst_chain_id': 0}})
+
                     withdraw_cost_fee = get_fee_value(tx_gas_amount, 'sui')
 
                     date = str(datetime.datetime.utcfromtimestamp(timestamp))
@@ -788,15 +776,21 @@ def sui_pool_executor():
                         f"token: {token_name} source_chain: {source_chain_id} nonce: {source_nonce}")
                     local_logger.info(
                         f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount)}")
+                    if available_gas_amount < tx_gas_amount:
+                        call_name = withdraw_tx['call_name']
+                        local_logger.warning(
+                            "Execute withdraw fail on sui, not enough relay fee! ")
+                        local_logger.warning(
+                            f"Need gas fee: {get_fee_value(tx_gas_amount)}, but available gas fee: {relay_fee_value}"
+                        )
+                        local_logger.warning(
+                            f"call: {call_name} source_chain: {source_chain_id}, nonce: {source_nonce}")
                 else:
-                    call_name = withdraw_tx['call_name']
-                    local_logger.warning(
-                        "Execute withdraw fail on sui, not enough relay fee! ")
-                    local_logger.warning(
-                        f"Need gas fee: {get_fee_value(tx_gas_amount)}, but available gas fee: {relay_fee_value}"
-                    )
-                    local_logger.warning(
-                        f"call: {call_name} source_chain: {source_chain_id}, nonce: {source_nonce}")
+                    relay_record.update_record({'vaa': withdraw_tx['vaa']},
+                                               {"$set": {'status': 'fail',
+                                                         'reason': status}})
+                    local_logger.warning("Execute sui core fail! ")
+                    local_logger.warning(f"status: {status}")
             except Exception as e:
                 traceback.print_exc()
                 local_logger.error(f"Execute sui pool withdraw fail\n {e}")
@@ -1107,7 +1101,9 @@ def graph_query(block_number, limit=5):
                 blockTimestamp \
                 nonce \
                 sequence \
-                amount \
+                feeAmount \
+                appId \
+                callType \
               }} \
             }}"
     )
@@ -1158,9 +1154,9 @@ def main():
 
     pt.run([
         sui_core_executor,
+        sui_portal_watcher,
         functools.partial(eth_portal_watcher, "avax-test"),
         functools.partial(wormhole_vaa_guardian, "avax-test"),
-        sui_portal_watcher,
         pool_withdraw_watcher,
         sui_pool_executor,
         eth_pool_executor,
