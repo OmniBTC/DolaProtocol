@@ -1,14 +1,16 @@
+from pathlib import Path
+from pprint import pprint
+
 import ccxt
 import requests
 import yaml
+from sui_brownie import SuiObject, Argument, U16
+
 from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object, get_feed_vaa, build_feed_transaction_block
-from pathlib import Path
-from pprint import pprint
-from sui_brownie import SuiObject, Argument, U16
 
 U64_MAX = 18446744073709551615
 
@@ -1340,7 +1342,7 @@ def parse_vaa(vaa):
             ],
             # 1. get_payload
             [
-                wormhole.vaa.payload,
+                wormhole.vaa.take_payload,
                 [
                     Argument("Result", U16(0)),
                 ],
@@ -1349,7 +1351,7 @@ def parse_vaa(vaa):
         ]
     )
     data = result['results'][1]['returnValues'][0][0]
-    return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])[4:]
+    return ''.join([hex(i)[2:].zfill(2) for i in data])
 
 
 def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_cancel_collateral=False):
@@ -1419,7 +1421,7 @@ def get_sui_wormhole_payload(tx_hash):
     for event in events:
         if event['type'] == f'{wormhole}::publish_message::WormholeMessage':
             data = event['parsedJson']['payload']
-            return '0x' + ''.join([hex(i)[2:].zfill(2) for i in data])
+            return ''.join([hex(i)[2:].zfill(2) for i in data])
 
     return ""
 
@@ -1427,6 +1429,7 @@ def get_sui_wormhole_payload(tx_hash):
 if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
+    # sui_project.pay_all_sui()
     # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
     portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=13795000)
 

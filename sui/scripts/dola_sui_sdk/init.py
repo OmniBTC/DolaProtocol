@@ -1,11 +1,10 @@
 import functools
-from typing import List
-
 import requests
 # 1e27
 import sui_brownie
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 from sui_brownie import SuiObject, Argument, U16, NestedResult
+from typing import List
 
 RAY = 1000000000000000000000000000
 
@@ -1318,7 +1317,7 @@ if __name__ == '__main__':
     #                     1377978633318550767652254522076745113714752827431)
 
     # delete_remote_bridge(6)
-    # register_remote_bridge(6, "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027")
+    # register_remote_bridge(6, "0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(21, sui_pool_emitter)
 
