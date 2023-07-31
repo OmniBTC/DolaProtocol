@@ -379,9 +379,17 @@ def sui_portal_watcher():
     src_chain_id = 0
 
     sui_network = sui_project.network
+
+    # query latest tx
+    result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("start_time", -1).limit(1))
+    latest_sui_tx = result[0]['src_tx_id']
+
     while True:
         try:
-            relay_events = dola_sui_init.query_pool_relay_event()
+            prev_sui_tx = latest_sui_tx
+            result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("start_time", -1).limit(1))
+            latest_sui_tx = result[0]['src_tx_id'] if result else prev_sui_tx
+            relay_events = dola_sui_init.query_pool_relay_event(latest_sui_tx)
 
             for event in relay_events:
                 fields = event['parsedJson']
@@ -396,7 +404,8 @@ def sui_portal_watcher():
                     relay_fee_amount = int(fields['fee_amount'])
                     relay_fee_value = get_fee_value(relay_fee_amount, 'sui')
 
-                    timestamp = int(event['timestampMs']) // 1000
+                    timestamp_ms = int(event['timestampMs'])
+                    timestamp = timestamp_ms // 1000
                     start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
                     src_tx_id = event['id']['txDigest']
 
@@ -408,15 +417,15 @@ def sui_portal_watcher():
                     payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
 
                     if not check_payload_hash(str(payload), str(payload_on_chain)):
-                        print(payload)
-                        print(payload_on_chain)
+                        local_logger.error(f'payload: {payload}')
+                        local_logger.error(f'payload_on_chain: {payload_on_chain}')
                         raise ValueError("The data may have been manipulated!")
 
                     if call_name in ['withdraw', 'borrow']:
-                        relay_record.add_withdraw_record(src_chain_id, src_tx_id, nonce, call_name, 0,
+                        relay_record.add_withdraw_record(src_chain_id, src_tx_id, nonce, call_name, timestamp_ms,
                                                          sequence, vaa, relay_fee_value, start_time)
                     else:
-                        relay_record.add_other_record(src_chain_id, src_tx_id, nonce, call_name, 0,
+                        relay_record.add_other_record(src_chain_id, src_tx_id, nonce, call_name, timestamp_ms,
                                                       sequence, vaa, relay_fee_value, start_time)
 
                     local_logger.info(
@@ -596,9 +605,21 @@ def pool_withdraw_watcher():
     relay_record = RelayRecord()
 
     sui_network = sui_project.network
+
+    # query latest core tx
+    result = list(
+        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'status': {"$ne": "waitForWithdraw"}})
+        .sort("start_time", -1).limit(1))
+    latest_sui_tx = result[0]['core_tx_id']
+
     while True:
         try:
-            relay_events = dola_sui_init.query_core_relay_event()
+            prev_sui_tx = latest_sui_tx
+            result = list(
+                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'status': {"$ne": "waitForWithdraw"}})
+                .sort("start_time", -1).limit(1))
+            latest_sui_tx = result[0]['core_tx_id'] if result else prev_sui_tx
+            relay_events = dola_sui_init.query_core_relay_event(latest_sui_tx)
 
             for event in relay_events:
                 fields = event['parsedJson']
@@ -712,8 +733,8 @@ def sui_core_executor():
                                                              'core_tx_id': digest,
                                                              'core_costed_fee': core_costed_fee,
                                                              'end_time': date}})
-
                     local_logger.info("Execute sui core success! ")
+                    local_logger.info(f"relay fee: {relay_fee_value}, consumed fee: {core_costed_fee}")
                 else:
                     relay_record.update_record({'vaa': tx['vaa']},
                                                {"$set": {'status': 'fail', 'reason': status}})

@@ -1,10 +1,12 @@
 import functools
+from typing import List
+
 import requests
 # 1e27
 import sui_brownie
-from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 from sui_brownie import SuiObject, Argument, U16, NestedResult
-from typing import List
+
+from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 
 RAY = 1000000000000000000000000000
 
@@ -171,19 +173,35 @@ def proposal():
            f"::genesis_proposal::Certificate>"
 
 
-def query_pool_relay_event(limit=10):
+def query_pool_relay_event(tx_digest, limit=10):
+    """
+    note: eventSeq may have impact on the result
+
+    :param tx_digest:
+    :param limit:
+    :return:
+    """
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['latest']
 
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"}, limit=limit,
-        cursor=None, descending_order=True)['data']
+        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)[
+        'data']
 
 
-def query_core_relay_event(limit=10):
+def query_core_relay_event(tx_digest, limit=10):
+    """
+    note: eventSeq may have impact on the result
+
+    :param tx_digest:
+    :param limit:
+    :return:
+    """
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
+
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
-        cursor=None, descending_order=True)['data']
+        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
 
 
 @functools.lru_cache()
