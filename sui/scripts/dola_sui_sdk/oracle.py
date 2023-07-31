@@ -85,44 +85,104 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
-def feed_token_price_by_pyth(symbol):
+def feed_token_price_by_pyth(symbol, simulate=True, kucoin=None):
     dola_protocol = load.dola_protocol_package()
 
     pyth_fee_amount = 0
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
+    pyth_state = sui_project.network_config['objects']['PythState']
+    pool_id = get_pool_id(symbol)
 
-    sui_project.batch_transaction(
-        actual_params=[
-            governance_genesis,
-            wormhole_state,
-            pyth_state(),
-            get_price_info_object(symbol),
-            price_oracle,
-            get_pool_id(symbol),
-            list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
-            init.clock(),
-            pyth_fee_amount
-        ],
-        transactions=[
-            [
-                dola_protocol.oracle.feed_token_price_by_pyth,
+    if simulate:
+        vaa = get_feed_vaa(symbol)
+        result = sui_project.batch_transaction_inspect(
+            actual_params=[
+                governance_genesis,
+                wormhole_state,
+                pyth_state,
+                get_price_info_object(symbol),
+                price_oracle,
+                pool_id,
+                list(bytes.fromhex(vaa.replace("0x", ""))),
+                init.clock(),
+                pyth_fee_amount
+            ],
+            transactions=[
                 [
-                    Argument("Input", U16(0)),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                    Argument("Input", U16(3)),
-                    Argument("Input", U16(4)),
-                    Argument("Input", U16(5)),
-                    Argument("Input", U16(6)),
-                    Argument("Input", U16(7)),
-                    Argument("Input", U16(8)),
+                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    [
+                        Argument("Input", U16(0)),
+                        Argument("Input", U16(1)),
+                        Argument("Input", U16(2)),
+                        Argument("Input", U16(3)),
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                        Argument("Input", U16(6)),
+                        Argument("Input", U16(7)),
+                        Argument("Input", U16(8)),
+                    ],
+                    []
                 ],
-                []
+                [
+                    dola_protocol.oracle.get_token_price,
+                    [
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                    ],
+                    []
+                ]
             ]
-        ]
-    )
+        )
+
+        decimal = int(result['results'][2]['returnValues'][1][0][0])
+
+        pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
+        if symbol in ['USDT/USD', 'USDC/USD']:
+            kucoin_price = 1
+        else:
+            kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+
+        if pyth_price > kucoin_price:
+            bias = 1 - kucoin_price / pyth_price
+        else:
+            bias = 1 - pyth_price / kucoin_price
+
+        # todo: use this for mainnet
+        # if bias > 0.01:
+        #     raise ValueError("The oracle price difference is too large!")
+    else:
+        sui_project.batch_transaction(
+            actual_params=[
+                governance_genesis,
+                wormhole_state,
+                pyth_state,
+                get_price_info_object(symbol),
+                price_oracle,
+                pool_id,
+                list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+                init.clock(),
+                pyth_fee_amount
+            ],
+            transactions=[
+                [
+                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    [
+                        Argument("Input", U16(0)),
+                        Argument("Input", U16(1)),
+                        Argument("Input", U16(2)),
+                        Argument("Input", U16(3)),
+                        Argument("Input", U16(4)),
+                        Argument("Input", U16(5)),
+                        Argument("Input", U16(6)),
+                        Argument("Input", U16(7)),
+                        Argument("Input", U16(8)),
+                    ],
+                    []
+                ]
+            ]
+        )
 
 
 def build_feed_transaction_block(dola_protocol, basic_param_num, sequence):
@@ -339,8 +399,7 @@ def check_guard_price(symbol):
         [pool_id],
         init.clock()
     )
-    if result['effects']['status']['status'] == 'failure':
-        raise ValueError(symbol)
+    return result['effects']['status']['status'] == 'failure'
 
 
 def oracle_guard(symbols=None):
@@ -367,10 +426,9 @@ def oracle_guard(symbols=None):
         try:
             for symbol in symbols:
                 local_logger.info(f"Check {symbol} price guard time")
-                check_guard_price(symbol)
-        except ValueError as s:
-            local_logger.info(f"Update {s} price")
-            feed_token_price_by_pyth(str(s))
+                if check_guard_price(symbol):
+                    local_logger.info(f"Update {symbol} price")
+                    feed_token_price_by_pyth(symbol, simulate=False)
         except Exception as e:
             local_logger.warning(e)
         finally:
