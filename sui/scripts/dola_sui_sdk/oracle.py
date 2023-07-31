@@ -1,4 +1,5 @@
 import base64
+import logging
 import time
 from pprint import pprint
 
@@ -8,6 +9,31 @@ import sui_brownie
 from sui_brownie import Argument, U16
 
 from dola_sui_sdk import load, sui_project, init
+
+
+class ColorFormatter(logging.Formatter):
+    grey = '\x1b[38;21m'
+    green = '\x1b[92m'
+    yellow = '\x1b[38;5;226m'
+    red = '\x1b[38;5;196m'
+    bold_red = '\x1b[31;1m'
+    reset = '\x1b[0m'
+
+    def __init__(self, fmt):
+        super().__init__()
+        self.fmt = fmt
+        self.FORMATS = {
+            logging.DEBUG: self.grey + self.fmt + self.reset,
+            logging.INFO: self.green + self.fmt + self.reset,
+            logging.WARNING: self.yellow + self.fmt + self.reset,
+            logging.ERROR: self.red + self.fmt + self.reset,
+            logging.CRITICAL: self.bold_red + self.fmt + self.reset
+        }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
 
 
 def parse_u64(data: list):
@@ -303,8 +329,56 @@ def test_verify_oracle():
     assert bias < 0.01
 
 
+def check_guard_price(symbol):
+    dola_protocol = load.dola_protocol_package()
+
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    pool_id = get_pool_id(symbol)
+    result = dola_protocol.oracle.check_guard_price.inspect(
+        price_oracle,
+        [pool_id],
+        init.clock()
+    )
+    if result['effects']['status']['status'] == 'failure':
+        raise ValueError(symbol)
+
+
+def oracle_guard(symbols=None):
+    """Check price guard time and update price termly
+
+    :return:
+    """
+    FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
+    logger = logging.getLogger()
+    logger.setLevel("INFO")
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+
+    ch.setFormatter(ColorFormatter(FORMAT))
+
+    logger.addHandler(ch)
+    local_logger = logger.getChild("oracle_guard")
+
+    if symbols is None:
+        symbols = []
+    sui_project.active_account("Oracle")
+    while True:
+        try:
+            for symbol in symbols:
+                local_logger.info(f"Check {symbol} price guard time")
+                check_guard_price(symbol)
+        except ValueError as s:
+            local_logger.info(f"Update {s} price")
+            feed_token_price_by_pyth(str(s))
+        except Exception as e:
+            local_logger.warning(e)
+        finally:
+            time.sleep(1)
+
+
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    feed_token_price_by_pyth('ETH/USD')
+    oracle_guard(["USDT/USD"])
     # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])

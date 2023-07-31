@@ -844,6 +844,7 @@ def eth_pool_executor():
     while True:
         relay_transactions = relay_record.find(
             {"status": "withdraw", "withdraw_chain_id": {"$ne": 0}})
+
         for withdraw_tx in relay_transactions:
             try:
                 dola_chain_id = withdraw_tx['withdraw_chain_id']
