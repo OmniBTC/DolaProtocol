@@ -1431,6 +1431,6 @@ if __name__ == "__main__":
     # init.claim_test_coin(usdt())
     # sui_project.pay_all_sui()
     # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
-    portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=13795000)
+    portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=14813999)
 
     # export_objects()
