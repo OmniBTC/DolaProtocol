@@ -791,7 +791,7 @@ def upgrade_evm_adapter(dola_chain_id, new_dola_contract, old_dola_contract):
     # 2. remote register new spender
     genesis_proposal = load.genesis_proposal_package()
 
-    # create_genesis_proposal()
+    create_genesis_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -1331,11 +1331,12 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
-    # upgrade_evm_adapter(6, 1220929407463987346869993204317422384308374967074,
-    #                     1377978633318550767652254522076745113714752827431)
+
+    # upgrade_evm_adapter(6, 1392119815486488009581429141619263177954741667564,
+    #                     1220929407463987346869993204317422384308374967074)
 
     # delete_remote_bridge(6)
-    # register_remote_bridge(6, "0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322")
+    # register_remote_bridge(6, "0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec")
     # sui_pool_emitter = bytes(get_wormhole_adapter_pool_emitter()).hex()
     # register_remote_bridge(21, sui_pool_emitter)
 

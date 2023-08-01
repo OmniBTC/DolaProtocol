@@ -1,23 +1,13 @@
 from pathlib import Path
 
-from brownie import network
 from sui_brownie import SuiObject
 
 import dola_ethereum_sdk
 import dola_sui_sdk
 from dola_ethereum_sdk import init as dola_ethereum_init
-from dola_ethereum_sdk import load as dola_ethereum_load
 from dola_sui_sdk import init as dola_sui_init
 from dola_sui_sdk import load as dola_sui_load
 from dola_sui_sdk import sui_project
-
-
-def get_dola_contract(new_dola_contract, old_dola_contract):
-    new_dola_contract = dola_ethereum_load.wormhole_adapter_pool_package(network.show_active(),
-                                                                         new_dola_contract).getDolaContract()
-    old_dola_contract = dola_ethereum_load.wormhole_adapter_pool_package(network.show_active(),
-                                                                         old_dola_contract).getDolaContract()
-    return new_dola_contract, old_dola_contract
 
 
 def register_new_pool(pool: str = "MATIC"):
@@ -108,8 +98,7 @@ if __name__ == "__main__":
     # Export sui objects before this
     dola_sui_sdk.sui_project.active_account("TestAccount")
     dola_ethereum_sdk.set_ethereum_network("avax-test")
-    # main()
-    print(get_dola_contract("0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322", "0xf15EB2EF8Ca79316d57d4A15f168375DCF0d3027"))
+    main()
     # dola_ethereum_sdk.set_ethereum_network("optimism-main")
     # register_new_pool("OP")
     # dola_ethereum_sdk.set_ethereum_network("arbitrum-main")

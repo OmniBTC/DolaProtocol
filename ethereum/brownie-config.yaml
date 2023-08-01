@@ -144,8 +144,9 @@ networks:
     wormhole: '0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C'
     wormhole_chainid: 6
     core_emitter: '0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0'
-    lending_portal: '0x715700167fE79d4777D2d39b1B5ddE579FD782D9'
-    system_portal: '0x3C1ee850d33c1C9E30F1dCD5f6E034b86Fda02C7'
+    lending_portal: '0x18928c95bA9f91a3ad814a7C2DFdCF03f1725a36'
+    system_portal: '0x7628C9886Dba014c6DB310fa9f32CA520174473B'
+    dola_pool: '0xcADD60D3DCF8146c57Df0F8b672696F84E1EEc8e'
     graphql_url: https://api.studio.thegraph.com/query/48530/fujidola/version/latest
     pools:
       USDC:
@@ -179,7 +180,7 @@ networks:
         address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
         decimals: 18
         dola_pool_id: 0
-    wormhole_adapter_pool: '0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322'
+    wormhole_adapter_pool: '0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec'
     wormhole_instant_consistency: 200
     wormhole_finality_consistency: 200
   bsc-test:
