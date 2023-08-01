@@ -222,7 +222,7 @@ networks:
     packages:
       dola_protocol:
         origin: '0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2'
-        latest: '0xe0e2d2284c7dd8e2d0f3cf85b6931eb8fb8f34536645de73b2bf492e34c7e584'
+        latest: '0xa4850d1af823bfe23aca9e7455a39662f580f428dd07b4e7a5414d7046def770'
       external_interfaces: '0xe2299550de2ed0da1cac2a6c644d292c059d2f5cace7de94bfad18027f496baf'
       genesis_proposal: '0xe1fb0947d5a728c65b2c2d38d24295e3e3d494130a444747d271f23fdaa003f6'
       pyth: '0x431c1cfb9a4da32c77810a1c48aa19cc2edb03010281e0fe411b4b3b38589df1'
