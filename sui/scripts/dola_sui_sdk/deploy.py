@@ -39,39 +39,73 @@ def export_package_to_config(package_name, package_id):
 
 
 def deploy():
-    # dola_protocol_package = sui_brownie.SuiPackage(
-    #     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
-    # )
-    #
-    # dola_protocol_package.program_publish_package(replace_address=dict(
-    #     wormhole=sui_project.network_config['packages']['wormhole'],
-    #     pyth=sui_project.network_config['packages']['pyth']
-    # ), replace_publish_at=dict(
-    #     wormhole=sui_project.network_config['packages']['wormhole'],
-    #     pyth=sui_project.network_config['packages']['pyth'],
-    # ), gas_budget=1000000000)
-    #
-    # genesis_proposal_package = sui_brownie.SuiPackage(
-    #     package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
-    #         "proposals/genesis_proposal")
-    # )
-    #
-    # genesis_proposal_package.program_publish_package(replace_address=dict(
-    #     dola_protocol=dola_protocol_package.package_id,
-    #     wormhole=sui_project.network_config['packages']['wormhole'],
-    #     pyth=sui_project.network_config['packages']['pyth']
-    # ), replace_publish_at=dict(
-    #     wormhole=sui_project.network_config['packages']['wormhole'],
-    #     pyth=sui_project.network_config['packages']['pyth'],
-    # ))
-    #
-    # if sui_project.network != "sui-mainnet":
-    #     test_coins_package = sui_brownie.SuiPackage(
-    #         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
-    #     )
-    #
-    #     test_coins_package.program_publish_package()
+    dola_protocol_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
+    )
 
+    dola_protocol_package.program_publish_package(replace_address=dict(
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ), gas_budget=1000000000)
+
+    genesis_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            "proposals/genesis_proposal")
+    )
+
+    genesis_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+    if sui_project.network != "sui-mainnet":
+        test_coins_package = sui_brownie.SuiPackage(
+            package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins")
+        )
+
+        test_coins_package.program_publish_package()
+
+    external_interfaces_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
+    )
+
+    external_interfaces_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+
+def redeploy_genesis_proposal():
+    genesis_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            "proposals/genesis_proposal")
+    )
+
+    genesis_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+
+def redeploy_external_interfaces():
     external_interfaces_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("external_interfaces")
     )
@@ -89,7 +123,7 @@ def deploy():
 
 def main():
     deploy()
-    # export_to_config()
+    export_to_config()
 
 
 if __name__ == "__main__":

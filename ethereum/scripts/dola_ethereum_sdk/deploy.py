@@ -12,6 +12,7 @@ def deploy():
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
     wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
     wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
+    dola_pool = config["networks"][cur_net]["dola_pool"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     # DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["LibAsset"].deploy({'from': account})
@@ -21,7 +22,7 @@ def deploy():
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
-        "0xcADD60D3DCF8146c57Df0F8b672696F84E1EEc8e",
+        dola_pool,
         wormhole_instant_consistency,
         wormhole_finality_consistency,
         21,
