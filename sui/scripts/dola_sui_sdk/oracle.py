@@ -63,6 +63,26 @@ def get_feed_vaa(symbol):
     return f"0x{base64.b64decode(vaa).hex()}"
 
 
+def get_batch_feed_vaa(symbols=None):
+    if symbols is None:
+        symbols = []
+    pyth_service_url = sui_project.network_config['pyth_service_url']
+    feed_ids = []
+
+    url = f"{pyth_service_url}/api/latest_vaas?"
+
+    feed_ids.extend(
+        sui_project.network_config['oracle']['feed_id'][symbol]
+        for symbol in symbols
+    )
+
+    for feed_id in feed_ids:
+        url = f"{url}ids[]={feed_id}&"
+    response = requests.get(url)
+    vaas = response.json()
+    return [f"0x{base64.b64decode(vaa).hex()}" for vaa in vaas]
+
+
 def get_price_info_object(symbol):
     pyth = load.pyth_package()
     feed_vaa = sui_project.network_config['oracle']['feed_id'][symbol].replace("0x", "")
@@ -438,5 +458,5 @@ def oracle_guard(symbols=None):
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    oracle_guard(["USDT/USD"])
+    print(get_batch_feed_vaa(["BTC/USD", "USDT/USD"]))
     # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])

@@ -34,8 +34,6 @@ from dola_sui_sdk.load import sui_project
 
 G_wei = 1e9
 
-ZERO_FEE = int(1e18)
-
 # Wormhole chain id
 NET_TO_WORMHOLE_CHAINID = {
     # mainnet
@@ -216,31 +214,31 @@ def get_gas_token(network='polygon-test'):
         return "eth"
 
 
-def execute_sui_core(call_name, vaa, relay_fee):
+def execute_sui_core(call_name, vaa, relay_fee, fee_rate=0.8):
     gas = 0
     executed = False
     status = "Unknown"
     feed_nums = 0
     digest = ""
     if call_name == "binding":
-        gas, executed, status, digest = dola_sui_lending.core_binding(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_binding(vaa, relay_fee, fee_rate)
     elif call_name == "unbinding":
-        gas, executed, status, digest = dola_sui_lending.core_unbinding(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_unbinding(vaa, relay_fee, fee_rate)
     elif call_name == "supply":
-        gas, executed, status, digest = dola_sui_lending.core_supply(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_supply(vaa, relay_fee, fee_rate)
     elif call_name == "withdraw":
-        gas, executed, status, feed_nums, digest = dola_sui_lending.core_withdraw(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_withdraw(vaa, relay_fee, fee_rate)
     elif call_name == "borrow":
-        gas, executed, status, feed_nums, digest = dola_sui_lending.core_borrow(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_borrow(vaa, relay_fee, fee_rate)
     elif call_name == "repay":
-        gas, executed, status, digest = dola_sui_lending.core_repay(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_repay(vaa, relay_fee, fee_rate)
     elif call_name == "liquidate":
-        gas, executed, status, feed_nums, digest = dola_sui_lending.core_liquidate(vaa, relay_fee)
+        gas, executed, status, feed_nums, digest = dola_sui_lending.core_liquidate(vaa, relay_fee, fee_rate)
     elif call_name == "as_collateral":
-        gas, executed, status, digest = dola_sui_lending.core_as_collateral(vaa, relay_fee)
+        gas, executed, status, digest = dola_sui_lending.core_as_collateral(vaa, relay_fee, fee_rate)
     elif call_name == "cancel_as_collateral":
         gas, executed, status, feed_nums, digest = dola_sui_lending.core_cancel_as_collateral(
-            vaa, relay_fee)
+            vaa, relay_fee, fee_rate)
     return gas, executed, status, feed_nums, digest
 
 
@@ -608,7 +606,7 @@ def pool_withdraw_watcher():
 
     # query latest core tx
     result = list(
-        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'status': {"$ne": "waitForWithdraw"}})
+        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
         .sort("start_time", -1).limit(1))
     latest_sui_tx = result[0]['core_tx_id']
 
@@ -616,7 +614,7 @@ def pool_withdraw_watcher():
         try:
             prev_sui_tx = latest_sui_tx
             result = list(
-                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'status': {"$ne": "waitForWithdraw"}})
+                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
                 .sort("start_time", -1).limit(1))
             latest_sui_tx = result[0]['core_tx_id'] if result else prev_sui_tx
             relay_events = dola_sui_init.query_core_relay_event(latest_sui_tx)
@@ -665,6 +663,7 @@ def pool_withdraw_watcher():
                     local_logger.info(
                         f"Have a {call_name} from {src_network} to {get_dola_network(dst_chain_id)}, nonce: {source_chain_nonce}")
         except Exception as e:
+            traceback.print_exc()
             local_logger.error(f"Error: {e}")
         time.sleep(1)
 
@@ -694,28 +693,29 @@ def sui_core_executor():
                     continue
 
                 # If no gas record exists, relay once for free.
+                fee_rate = 0.8
                 if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
-                    relay_fee = ZERO_FEE
+                    fee_rate = 0
 
                 gas, executed, status, feed_nums, digest = execute_sui_core(
-                    call_name, tx['vaa'], relay_fee)
+                    call_name, tx['vaa'], relay_fee, fee_rate)
 
                 # Relay not existent feed_num tx for free.
                 if not executed and status == 'success' and not list(gas_record.find(
                         {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
                          'feed_nums': feed_nums})):
-                    relay_fee = ZERO_FEE
+                    fee_rate = 0
                     gas, executed, status, feed_nums, digest = execute_sui_core(
-                        call_name, tx['vaa'], relay_fee)
+                        call_name, tx['vaa'], relay_fee, fee_rate)
 
                 gas_price = int(
                     sui_project.client.suix_getReferenceGasPrice())
                 gas_limit = int(gas / gas_price)
 
                 gas_record.add_gas_record(tx['src_chain_id'], tx['nonce'], 0, call_name, gas_limit, feed_nums)
+                core_costed_fee = get_fee_value(gas, 'sui')
 
                 if executed and status == 'success':
-                    core_costed_fee = get_fee_value(gas, 'sui')
                     relay_fee_value = get_fee_value(relay_fee, 'sui')
 
                     timestamp = int(time.time())
@@ -738,6 +738,7 @@ def sui_core_executor():
                 else:
                     relay_record.update_record({'vaa': tx['vaa']},
                                                {"$set": {'status': 'fail', 'reason': status}})
+                    local_logger.warning(f"relay fee: {relay_fee_value}, consumed fee: {core_costed_fee}")
                     local_logger.warning("Execute sui core fail! ")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
@@ -984,11 +985,11 @@ def get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_num):
     if call_name in ['borrow', 'withdraw', 'cancel_as_collateral']:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name,
-             "feed_nums": int(feed_num)}).sort('nonce', -1).limit(10))
+             "feed_nums": int(feed_num)}).sort('nonce', -1).limit(5))
     else:
         result = list(gas_record.find(
             {"src_chain_id": int(src_chain_id), "dst_chain_id": int(dst_chain_id), "call_name": call_name}).sort(
-            'nonce', -1).limit(10))
+            'nonce', -1).limit(5))
     return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
 

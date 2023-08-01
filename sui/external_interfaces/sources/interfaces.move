@@ -792,7 +792,7 @@ module external_interfaces::interfaces {
         if (is_withdraw) {
             let (user_address, _, _, app_payload) =
                 pool_codec::decode_send_message_payload(payload);
-            let (_, _, _, pool, _, _) = lending_codec::decode_withdraw_payload(
+            let (_, _, _, pool, _, call_type) = lending_codec::decode_withdraw_payload(
                 app_payload
             );
             let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
@@ -803,7 +803,7 @@ module external_interfaces::interfaces {
                 vector::push_back(&mut dola_pool_ids, dola_pool_id);
             };
 
-            if (vector::length(&loans) > 0) {
+            if (vector::length(&loans) > 0 || call_type == lending_codec::get_borrow_type()) {
                 vector::append(&mut dola_pool_ids, collaterals);
                 vector::append(&mut dola_pool_ids, loans);
             };
