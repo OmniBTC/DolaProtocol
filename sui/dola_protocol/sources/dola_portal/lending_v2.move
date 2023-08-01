@@ -425,37 +425,30 @@ module dola_protocol::lending_portal_v2 {
         )
     }
 
-    entry fun liquidate<DebtCoinType>(
+    entry fun liquidate(
         genesis: &GovernanceGenesis,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         // liquidators repay debts to obtain collateral
-        debt_pool: &mut Pool<DebtCoinType>,
-        debt_coins: vector<Coin<DebtCoinType>>,
-        debt_amount: u64,
-        liquidate_chain_id: u16,
-        liquidate_pool_address: vector<u8>,
+        repay_pool_id: u16,
         liquidate_user_id: u64,
+        liquidate_pool_id: u16,
         bridge_fee: Coin<SUI>,
         clock: &Clock,
         ctx: &mut TxContext
     ) {
         genesis::check_latest_version(genesis);
-        // Sender
+
         let sender = tx_context::sender(ctx);
         let user_address = dola_address::convert_address_to_dola(sender);
-        // Pool
-        let deposit_pool_address = dola_address::convert_pool_to_dola<DebtCoinType>();
-        let deposit_coin = merge_coins::merge_coin<DebtCoinType>(debt_coins, debt_amount, ctx);
-        let withdraw_pool = dola_address::create_dola_address(liquidate_chain_id, liquidate_pool_address);
-
         let nonce = wormhole_adapter_pool::get_nonce(pool_state);
 
-        let app_payload = lending_codec::encode_liquidate_payload(
+        let app_payload = lending_codec::encode_liquidate_payload_v2(
             dola_address::get_native_dola_chain_id(),
             nonce,
-            withdraw_pool,
-            liquidate_user_id
+            repay_pool_id,
+            liquidate_user_id,
+            liquidate_pool_id,
         );
 
         let (wormhole_fee, relay_fee_amount) = wormhole_adapter_pool::get_relay_fee_amount(
@@ -466,12 +459,10 @@ module dola_protocol::lending_portal_v2 {
             ctx
         );
 
-        let sequence = wormhole_adapter_pool::send_deposit(
+        let sequence = wormhole_adapter_pool::send_message(
             pool_state,
             wormhole_state,
             wormhole_fee,
-            debt_pool,
-            deposit_coin,
             LENDING_APP_ID,
             app_payload,
             clock,
@@ -483,18 +474,18 @@ module dola_protocol::lending_portal_v2 {
             nonce,
             relay_fee_amount,
             LENDING_APP_ID,
-            lending_codec::get_repay_type()
+            lending_codec::get_liquidate_type()
         );
 
         event::emit(
             LendingPortalEvent {
                 nonce,
                 sender,
-                dola_pool_address: dola_address::get_dola_address(&deposit_pool_address),
+                dola_pool_address: dola_address::get_dola_address(&user_address),
                 source_chain_id: dola_address::get_native_dola_chain_id(),
-                dst_chain_id: liquidate_chain_id,
+                dst_chain_id: dola_address::get_native_dola_chain_id(),
                 receiver: dola_address::get_dola_address(&user_address),
-                amount: debt_amount,
+                amount: 0,
                 call_type: lending_codec::get_liquidate_type()
             }
         )

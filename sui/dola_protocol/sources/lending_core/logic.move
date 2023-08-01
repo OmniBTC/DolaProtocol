@@ -8,8 +8,8 @@ module dola_protocol::lending_logic {
 
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
-    use dola_protocol::lending_core_storage::{Self as storage, Storage, is_isolated_asset};
-    use dola_protocol::oracle::{Self, PriceOracle, check_fresh_price};
+    use dola_protocol::lending_core_storage::{Self as storage, is_isolated_asset, Storage};
+    use dola_protocol::oracle::{Self, check_fresh_price, PriceOracle};
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
@@ -156,6 +156,9 @@ module dola_protocol::lending_logic {
                 storage::add_user_liquid_asset(storage, liquidator, collateral);
             };
         };
+
+        // Check liquidator health factor
+        assert!(is_health(storage, oracle, liquidator), ENOT_HEALTH);
 
         update_interest_rate(pool_manager_info, storage, collateral, 0);
         update_interest_rate(pool_manager_info, storage, loan, 0);
