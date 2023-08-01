@@ -28,6 +28,11 @@ contract DolaPool {
         _;
     }
 
+    modifier autoIncreaseNonce() {
+        nonce = nonce + 1;
+        _;
+    }
+
     constructor(uint16 _dolaChainId, address _basicBridge) {
         dolaChainId = _dolaChainId;
         allSpenders.push(_basicBridge);
@@ -70,7 +75,7 @@ contract DolaPool {
         uint256 amount,
         uint16 appId,
         bytes memory appPayload
-    ) public payable returns (bytes memory) {
+    ) public autoIncreaseNonce payable returns (bytes memory) {
         // Deposit assets to the pool and perform amount checks
         LibAsset.depositAsset(token, amount);
 
@@ -93,7 +98,7 @@ contract DolaPool {
         LibDolaTypes.DolaAddress memory userAddress,
         uint64 amount,
         LibDolaTypes.DolaAddress memory poolAddress
-    ) public isSpender(msg.sender) {
+    ) public isSpender(msg.sender) autoIncreaseNonce {
         address pool = LibDolaTypes.dolaAddressToAddress(poolAddress);
         address user = LibDolaTypes.dolaAddressToAddress(userAddress);
         uint256 fixedAmount = LibDecimals.restoreAmountDecimals(
@@ -121,7 +126,7 @@ contract DolaPool {
 
     /// Get chain-unique nonce
     function getNonce() external returns (uint64) {
-        return nonce++;
+        return nonce;
     }
 
     receive() external payable {}
