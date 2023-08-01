@@ -483,7 +483,7 @@ module dola_protocol::lending_portal_v2 {
             nonce,
             relay_fee_amount,
             LENDING_APP_ID,
-            lending_codec::get_repay_type()
+            lending_codec::get_liquidate_type()
         );
 
         event::emit(
