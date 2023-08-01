@@ -6,7 +6,7 @@ import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16
 
-from dola_sui_sdk import load, init
+from dola_sui_sdk import load, init, oracle
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
@@ -41,7 +41,7 @@ def dola_pool_id_to_symbol(dola_pool_id):
         raise ValueError('dola_pool_id must be 0, 1, 2, 3, 4 or 5')
 
 
-def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
+def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     dola_protocol = load.dola_protocol_package()
     kucoin = ccxt.kucoin()
     kucoin.load_markets()
@@ -53,10 +53,10 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
     pyth_fee_amount = 0
 
     feed_gas = 0
-    for pool_id in asset_ids:
-        symbol = dola_pool_id_to_symbol(pool_id)
 
-        vaa = get_feed_vaa(symbol)
+    symbols = [dola_pool_id_to_symbol(pool_id) for pool_id in asset_ids]
+    vaas = oracle.get_batch_feed_vaa()
+    for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
         result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
@@ -115,7 +115,9 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
-        if relay_fee > int(0.9 * gas):
+
+    if relay_fee >= int(fee_rate * feed_gas):
+        for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
             sui_project.batch_transaction(
                 actual_params=[
                     governance_genesis,
@@ -124,7 +126,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
                     get_price_info_object(symbol),
                     price_oracle,
                     pool_id,
-                    list(bytes.fromhex(get_feed_vaa(symbol).replace("0x", ""))),
+                    list(bytes.fromhex(vaa.replace("0x", ""))),
                     init.clock(),
                     pyth_fee_amount
                 ],
@@ -146,7 +148,6 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0):
                     ]
                 ]
             )
-            relay_fee -= gas
     return relay_fee, feed_gas
 
 
@@ -287,7 +288,7 @@ def portal_supply(coin_type, amount, bridge_fee=0):
     )
 
 
-def core_supply(vaa, relay_fee=0):
+def core_supply(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun supply(
         genesis: &GovernanceGenesis,
@@ -330,7 +331,7 @@ def core_supply(vaa, relay_fee=0):
     status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > int(0.9 * gas):
+    if relay_fee >= int(fee_rate * gas):
         executed = True
         result = dola_protocol.lending_core_wormhole_adapter.supply(
             genesis,
@@ -442,7 +443,7 @@ def pool_withdraw(vaa, coin_type):
     return gas, True, status, result['effects']['transactionDigest']
 
 
-def core_withdraw(vaa, relay_fee=0):
+def core_withdraw(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun withdraw(
         genesis: &GovernanceGenesis,
@@ -510,7 +511,7 @@ def core_withdraw(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if left_relay_fee > int(0.9 * gas) and status == 'success':
+    if left_relay_fee >= int(fee_rate * gas) and status == 'success':
         executed = True
         result = sui_project.batch_transaction(
             actual_params=[
@@ -592,7 +593,7 @@ def portal_borrow(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee=0
     )
 
 
-def core_borrow(vaa, relay_fee=0):
+def core_borrow(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun borrow(
         genesis: &GovernanceGenesis,
@@ -660,7 +661,7 @@ def core_borrow(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if left_relay_fee > int(0.9 * gas) and status == 'success':
+    if left_relay_fee >= int(fee_rate * gas) and status == 'success':
         executed = True
         result = sui_project.batch_transaction(
             actual_params=[
@@ -737,7 +738,7 @@ def portal_repay(coin_type, repay_amount, bridge_fee=0):
     )
 
 
-def core_repay(vaa, relay_fee=0):
+def core_repay(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun repay(
         genesis: &GovernanceGenesis,
@@ -780,7 +781,7 @@ def core_repay(vaa, relay_fee=0):
     status = result['effects']['status']['status']
 
     executed = False
-    if relay_fee > int(0.9 * gas):
+    if relay_fee >= int(fee_rate * gas):
         executed = True
         result = dola_protocol.lending_core_wormhole_adapter.repay(
             genesis,
@@ -844,7 +845,7 @@ def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, co
     )
 
 
-def core_liquidate(vaa, relay_fee=0):
+def core_liquidate(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun liquidate(
         genesis: &GovernanceGenesis,
@@ -932,7 +933,7 @@ def core_liquidate(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if relay_fee > int(0.9 * gas) and status == 'success':
+    if relay_fee >= int(fee_rate * gas) and status == 'success':
         executed = True
         result = sui_project.batch_transaction(
             actual_params=basic_params + feed_params,
@@ -979,7 +980,7 @@ def portal_binding(bind_address, dola_chain_id=0, bridge_fee=0):
     )
 
 
-def core_binding(vaa, relay_fee=0):
+def core_binding(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun bind_user_address(
         genesis: &GovernanceGenesis,
@@ -1015,7 +1016,7 @@ def core_binding(vaa, relay_fee=0):
 
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > int(0.9 * gas):
+    if relay_fee >= int(fee_rate * gas):
         executed = True
         result = dola_protocol.system_core_wormhole_adapter.bind_user_address(
             genesis,
@@ -1066,7 +1067,7 @@ def portal_unbinding(unbind_address, dola_chain_id=0, bridge_fee=0):
     )
 
 
-def core_unbinding(vaa, relay_fee=0):
+def core_unbinding(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun unbind_user_address(
         genesis: &GovernanceGenesis,
@@ -1101,7 +1102,7 @@ def core_unbinding(vaa, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > int(0.9 * gas):
+    if relay_fee >= int(fee_rate * gas):
         executed = True
         result = dola_protocol.system_core_wormhole_adapter.unbind_user_address(
             genesis,
@@ -1119,7 +1120,7 @@ def core_unbinding(vaa, relay_fee=0):
         return gas, executed, status, ""
 
 
-def core_as_collateral(vaa, relay_fee=0):
+def core_as_collateral(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun as_collateral(
         genesis: &GovernanceGenesis,
@@ -1163,7 +1164,7 @@ def core_as_collateral(vaa, relay_fee=0):
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     status = result['effects']['status']['status']
     executed = False
-    if relay_fee > int(0.9 * gas):
+    if relay_fee >= int(fee_rate * gas):
         executed = True
         dola_protocol.lending_core_wormhole_adapter.as_collateral(
             genesis,
@@ -1183,7 +1184,7 @@ def core_as_collateral(vaa, relay_fee=0):
         return gas, executed, status, ""
 
 
-def core_cancel_as_collateral(vaa, relay_fee=0):
+def core_cancel_as_collateral(vaa, relay_fee=0, fee_rate=0.8):
     """
     public entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
@@ -1229,7 +1230,7 @@ def core_cancel_as_collateral(vaa, relay_fee=0):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if left_relay_fee > int(0.9 * gas) and status == 'success':
+    if left_relay_fee >= int(fee_rate * gas) and status == 'success':
         executed = True
         result = dola_protocol.lending_core_wormhole_adapter.cancel_as_collateral(
             genesis,
@@ -1418,12 +1419,16 @@ def get_unrelay_txs(src_chian_id, call_name, limit=0):
 def get_sui_wormhole_payload(tx_hash):
     events = sui_project.client.sui_getEvents(tx_hash)
     wormhole = sui_project.network_config['packages']['wormhole']
-    for event in events:
-        if event['type'] == f'{wormhole}::publish_message::WormholeMessage':
-            data = event['parsedJson']['payload']
-            return ''.join([hex(i)[2:].zfill(2) for i in data])
-
-    return ""
+    return next(
+        (
+            ''.join(
+                [hex(i)[2:].zfill(2) for i in event['parsedJson']['payload']]
+            )
+            for event in events
+            if event['type'] == f'{wormhole}::publish_message::WormholeMessage'
+        ),
+        "",
+    )
 
 
 if __name__ == "__main__":

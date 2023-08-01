@@ -153,7 +153,7 @@ def pool_withdraw(vaa):
     wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
-def portal_borrow(token, amount, dst_chain=1, receiver=None):
+def portal_borrow(token, amount, dst_chain=1, receiver=None, relay_fee=0):
     """
     function borrow(
         bytes memory token,
@@ -164,17 +164,21 @@ def portal_borrow(token, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
+    if receiver is None:
+        receiver = account.address
+
     lending_portal = load.lending_portal_package(network.show_active())
     lending_portal.borrow(
         str(token),
         str(receiver),
         dst_chain,
         int(amount),
-        {'from': account}
+        int(relay_fee),
+        {'from': account, 'value': int(relay_fee)}
     )
 
 
-def portal_repay(token, amount):
+def portal_repay(token, amount, relay_fee=0):
     """
     function repay(address token, uint256 amount)
 
@@ -189,7 +193,8 @@ def portal_repay(token, amount):
     lending_portal.repay(
         token,
         int(amount),
-        {'from': account}
+        int(relay_fee),
+        {'from': account, 'value': int(relay_fee)}
     )
 
 
@@ -228,12 +233,12 @@ def get_account_balance():
 
 
 def main():
-    # portal_supply(init.usdt()['address'], 1000 * 1e18, 448033818576453)
+    # portal_supply(init.usdt()['address'], 1000 * 1e18, 520860657513348)
     # portal_cancel_as_collateral([1, 2])
-    portal_withdraw(init.usdt()['address'], 1 * 1e8, 6, relay_fee=3592437779690189)
+    # portal_withdraw(init.usdt()['address'], 1 * 1e8, 6, relay_fee=3592437779690189)
     # portal_binding(
     #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, 468422798598415)
-    # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
+    portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=248812139037433)
     # monitor_repay(usdt_pool())
 
 

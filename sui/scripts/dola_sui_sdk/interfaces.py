@@ -254,11 +254,12 @@ def get_user_lending_info(user):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    lending = load.lending_core_package()
-    oracle = load.oracle_package()
+
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
     result = external_interfaces.interfaces.get_user_lending_info.simulate(
-        lending.storage.Storage[-1],
-        oracle.oracle.PriceOracle[-1],
+        lending_storage,
+        price_oracle,
         user,
     )
 
