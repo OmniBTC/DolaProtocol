@@ -308,7 +308,7 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
     lending_storage = sui_project.network_config['objects']['LendingStorage']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    result = external_interfaces.interfaces.get_user_allowed_borrow.simulate(
+    result = external_interfaces.interfaces.get_user_allowed_borrow.inspect(
         pool_manager_info,
         lending_storage,
         price_oracle,
@@ -317,6 +317,7 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
         dola_pool_id
     )
 
+    pprint(result)
     return result['events'][-1]['parsedJson']
 
 
@@ -398,6 +399,6 @@ if __name__ == "__main__":
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
-    # pprint(get_user_allowed_borrow(5, 1, 1))
+    pprint(get_user_allowed_borrow(6, 1, 1))
     # pprint(get_all_pool_liquidity(1))
-    pprint(get_all_reserve_info())
+    # pprint(get_all_reserve_info())

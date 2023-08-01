@@ -55,7 +55,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     feed_gas = 0
 
     symbols = [dola_pool_id_to_symbol(pool_id) for pool_id in asset_ids]
-    vaas = oracle.get_batch_feed_vaa()
+    vaas = oracle.get_batch_feed_vaa(symbols)
     for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
         result = sui_project.batch_transaction_inspect(
             actual_params=[
@@ -117,6 +117,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         feed_gas += gas
 
     if relay_fee >= int(fee_rate * feed_gas):
+        relay_fee -= feed_gas
         for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
             sui_project.batch_transaction(
                 actual_params=[
