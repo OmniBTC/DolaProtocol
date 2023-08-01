@@ -479,12 +479,9 @@ module dola_protocol::wormhole_adapter_core {
         amount: u256,
         wormhole_message_fee: Coin<SUI>,
         clock: &Clock,
-        from_remote: bool,
         ctx: &mut TxContext
     ): u64 {
-        if (from_remote) {
-            check_relayer(core_state, ctx);
-        };
+        check_relayer(core_state, ctx);
         let (actual_amount, _) = pool_manager::remove_liquidity(
             pool_manager_info,
             pool_address,

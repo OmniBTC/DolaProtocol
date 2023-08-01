@@ -169,7 +169,6 @@ module dola_protocol::lending_core_wormhole_adapter {
             actual_amount,
             wormhole_message_fee,
             clock,
-            true,
             ctx
         );
 
@@ -254,7 +253,6 @@ module dola_protocol::lending_core_wormhole_adapter {
             amount,
             wormhole_message_fee,
             clock,
-            true,
             ctx
         );
 
