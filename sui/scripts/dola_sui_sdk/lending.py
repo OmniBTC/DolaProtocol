@@ -802,20 +802,16 @@ def core_repay(vaa, relay_fee=0, fee_rate=0.8):
         return gas, executed, status, ""
 
 
-def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, collateral_chain_id, violator_id,
-                     bridge_fee=0):
+def portal_liquidate(repay_pool_id, liquidate_user_id, liquidate_pool_id, bridge_fee=0):
     """
     entry fun liquidate<DebtCoinType>(
         genesis: &GovernanceGenesis,
         pool_state: &mut PoolState,
         wormhole_state: &mut WormholeState,
         // liquidators repay debts to obtain collateral
-        debt_pool: &mut Pool<DebtCoinType>,
-        debt_coins: vector<Coin<DebtCoinType>>,
-        debt_amount: u64,
-        liquidate_chain_id: u16,
-        liquidate_pool_address: vector<u8>,
+        repay_pool_id: u16,
         liquidate_user_id: u64,
+        liquidate_pool_id: u16,
         bridge_fee: Coin<SUI>,
         clock: &Clock,
         ctx: &mut TxContext
@@ -828,21 +824,17 @@ def portal_liquidate(debt_coin_type, deposit_amount, collateral_pool_address, co
     pool_state = sui_project.network_config['objects']['PoolState']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
 
-    coins = get_amount_coins_if_exist([deposit_amount, bridge_fee])
+    coins = get_amount_coins_if_exist([bridge_fee])
 
     dola_protocol.lending.liquidate(
         genesis,
         pool_state,
         wormhole_state,
-        init.pool_id(debt_coin_type),
-        [coins[0]],
-        int(deposit_amount),
-        int(collateral_chain_id),
-        list(bytes.fromhex(collateral_pool_address.replace('0x', ''))),
-        int(violator_id),
-        coins[1],
+        repay_pool_id,
+        liquidate_user_id,
+        liquidate_pool_id,
+        coins[0],
         init.clock(),
-        type_arguments=[debt_coin_type]
     )
 
 
