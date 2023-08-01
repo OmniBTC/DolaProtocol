@@ -66,7 +66,7 @@ WORMHOLE_EMITTER_ADDRESS = {
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
     "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
-    "avax-test": "0xd5dc5E3d1119cC1FBFB0Ec2613DD2C839aB79322",
+    "avax-test": "0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec",
     "sui-testnet": "0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0",
     "sui-testnet-pool": "0xf737cbc8e158b1b76b1f161f048e127ae4560a90df1c96002417802d7d23fe3f",
 }
