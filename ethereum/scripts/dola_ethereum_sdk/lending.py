@@ -238,7 +238,7 @@ def main():
     # portal_withdraw(init.usdt()['address'], 1 * 1e8, 6, relay_fee=3592437779690189)
     # portal_binding(
     #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, 468422798598415)
-    portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=248812139037433)
+    portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=411791255673222)
     # monitor_repay(usdt_pool())
 
 
