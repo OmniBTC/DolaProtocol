@@ -165,6 +165,20 @@ module dola_protocol::oracle {
 
     /// === Entry Functions ===
 
+    entry fun set_oracle_price(
+        price_oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        price_value: u256,
+        clock: &Clock
+    ) {
+        let price_oracles = &mut price_oracle.price_oracles;
+        let price = table::borrow_mut(price_oracles, dola_pool_id);
+
+        price.value = price_value;
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        price.last_update_timestamp = current_timestamp;
+    }
+
     public fun feed_token_price_by_pyth(
         genesis: &GovernanceGenesis,
         _wormhole_state: &mut WormholeState,
