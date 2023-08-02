@@ -5,6 +5,7 @@ import requests
 
 import dola_ethereum_sdk
 import dola_sui_sdk
+import notify
 from dola_sui_sdk import interfaces, lending
 
 
@@ -61,7 +62,10 @@ def liquidation_bot(liquidator_user_id):
                 max_collateral_info = max(collateral_infos, key=lambda x: x['collateral_value'])
                 liquidate_pool_id = max_collateral_info['dola_pool_id']
                 lending.portal_liquidate(repay_pool_id, liquidate_pool_id, user_id)
-
+            else:
+                symbol = lending.dola_pool_id_to_symbol(repay_pool_id)
+                msg = f'liquidator {liquidator_user_id} has no liquidity to repay user {user_id} {symbol} debt'
+                notify.notify(msg)
         time.sleep(1)
 
 

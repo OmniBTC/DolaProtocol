@@ -185,16 +185,21 @@ def portal_repay(token, amount, relay_fee=0):
     :return:
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
 
-    token = Contract.from_abi(
-        "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    if "test" in network.show_active():
+        token = Contract.from_abi(
+            "MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
+        token.mint(account.address, amount, {'from': account})
+    else:
+        token = Contract.from_abi(
+            "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.repay(
         token,
         int(amount),
-        int(relay_fee),
-        {'from': account, 'value': int(relay_fee)}
+        relay_fee,
+        {'from': account, 'value': relay_fee}
     )
 
 
@@ -238,8 +243,8 @@ def main():
     # portal_withdraw(init.usdt()['address'], 1 * 1e8, 6, relay_fee=3592437779690189)
     # portal_binding(
     #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, 468422798598415)
-    portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=411791255673222)
-    # monitor_repay(usdt_pool())
+    # portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=411791255673222)
+    portal_repay(init.usdt()['address'], 2000 * 1e18, 520860657513348)
 
 
 if __name__ == "__main__":
