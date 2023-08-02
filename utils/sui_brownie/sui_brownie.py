@@ -924,7 +924,7 @@ class TransactionBuild:
                                  cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos)))
         batch_inputs.sort(key=lambda x: x[0])
         batch_inputs = [v[1] for v in batch_inputs]
-        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget)
+        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget, call_args=actual_params)
 
     @classmethod
     def upgrade(
