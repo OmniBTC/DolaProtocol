@@ -891,6 +891,7 @@ class TransactionBuild:
                 if "Struct" in abi["parameters"][i] and abi["parameters"][i]["Struct"]["address"] == "0x2" and \
                         abi["parameters"][i]["Struct"]["module"] == "coin" \
                         and abi["parameters"][i]["Struct"]["name"] == "Coin" and \
+                        "Struct" in abi["parameters"][i]["Struct"]["typeArguments"][0] and \
                         abi["parameters"][i]["Struct"]["typeArguments"][0]["Struct"]['module'] == "sui":
                     batch_commands.append(
                         Command("SplitCoins", SplitCoins(
