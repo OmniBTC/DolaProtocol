@@ -12,9 +12,9 @@ from dola_sui_sdk import init as dola_sui_init
 
 @retry
 def get_vaa_by_wormhole(tx_hash, emitter: str):
-    wormhole_url = dola_sui_sdk.sui_project.network_config['wormhole_url']
+    wormhole_scan_url = dola_sui_sdk.sui_project.network_config['wormhole_scan_url']
 
-    url = f"{wormhole_url}vaas/21/{emitter}?pageSize=1"
+    url = f"{wormhole_scan_url}vaas/21/{emitter}?pageSize=1"
     response = requests.get(url)
 
     data = response.json()['data'][0]

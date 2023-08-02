@@ -1064,24 +1064,17 @@ def get_signed_vaa_by_wormhole(
         sequence: int,
         src_net: str = None
 ):
-    """
-    Get signed vaa
-    :param emitter:
-    :param src_net:
-    :param sequence:
-    :return: dict
-        {'vaaBytes': 'AQAAAAEOAGUI...'}
-    """
     wormhole_url = sui_project.network_config['wormhole_url']
+    emitter_address = dola_sui_init.format_emitter_address(emitter)
     emitter_chainid = NET_TO_WORMHOLE_CHAINID[src_net]
 
-    url = f"{wormhole_url}vaas/{emitter_chainid}/{emitter}/{sequence}"
+    url = f"{wormhole_url}/v1/signed_vaa/{emitter_chainid}/{emitter_address}/{sequence}"
     response = requests.get(url)
 
-    if 'data' not in response.json():
+    if 'vaaBytes' not in response.json():
         raise ValueError(f"Get {src_net} signed vaa failed: {response.text}")
 
-    vaa_bytes = response.json()['data']['vaa']
+    vaa_bytes = response.json()['vaaBytes']
     vaa = base64.b64decode(vaa_bytes).hex()
     return f"0x{vaa}"
 
