@@ -547,18 +547,18 @@ def pool_withdraw_watcher():
         time.sleep(1)
 
 
-def sui_core_executor(relayer_account):
+def sui_core_executor(relayer_account, divisor=1, remainder=0):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     sui_project.active_account(relayer_account)
 
-    local_logger = logger.getChild("[sui_core_executor]")
+    local_logger = logger.getChild(f"[sui_core_executor_{remainder}]")
     local_logger.info("Start to relay pool vaa ^-^")
 
     relay_record = RelayRecord()
     gas_record = GasRecord()
 
     while True:
-        relay_transactions = relay_record.find({"status": "false"})
+        relay_transactions = relay_record.find({"status": "false", "nonce": {"$mod": [divisor, remainder]}})
         for tx in relay_transactions:
             try:
                 relay_fee_value = tx['relay_fee']
