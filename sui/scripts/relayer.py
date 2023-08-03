@@ -4,7 +4,6 @@ import datetime
 import functools
 import json
 import logging
-import multiprocessing
 import time
 import traceback
 from hmac import compare_digest
@@ -143,27 +142,6 @@ def execute_sui_core(call_name, vaa, relay_fee, fee_rate=0.8):
         gas, executed, status, feed_nums, digest = dola_sui_lending.core_cancel_as_collateral(
             vaa, relay_fee, fee_rate)
     return gas, executed, status, feed_nums, digest
-
-
-def init_accounts_and_lock():
-    global account_index
-    global index_lock
-
-    m = multiprocessing.Manager()
-
-    index_lock = m.Lock()
-    account_index = m.Value('i', 0)
-
-
-def rotate_accounts():
-    global account_index
-    index_lock.acquire()
-    index = account_index.get()
-    index += 1
-    num = index % config.ACTIVE_RELAYER_NUM
-    sui_project.active_account(f"Relayer{num}")
-    account_index.set(index)
-    index_lock.release()
 
 
 class RelayRecord:
@@ -569,8 +547,10 @@ def pool_withdraw_watcher():
         time.sleep(1)
 
 
-def sui_core_executor():
+def sui_core_executor(relayer_account):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
+    sui_project.active_account(relayer_account)
+
     local_logger = logger.getChild("[sui_core_executor]")
     local_logger.info("Start to relay pool vaa ^-^")
 
@@ -585,7 +565,6 @@ def sui_core_executor():
                 relay_fee = get_fee_amount(relay_fee_value)
                 call_name = tx['call_name']
 
-                rotate_accounts()
                 # check relayer balance
                 if sui_total_balance() < int(1e9):
                     local_logger.warning(
@@ -654,8 +633,10 @@ def sui_core_executor():
         time.sleep(1)
 
 
-def sui_pool_executor():
+def sui_pool_executor(relayer_account):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
+    sui_project.active_account(relayer_account)
+
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
 
@@ -681,7 +662,6 @@ def sui_pool_executor():
                 token_name = withdraw_tx['withdraw_pool']
                 vaa = withdraw_tx['withdraw_vaa']
 
-                rotate_accounts()
                 # check relayer balance
                 if sui_total_balance() < int(1e9):
                     local_logger.warning(
@@ -1046,13 +1026,11 @@ def main():
     init_markets()
     # fix request ssl error
     fix_requests_ssl()
-    # Use when you need to improve concurrency
-    init_accounts_and_lock()
 
     pt = ProcessExecutor(executor=11)
 
     pt.run([
-        sui_core_executor,
+        functools.partial(sui_core_executor, "Relayer1"),
         sui_portal_watcher,
         functools.partial(eth_portal_watcher, "arbitrum-main"),
         functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
@@ -1061,15 +1039,10 @@ def main():
         functools.partial(eth_portal_watcher, "polygon-main"),
         functools.partial(wormhole_vaa_guardian, "polygon-main"),
         pool_withdraw_watcher,
-        sui_pool_executor,
+        functools.partial(sui_pool_executor, "Relayer0"),
         eth_pool_executor,
     ])
 
-
-# portal watcher insert relay record
-# pool withdraw watcher update relay record
-# core executor query relay record and execute
-# pool executor query relay record and execute
 
 if __name__ == "__main__":
     main()
