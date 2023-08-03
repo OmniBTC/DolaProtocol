@@ -185,7 +185,6 @@ module dola_protocol::lending_logic {
         // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
-        assert!(!is_loan(storage, dola_user_id, dola_pool_id), EIS_LOAN);
         assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
 
         update_state(storage, clock, dola_pool_id);
