@@ -4,7 +4,6 @@ import datetime
 import functools
 import json
 import logging
-import multiprocessing
 import time
 import traceback
 from hmac import compare_digest
@@ -143,27 +142,6 @@ def execute_sui_core(call_name, vaa, relay_fee, fee_rate=0.8):
         gas, executed, status, feed_nums, digest = dola_sui_lending.core_cancel_as_collateral(
             vaa, relay_fee, fee_rate)
     return gas, executed, status, feed_nums, digest
-
-
-def init_accounts_and_lock():
-    global account_index
-    global index_lock
-
-    m = multiprocessing.Manager()
-
-    index_lock = m.Lock()
-    account_index = m.Value('i', 0)
-
-
-def rotate_accounts():
-    global account_index
-    index_lock.acquire()
-    index = account_index.get()
-    index += 1
-    num = index % config.ACTIVE_RELAYER_NUM
-    sui_project.active_account(f"Relayer{num}")
-    account_index.set(index)
-    index_lock.release()
 
 
 class RelayRecord:
@@ -509,7 +487,7 @@ def pool_withdraw_watcher():
 
     # query latest core tx
     result = list(
-        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
+        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}, 'status': 'success'})
         .sort("start_time", -1).limit(1))
     latest_sui_tx = result[0]['core_tx_id']
 
@@ -517,7 +495,7 @@ def pool_withdraw_watcher():
         try:
             prev_sui_tx = latest_sui_tx
             result = list(
-                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
+                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}, 'status': 'success'})
                 .sort("start_time", -1).limit(1))
             latest_sui_tx = result[0]['core_tx_id'] if result else prev_sui_tx
             relay_events = dola_sui_init.query_core_relay_event(latest_sui_tx)
@@ -569,92 +547,97 @@ def pool_withdraw_watcher():
         time.sleep(1)
 
 
-def sui_core_executor():
+def process_sui_core_tx(tx, local_logger, relay_record, gas_record):
+    try:
+        relay_fee_value = tx['relay_fee']
+        relay_fee = get_fee_amount(relay_fee_value)
+        call_name = tx['call_name']
+
+        # check relayer balance
+        if sui_total_balance() < int(1e9):
+            local_logger.warning(
+                f"Relayer balance is not enough, need {relay_fee_value} sui")
+            time.sleep(5)
+            return
+
+        # If no gas record exists, relay once for free.
+        fee_rate = 0.8
+        if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
+            fee_rate = 0
+
+        gas, executed, status, feed_nums, digest = execute_sui_core(
+            call_name, tx['vaa'], relay_fee, fee_rate)
+
+        # Relay not existent feed_num tx for free.
+        if not executed and status == 'success' and not list(gas_record.find(
+                {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
+                 'feed_nums': feed_nums})):
+            fee_rate = 0
+            gas, executed, status, feed_nums, digest = execute_sui_core(
+                call_name, tx['vaa'], relay_fee, fee_rate)
+
+        gas_price = int(
+            sui_project.client.suix_getReferenceGasPrice())
+        gas_limit = int(gas / gas_price)
+
+        gas_record.add_gas_record(tx['src_chain_id'], tx['nonce'], 0, call_name, gas_limit, feed_nums)
+        core_costed_fee = get_fee_value(gas, 'sui')
+
+        if executed and status == 'success':
+            relay_fee_value = get_fee_value(relay_fee, 'sui')
+
+            timestamp = int(time.time())
+            date = str(datetime.datetime.utcfromtimestamp(timestamp))
+            if call_name in ["withdraw", "borrow"]:
+                relay_record.update_record({'vaa': tx['vaa']},
+                                           {"$set": {'relay_fee': relay_fee_value,
+                                                     'status': 'waitForWithdraw',
+                                                     'end_time': date,
+                                                     'core_tx_id': digest,
+                                                     'core_costed_fee': core_costed_fee}})
+            else:
+                relay_record.update_record({'vaa': tx['vaa']},
+                                           {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
+                                                     'core_tx_id': digest,
+                                                     'core_costed_fee': core_costed_fee,
+                                                     'end_time': date}})
+            local_logger.info("Execute sui core success! ")
+            local_logger.info(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
+        else:
+            relay_record.update_record({'vaa': tx['vaa']},
+                                       {"$set": {'status': 'fail', 'reason': status}})
+            local_logger.warning("Execute sui core fail! ")
+            local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
+            local_logger.warning(f"status: {status}")
+    except AssertionError as e:
+        status = eval(str(e))
+        relay_record.update_record({'vaa': tx['vaa']},
+                                   {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
+        local_logger.warning("Execute sui core fail! ")
+        local_logger.warning(f"status: {status}")
+    except Exception as e:
+        traceback.print_exc()
+        local_logger.error(f"Execute sui core fail\n {e}")
+
+
+def sui_core_executor(account, divisor=1, remainder=0):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
-    local_logger = logger.getChild("[sui_core_executor]")
+    sui_project.active_account(account)
+
+    local_logger = logger.getChild(f"[sui_core_executor_{remainder}]")
     local_logger.info("Start to relay pool vaa ^-^")
 
     relay_record = RelayRecord()
     gas_record = GasRecord()
 
     while True:
-        relay_transactions = relay_record.find({"status": "false"})
+        relay_transactions = relay_record.find({"status": "false", "nonce": {"$mod": [divisor, remainder]}})
         for tx in relay_transactions:
-            try:
-                relay_fee_value = tx['relay_fee']
-                relay_fee = get_fee_amount(relay_fee_value)
-                call_name = tx['call_name']
-
-                rotate_accounts()
-                # check relayer balance
-                if sui_total_balance() < int(1e9):
-                    local_logger.warning(
-                        f"Relayer balance is not enough, need {relay_fee_value} sui")
-                    time.sleep(5)
-                    continue
-
-                # If no gas record exists, relay once for free.
-                fee_rate = 0.8
-                if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
-                    fee_rate = 0
-
-                gas, executed, status, feed_nums, digest = execute_sui_core(
-                    call_name, tx['vaa'], relay_fee, fee_rate)
-
-                # Relay not existent feed_num tx for free.
-                if not executed and status == 'success' and not list(gas_record.find(
-                        {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
-                         'feed_nums': feed_nums})):
-                    fee_rate = 0
-                    gas, executed, status, feed_nums, digest = execute_sui_core(
-                        call_name, tx['vaa'], relay_fee, fee_rate)
-
-                gas_price = int(
-                    sui_project.client.suix_getReferenceGasPrice())
-                gas_limit = int(gas / gas_price)
-
-                gas_record.add_gas_record(tx['src_chain_id'], tx['nonce'], 0, call_name, gas_limit, feed_nums)
-                core_costed_fee = get_fee_value(gas, 'sui')
-
-                if executed and status == 'success':
-                    relay_fee_value = get_fee_value(relay_fee, 'sui')
-
-                    timestamp = int(time.time())
-                    date = str(datetime.datetime.utcfromtimestamp(timestamp))
-                    if call_name in ["withdraw", "borrow"]:
-                        relay_record.update_record({'vaa': tx['vaa']},
-                                                   {"$set": {'relay_fee': relay_fee_value,
-                                                             'status': 'waitForWithdraw',
-                                                             'end_time': date,
-                                                             'core_tx_id': digest,
-                                                             'core_costed_fee': core_costed_fee}})
-                    else:
-                        relay_record.update_record({'vaa': tx['vaa']},
-                                                   {"$set": {'relay_fee': relay_fee_value, 'status': 'success',
-                                                             'core_tx_id': digest,
-                                                             'core_costed_fee': core_costed_fee,
-                                                             'end_time': date}})
-                    local_logger.info("Execute sui core success! ")
-                    local_logger.info(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
-                else:
-                    relay_record.update_record({'vaa': tx['vaa']},
-                                               {"$set": {'status': 'fail', 'reason': status}})
-                    local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
-                    local_logger.warning("Execute sui core fail! ")
-                    local_logger.warning(f"status: {status}")
-            except AssertionError as e:
-                status = eval(str(e))
-                relay_record.update_record({'vaa': tx['vaa']},
-                                           {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
-                local_logger.warning("Execute sui core fail! ")
-                local_logger.warning(f"status: {status}")
-            except Exception as e:
-                traceback.print_exc()
-                local_logger.error(f"Execute sui core fail\n {e}")
+            process_sui_core_tx(tx, local_logger, relay_record, gas_record)
         time.sleep(1)
 
 
-def sui_pool_executor():
+def sui_pool_executor(account):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
@@ -681,7 +664,6 @@ def sui_pool_executor():
                 token_name = withdraw_tx['withdraw_pool']
                 vaa = withdraw_tx['withdraw_vaa']
 
-                rotate_accounts()
                 # check relayer balance
                 if sui_total_balance() < int(1e9):
                     local_logger.warning(
@@ -1046,18 +1028,17 @@ def main():
     init_markets()
     # fix request ssl error
     fix_requests_ssl()
-    # Use when you need to improve concurrency
-    init_accounts_and_lock()
 
-    pt = ProcessExecutor(executor=7)
+    pt = ProcessExecutor(executor=8)
 
     pt.run([
-        sui_core_executor,
+        functools.partial(sui_core_executor, "Relayer1", 2, 0),
+        functools.partial(sui_core_executor, "Relayer2", 2, 1),
         sui_portal_watcher,
         functools.partial(eth_portal_watcher, "avax-test"),
         functools.partial(wormhole_vaa_guardian, "avax-test"),
         pool_withdraw_watcher,
-        sui_pool_executor,
+        functools.partial(sui_pool_executor, "Relayer3"),
         eth_pool_executor,
     ])
 
