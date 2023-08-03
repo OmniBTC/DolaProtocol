@@ -1000,7 +1000,6 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = logic::EIS_LOAN)]
     public fun test_supply_with_loan_asset() {
         let creator = @0xA;
 
