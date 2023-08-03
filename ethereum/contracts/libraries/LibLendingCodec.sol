@@ -35,8 +35,9 @@ library LibLendingCodec {
     struct LiquidatePayload {
         uint16 sourceChainId;
         uint64 nonce;
-        LibDolaTypes.DolaAddress withdrawPool;
+        uint16 repayPoolId;
         uint64 liquidateUserId;
+        uint16 liquidatePoolId;
         uint8 callType;
     }
 
@@ -182,28 +183,25 @@ library LibLendingCodec {
         return decodeData;
     }
 
-    function encodeLiquidatePayload(
+    function encodeLiquidatePayloadV2(
         uint16 sourceChainId,
         uint64 nonce,
-        LibDolaTypes.DolaAddress memory withdrawPool,
-        uint64 liquidateUserId
+        uint16 repayPoolId,
+        uint64 liquidateUserId,
+        uint16 liquidatePoolId
     ) internal pure returns (bytes memory) {
-        bytes memory dolaAddress = LibDolaTypes.encodeDolaAddress(
-            withdrawPool.dolaChainId,
-            withdrawPool.externalAddress
-        );
         bytes memory encodeData = abi.encodePacked(
             sourceChainId,
             nonce,
-            uint16(dolaAddress.length),
-            dolaAddress,
+            repayPoolId,
             liquidateUserId,
+            liquidatePoolId,
             LIQUIDATE
         );
         return encodeData;
     }
 
-    function decodeLiquidatePayload(bytes memory payload)
+    function decodeLiquidatePayloadV2(bytes memory payload)
         internal
         pure
         returns (LiquidatePayload memory)
@@ -222,17 +220,15 @@ library LibLendingCodec {
         index += dataLen;
 
         dataLen = 2;
-        uint16 poolLength = payload.toUint16(index);
-        index += dataLen;
-
-        dataLen = poolLength;
-        decodeData.withdrawPool = LibDolaTypes.decodeDolaAddress(
-            payload.slice(index, dataLen)
-        );
+        decodeData.repayPoolId = payload.toUint16(index);
         index += dataLen;
 
         dataLen = 8;
         decodeData.liquidateUserId = payload.toUint64(index);
+        index += dataLen;
+
+        dataLen = 2;
+        decodeData.liquidatePoolId = payload.toUint16(index);
         index += dataLen;
 
         dataLen = 1;

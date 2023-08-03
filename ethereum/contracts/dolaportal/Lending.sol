@@ -250,32 +250,25 @@ contract LendingPortal {
     }
 
     function liquidate(
-        address debtToken,
-        uint256 amount,
-        bytes memory liquidateTokenAddress,
+        uint16 repayPoolId,
         uint64 liquidateUserId,
+        uint16 liquidatePoolId,
         uint256 fee
-    ) external {
+    ) external payable {
         uint64 nonce = IWormholeAdapterPool(wormholeAdapterPool).getNonce();
         uint16 dolaChainId = wormholeAdapterPool.dolaChainId();
 
-        uint64 fixAmount = LibDecimals.fixAmountDecimals(
-            amount,
-            LibAsset.queryDecimals(debtToken)
-        );
-        bytes memory appPayload = LibLendingCodec.encodeLiquidatePayload(
+        bytes memory appPayload = LibLendingCodec.encodeLiquidatePayloadV2(
             dolaChainId,
             nonce,
-            LibDolaTypes.DolaAddress(dolaChainId, liquidateTokenAddress),
-            liquidateUserId
+            repayPoolId,
+            liquidateUserId,
+            liquidatePoolId
         );
 
         // Deposit assets to the pool and perform amount checks
-        LibAsset.depositAsset(debtToken, amount);
 
-        uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendDeposit(
-            debtToken,
-            amount,
+        uint64 sequence = IWormholeAdapterPool(wormholeAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
         );
@@ -296,11 +289,11 @@ contract LendingPortal {
         emit LendingPortalEvent(
             nonce,
             msg.sender,
-            abi.encodePacked(debtToken),
+            abi.encodePacked(msg.sender),
             dolaChainId,
             0,
             abi.encodePacked(msg.sender),
-            fixAmount,
+            0,
             LibLendingCodec.LIQUIDATE
         );
     }

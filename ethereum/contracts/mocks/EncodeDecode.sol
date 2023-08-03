@@ -127,27 +127,29 @@ contract EncodeDecode {
         return LibLendingCodec.decodeWithdrawPayload(payload);
     }
 
-    function encodeLendingLiquidatePayload(
+    function encodeLendingLiquidatePayloadV2(
         uint16 sourceChainId,
         uint64 nonce,
-        LibDolaTypes.DolaAddress memory withdrawPool,
-        uint64 liquidateUserId
+        uint16 repayPoolId,
+        uint64 liquidateUserId,
+        uint16 liquidatePoolId
     ) external pure returns (bytes memory) {
         return
-            LibLendingCodec.encodeLiquidatePayload(
+            LibLendingCodec.encodeLiquidatePayloadV2(
                 sourceChainId,
                 nonce,
-                withdrawPool,
-                liquidateUserId
+                repayPoolId,
+                liquidateUserId,
+                liquidatePoolId
             );
     }
 
-    function decodeLendingLiquidatePayload(bytes memory payload)
+    function decodeLendingLiquidatePayloadV2(bytes memory payload)
         external
         pure
         returns (LibLendingCodec.LiquidatePayload memory)
     {
-        return LibLendingCodec.decodeLiquidatePayload(payload);
+        return LibLendingCodec.decodeLiquidatePayloadV2(payload);
     }
 
     function encodeManageCollateralPayload(

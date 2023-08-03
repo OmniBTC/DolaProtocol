@@ -242,6 +242,62 @@ module dola_protocol::lending_codec {
         (source_chain_id, nonce, withdraw_pool, liquidate_user_id, lending_call_type)
     }
 
+    public fun encode_liquidate_payload_v2(
+        source_chain_id: u16,
+        nonce: u64,
+        repay_pool_id: u16,
+        liquidate_user_id: u64,
+        liquidate_pool_id: u16,
+    ): vector<u8> {
+        let payload = vector::empty<u8>();
+
+        serde::serialize_u16(&mut payload, source_chain_id);
+        serde::serialize_u64(&mut payload, nonce);
+
+        serde::serialize_u16(&mut payload, repay_pool_id);
+
+        serde::serialize_u64(&mut payload, liquidate_user_id);
+        serde::serialize_u16(&mut payload, liquidate_pool_id);
+
+        serde::serialize_u8(&mut payload, LIQUIDATE);
+        payload
+    }
+
+    public fun decode_liquidate_payload_v2(app_payload: vector<u8>): (u16, u64, u16, u64, u16, u8) {
+        let index = 0;
+        let data_len;
+
+        data_len = 2;
+        let source_chain_id = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let nonce = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let repay_pool_id = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 8;
+        let liquidate_user_id = serde::deserialize_u64(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 2;
+        let liquidate_pool_id = serde::deserialize_u16(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        data_len = 1;
+        let lending_call_type = serde::deserialize_u8(&serde::vector_slice(&app_payload, index, index + data_len));
+        index = index + data_len;
+
+        assert!(lending_call_type == LIQUIDATE, EINVALID_CALL_TYPE);
+        assert!(index == vector::length(&app_payload), EINVALID_LENGTH);
+
+        (source_chain_id, nonce, repay_pool_id, liquidate_user_id, liquidate_pool_id, lending_call_type)
+    }
+
+
     /// Encode manage collateral payload
     public fun encode_manage_collateral_payload(
         dola_pool_ids: vector<u16>,
@@ -334,25 +390,28 @@ module dola_protocol::lending_codec {
         assert!(receiver == receiver_2, 205);
         assert!(lending_call_type == lending_call_type_2, 206);
 
-        // test liquidate_payload
+        // test liquidate_payload_v2
         let source_chain_id_3 = 3;
         let nonce_3 = 3;
-        let withdraw_pool_3 = dola_address::convert_address_to_dola(@0x301);
+        let repay_pool_id_3 = 3;
+        let liquidate_pool_id_3 = 3;
         let liquidate_user_id_3 = 3;
-        let liquidate_payload = encode_liquidate_payload(
+        let liquidate_payload = encode_liquidate_payload_v2(
             source_chain_id_3,
             nonce_3,
-            withdraw_pool_3,
-            liquidate_user_id_3
+            repay_pool_id_3,
+            liquidate_user_id_3,
+            liquidate_pool_id_3,
         );
-        let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, lending_call_type) = decode_liquidate_payload(
+        let (source_chain_id, nonce, repay_pool_id, liquidate_user_id, liquidate_pool_id, lending_call_type) = decode_liquidate_payload_v2(
             liquidate_payload
         );
         assert!(source_chain_id == source_chain_id_3, 301);
         assert!(nonce == nonce_3, 302);
-        assert!(withdraw_pool == withdraw_pool_3, 303);
+        assert!(repay_pool_id == repay_pool_id_3, 303);
         assert!(liquidate_user_id == liquidate_user_id_3, 304);
-        assert!(lending_call_type == LIQUIDATE, 305);
+        assert!(liquidate_pool_id == liquidate_pool_id_3, 305);
+        assert!(lending_call_type == LIQUIDATE, 306);
 
         // test manage_collateral_payload
         let dola_pool_ids_4 = vector[0, 1];

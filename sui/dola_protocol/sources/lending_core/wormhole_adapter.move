@@ -169,7 +169,6 @@ module dola_protocol::lending_core_wormhole_adapter {
             actual_amount,
             wormhole_message_fee,
             clock,
-            true,
             ctx
         );
 
@@ -254,7 +253,6 @@ module dola_protocol::lending_core_wormhole_adapter {
             amount,
             wormhole_message_fee,
             clock,
-            true,
             ctx
         );
 
@@ -343,32 +341,19 @@ module dola_protocol::lending_core_wormhole_adapter {
         ctx: &mut TxContext
     ) {
         genesis::check_latest_version(genesis);
-        let (deposit_pool, deposit_user, deposit_amount, app_payload) = wormhole_adapter_core::receive_deposit(
+        let (sender, app_payload) = wormhole_adapter_core::receive_message(
             wormhole_state,
             core_state,
             storage::get_app_cap(storage),
             vaa,
-            pool_manager_info,
-            user_manager_info,
             clock,
             ctx
         );
-        let (source_chain_id, nonce, withdraw_pool, liquidate_user_id, call_type) = lending_codec::decode_liquidate_payload(
+        let (source_chain_id, nonce, repay_pool_id, liquidate_user_id, liquidate_pool_id, call_type) = lending_codec::decode_liquidate_payload_v2(
             app_payload
         );
 
-        let liquidator = user_manager::get_dola_user_id(user_manager_info, deposit_user);
-        let deposit_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, deposit_pool);
-        let withdraw_dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, withdraw_pool);
-        lending_logic::execute_supply(
-            pool_manager_info,
-            storage,
-            oracle,
-            clock,
-            liquidator,
-            deposit_dola_pool_id,
-            deposit_amount
-        );
+        let liquidator = user_manager::get_dola_user_id(user_manager_info, sender);
 
         lending_logic::execute_liquidate(
             pool_manager_info,
@@ -377,18 +362,18 @@ module dola_protocol::lending_core_wormhole_adapter {
             clock,
             liquidator,
             liquidate_user_id,
-            withdraw_dola_pool_id,
-            deposit_dola_pool_id,
+            liquidate_pool_id,
+            repay_pool_id,
         );
 
         event::emit(LendingCoreEvent {
             nonce,
             sender_user_id: liquidator,
             source_chain_id,
-            dst_chain_id: dola_address::get_dola_chain_id(&deposit_user),
-            dola_pool_id: withdraw_dola_pool_id,
-            receiver: dola_address::get_dola_address(&deposit_user),
-            amount: deposit_amount,
+            dst_chain_id: dola_address::get_dola_chain_id(&sender),
+            dola_pool_id: liquidate_pool_id,
+            receiver: dola_address::get_dola_address(&sender),
+            amount: 0,
             liquidate_user_id,
             call_type
         })
