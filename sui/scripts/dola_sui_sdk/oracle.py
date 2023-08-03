@@ -165,12 +165,13 @@ def feed_token_price_by_pyth(symbol, simulate=True, kucoin=None):
             kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
 
         if pyth_price > kucoin_price:
-            bias = 1 - kucoin_price / pyth_price
+            deviation = 1 - kucoin_price / pyth_price
         else:
-            bias = 1 - pyth_price / kucoin_price
+            deviation = 1 - pyth_price / kucoin_price
 
+        print(f"{symbol} price deviation: {deviation}")
         # todo: use this for mainnet
-        # if bias > 0.01:
+        # if deviation > 0.01:
         #     raise ValueError("The oracle price difference is too large!")
     else:
         sui_project.batch_transaction(
@@ -277,6 +278,7 @@ def get_token_price(symbol):
         get_pool_id(symbol)
     )
     decimal = int(result['results'][0]['returnValues'][1][0][0])
+    print(decimal)
     return parse_u256(result['results'][0]['returnValues'][0][0]) / (10 ** decimal)
 
 
@@ -402,11 +404,11 @@ def test_verify_oracle():
     kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
     print(f"Kucoin price:{kucoin_price}")
     if pyth_price > kucoin_price:
-        bias = 1 - kucoin_price / pyth_price
+        deviation = 1 - kucoin_price / pyth_price
     else:
-        bias = 1 - pyth_price / kucoin_price
-    print(f"Bias:{bias}")
-    assert bias < 0.01
+        deviation = 1 - pyth_price / kucoin_price
+    print(f"Bias:{deviation}")
+    assert deviation < 0.01
 
 
 def check_guard_price(symbol):
@@ -458,5 +460,5 @@ def oracle_guard(symbols=None):
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    oracle_guard(["USDT/USD", "SUI/USD"])
+    print(get_token_price("USDT/USD"))
     # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])

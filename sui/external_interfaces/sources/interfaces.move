@@ -179,7 +179,8 @@ module external_interfaces::interfaces {
     }
 
     struct FeedTokens has copy, drop {
-        dola_pool_ids: vector<u16>
+        feed_pool_ids: vector<u16>,
+        skip_pool_ids: vector<u16>,
     }
 
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
@@ -492,11 +493,13 @@ module external_interfaces::interfaces {
             0
         };
         let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
-        let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {pool_manager::get_app_liquidity(
+        let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            pool_manager::get_app_liquidity(
                 pool_manager_info,
                 dola_pool_id,
                 storage::get_app_id(storage)
-        )}else {
+            )
+        }else {
             0
         };
         let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
@@ -559,11 +562,13 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / ray_math::ray();
             let supply = logic::total_otoken_supply(storage, dola_pool_id);
             let debt = logic::total_dtoken_supply(storage, dola_pool_id);
-            let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {pool_manager::get_app_liquidity(
-                pool_manager_info,
-                dola_pool_id,
-                storage::get_app_id(storage)
-            )}else {
+            let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+                pool_manager::get_app_liquidity(
+                    pool_manager_info,
+                    dola_pool_id,
+                    storage::get_app_id(storage)
+                )
+            }else {
                 0
             };
             let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
@@ -784,10 +789,11 @@ module external_interfaces::interfaces {
         is_liquidate: bool,
         is_cancel_collateral: bool,
         clock: &Clock
-    ): vector<u16> {
+    ): (vector<u16>, vector<u16>) {
         let vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
         let payload = vaa::take_payload(vaa);
-        let dola_pool_ids = vector[];
+        let feed_pool_ids = vector[];
+        let skip_pool_ids = vector[];
 
         if (is_withdraw) {
             let (user_address, _, _, app_payload) =
@@ -800,26 +806,33 @@ module external_interfaces::interfaces {
             let collaterals = storage::get_user_collaterals(storage, dola_user_id);
             let loans = storage::get_user_loans(storage, dola_user_id);
             if (!vector::contains(&loans, &dola_pool_id)) {
-                vector::push_back(&mut dola_pool_ids, dola_pool_id);
+                vector::push_back(&mut feed_pool_ids, dola_pool_id);
             };
 
             if (vector::length(&loans) > 0 || call_type == lending_codec::get_borrow_type()) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             };
         };
 
         if (is_liquidate) {
-            let (_, _, _, _, _, app_payload) =
-                pool_codec::decode_deposit_payload(payload);
-            let (_, _, _, liquidate_user_id, _) = lending_codec::decode_liquidate_payload(
+            let (sender, _, _, app_payload) =
+                pool_codec::decode_send_message_payload(payload);
+            let (_, _, _, liquidate_user_id, _, _) = lending_codec::decode_liquidate_payload_v2(
                 app_payload
             );
+            let sender_dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+            let sender_collaterals = storage::get_user_collaterals(storage, sender_dola_user_id);
+            let sender_loans = storage::get_user_loans(storage, sender_dola_user_id);
+
+            vector::append(&mut feed_pool_ids, sender_collaterals);
+            vector::append(&mut feed_pool_ids, sender_loans);
+
             let collaterals = storage::get_user_collaterals(storage, liquidate_user_id);
             let loans = storage::get_user_loans(storage, liquidate_user_id);
 
-            vector::append(&mut dola_pool_ids, collaterals);
-            vector::append(&mut dola_pool_ids, loans);
+            vector::append(&mut feed_pool_ids, collaterals);
+            vector::append(&mut feed_pool_ids, loans);
         };
 
         if (is_cancel_collateral) {
@@ -830,27 +843,26 @@ module external_interfaces::interfaces {
             let loans = storage::get_user_loans(storage, dola_user_id);
 
             if (vector::length(&loans) > 0) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             };
         };
 
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
-        let (ok, index) = vector::index_of(&dola_pool_ids, &1);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdt_pool_id = 1;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdt_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdt_pool_id);
         };
-        let (ok, index) = vector::index_of(&dola_pool_ids, &2);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdc_pool_id = 2;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdc_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdc_pool_id);
         };
-        dola_pool_ids
+
+        (feed_pool_ids, skip_pool_ids)
     }
 
     public entry fun get_feed_tokens(
@@ -863,38 +875,39 @@ module external_interfaces::interfaces {
     ) {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let loans = storage::get_user_loans(storage, dola_user_id);
-        let dola_pool_ids = vector[];
+        let feed_pool_ids = vector[];
+        let skip_pool_ids = vector[];
+
         if (is_borrow) {
             if (!vector::contains(&loans, &borrow_pool_id)) {
-                vector::push_back(&mut dola_pool_ids, borrow_pool_id)
+                vector::push_back(&mut feed_pool_ids, borrow_pool_id)
             };
-            vector::append(&mut dola_pool_ids, collaterals);
-            vector::append(&mut dola_pool_ids, loans);
+            vector::append(&mut feed_pool_ids, collaterals);
+            vector::append(&mut feed_pool_ids, loans);
         } else {
             if (vector::length(&loans) > 0) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             }
         };
 
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
-        let (ok, index) = vector::index_of(&dola_pool_ids, &1);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdt_pool_id = 1;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdt_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdt_pool_id);
         };
-        let (ok, index) = vector::index_of(&dola_pool_ids, &2);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdc_pool_id = 2;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdc_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdc_pool_id);
         };
 
         emit(FeedTokens {
-            dola_pool_ids
+            feed_pool_ids,
+            skip_pool_ids,
         })
     }
 
