@@ -9,7 +9,6 @@ import time
 import traceback
 from hmac import compare_digest
 from pathlib import Path
-from pprint import pprint
 
 import brownie
 import ccxt
@@ -20,56 +19,16 @@ from gql.client import log as gql_client_logs
 from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
 from pymongo import MongoClient
 from retrying import retry
-from sui_brownie import Argument, U16
 from sui_brownie.parallelism import ProcessExecutor
 
+import config
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
 import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
-import dola_sui_sdk.load as dola_sui_load
 from dola_sui_sdk.load import sui_project
-
-G_wei = 1e9
-
-# Wormhole chain id
-NET_TO_WORMHOLE_CHAINID = {
-    # mainnet
-    "mainnet": 2,
-    "bsc-main": 4,
-    "polygon-main": 5,
-    "avax-main": 6,
-    "optimism-main": 24,
-    "arbitrum-main": 23,
-    "aptos-mainnet": 22,
-    "sui-mainnet": 21,
-    # testnet
-    "goerli": 2,
-    "bsc-test": 4,
-    "polygon-test": 5,
-    "avax-test": 6,
-    "optimism-test": 24,
-    "arbitrum-test": 23,
-    "aptos-testnet": 22,
-    "sui-testnet": 21,
-}
-
-# Wormhole emitters
-WORMHOLE_EMITTER_ADDRESS = {
-    # mainnet
-    "optimism-main": "0x94650D61b940496b1BD88767b7B541b1121e0cCF",
-    "arbitrum-main": "0x098D26E4d2E98C1Dde14C543Eb6804Fd98Af9CB4",
-    "polygon-main": "0x4445c48e9B70F78506E886880a9e09B501ED1E13",
-    "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
-    "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
-    # testnet
-    "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
-    "avax-test": "0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec",
-    "sui-testnet": "0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0",
-    "sui-testnet-pool": "0xf737cbc8e158b1b76b1f161f048e127ae4560a90df1c96002417802d7d23fe3f",
-}
 
 
 class ColorFormatter(logging.Formatter):
@@ -126,27 +85,12 @@ def fix_requests_ssl():
 
 @retry
 def get_token_price(token):
-    if token == "eth":
-        return float(kucoin.fetch_ticker("ETH/USDT")['close'])
-    elif token == "bnb":
-        return float(kucoin.fetch_ticker("BNB/USDT")['close'])
-    elif token == 'avax':
-        return float(kucoin.fetch_ticker("AVAX/USDT")['close'])
-    elif token == "matic":
-        return float(kucoin.fetch_ticker("MATIC/USDT")['close'])
-    elif token == "apt":
-        return float(kucoin.fetch_ticker("APT/USDT")['close'])
-    elif token == "sui":
-        return float(kucoin.fetch_ticker("SUI/USDT")['close'])
+    symbol = config.NATIVE_TOKEN_NAME_TO_KUCOIN_SYMBOL[token]
+    return float(kucoin.fetch_ticker(symbol)['close'])
 
 
 def get_token_decimal(token):
-    if token in ['eth', 'matic', 'bnb', 'avax']:
-        return 18
-    elif token == 'apt':
-        return 8
-    elif token == 'sui':
-        return 9
+    return config.NATIVE_TOKEN_NAME_TO_DECIMAL[token]
 
 
 def get_fee_value(amount, token='sui'):
@@ -161,57 +105,16 @@ def get_fee_amount(value, token='sui'):
     return int(value / price * pow(10, decimal))
 
 
-def get_call_name(app_id, call_type):
-    if app_id == 0:
-        if call_type == 0:
-            return "binding"
-        elif call_type == 1:
-            return "unbinding"
-    elif app_id == 1:
-        if call_type == 0:
-            return "supply"
-        elif call_type == 1:
-            return "withdraw"
-        elif call_type == 2:
-            return "borrow"
-        elif call_type == 3:
-            return "repay"
-        elif call_type == 4:
-            return "liquidate"
-        elif call_type == 5:
-            return "as_collateral"
-        elif call_type == 6:
-            return "cancel_as_collateral"
+def get_call_name(app_id: int, call_type: int):
+    return config.CALL_TYPE_TO_CALL_NAME[app_id][call_type]
 
 
-def get_dola_network(dola_chain_id):
-    if dola_chain_id == 0:
-        return "sui-testnet"
-    elif dola_chain_id == 5:
-        return "polygon-test"
-    elif dola_chain_id == 6:
-        return "avax-test"
-    elif dola_chain_id == 23:
-        return "arbitrum-test"
-    elif dola_chain_id == 24:
-        return "optimism-test"
-    else:
-        return "unknown"
+def get_dola_network(dola_chain_id: int):
+    return config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]
 
 
 def get_gas_token(network='polygon-test'):
-    if "sui" in network:
-        return "sui"
-    elif "aptos" in network:
-        return "apt"
-    elif "avax" in network:
-        return "avax"
-    elif "polygon" in network:
-        return "matic"
-    elif "bsc" in network:
-        return "bnb"
-    else:
-        return "eth"
+    return config.NETWORK_TO_NATIVE_TOKEN[network]
 
 
 def execute_sui_core(call_name, vaa, relay_fee, fee_rate=0.8):
@@ -257,7 +160,7 @@ def rotate_accounts():
     index_lock.acquire()
     index = account_index.get()
     index += 1
-    num = index % 4
+    num = index % config.ACTIVE_RELAYER_NUM
     sui_project.active_account(f"Relayer{num}")
     account_index.set(index)
     index_lock.release()
@@ -407,8 +310,8 @@ def sui_portal_watcher():
                     start_time = str(datetime.datetime.utcfromtimestamp(timestamp))
                     src_tx_id = event['id']['txDigest']
 
-                    vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[f'{sui_network}-pool'], sequence,
-                                                     sui_network)
+                    emitter = config.NET_TO_WORMHOLE_EMITTER[f'{sui_network}-pool']
+                    vaa = get_signed_vaa_by_wormhole(emitter, sequence, sui_network)
 
                     payload = dola_sui_lending.parse_vaa(vaa)
 
@@ -442,7 +345,7 @@ def wormhole_vaa_guardian(network="polygon-test"):
 
     relay_record = RelayRecord()
 
-    src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
+    src_chain_id = config.NET_TO_WORMHOLE_CHAIN_ID[network]
     emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
     wormhole = dola_ethereum_load.womrhole_package(network)
 
@@ -505,7 +408,7 @@ def eth_portal_watcher(network="polygon-test"):
 
     relay_record = RelayRecord()
 
-    src_chain_id = NET_TO_WORMHOLE_CHAINID[network]
+    src_chain_id = config.NET_TO_WORMHOLE_CHAIN_ID[network]
     wormhole = dola_ethereum_load.womrhole_package(network)
     emitter_address = dola_ethereum_load.wormhole_adapter_pool_package(network).address
     lending_portal = dola_ethereum_load.lending_portal_package(network).address
@@ -631,8 +534,9 @@ def pool_withdraw_watcher():
                     call_name = get_call_name(1, int(call_type))
                     src_network = get_dola_network(source_chain_id)
                     sequence = int(fields['sequence'])
-                    vaa = get_signed_vaa_by_wormhole(
-                        WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
+
+                    emitter = config.NET_TO_WORMHOLE_EMITTER[sui_network]
+                    vaa = get_signed_vaa_by_wormhole(emitter, sequence, sui_network)
 
                     # check that cross-chain data is consistent with on-chain data
                     payload = dola_sui_lending.parse_vaa(vaa)
@@ -1024,38 +928,6 @@ def calculate_withdraw_fee(withdraw_gas, gas_price, dst_net):
     return get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
 
 
-def sui_vaa_payload(vaa):
-    wormhole = dola_sui_load.wormhole_package()
-
-    result = sui_project.batch_transaction_inspect(
-        actual_params=[
-            sui_project.network_config['objects']['WormholeState'],
-            list(bytes.fromhex(vaa.replace("0x", ""))),
-            dola_sui_init.clock()
-        ],
-        transactions=[
-            [
-                wormhole.vaa.parse_and_verify,
-                [
-                    Argument("Input", U16(0)),
-                    Argument("Input", U16(1)),
-                    Argument("Input", U16(2)),
-                ],
-                []
-            ],
-            [
-                wormhole.vaa.payload,
-                [
-                    Argument("Result", U16(0))
-                ],
-                []
-            ]
-        ]
-    )
-
-    pprint(result)
-
-
 @retry
 def get_signed_vaa_by_wormhole(
         emitter: str,
@@ -1064,9 +936,9 @@ def get_signed_vaa_by_wormhole(
 ):
     wormhole_url = sui_project.network_config['wormhole_url']
     emitter_address = dola_sui_init.format_emitter_address(emitter)
-    emitter_chainid = NET_TO_WORMHOLE_CHAINID[src_net]
+    emitter_chain_id = config.NET_TO_WORMHOLE_CHAIN_ID[src_net]
 
-    url = f"{wormhole_url}/v1/signed_vaa/{emitter_chainid}/{emitter_address}/{sequence}"
+    url = f"{wormhole_url}/v1/signed_vaa/{emitter_chain_id}/{emitter_address}/{sequence}"
     response = requests.get(url)
 
     if 'vaaBytes' not in response.json():
