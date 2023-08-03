@@ -7,13 +7,13 @@ import logging
 import multiprocessing
 import time
 import traceback
+from hmac import compare_digest
 from pathlib import Path
 from pprint import pprint
 
 import brownie
 import ccxt
 import requests
-import xxhash
 from dotenv import dotenv_values
 from gql import gql, Client
 from gql.client import log as gql_client_logs
@@ -410,7 +410,7 @@ def sui_portal_watcher():
                     vaa = get_signed_vaa_by_wormhole(WORMHOLE_EMITTER_ADDRESS[f'{sui_network}-pool'], sequence,
                                                      sui_network)
 
-                    payload = dola_sui_lending.parse_vaa(vaa)[4:]
+                    payload = dola_sui_lending.parse_vaa(vaa)
 
                     payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(src_tx_id)
 
@@ -635,10 +635,7 @@ def pool_withdraw_watcher():
                         WORMHOLE_EMITTER_ADDRESS[sui_network], sequence, sui_network)
 
                     # check that cross-chain data is consistent with on-chain data
-                    if source_chain_id == 0:
-                        payload = dola_sui_lending.parse_vaa(vaa)[4:]
-                    else:
-                        payload = dola_sui_lending.parse_vaa(vaa)[2:]
+                    payload = dola_sui_lending.parse_vaa(vaa)
 
                     payload_on_chain = dola_sui_lending.get_sui_wormhole_payload(event['id']['txDigest'])
 
@@ -734,11 +731,11 @@ def sui_core_executor():
                                                              'core_costed_fee': core_costed_fee,
                                                              'end_time': date}})
                     local_logger.info("Execute sui core success! ")
-                    local_logger.info(f"relay fee: {relay_fee_value}, consumed fee: {core_costed_fee}")
+                    local_logger.info(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
                 else:
                     relay_record.update_record({'vaa': tx['vaa']},
                                                {"$set": {'status': 'fail', 'reason': status}})
-                    local_logger.warning(f"relay fee: {relay_fee_value}, consumed fee: {core_costed_fee}")
+                    local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
                     local_logger.warning("Execute sui core fail! ")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
@@ -812,13 +809,13 @@ def sui_pool_executor():
                     local_logger.info(
                         f"token: {token_name} source_chain: {source_chain_id} nonce: {source_nonce}")
                     local_logger.info(
-                        f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount)}")
+                        f"relay fee: {relay_fee_value} USD, consumed fee: {get_fee_value(tx_gas_amount)} USD")
                     if available_gas_amount < tx_gas_amount:
                         call_name = withdraw_tx['call_name']
                         local_logger.warning(
                             "Execute withdraw fail on sui, not enough relay fee! ")
                         local_logger.warning(
-                            f"Need gas fee: {get_fee_value(tx_gas_amount)}, but available gas fee: {relay_fee_value}"
+                            f"Need gas fee: {get_fee_value(tx_gas_amount)} USD, but available gas fee: {relay_fee_value} USD"
                         )
                         local_logger.warning(
                             f"call: {call_name} source_chain: {source_chain_id}, nonce: {source_nonce}")
@@ -902,13 +899,13 @@ def eth_pool_executor():
                 local_logger.info(
                     f"source: {source_chain} nonce: {source_nonce}")
                 local_logger.info(
-                    f"relay fee: {relay_fee_value}, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}")
+                    f"relay fee: {relay_fee_value} USD, consumed fee: {get_fee_value(tx_gas_amount, get_gas_token(network))} USD")
 
                 if available_gas_amount < tx_gas_amount:
                     local_logger.warning(
                         f"Execute withdraw success on {get_dola_network(dola_chain_id)}, but not enough relay fee! ")
                     local_logger.warning(
-                        f"Need gas fee: {get_fee_value(tx_gas_amount, get_gas_token(network))}, but available gas fee: {relay_fee_value}")
+                        f"Need gas fee: {get_fee_value(tx_gas_amount, get_gas_token(network))} USD, but available gas fee: {relay_fee_value} USD")
                     call_name = withdraw_tx['call_name']
                     local_logger.warning(
                         f"call: {call_name} source: {source_chain}, nonce: {source_nonce}")
@@ -963,6 +960,7 @@ def get_unrelay_tx_by_sequence(src_chain_id, sequence):
     )}
 
 
+# The largest relay fee in total history
 def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
     db = mongodb()
     gas_record = db['GasRecord']
@@ -976,6 +974,7 @@ def get_max_relay_fee(src_chain_id, dst_chain_id, call_name):
     return calculate_relay_fee(result, int(src_chain_id), int(dst_chain_id))
 
 
+# The largest relay fee of the last five transactions
 def get_relay_fee(src_chain_id, dst_chain_id, call_name, feed_num):
     db = mongodb()
     gas_record = db['GasRecord']
@@ -997,33 +996,32 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id):
     if not records:
         return {'relay_fee': '0'}
 
-    core_gas = 0
-    withdraw_gas = 0
-    for record in records:
-        core_gas += record['core_gas']
-        withdraw_gas += record['withdraw_gas']
-
-    record_len = len(records)
-    average_core_gas = int(core_gas / record_len)
-    average_withdraw_gas = int(withdraw_gas / record_len)
-
-    sui_gas_price = int(sui_project.client.suix_getReferenceGasPrice())
-    core_fee_amount = average_core_gas * sui_gas_price
-    core_fee = get_fee_value(core_fee_amount, 'sui')
+    core_gas_price = int(sui_project.client.suix_getReferenceGasPrice())
 
     dst_net = get_dola_network(dst_chain_id)
     if int(dst_chain_id) == 0:
-        gas_price = sui_gas_price
+        withdraw_gas_price = core_gas_price
     else:
         dola_ethereum_sdk.set_ethereum_network(dst_net)
-        gas_price = int(brownie.web3.eth.gas_price)
-    withdraw_fee_amount = average_withdraw_gas * gas_price
-    withdraw_fee = get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
+        withdraw_gas_price = int(brownie.web3.eth.gas_price)
 
-    relay_fee = core_fee + withdraw_fee
+    max_record = max(records, key=lambda x: core_gas_price + withdraw_gas_price)
+
+    relay_fee = (calculate_core_fee(max_record['core_gas'], core_gas_price) +
+                 calculate_withdraw_fee(max_record['withdraw_gas'], withdraw_gas_price, dst_net))
     src_net = get_dola_network(src_chain_id)
 
     return {'relay_fee': str(get_fee_amount(relay_fee, get_gas_token(src_net)))}
+
+
+def calculate_core_fee(core_gas, gas_price):
+    core_fee_amount = core_gas * gas_price
+    return get_fee_value(core_fee_amount, 'sui')
+
+
+def calculate_withdraw_fee(withdarw_gas, gas_price, dst_net):
+    withdraw_fee_amount = withdarw_gas * gas_price
+    return get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
 
 
 def sui_vaa_payload(vaa):
@@ -1141,9 +1139,7 @@ def graph_query(block_number, limit=5):
 
 
 def check_payload_hash(left: str, right: str):
-    left_hash = xxhash.xxh3_64(bytes.fromhex(left.replace("0x", ""))).hexdigest()
-    right_hash = xxhash.xxh3_64(bytes.fromhex(right.replace("0x", ""))).hexdigest()
-    return left_hash == right_hash
+    return compare_digest(left[len(left) - len(right):], right)
 
 
 def test_validate_vaa():

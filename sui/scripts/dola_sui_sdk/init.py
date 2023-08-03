@@ -181,12 +181,13 @@ def query_pool_relay_event(tx_digest, limit=10):
     :param limit:
     :return:
     """
-    dola_protocol = sui_project.network_config['packages']['dola_protocol']['latest']
+    # Use the version when the event was added
+    dola_protocol = "0x0415de1c03a69d652e64e17c166311c01d7608133c699edf97dd8297e83bf02b"
 
     return sui_project.client.suix_queryEvents(
-        {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"}, limit=limit,
-        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)[
-        'data']
+        {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"},
+        limit=limit,
+        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
 
 
 def query_core_relay_event(tx_digest, limit=10):
@@ -206,8 +207,6 @@ def query_core_relay_event(tx_digest, limit=10):
 
 @functools.lru_cache()
 def get_wormhole_adapter_core_emitter() -> List[int]:
-    dola_protocol = load.dola_protocol_package()
-
     core_state = sui_project.network_config['objects']['CoreState']
     result = sui_project.client.sui_getObject(
         core_state,

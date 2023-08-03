@@ -224,7 +224,7 @@ networks:
       dola_protocol:
         origin: '0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2'
         latest: '0x8ab018a51be9817daa2a6c535a714e13d742ffa49e026f324747d5a7d9883378'
-      external_interfaces: '0xe2299550de2ed0da1cac2a6c644d292c059d2f5cace7de94bfad18027f496baf'
+      external_interfaces: '0xf68dfe40252482395491f9a49b2ce19b0aadba3960e3c19c37fb803e42c9d303'
       genesis_proposal: '0xb03e33e795a4ba328fe4e90252fc066ae95aaf546d967a94c0833e1031bc33eb'
       pyth: '0x431c1cfb9a4da32c77810a1c48aa19cc2edb03010281e0fe411b4b3b38589df1'
       wormhole: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'

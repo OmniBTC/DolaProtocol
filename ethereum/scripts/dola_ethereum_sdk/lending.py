@@ -238,13 +238,13 @@ def get_account_balance():
 
 
 def main():
-    # portal_supply(init.usdt()['address'], 1000 * 1e18, 520860657513348)
+    # portal_supply(init.usdc()['address'], 1000 * 1e18, 520860657513348)
     # portal_cancel_as_collateral([1, 2])
-    # portal_withdraw(init.usdt()['address'], 1 * 1e8, 6, relay_fee=3592437779690189)
+    # portal_withdraw(init.usdt()['address'], 3000 * 1e8, 6, relay_fee=3609491324739440)
     # portal_binding(
     #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, 468422798598415)
-    # portal_borrow(init.usdt()['address'], 169730872751, 6, relay_fee=411791255673222)
-    portal_repay(init.usdt()['address'], 2000 * 1e18, 520860657513348)
+    portal_borrow(init.usdc()['address'], 98390311310, 6, relay_fee=3693305517931413)
+    # portal_repay(init.usdt()['address'], 1000 * 1e18, 520860657513348)
 
 
 if __name__ == "__main__":
