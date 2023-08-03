@@ -182,7 +182,10 @@ def query_pool_relay_event(tx_digest, limit=10):
     :return:
     """
     # Use the version when the event was added
-    dola_protocol = "0x0415de1c03a69d652e64e17c166311c01d7608133c699edf97dd8297e83bf02b"
+    if sui_project.network == "sui-testnet":
+        dola_protocol = "0x0415de1c03a69d652e64e17c166311c01d7608133c699edf97dd8297e83bf02b"
+    else:
+        dola_protocol = sui_project.network_config['packages']['dola_protocol']['latest']
 
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"},
