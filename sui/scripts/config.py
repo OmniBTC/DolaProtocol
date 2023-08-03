@@ -82,37 +82,37 @@ CALL_TYPE_TO_CALL_NAME = {
 
 # dola_chain_id -> network
 # mainnet
-# DOLA_CHAIN_ID_TO_NETWORK = {
-#     0: "sui-mainnet",
-#     5: "polygon-main",
-#     6: "avax-main",
-#     23: "arbitrum-main",
-#     24: "optimism-main",
-# }
-# testnet
 DOLA_CHAIN_ID_TO_NETWORK = {
-    0: "sui-testnet",
-    5: "polygon-test",
-    6: "avax-test",
-    23: "arbitrum-test",
-    24: "optimism-test",
+    0: "sui-mainnet",
+    5: "polygon-main",
+    6: "avax-main",
+    23: "arbitrum-main",
+    24: "optimism-main",
 }
+# testnet
+# DOLA_CHAIN_ID_TO_NETWORK = {
+#     0: "sui-testnet",
+#     5: "polygon-test",
+#     6: "avax-test",
+#     23: "arbitrum-test",
+#     24: "optimism-test",
+# }
 
 # network -> native token
 # mainnet
-# NETWORK_TO_NATIVE_TOKEN = {
-#     "sui-mainnet": "sui",
-#     "polygon-main": "matic",
-#     "avax-main": "avax",
-#     "arbitrum-main": "eth",
-#     "optimism-main": "eth",
-# }
+NETWORK_TO_NATIVE_TOKEN = {
+    "sui-mainnet": "sui",
+    "polygon-main": "matic",
+    "avax-main": "avax",
+    "arbitrum-main": "eth",
+    "optimism-main": "eth",
+}
 
 # testnet
-NETWORK_TO_NATIVE_TOKEN = {
-    "sui-testnet": "sui",
-    "polygon-test": "matic",
-    "avax-test": "avax",
-    "arbitrum-test": "eth",
-    "optimism-test": "eth",
-}
+# NETWORK_TO_NATIVE_TOKEN = {
+#     "sui-testnet": "sui",
+#     "polygon-test": "matic",
+#     "avax-test": "avax",
+#     "arbitrum-test": "eth",
+#     "optimism-test": "eth",
+# }

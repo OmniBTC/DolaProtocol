@@ -1049,13 +1049,17 @@ def main():
     # Use when you need to improve concurrency
     init_accounts_and_lock()
 
-    pt = ProcessExecutor(executor=7)
+    pt = ProcessExecutor(executor=11)
 
     pt.run([
         sui_core_executor,
         sui_portal_watcher,
-        functools.partial(eth_portal_watcher, "avax-test"),
-        functools.partial(wormhole_vaa_guardian, "avax-test"),
+        functools.partial(eth_portal_watcher, "arbitrum-main"),
+        functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
+        functools.partial(eth_portal_watcher, "optimism-main"),
+        functools.partial(wormhole_vaa_guardian, "optimism-main"),
+        functools.partial(eth_portal_watcher, "polygon-main"),
+        functools.partial(wormhole_vaa_guardian, "polygon-main"),
         pool_withdraw_watcher,
         sui_pool_executor,
         eth_pool_executor,

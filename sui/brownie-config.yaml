@@ -47,7 +47,9 @@ networks:
         USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
     packages:
-      dola_protocol: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
+      dola_protocol:
+        origin: ''
+        latest: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
       external_interfaces: '0xc167b39fdfc8764cfb08952cb919f51a4646e672018488cc6a8b982755cf94f4'
       genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
