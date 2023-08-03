@@ -11,11 +11,16 @@ import "../libraries/LibAsset.sol";
 
 contract LendingPortal {
     uint8 public constant LENDING_APP_ID = 1;
-    IWormholeAdapterPool public immutable wormholeAdapterPool;
-    address payable public relayer;
 
-    /// RelayEvent(transaction nonce, wormhole sequence, relay fee amount)
-    event RelayEvent(uint64 nonce, uint64 sequence, uint256 amount);
+    IWormholeAdapterPool public immutable wormholeAdapterPool;
+
+    event RelayEvent(
+        uint64 sequence,
+        uint64 nonce,
+        uint256 feeAmount,
+        uint16 appId,
+        uint8 callType
+    );
 
     event LendingPortalEvent(
         uint64 nonce,
@@ -30,7 +35,6 @@ contract LendingPortal {
 
     constructor(IWormholeAdapterPool _wormholeAdapterPool) {
         wormholeAdapterPool = _wormholeAdapterPool;
-        relayer = payable(msg.sender);
     }
 
     function supply(
@@ -64,9 +68,18 @@ contract LendingPortal {
             value: msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.SUPPLY
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -104,9 +117,18 @@ contract LendingPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.WITHDRAW
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -144,9 +166,18 @@ contract LendingPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.BORROW
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -193,9 +224,18 @@ contract LendingPortal {
             value: msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.REPAY
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -240,9 +280,18 @@ contract LendingPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.LIQUIDATE
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -272,9 +321,18 @@ contract LendingPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.AS_COLLATERAL
+        );
 
         emit LendingPortalEvent(
             nonce,
@@ -304,9 +362,18 @@ contract LendingPortal {
             appPayload
         );
 
-        LibAsset.transferAsset(address(0), relayer, fee);
+        address relayer = IWormholeAdapterPool(wormholeAdapterPool)
+            .getOneRelayer(nonce);
 
-        emit RelayEvent(nonce, sequence, fee);
+        LibAsset.transferAsset(address(0), payable(relayer), fee);
+
+        emit RelayEvent(
+            sequence,
+            nonce,
+            fee,
+            LENDING_APP_ID,
+            LibLendingCodec.CANCEL_AS_COLLATERAL
+        );
 
         emit LendingPortalEvent(
             nonce,

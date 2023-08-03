@@ -9,6 +9,7 @@ module dola_protocol::wormhole_adapter_pool {
     use std::vector;
 
     use sui::clock::Clock;
+    use sui::coin;
     use sui::coin::Coin;
     use sui::dynamic_field;
     use sui::event::emit;
@@ -31,7 +32,8 @@ module dola_protocol::wormhole_adapter_pool {
     use wormhole::state::State as WormholeState;
     use wormhole::vaa;
 
-    friend dola_protocol::lending_portal;
+    friend dola_protocol::lending_portal_v2;
+    friend dola_protocol::system_portal_v2;
 
     /// Errors
 
@@ -52,6 +54,8 @@ module dola_protocol::wormhole_adapter_pool {
     const ERELAYER_NOT_INIT: u64 = 7;
 
     const ERELAYER_NOT_EXIST: u64 = 8;
+
+    const ENOT_ENOUGH_WORMHOLE_FEE: u64 = 9;
 
     /// Reocord genesis of this module
     struct PoolGenesis has key {
@@ -81,6 +85,9 @@ module dola_protocol::wormhole_adapter_pool {
     /// Only certain users are allowed to act as Relayer
     struct Relayer has copy, drop, store {}
 
+    /// Nonce for bridge pool
+    struct Nonce has copy, drop, store {}
+
     /// Events
 
     /// Event for pool withdraw
@@ -101,6 +108,20 @@ module dola_protocol::wormhole_adapter_pool {
     /// Event for remove relayer
     struct RemoveRelayer has drop, copy {
         removed_relayer: address
+    }
+
+    /// Relay Event
+    struct RelayEvent has drop, copy {
+        // Wormhole vaa sequence
+        sequence: u64,
+        // Transaction nonce
+        nonce: u64,
+        // Relay fee amount
+        fee_amount: u64,
+        // App id
+        app_id: u16,
+        // Confirm that nonce is in the pool or core
+        call_type: u8
     }
 
     /// === Initial Functions ===
@@ -196,7 +217,7 @@ module dola_protocol::wormhole_adapter_pool {
         app_payload: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         let msg = dola_pool::deposit<CoinType>(
             pool,
             deposit_coin,
@@ -216,7 +237,7 @@ module dola_protocol::wormhole_adapter_pool {
             wormhole_message_fee,
             message_ticket,
             clock
-        );
+        )
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
@@ -246,6 +267,54 @@ module dola_protocol::wormhole_adapter_pool {
             message_ticket,
             clock
         )
+    }
+
+    public(friend) fun get_nonce(pool_state: &mut PoolState): u64 {
+        if (dynamic_field::exists_with_type<Nonce, u64>(&mut pool_state.id, Nonce {})) {
+            let nonce = dynamic_field::remove<Nonce, u64>(&mut pool_state.id, Nonce {});
+            let next_nonce = nonce + 1;
+            dynamic_field::add<Nonce, u64>(&mut pool_state.id, Nonce {}, next_nonce);
+            nonce
+        } else {
+            dynamic_field::add<Nonce, u64>(&mut pool_state.id, Nonce {}, 0);
+            0
+        }
+    }
+
+    public(friend) fun get_relay_fee_amount(
+        wormhole_state: &mut WormholeState,
+        pool_state: &mut PoolState,
+        nonce: u64,
+        bridge_fee: Coin<SUI>,
+        ctx: &mut TxContext
+    ): (Coin<SUI>, u64) {
+        let bridge_fee_amount = coin::value(&bridge_fee);
+        let wormhole_fee_amount = wormhole::state::message_fee(wormhole_state);
+        assert!(bridge_fee_amount >= wormhole_fee_amount, ENOT_ENOUGH_WORMHOLE_FEE);
+        let wormhole_fee = coin::split(&mut bridge_fee, wormhole_fee_amount, ctx);
+        let relay_fee_amount = coin::value(&bridge_fee);
+
+        // transfer relay fee to relayer
+        let relayer = get_one_relayer(pool_state, nonce);
+        transfer::public_transfer(bridge_fee, relayer);
+
+        (wormhole_fee, relay_fee_amount)
+    }
+
+    public(friend) fun emit_relay_event(
+        sequence: u64,
+        nonce: u64,
+        fee_amount: u64,
+        app_id: u16,
+        call_type: u8
+    ) {
+        emit(RelayEvent {
+            sequence,
+            nonce,
+            fee_amount,
+            app_id,
+            call_type
+        });
     }
 
     /// === Entry Functions ===
@@ -301,5 +370,16 @@ module dola_protocol::wormhole_adapter_pool {
         );
         let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut pool_state.id, Relayer {});
         assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
+    }
+
+    fun get_one_relayer(pool_state: &mut PoolState, nonce: u64): address {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut pool_state.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut pool_state.id, Relayer {});
+        let length = vector::length(relayers);
+        let index = nonce % length;
+        *vector::borrow(relayers, index)
     }
 }
