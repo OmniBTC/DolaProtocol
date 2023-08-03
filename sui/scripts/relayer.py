@@ -1005,7 +1005,7 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id):
         dola_ethereum_sdk.set_ethereum_network(dst_net)
         withdraw_gas_price = int(brownie.web3.eth.gas_price)
 
-    max_record = max(records, key=lambda x: core_gas_price + withdraw_gas_price)
+    max_record = max(records, key=lambda x: x['core_gas'] + x['withdraw_gas'])
 
     relay_fee = (calculate_core_fee(max_record['core_gas'], core_gas_price) +
                  calculate_withdraw_fee(max_record['withdraw_gas'], withdraw_gas_price, dst_net))
@@ -1019,8 +1019,8 @@ def calculate_core_fee(core_gas, gas_price):
     return get_fee_value(core_fee_amount, 'sui')
 
 
-def calculate_withdraw_fee(withdarw_gas, gas_price, dst_net):
-    withdraw_fee_amount = withdarw_gas * gas_price
+def calculate_withdraw_fee(withdraw_gas, gas_price, dst_net):
+    withdraw_fee_amount = withdraw_gas * gas_price
     return get_fee_value(withdraw_fee_amount, get_gas_token(dst_net))
 
 
