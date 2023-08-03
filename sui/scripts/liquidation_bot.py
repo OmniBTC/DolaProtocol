@@ -12,7 +12,9 @@ from dola_sui_sdk import interfaces, lending, sui_project
 
 @retry
 def get_user_ids_by_hf(min_hf, max_hf):
-    host = 'https://crossswap-pre.coming.chat'
+    host = 'https://crossswap.coming.chat'
+    if sui_project.network == 'sui-testnet':
+        host = 'https://crossswap-pre.coming.chat'
     url = f'{host}/lending/v1/filterUsers?minHealthFactor={min_hf}&maxHealthFactor={max_hf}'
 
     response = requests.get(url)
