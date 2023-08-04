@@ -1,5 +1,14 @@
 # Some constants for the scripts
 
+# dola reserves count
+DOLA_RESERVES_COUNT = 8
+
+# dola protocol decimal
+DOLA_DECIMAL = 8
+
+# eth decimal
+ETH_DECIMAL = 18
+
 # eth gas unit
 G_WEI = 10 ** 9
 
@@ -115,4 +124,15 @@ NETWORK_TO_NATIVE_TOKEN = {
     "avax-test": "avax",
     "arbitrum-test": "eth",
     "optimism-test": "eth",
+}
+
+# sui token -> sui pool
+# mainnet
+# SUI_TOKEN_TO_POOL = {
+#     "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73"
+# }
+
+# testnet
+SUI_TOKEN_TO_POOL = {
+    "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "0x283f712a6c6a9361132e2d75aee4b4499f98892a3b8cfd4a7244ad6862c62aa9"
 }
