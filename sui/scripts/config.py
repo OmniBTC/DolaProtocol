@@ -6,6 +6,9 @@ DOLA_RESERVES_COUNT = 8
 # dola protocol decimal
 DOLA_DECIMAL = 8
 
+# eth zero address
+ETH_ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 # eth decimal
 ETH_DECIMAL = 18
 
