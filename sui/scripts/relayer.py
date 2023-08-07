@@ -515,7 +515,7 @@ def pool_withdraw_watcher(health):
                 source_chain_nonce = int(fields['source_chain_nonce'])
 
                 if not health.value:
-                    raise ValueError(f"health check failed, {network} portal watcher blocked")
+                    raise ValueError(f"health check failed, withdraw watcher blocked")
 
                 if relay_record.find_one(
                         {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'status': 'waitForWithdraw'}):
