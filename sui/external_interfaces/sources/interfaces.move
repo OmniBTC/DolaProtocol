@@ -4,8 +4,8 @@
 /// Unified external call interface to get data
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
-    use std::ascii::{into_bytes, String};
-    use std::option::{Self, Option};
+    use std::ascii::into_bytes;
+    use std::option::Self;
     use std::vector;
 
     use sui::clock::{Self, Clock};
@@ -129,8 +129,15 @@ module external_interfaces::interfaces {
         max_borrow_amount: u256,
         max_borrow_value: u256,
         borrow_amount: u256,
-        borrow_value: u256,
-        reason: Option<String>
+        borrow_value: u256
+    }
+
+    struct UserAllowedWithdraw has copy, drop {
+        withdraw_token: vector<u8>,
+        max_withdraw_amount: u256,
+        max_withdraw_value: u256,
+        withdraw_amount: u256,
+        withdraw_value: u256
     }
 
     struct UserTotalAllowedBorrow has copy, drop {
@@ -879,6 +886,52 @@ module external_interfaces::interfaces {
         })
     }
 
+    public entry fun get_user_allowed_withdraw(
+        pool_manager_info: &mut PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_chain_id: u16,
+        dola_user_id: u64,
+        withdraw_pool_id: u16,
+    ) {
+        let withdraw_token = into_bytes(pool_manager::get_pool_name_by_id(pool_manager_info, withdraw_pool_id));
+        let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
+        let health_loan_value = ray_math::ray_mul(
+            logic::user_health_loan_value(storage, oracle, dola_user_id),
+            TARGET_HF
+        );
+        let collateral_coefficient = storage::get_collateral_coefficient(storage, withdraw_pool_id);
+        let can_withdraw_value = ray_math::ray_div(
+            (health_collateral_value - health_loan_value),
+            collateral_coefficient
+        );
+        let withdraw_amount = logic::calculate_amount(oracle, withdraw_pool_id, can_withdraw_value);
+        let pool_address = pool_manager::find_pool_by_chain(pool_manager_info, withdraw_pool_id, dola_chain_id);
+
+        let pool_liquidity = 0;
+        if (option::is_some(&pool_address)) {
+            let pool_address = option::extract(&mut pool_address);
+            pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+        };
+        let reserve = pool_manager::get_app_liquidity(
+            pool_manager_info,
+            withdraw_pool_id,
+            storage::get_app_id(storage)
+        );
+
+        let max_withdraw_amount = ray_math::min(withdraw_amount, reserve);
+        withdraw_amount = ray_math::min(withdraw_amount, pool_liquidity);
+        let max_withdraw_value = logic::calculate_value(oracle, withdraw_pool_id, max_withdraw_amount);
+        let withdraw_value = logic::calculate_value(oracle, withdraw_pool_id, withdraw_amount);
+        emit(UserAllowedWithdraw {
+            withdraw_token,
+            max_withdraw_amount,
+            max_withdraw_value,
+            withdraw_amount,
+            withdraw_value
+        })
+    }
+
     public entry fun get_user_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
@@ -917,8 +970,7 @@ module external_interfaces::interfaces {
             max_borrow_amount,
             max_borrow_value,
             borrow_amount,
-            borrow_value,
-            reason: option::none()
+            borrow_value
         })
     }
 
