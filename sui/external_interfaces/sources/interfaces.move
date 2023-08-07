@@ -893,6 +893,7 @@ module external_interfaces::interfaces {
         dola_chain_id: u16,
         dola_user_id: u64,
         withdraw_pool_id: u16,
+        withdarw_all: bool,
     ) {
         let withdraw_token = into_bytes(pool_manager::get_pool_name_by_id(pool_manager_info, withdraw_pool_id));
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
@@ -920,6 +921,11 @@ module external_interfaces::interfaces {
         );
 
         let max_withdraw_amount = ray_math::min(withdraw_amount, reserve);
+
+        if (withdarw_all) {
+            withdraw_amount = withdraw_amount * 10;
+        };
+        
         withdraw_amount = ray_math::min(withdraw_amount, pool_liquidity);
         let max_withdraw_value = logic::calculate_value(oracle, withdraw_pool_id, max_withdraw_amount);
         let withdraw_value = logic::calculate_value(oracle, withdraw_pool_id, withdraw_amount);
