@@ -349,6 +349,32 @@ module genesis_proposal::genesis_proposal {
         hot_potato
     }
 
+    public fun add_oracle_relayer(
+        hot_potato: HotPotato,
+        price_oracle: &mut PriceOracle,
+        relayer: address
+    ): HotPotato {
+        oracle::add_relayer(
+            &hot_potato.gov_cap,
+            price_oracle,
+            relayer
+        );
+        hot_potato
+    }
+
+    public fun remove_oracle_relayer(
+        hot_potato: HotPotato,
+        price_oracle: &mut PriceOracle,
+        relayer: address
+    ): HotPotato {
+        oracle::remove_relayer(
+            &hot_potato.gov_cap,
+            price_oracle,
+            relayer
+        );
+        hot_potato
+    }
+
     public fun remote_add_relayer(
         hot_potato: HotPotato,
         wormhole_state: &mut State,
