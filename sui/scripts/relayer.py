@@ -282,6 +282,7 @@ def sui_portal_watcher(health):
                 nonce = int(fields['nonce'])
 
                 if not health.value:
+                    local_logger.error(f"src_chain_nonce: {nonce}, sequence: {sequence}")
                     raise ValueError("Health check failed, sui portal watcher blocked")
 
                 if not relay_record.find_one({'src_chain_id': src_chain_id, 'nonce': nonce, 'sequence': sequence}):
@@ -421,6 +422,7 @@ def eth_portal_watcher(health, network="polygon-test"):
                 sequence = int(event['sequence'])
 
                 if not health.value:
+                    local_logger.error(f"src_chain_nonce: {nonce}, sequence: {sequence}")
                     raise ValueError(f"health check failed, {network} portal watcher blocked")
 
                 # check if the event has been recorded
@@ -515,7 +517,9 @@ def pool_withdraw_watcher(health):
                 source_chain_nonce = int(fields['source_chain_nonce'])
 
                 if not health.value:
-                    raise ValueError(f"health check failed, withdraw watcher blocked")
+                    local_logger.error(
+                        f"Processing src_chain_id: {source_chain_id}, source_chain_nonce: {source_chain_nonce}")
+                    raise ValueError("health check failed, withdraw watcher blocked")
 
                 if relay_record.find_one(
                         {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'status': 'waitForWithdraw'}):
