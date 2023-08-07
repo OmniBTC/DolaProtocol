@@ -424,11 +424,7 @@ def check_guard_price(symbol):
     return result['effects']['status']['status'] == 'failure'
 
 
-def oracle_guard(symbols=None):
-    """Check price guard time and update price termly
-
-    :return:
-    """
+def init_oracle_logger():
     FORMAT = '%(asctime)s - %(funcName)s - %(levelname)s - %(name)s: %(message)s'
     logger = logging.getLogger()
     logger.setLevel("INFO")
@@ -439,10 +435,18 @@ def oracle_guard(symbols=None):
     ch.setFormatter(ColorFormatter(FORMAT))
 
     logger.addHandler(ch)
-    local_logger = logger.getChild("oracle_guard")
+    return logger.getChild("oracle_guard")
 
+
+def oracle_guard(symbols=None):
+    """Check price guard time and update price termly
+
+    :return:
+    """
     if symbols is None:
-        symbols = []
+        return
+
+    local_logger = init_oracle_logger()
     sui_project.active_account("Oracle")
     while True:
         try:
@@ -458,6 +462,7 @@ def oracle_guard(symbols=None):
 
 
 if __name__ == '__main__':
+    oracle_guard(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
     print(get_token_price("USDT/USD"))
