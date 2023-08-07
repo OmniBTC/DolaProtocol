@@ -1,10 +1,9 @@
 # dola protocol monitor
 import functools
+import logging
 import time
-import traceback
 from multiprocessing import Manager
 from pathlib import Path
-from pprint import pprint
 
 import brownie
 from sui_brownie.parallelism import ProcessExecutor
@@ -81,8 +80,9 @@ def get_eth_balance(dola_pool):
 
 
 # get dola pool liquidity
-def eth_pool_monitor(dola_chain_id, pool_infos, q):
+def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    local_logger.info("start monitor dola eth pool...")
 
     network = config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]
     dola_ethereum_sdk.set_ethereum_network(network)
@@ -103,14 +103,15 @@ def eth_pool_monitor(dola_chain_id, pool_infos, q):
                     pool_info[dola_pool_id] = balance
                     q.put((dola_chain_id, dola_pool_id, balance))
         except Exception as e:
-            traceback.print_exc()
-            print(e)
+            local_logger.error(e)
 
         time.sleep(1)
 
 
-def sui_pool_monitor(pool_infos, q):
+def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
+    local_logger.info("start monitor dola sui pool...")
+
     pool_info = {}
 
     while True:
@@ -122,8 +123,7 @@ def sui_pool_monitor(pool_infos, q):
                     pool_info[dola_pool_id] = balance
                     q.put((0, dola_pool_id, balance))
         except  Exception as e:
-            traceback.print_exc()
-            print(e)
+            local_logger.error(e)
 
         time.sleep(1)
 
@@ -133,12 +133,10 @@ def check_pool_health(dola_pool_id, pool_info):
     total_debt = get_dtoken_total_supply(dola_pool_id)
 
     liquidity = sum(pool_info[dola_chain_id] for dola_chain_id in pool_info)
-    pprint(f"pool {dola_pool_id} liquidity: {liquidity}, total_supply: {total_supply}, total_debt: {total_debt}")
     return liquidity + total_debt >= total_supply
 
 
 def check_dola_health(pool_infos):
-    pprint(pool_infos)
     return all(
         check_pool_health(dola_pool_id, pool_infos[dola_pool_id])
         for dola_pool_id in pool_infos
@@ -146,8 +144,9 @@ def check_dola_health(pool_infos):
 
 
 # check pool liquidity + total_debt > total_supply
-def dola_monitor(q, value, lock):
+def dola_monitor(local_logger: logging.Logger, q, value, lock):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
+    local_logger.info("start monitor dola protocol...")
 
     pool_infos = {}
     while True:
@@ -159,7 +158,10 @@ def dola_monitor(q, value, lock):
             pool_infos[dola_pool_id][dola_chain_id] = balance
 
         health = check_dola_health(pool_infos)
-        print(f"health: {health}")
+        if health:
+            local_logger.info(f"dola protocol health: {health}")
+        else:
+            local_logger.warning(f"dola protocol health: {health}")
         lock.acquire()
         value.value = health
         lock.release()

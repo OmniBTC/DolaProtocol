@@ -7,6 +7,7 @@ import logging
 import time
 import traceback
 from hmac import compare_digest
+from multiprocessing import Manager
 from pathlib import Path
 
 import brownie
@@ -24,6 +25,7 @@ import config
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_monitor
 import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
@@ -248,7 +250,7 @@ class GasRecord:
         return self.db.find(filter)
 
 
-def sui_portal_watcher():
+def sui_portal_watcher(health):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
     local_logger.info("Start to watch sui portal ^-^")
@@ -278,6 +280,9 @@ def sui_portal_watcher():
                 sequence = int(fields['sequence'])
                 call_name = get_call_name(app_id, int(call_type))
                 nonce = int(fields['nonce'])
+
+                if not health.value:
+                    raise ValueError("Health check failed, sui portal watcher blocked")
 
                 if not relay_record.find_one({'src_chain_id': src_chain_id, 'nonce': nonce, 'sequence': sequence}):
                     relay_fee_amount = int(fields['fee_amount'])
@@ -377,7 +382,7 @@ def wormhole_vaa_guardian(network="polygon-test"):
         time.sleep(5)
 
 
-def eth_portal_watcher(network="polygon-test"):
+def eth_portal_watcher(health, network="polygon-test"):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
 
@@ -414,6 +419,9 @@ def eth_portal_watcher(network="polygon-test"):
             for event in relay_events:
                 nonce = int(event['nonce'])
                 sequence = int(event['sequence'])
+
+                if not health.value:
+                    raise ValueError(f"health check failed, {network} portal watcher blocked")
 
                 # check if the event has been recorded
                 if not list(relay_record.find(
@@ -476,7 +484,7 @@ def eth_portal_watcher(network="polygon-test"):
             time.sleep(2)
 
 
-def pool_withdraw_watcher():
+def pool_withdraw_watcher(health):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
@@ -505,6 +513,9 @@ def pool_withdraw_watcher():
 
                 source_chain_id = int(fields['source_chain_id'])
                 source_chain_nonce = int(fields['source_chain_nonce'])
+
+                if not health.value:
+                    raise ValueError(f"health check failed, {network} portal watcher blocked")
 
                 if relay_record.find_one(
                         {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'status': 'waitForWithdraw'}):
@@ -1029,15 +1040,31 @@ def main():
     # fix request ssl error
     fix_requests_ssl()
 
-    pt = ProcessExecutor(executor=8)
+    # init dola monitor
+    all_pools = dola_monitor.get_all_pools()
+
+    monitor_num = len(all_pools.keys())
+
+    manager = Manager()
+
+    health = manager.Value('b', True)
+
+    lock = manager.Lock()
+
+    q = manager.Queue()
+
+    pt = ProcessExecutor(executor=8 + monitor_num + 1)
 
     pt.run([
+        functools.partial(dola_monitor.sui_pool_monitor, logger.getChild("[sui_pool_monitor]"), all_pools[0], q),
+        functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[avax_pool_monitor]"), 6, all_pools[6], q),
+        functools.partial(dola_monitor.dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
         functools.partial(sui_core_executor, "Relayer1", 2, 0),
         functools.partial(sui_core_executor, "Relayer2", 2, 1),
-        sui_portal_watcher,
-        functools.partial(eth_portal_watcher, "avax-test"),
+        functools.partial(sui_portal_watcher, health),
+        functools.partial(eth_portal_watcher, health, "avax-test"),
         functools.partial(wormhole_vaa_guardian, "avax-test"),
-        pool_withdraw_watcher,
+        functools.partial(pool_withdraw_watcher, health),
         functools.partial(sui_pool_executor, "Relayer3"),
         eth_pool_executor,
     ])

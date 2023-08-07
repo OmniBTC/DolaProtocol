@@ -289,7 +289,6 @@ module dola_protocol::lending_portal_v2 {
     }
 
 
-    /// Since the protocol is deployed on sui, borrow on sui can be skipped across the chain
     entry fun borrow(
         genesis: &GovernanceGenesis,
         pool_state: &mut PoolState,
