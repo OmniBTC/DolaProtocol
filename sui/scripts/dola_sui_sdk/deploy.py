@@ -144,4 +144,4 @@ def main():
 
 
 if __name__ == "__main__":
-    deploy_governance_proposal()
+    redeploy_genesis_proposal()
