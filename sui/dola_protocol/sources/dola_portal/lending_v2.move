@@ -288,7 +288,6 @@ module dola_protocol::lending_portal_v2 {
         )
     }
 
-
     entry fun borrow(
         genesis: &GovernanceGenesis,
         pool_state: &mut PoolState,
