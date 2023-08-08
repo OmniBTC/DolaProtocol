@@ -14,7 +14,7 @@ module dola_protocol::governance_v2 {
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::event;
-    use sui::object::{Self, UID, ID};
+    use sui::object::{Self, ID, UID};
     use sui::table::{Self, Table};
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -288,6 +288,52 @@ module dola_protocol::governance_v2 {
     }
 
     /// === Entry Functions ===
+
+    /// Record historical proposal information after entering the era of stock governance
+    public fun create_proposal_with_history<T: store + drop, CoinType>(
+        governance_info: &mut GovernanceInfo,
+        certificate: T,
+        staked_coins: vector<Coin<CoinType>>,
+        staked_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(governance_info.active, ENOT_ACTIVE);
+
+        let staked_coin = merge_coins::merge_coin(staked_coins, staked_amount, ctx);
+        assert!(staked_amount >= governance_info.proposal_minimum_staking, EINVALID_PROPOSAL_STAKING);
+
+        let creator = tx_context::sender(ctx);
+        let current_epoch = tx_context::epoch(ctx);
+        let start_vote = current_epoch + governance_info.announce_delay;
+        let end_vote = start_vote + governance_info.voting_delay;
+        let expired = current_epoch + governance_info.max_delay;
+
+        let favor_votes = table::new<address, u64>(ctx);
+        table::add(&mut favor_votes, creator, staked_amount);
+
+        let id = object::new(ctx);
+        let proposal_id = *object::uid_as_inner(&id);
+        vector::push_back(&mut governance_info.his_proposal, proposal_id);
+
+        transfer::share_object(Proposal {
+            id,
+            creator,
+            start_vote,
+            end_vote,
+            expired,
+            package_id: type_name::get_address(&type_name::get<T>()),
+            certificate,
+            staked_coin: coin::into_balance(staked_coin),
+            favor_num: staked_amount,
+            favor_votes,
+            against_num: 0,
+            against_votes: table::new<address, u64>(ctx),
+            state: PROPOSAL_ANNOUNCEMENT_PENDING
+        });
+        event::emit(CreateProposal {
+            proposal_id
+        });
+    }
 
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
