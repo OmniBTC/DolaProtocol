@@ -1,12 +1,13 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 
-module genesis_proposal::genesis_proposal {
+module governance_proposal::setup_governance_proposal {
     use std::option;
+
+    use sui::tx_context::TxContext;
 
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
-    use sui::tx_context::TxContext;
 
     const EIS_FINAL_VOTE: u64 = 0;
 
