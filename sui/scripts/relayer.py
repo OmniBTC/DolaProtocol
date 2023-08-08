@@ -654,6 +654,8 @@ def sui_core_executor(account, divisor=1, remainder=0):
 
 def sui_pool_executor(account):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
+    sui_project.active_account(account)
+
     local_logger = logger.getChild("[sui_pool_executor]")
     local_logger.info("Start to relay sui withdraw vaa ^-^")
 
