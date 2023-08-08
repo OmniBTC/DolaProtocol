@@ -1453,8 +1453,8 @@ if __name__ == "__main__":
     # portal_binding("a65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392")
     # init.claim_test_coin(usdt())
     # sui_project.pay_all_sui()
-    # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
+    portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=5824999)
     # portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=14813999)
-    portal_liquidate(2, 2, 1, bridge_fee=13076999)
+    # portal_liquidate(2, 2, 1, bridge_fee=13076999)
 
     # export_objects()

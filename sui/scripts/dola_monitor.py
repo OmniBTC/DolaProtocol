@@ -1,6 +1,7 @@
 # dola protocol monitor
 import functools
 import logging
+import queue
 import time
 from multiprocessing import Manager
 from pathlib import Path
@@ -122,7 +123,7 @@ def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
                 if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
                     pool_info[dola_pool_id] = balance
                     q.put((0, dola_pool_id, balance))
-        except  Exception as e:
+        except Exception as e:
             local_logger.error(e)
 
         time.sleep(1)
@@ -150,12 +151,19 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
 
     pool_infos = {}
     while True:
-        (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
-        if dola_pool_id not in pool_infos:
-            pool_infos[dola_pool_id] = {}
+        try:
+            (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
+            local_logger.info(
+                f"dola pool {dola_pool_id} on chain {config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]} balance: {balance}")
+            if dola_pool_id not in pool_infos:
+                pool_infos[dola_pool_id] = {}
 
-        if dola_chain_id not in pool_infos[dola_pool_id] or pool_infos[dola_pool_id][dola_chain_id] != balance:
-            pool_infos[dola_pool_id][dola_chain_id] = balance
+            if dola_chain_id not in pool_infos[dola_pool_id] or pool_infos[dola_pool_id][dola_chain_id] != balance:
+                pool_infos[dola_pool_id][dola_chain_id] = balance
+        except queue.Empty:
+            local_logger.info("No new balance change!")
+        except Exception as e:
+            local_logger.error(e)
 
         health = check_dola_health(pool_infos)
         if health:
