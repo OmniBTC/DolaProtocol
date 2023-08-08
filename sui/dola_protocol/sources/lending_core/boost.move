@@ -14,6 +14,7 @@ module dola_protocol::boost {
     use dola_protocol::lending_core_storage::Storage;
     use dola_protocol::lending_core_storage;
     use dola_protocol::ray_math;
+    use dola_protocol::lending_codec;
 
     /// Errors
 
@@ -26,12 +27,6 @@ module dola_protocol::boost {
     const EINVALID_POOL: u64 = 3;
 
     const ENOT_ASSOCIATE_POOL: u64 = 4;
-
-    /// Reward Action
-
-    const SUPPLY: u8 = 0;
-
-    const BORROW: u8 = 1;
 
     struct UserReward has store {
         // Reward index when `acc_user_index` was last updated
@@ -63,26 +58,6 @@ module dola_protocol::boost {
         balance: Balance<X>
     }
 
-
-    fun caculate_reward_index(
-        reward: u256,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        reward_action: u8
-    ): u256 {
-        let total_scaled_balance;
-        if (reward_action == SUPPLY) {
-            total_scaled_balance = lending_core_storage::get_otoken_scaled_total_supply(storage, dola_pool_id);
-        }else {
-            total_scaled_balance = lending_core_storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
-        };
-        if (total_scaled_balance == 0) {
-            0
-        }else {
-            reward / total_scaled_balance
-        }
-    }
-
     fun update_pool_reward(
         reward_pool: &mut PoolReward,
         storage: &mut Storage,
@@ -94,10 +69,12 @@ module dola_protocol::boost {
         assert!(current_timestamp >= reward_pool.last_update_time, EINVALID_TIME);
 
         let total_scaled_balance;
-        if (reward_action == SUPPLY) {
+        if (reward_action == lending_codec::get_supply_type()) {
             total_scaled_balance = lending_core_storage::get_otoken_scaled_total_supply(storage, dola_pool_id);
-        }else {
+        }else if (reward_action == lending_codec::get_borrow_type()) {
             total_scaled_balance = lending_core_storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
+        }else {
+            abort EINVALID_ACTION;
         };
 
         if (total_scaled_balance == 0) {
@@ -117,10 +94,12 @@ module dola_protocol::boost {
         reward_action: u8,
     ) {
         let user_scaled_balance;
-        if (reward_action == SUPPLY) {
+        if (reward_action == lending_codec::get_supply_type()) {
             user_scaled_balance = lending_core_storage::get_user_scaled_otoken(storage, dola_user_id, dola_pool_id);
-        }else {
+        }else if (reward_action == lending_codec::get_borrow_type()) {
             user_scaled_balance = lending_core_storage::get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
+        }else {
+            abort EINVALID_ACTION;
         };
         if (!table::contains(&reward_pool.user_reward, dola_user_id)) {
             table::add(&mut reward_pool.user_reward, dola_user_id, UserReward {
@@ -134,7 +113,7 @@ module dola_protocol::boost {
         user_reward.last_update_reward_index = reward_pool.reward_index;
     }
 
-    entry fun create_reward_pool<X>(
+    public(friend) fun create_reward_pool<X>(
         start_time: u256,
         end_time: u256,
         reward: Coin<X>,
@@ -171,30 +150,24 @@ module dola_protocol::boost {
         });
     }
 
-    public(friend) fun boost_supply(
+    public(friend) fun boost(
         reward_pool: &mut PoolReward,
         storage: &mut Storage,
         dola_pool_id: u16,
         dola_user_id: u64,
+        lending_action: u8,
         clock: &Clock
     ) {
+        let reward_action = lending_action;
+        if (reward_action == lending_codec::get_withdraw_type()) {
+            reward_action = lending_codec::get_supply_type()
+        }else if (reward_action == lending_codec::get_repay_type())(
+            reward_action = lending_codec::get_borrow_type()
+        );
         assert!(dola_pool_id == reward_pool.dola_pool_id, EINVALID_POOL);
-        assert!(SUPPLY == reward_pool.reward_action, EINVALID_ACTION);
-        update_pool_reward(reward_pool, storage, dola_pool_id, SUPPLY, clock);
-        update_user_reward(reward_pool, storage, dola_pool_id, dola_user_id, SUPPLY);
-    }
-
-    public(friend) fun boost_borrow(
-        reward_pool: &mut PoolReward,
-        storage: &mut Storage,
-        dola_pool_id: u16,
-        dola_user_id: u64,
-        clock: &Clock
-    ) {
-        assert!(dola_pool_id == reward_pool.dola_pool_id, EINVALID_POOL);
-        assert!(BORROW == reward_pool.reward_action, EINVALID_ACTION);
-        update_pool_reward(reward_pool, storage, dola_pool_id, BORROW, clock);
-        update_user_reward(reward_pool, storage, dola_pool_id, dola_user_id, BORROW);
+        assert!(reward_action == reward_pool.reward_action, EINVALID_ACTION);
+        update_pool_reward(reward_pool, storage, dola_pool_id, reward_action, clock);
+        update_user_reward(reward_pool, storage, dola_pool_id, dola_user_id, reward_action);
     }
 
     public(friend) fun claim_reward<X>(
