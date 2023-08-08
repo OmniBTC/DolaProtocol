@@ -1429,6 +1429,14 @@ def add_governance_member(member):
     )
 
 
+def get_latest_proposal_id():
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    result = sui_project.client.sui_getObject(governance_info, {"showContent": True})
+
+    his_proposal = result['data']['content']['fields']['his_proposal']
+    return his_proposal[-1]
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1437,11 +1445,11 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
-    # create_proposal()
-    # proposal_id = "0x9e17c27ffac27ba1f5c69160ce051c2ebbf9aea9fbea53caa9e06b7b6ef3cd32"
-    # vote_genesis_proposal('Relayer0', proposal_id)
-    # vote_genesis_proposal('Relayer1', proposal_id)
-    # vote_genesis_proposal('Relayer2', proposal_id)
-    # sui_project.active_account('TestAccount')
-    # add_core_relayer('0xe24b65788b13e27335fc1af2f7bfbdf03e365c50f969c039beb07f798a707f1a')
+    # batch_init()
+    create_proposal()
+    proposal_id = get_latest_proposal_id()
+    vote_genesis_proposal('Relayer0', proposal_id)
+    vote_genesis_proposal('Relayer1', proposal_id)
+    vote_genesis_proposal('Relayer2', proposal_id)
+    sui_project.active_account('TestAccount')
+    add_core_relayer('0xa65b84b73c857082b680a148b7b25327306d93cc7862bae0edfa7628b0342392')
