@@ -1,9 +1,9 @@
 [package]
-name = "GenesisProposal"
+name = "GovernanceProposal"
 version = "0.0.1"
 
 [addresses]
-genesis_proposal = "0x0"
+governance_proposal = "0x0"
 dola_protocol = "0x0"
 wormhole = "0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a"
 
