@@ -85,6 +85,12 @@ def reserve_proposal_package(package_id: str = None):
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/reserve_params_proposal"))
 
 
+def governance_proposal_package(package_id: str = None):
+    if package_id is None:
+        package_id: str = sui_project.network_config['packages']['governance_proposal']
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/setup_governance_proposal"))
+
+
 def upgrade_proposal_template_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.UpgradeProposalTemplate[-1]

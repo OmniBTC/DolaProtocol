@@ -78,9 +78,9 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
     genesis_proposal.genesis_proposal.create_proposal(
-        dola_protocol.governance_v1.GovernanceInfo[-1]
+        governance_info
     )
 
 
@@ -97,6 +97,15 @@ def create_reserve_proposal():
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     reserve_proposal.reserve_proposal.create_proposal(
+        governance_info
+    )
+
+
+def create_setup_governance_proposal():
+    governance_proposal = load.governance_proposal_package()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    governance_proposal.setup_governance_proposal.create_proposal(
         governance_info
     )
 
@@ -171,6 +180,13 @@ def proposal():
     genesis_proposal = sui_project.network_config['packages']['genesis_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{genesis_proposal}" \
            f"::genesis_proposal::Certificate>"
+
+
+def get_governance_proposal():
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
+    governance_proposal = sui_project.network_config['packages']['governance_proposal']
+    return f"{dola_protocol}::governance_v1::Proposal<{governance_proposal}" \
+           f"::setup_governance_proposal::Certificate>"
 
 
 def query_pool_relay_event(tx_digest, limit=10):
@@ -371,6 +387,24 @@ def build_reserve_proposal_final_tx_block(genesis_proposal):
     return [[
         genesis_proposal.reserve_proposal.vote_proposal_final,
         [Argument("Input", U16(0)), Argument("Input", U16(1))],
+        []
+    ]]
+
+
+def build_governance_proposal_final_tx_block(governance_proposal):
+    return [[
+        governance_proposal.setup_governance_proposal.vote_proposal_final,
+        [Argument("Input", U16(0)), Argument("Input", U16(1))],
+        []
+    ]]
+
+
+def build_finish_governance_proposal_tx_block(genesis_proposal, tx_block_num):
+    return [[
+        genesis_proposal.setup_governance_proposal.destory,
+        [
+            Argument("Result", U16(tx_block_num)),
+        ],
         []
     ]]
 
@@ -1154,8 +1188,7 @@ def remove_pool_relayer(relayer_address):
 def add_core_relayer(relayer_address):
     genesis_proposal = load.genesis_proposal_package()
 
-    # Init chain group id param
-    create_proposal()
+    # create_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     core_state = sui_project.network_config['objects']['CoreState']
@@ -1335,6 +1368,69 @@ def remote_remove_relayer(dola_chain_id, relayer_address):
     )
 
 
+def vote_genesis_proposal(account, proposal_id):
+    sui_project.active_account(account)
+
+    genesis_proposal = load.genesis_proposal_package()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+
+    genesis_proposal.genesis_proposal.vote_porposal(
+        governance_info,
+        proposal_id
+    )
+
+
+def vote_governance_proposal(account, proposal_id):
+    sui_project.active_account(account)
+
+    governance_proposal = load.governance_proposal_package()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+
+    governance_proposal.setup_governance_proposal.vote_porposal(
+        governance_info,
+        proposal_id
+    )
+
+
+def add_governance_member(member):
+    governance_proposal = load.governance_proposal_package()
+    # create_setup_governance_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(get_governance_proposal())][-1],
+    ]
+
+    governance_params = [
+        member
+    ]
+
+    tx_blocks = [
+        [
+            governance_proposal.setup_governance_proposal.add_member,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(0)),
+                Argument("Input", U16(2)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_governance_proposal_final_tx_block(governance_proposal)
+
+    finish_proposal_tx_block = build_finish_governance_proposal_tx_block(governance_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + governance_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1344,3 +1440,9 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
+    # create_setup_governance_proposal()
+    # proposal_id = "0x31a573fe843591627d683795046eb2fc9bee924843af2d7716a658287d863192"
+    # vote_genesis_proposal('Relayer0', proposal_id)
+    # vote_genesis_proposal('Relayer1', proposal_id)
+    # vote_genesis_proposal('Relayer2', proposal_id)
+    # add_core_relayer('0x0e917dae15e626ea714585ce800632db7b6fbb75df4087afde661ee71bfa68bf')

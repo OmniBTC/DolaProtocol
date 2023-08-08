@@ -121,10 +121,27 @@ def redeploy_external_interfaces():
     ))
 
 
+def deploy_governance_proposal():
+    governance_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            "proposals/setup_governance_proposal")
+    )
+
+    governance_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+
 def main():
     deploy()
     export_to_config()
 
 
 if __name__ == "__main__":
-    redeploy_external_interfaces()
+    deploy_governance_proposal()
