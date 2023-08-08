@@ -40,7 +40,7 @@ module genesis_proposal::genesis_proposal {
     }
 
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
-        governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
+        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
     }
 
     public fun vote_porposal(

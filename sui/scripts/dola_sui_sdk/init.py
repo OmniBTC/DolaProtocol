@@ -1188,8 +1188,6 @@ def remove_pool_relayer(relayer_address):
 def add_core_relayer(relayer_address):
     genesis_proposal = load.genesis_proposal_package()
 
-    # create_proposal()
-
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     core_state = sui_project.network_config['objects']['CoreState']
 
@@ -1440,9 +1438,10 @@ def batch_init():
 
 if __name__ == '__main__':
     batch_init()
-    # create_setup_governance_proposal()
-    # proposal_id = "0x31a573fe843591627d683795046eb2fc9bee924843af2d7716a658287d863192"
+    # create_proposal()
+    # proposal_id = "0x9e17c27ffac27ba1f5c69160ce051c2ebbf9aea9fbea53caa9e06b7b6ef3cd32"
     # vote_genesis_proposal('Relayer0', proposal_id)
     # vote_genesis_proposal('Relayer1', proposal_id)
     # vote_genesis_proposal('Relayer2', proposal_id)
-    # add_core_relayer('0x0e917dae15e626ea714585ce800632db7b6fbb75df4087afde661ee71bfa68bf')
+    # sui_project.active_account('TestAccount')
+    # add_core_relayer('0xe24b65788b13e27335fc1af2f7bfbdf03e365c50f969c039beb07f798a707f1a')

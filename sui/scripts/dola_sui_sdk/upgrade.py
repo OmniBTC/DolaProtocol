@@ -58,6 +58,19 @@ def upgrade_create_proposal():
     )
 
 
+def vote_upgrade_proposal(account, proposal_id):
+    sui_project.active_account(account)
+
+    upgrade_proposal_template = load.upgrade_proposal_template_package()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+
+    upgrade_proposal_template.upgrade_proposal.vote_porposal(
+        governance_info,
+        proposal_id
+    )
+
+
 def migrate_create_proposal():
     """
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
@@ -141,6 +154,10 @@ if __name__ == "__main__":
         3. after the front-end upgrade, migrate_version_test
     """
     # generate_dola_protocol_package_info()
+    # proposal_id = "0x9e17c27ffac27ba1f5c69160ce051c2ebbf9aea9fbea53caa9e06b7b6ef3cd32"
+    # vote_upgrade_proposal('Relayer0', proposal_id)
+    # vote_upgrade_proposal('Relayer1', proposal_id)
+    # vote_upgrade_proposal('Relayer2', proposal_id)
     dola_upgrade_test()
     # migrate_version_test()
     # check_version(sui_project.network_config['packages']['dola_protocol'])

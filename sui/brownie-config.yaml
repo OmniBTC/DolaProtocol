@@ -223,7 +223,7 @@ networks:
     packages:
       dola_protocol:
         origin: '0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2'
-        latest: '0x8ab018a51be9817daa2a6c535a714e13d742ffa49e026f324747d5a7d9883378'
+        latest: '0xbd26aa20499d6727bb8970bac5c614d979295694c3083dcd6d4b354353d0f292'
       external_interfaces: '0xf68dfe40252482395491f9a49b2ce19b0aadba3960e3c19c37fb803e42c9d303'
       genesis_proposal: '0xb03e33e795a4ba328fe4e90252fc066ae95aaf546d967a94c0833e1031bc33eb'
       governance_proposal: '0x85c240638e59a0b844ac3f0ba685f65498917a50d56727a363b24eec9176f15d'
