@@ -101,7 +101,7 @@ module dola_protocol::genesis {
         };
 
         // Set current version
-        dynamic_field::add(&mut governance_genesis.id, Version {}, Version_1_0_0 {});
+        dynamic_field::add(&mut governance_genesis.id, Version {}, Version_1_0_2 {});
 
         vector::push_back(&mut governance_genesis.manager_ids, object::id(&governance_manager_cap));
         transfer::share_object(governance_genesis);
