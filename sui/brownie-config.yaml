@@ -177,6 +177,20 @@ networks:
         supply_cap_ceiling: 100000
         treasury: 0
         treasury_factor: 0.05
+      whUSDCeth:
+        base_borrow_rate: 0
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.035
+        borrow_rate_slope2: 0.6
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 2
+        is_isolated_asset: false
+        optimal_utilization: 0.9
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
     tokens:
       SUI:
         coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
