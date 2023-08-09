@@ -12,7 +12,7 @@ module dola_protocol::governance_v1 {
     use std::vector;
 
     use sui::event;
-    use sui::object::{Self, UID, ID};
+    use sui::object::{Self, ID, UID};
     use sui::package::UpgradeCap;
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
@@ -245,6 +245,48 @@ module dola_protocol::governance_v1 {
     }
 
     /// === Entry Functions ===
+
+    /// Record historical proposal information after entering the era of multi-party governance
+    public fun create_proposal_with_history<T: store + drop>(
+        governance_info: &mut GovernanceInfo,
+        certificate: T,
+        ctx: &mut TxContext
+    ) {
+        assert!(governance_info.active, ENOT_ACTIVE);
+        let creator = tx_context::sender(ctx);
+
+        check_member(governance_info, creator);
+
+        let start_vote = tx_context::epoch(ctx) + governance_info.announce_delay;
+        let end_vote;
+        if (governance_info.voting_delay == 0) {
+            end_vote = option::none()
+        } else {
+            end_vote = option::some(start_vote + governance_info.voting_delay);
+        };
+        let expired = tx_context::epoch(ctx) + governance_info.max_delay;
+
+        let id = object::new(ctx);
+        let proposal_id = *object::uid_as_inner(&id);
+        vector::push_back(&mut governance_info.his_proposal, proposal_id);
+
+        transfer::share_object(Proposal {
+            id,
+            creator,
+            start_vote,
+            end_vote,
+            expired,
+            package_id: type_name::get_address(&type_name::get<T>()),
+            certificate,
+            favor_votes: vector::empty(),
+            against_votes: vector::empty(),
+            state: PROPOSAL_ANNOUNCEMENT_PENDING
+        });
+
+        event::emit(CreateProposal {
+            proposal_id
+        });
+    }
 
     /// When creating the proposal, you need to give the certificate in the contract
     /// to ensure that the proposal can only be executed in that contract.
