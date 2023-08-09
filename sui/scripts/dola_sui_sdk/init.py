@@ -78,7 +78,8 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(
+        package_id=sui_project.network_config['packages']['dola_protocol']['origin'])
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
     )
@@ -1480,4 +1481,4 @@ def batch_init():
 
 if __name__ == '__main__':
     # batch_init()
-    register_new_reserve()
+    register_new_reserve(reserve="whUSDCeth")
