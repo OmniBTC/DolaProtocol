@@ -48,7 +48,9 @@ module dola_protocol::boost {
         // Reward index when `acc_user_index` was last updated
         last_update_reward_index: u256,
         // The unclaimed reward balance
-        balance: u256
+        unclaimed_balance: u256,
+        // Rewards that have been claimed
+        claimed_balance: u256
     }
 
     struct RewardPoolInfo has key, store {
@@ -96,8 +98,8 @@ module dola_protocol::boost {
     struct UpdateUserRewardEvent has drop, copy {
         dola_pool_id: u16,
         dola_user_id: u64,
-        old_balance: u256,
-        new_balance: u256,
+        old_unclaimed_balance: u256,
+        new_unclaimed_balance: u256,
         old_reward_index: u256,
         new_reward_index: u256
     }
@@ -181,22 +183,23 @@ module dola_protocol::boost {
         if (!table::contains(&reward_pool.user_reward, dola_user_id)) {
             table::add(&mut reward_pool.user_reward, dola_user_id, UserRewardInfo {
                 last_update_reward_index: 0,
-                balance: 0
+                unclaimed_balance: 0,
+                claimed_balance: 0
             })
         };
         let user_reward = table::borrow_mut(&mut reward_pool.user_reward, dola_user_id);
         let delta_index = reward_pool.reward_index - user_reward.last_update_reward_index;
-        let old_balance = user_reward.balance;
+        let old_unclaimed_balance = user_reward.unclaimed_balance;
         let old_reward_index = user_reward.last_update_reward_index;
-        user_reward.balance = user_reward.balance + ray_math::ray_mul(delta_index, user_scaled_balance);
+        user_reward.unclaimed_balance = user_reward.unclaimed_balance + ray_math::ray_mul(delta_index, user_scaled_balance);
         user_reward.last_update_reward_index = reward_pool.reward_index;
 
         event::emit(
             UpdateUserRewardEvent {
                 dola_pool_id: reward_pool.dola_pool_id,
                 dola_user_id,
-                old_balance,
-                new_balance: user_reward.balance,
+                old_unclaimed_balance,
+                new_unclaimed_balance: user_reward.unclaimed_balance,
                 old_reward_index,
                 new_reward_index: user_reward.last_update_reward_index
             }
@@ -252,18 +255,19 @@ module dola_protocol::boost {
         assert!(reward_pool_balance.associate_pool == object::id(reward_pool), ENOT_ASSOCIATE_POOL);
         let user_reward = table::borrow_mut(&mut reward_pool.user_reward, dola_user_id);
         let actual_user_reward = ray_math::min(
-            user_reward.balance,
+            user_reward.unclaimed_balance,
             (balance::value(&reward_pool_balance.balance) as u256)
         );
-        let old_balance = user_reward.balance;
-        user_reward.balance = user_reward.balance - actual_user_reward;
+        let old_unclaimed_balance = user_reward.unclaimed_balance;
+        user_reward.unclaimed_balance = user_reward.unclaimed_balance - actual_user_reward;
+        user_reward.claimed_balance = user_reward.claimed_balance + actual_user_reward;
 
         event::emit(
             UpdateUserRewardEvent {
                 dola_pool_id: reward_pool.dola_pool_id,
                 dola_user_id,
-                old_balance,
-                new_balance: user_reward.balance,
+                old_unclaimed_balance,
+                new_unclaimed_balance: user_reward.unclaimed_balance,
                 old_reward_index: user_reward.last_update_reward_index,
                 new_reward_index: user_reward.last_update_reward_index
             }
