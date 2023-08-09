@@ -215,20 +215,6 @@ module dola_protocol::boost {
         coin::from_balance(balance::withdraw_all(&mut reward_pool_balance.balance), ctx)
     }
 
-    entry fun claim<X>(
-        genesis: &GovernanceGenesis,
-        user_manager_info: &UserManagerInfo,
-        reward_pool: &mut PoolReward,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
-        ctx: &mut TxContext
-    ) {
-        genesis::check_latest_version(genesis);
-        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
-        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
-        let reward = claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx);
-        transfer::public_transfer(reward, tx_context::sender(ctx));
-    }
-
     public fun create_reward_pool<X>(
         _: &GovernanceCap,
         storage: &mut Storage,
@@ -304,13 +290,55 @@ module dola_protocol::boost {
             let i = 0;
             while (i < vector::length(reward_pools)) {
                 let reward_pool = vector::borrow_mut(reward_pools, i);
-
-
                 assert!(dola_pool_id == reward_pool.dola_pool_id, EINVALID_POOL);
                 if (reward_action == reward_pool.reward_action) {
                     update_pool_reward(reward_pool, total_scaled_balance, clock);
                     update_user_reward(reward_pool, user_scaled_balance, dola_user_id);
                 };
+            }
+        }
+    }
+
+    entry fun claim<X>(
+        storage: &mut Storage,
+        genesis: &GovernanceGenesis,
+        user_manager_info: &UserManagerInfo,
+        dola_pool_id: u16,
+        reward_action: u8,
+        reward_pool_balance: &mut PoolRewardBalance<X>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        genesis::check_latest_version(genesis);
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+
+        let total_scaled_balance = get_total_scaled_balance(
+            storage,
+            dola_pool_id,
+            reward_action
+        );
+        let user_scaled_balance = get_user_scaled_balance(
+            storage,
+            dola_pool_id,
+            dola_user_id,
+            reward_action
+        );
+
+        let storage_id = storage::get_storage_id(storage);
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+            let i = 0;
+            while (i < vector::length(reward_pools)) {
+                let reward_pool = vector::borrow_mut(reward_pools, i);
+                if (reward_pool.dola_pool_id == dola_pool_id && reward_pool.reward_action == reward_action &&
+                    reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance)
+                ) {
+                    update_pool_reward(reward_pool, total_scaled_balance, clock);
+                    update_user_reward(reward_pool, user_scaled_balance, dola_user_id);
+                    let reward = claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx);
+                    transfer::public_transfer(reward, tx_context::sender(ctx));
+                }
             }
         }
     }
