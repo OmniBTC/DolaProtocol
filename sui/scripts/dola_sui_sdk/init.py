@@ -483,7 +483,8 @@ def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, seque
 
 def register_new_pool(pool: str = "whUSDCeth"):
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(
+        package_id=sui_project.network_config['packages']['dola_protocol']['origin'])
 
     create_proposal()
 
@@ -1481,4 +1482,5 @@ def batch_init():
 if __name__ == '__main__':
     # batch_init()
     # register_new_reserve(reserve="whUSDCeth")
-    set_reserve_params()
+    # set_reserve_params()
+    register_new_pool()
