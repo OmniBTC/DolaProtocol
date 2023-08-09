@@ -335,6 +335,32 @@ module dola_protocol::lending_core_storage {
         }
     }
 
+    public fun get_user_scaled_otoken_v2(
+        storage: &Storage,
+        dola_user_id: u64,
+        dola_pool_id: u16
+    ): u256 {
+        let reserve = table::borrow(&storage.reserves, dola_pool_id);
+        if (table::contains(&reserve.otoken_scaled.user_state, dola_user_id)) {
+            *table::borrow(&reserve.otoken_scaled.user_state, dola_user_id)
+        } else {
+            0
+        }
+    }
+
+    public fun get_user_scaled_dtoken_v2(
+        storage: &Storage,
+        dola_user_id: u64,
+        dola_pool_id: u16
+    ): u256 {
+        let reserve = table::borrow(&storage.reserves, dola_pool_id);
+        if (table::contains(&reserve.dtoken_scaled.user_state, dola_user_id)) {
+            *table::borrow(&reserve.dtoken_scaled.user_state, dola_user_id)
+        } else {
+            0
+        }
+    }
+
     public fun get_reserve_treasury(
         storage: &mut Storage,
         dola_pool_id: u16
@@ -388,6 +414,20 @@ module dola_protocol::lending_core_storage {
 
     public fun get_dtoken_scaled_total_supply(
         storage: &mut Storage,
+        dola_pool_id: u16
+    ): u256 {
+        table::borrow(&storage.reserves, dola_pool_id).dtoken_scaled.total_supply
+    }
+
+    public fun get_otoken_scaled_total_supply_v2(
+        storage: &Storage,
+        dola_pool_id: u16
+    ): u256 {
+        table::borrow(&storage.reserves, dola_pool_id).otoken_scaled.total_supply
+    }
+
+    public fun get_dtoken_scaled_total_supply_v2(
+        storage: &Storage,
         dola_pool_id: u16
     ): u256 {
         table::borrow(&storage.reserves, dola_pool_id).dtoken_scaled.total_supply
@@ -636,6 +676,10 @@ module dola_protocol::lending_core_storage {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_rate = new_borrow_rate;
         reserve.current_liquidity_rate = new_liquidity_rate;
+    }
+
+    public fun get_storage_id(storage: &mut Storage): &mut UID {
+        &mut storage.id
     }
 
     /// === Helper Functions ===

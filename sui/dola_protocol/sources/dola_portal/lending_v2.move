@@ -12,6 +12,12 @@ module dola_protocol::lending_portal_v2 {
     use dola_protocol::merge_coins;
     use dola_protocol::wormhole_adapter_pool::{Self, PoolState};
     use wormhole::state::State as WormholeState;
+    use dola_protocol::lending_core_storage::Storage;
+    use dola_protocol::boost::RewardPool;
+    use dola_protocol::user_manager;
+    use dola_protocol::user_manager::UserManagerInfo;
+    use dola_protocol::boost;
+    use sui::transfer;
 
     /// Errors
     const EAMOUNT_NOT_ZERO: u64 = 0;
@@ -488,6 +494,32 @@ module dola_protocol::lending_portal_v2 {
                 amount: 0,
                 call_type: lending_codec::get_liquidate_type()
             }
+        )
+    }
+
+    entry fun claim<X>(
+        user_manager_info: &UserManagerInfo,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        reward_action: u8,
+        reward_pool_balance: &mut RewardPool<X>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        let dola_user_id = user_manager::get_dola_user_id(
+            user_manager_info,
+            dola_address::convert_address_to_dola(tx_context::sender(ctx))
+        );
+        transfer::public_transfer(
+            boost::claim(storage,
+                dola_pool_id,
+                dola_user_id,
+                reward_action,
+                reward_pool_balance,
+                clock,
+                ctx
+            ),
+            tx_context::sender(ctx)
         )
     }
 }
