@@ -66,10 +66,10 @@ networks:
     pyth_service_url: https://xc-mainnet.pyth.network
     reserves:
       BTC:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.09
-        borrow_rate_slope1: 0.07
+        borrow_rate_slope1: 0.04
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
@@ -80,21 +80,21 @@ networks:
         treasury: 0
         treasury_factor: 0.23
       ETH:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0.01
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.09
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
+        borrow_rate_slope1: 0.038
+        borrow_rate_slope2: 0.8
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
         dola_pool_id: 4
         is_isolated_asset: false
-        optimal_utilization: 0.45
+        optimal_utilization: 0.8
         supply_cap_ceiling: 50
         treasury: 0
         treasury_factor: 0.23
       OP:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.33
         borrow_rate_slope1: 0.07
@@ -103,12 +103,12 @@ networks:
         collateral_coefficient: 0.66
         dola_pool_id: 7
         is_isolated_asset: false
-        optimal_utilization: 0.45
+        optimal_utilization: 0.8
         supply_cap_ceiling: 100000
         treasury: 0
         treasury_factor: 0.23
       ARB:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.33
         borrow_rate_slope1: 0.07
@@ -117,26 +117,26 @@ networks:
         collateral_coefficient: 0.66
         dola_pool_id: 6
         is_isolated_asset: false
-        optimal_utilization: 0.45
+        optimal_utilization: 0.8
         supply_cap_ceiling: 100000
         treasury: 0
         treasury_factor: 0.23
       MATIC:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.33
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
+        borrow_rate_slope1: 0.061
+        borrow_rate_slope2: 1
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
         dola_pool_id: 5
         is_isolated_asset: false
-        optimal_utilization: 0.45
+        optimal_utilization: 0.75
         supply_cap_ceiling: 100000
         treasury: 0
         treasury_factor: 0.23
       SUI:
-        base_borrow_rate: 0.02
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.33
         borrow_rate_slope1: 0.07
@@ -145,29 +145,29 @@ networks:
         collateral_coefficient: 0.66
         dola_pool_id: 3
         is_isolated_asset: false
-        optimal_utilization: 0.45
-        supply_cap_ceiling: 100000
-        treasury: 0
-        treasury_factor: 0.23
-      USDC:
-        base_borrow_rate: 0.01
-        borrow_cap_ceiling: 0
-        borrow_coefficient: 1.06
-        borrow_rate_slope1: 0.005
-        borrow_rate_slope2: 0.75
-        borrowable_in_isolation: true
-        collateral_coefficient: 0.9
-        dola_pool_id: 2
-        is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 100000
         treasury: 0
         treasury_factor: 0.23
-      USDT:
-        base_borrow_rate: 0.01
+      USDC:
+        base_borrow_rate: 0
         borrow_cap_ceiling: 0
         borrow_coefficient: 1.06
-        borrow_rate_slope1: 0.005
+        borrow_rate_slope1: 0.035
+        borrow_rate_slope2: 0.6
+        borrowable_in_isolation: true
+        collateral_coefficient: 0.9
+        dola_pool_id: 2
+        is_isolated_asset: false
+        optimal_utilization: 0.9
+        supply_cap_ceiling: 100000
+        treasury: 0
+        treasury_factor: 0.23
+      USDT:
+        base_borrow_rate: 0
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.06
+        borrow_rate_slope1: 0.04
         borrow_rate_slope2: 0.75
         borrowable_in_isolation: true
         collateral_coefficient: 0.9
