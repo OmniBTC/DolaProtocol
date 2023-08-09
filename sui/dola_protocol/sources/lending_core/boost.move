@@ -11,7 +11,7 @@ module dola_protocol::boost {
     use sui::dynamic_field;
     use sui::event;
     use sui::object;
-    use sui::object::{ID, id_to_address, UID};
+    use sui::object::{ID, UID};
     use sui::table;
     use sui::table::Table;
     use sui::transfer;
@@ -43,6 +43,8 @@ module dola_protocol::boost {
     const ENOT_ASSOCIATE_POOL: u64 = 4;
 
     const ENOT_REWARD_POOL: u64 = 5;
+
+    const ENO_USER_REWARD_INFO: u64 = 6;
 
     struct UserRewardInfo has store, drop {
         // Reward index when `acc_user_index` was last updated
@@ -114,64 +116,32 @@ module dola_protocol::boost {
     }
 
     /// Public
-    
-    public fun get_reward_per_second(
-        storage: &mut Storage,
-        reward_pool: address,
-        dola_pool_id: u16,
-        reward_action: u8,
-    ): u256 {
-        let storage_id = storage::get_storage_id(storage);
-        let reward_per_second = 0;
-        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
-            let i = 0;
-            while (i < vector::length(reward_pools)) {
-                let reward_pool_info = vector::borrow(reward_pools, i);
-                if (reward_action == reward_pool_info.reward_action
-                    && id_to_address(&reward_pool_info.escrow_fund) == reward_pool
-                ) {
-                    reward_per_second = reward_per_second + reward_pool_info.reward_per_second;
-                };
-                i = i + 1;
-            };
-        };
 
-        reward_per_second
+    public fun get_reward_per_second(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.reward_per_second
     }
 
-    public fun get_user_rewrad(
-        storage: &mut Storage,
-        reward_pool: address,
-        dola_user_id: u64,
-        dola_pool_id: u16,
-        reward_action: u8
-    ): (u256, u256) {
-        let storage_id = storage::get_storage_id(storage);
+    public fun get_escrow_fund(
+        reward_pool_info: &RewardPoolInfo
+    ): &ID {
+        &reward_pool_info.escrow_fund
+    }
 
-        let unclaimed_balance = 0;
-        let claimed_balance = 0;
+    public fun get_reward_action(
+        reward_pool_info: &RewardPoolInfo
+    ): u8 {
+        reward_pool_info.reward_action
+    }
 
-        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
-            let i = 0;
-            while (i < vector::length(reward_pools)) {
-                let reward_pool_info = vector::borrow(reward_pools, i);
-                if (reward_action == reward_pool_info.reward_action
-                    && id_to_address(&reward_pool_info.escrow_fund) == reward_pool
-                ) {
-                    let user_reward = table::borrow<u64, UserRewardInfo>(
-                        &reward_pool_info.user_reward,
-                        dola_user_id
-                    );
-                    unclaimed_balance = unclaimed_balance + user_reward.unclaimed_balance;
-                    claimed_balance = claimed_balance + user_reward.claimed_balance;
-                };
-                i = i + 1;
-            };
-        };
-
-        (unclaimed_balance, claimed_balance)
+    public fun get_user_reward_info(
+        reward_pool_info: &RewardPoolInfo,
+        dola_user_id: u64
+    ): (u256, u256, u256) {
+        assert!(table::contains(&reward_pool_info.user_reward, dola_user_id), ENO_USER_REWARD_INFO);
+        let user_reward_info = table::borrow(&reward_pool_info.user_reward, dola_user_id);
+        (user_reward_info.unclaimed_balance, user_reward_info.claimed_balance, user_reward_info.last_update_reward_index)
     }
 
     /// Governance

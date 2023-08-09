@@ -9,9 +9,12 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use sui::clock::{Self, Clock};
+    use sui::dynamic_field;
     use sui::event::emit;
+    use sui::object::id_to_address;
 
     use dola_protocol::boost;
+    use dola_protocol::boost::RewardPoolInfo;
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::equilibrium_fee;
     use dola_protocol::lending_codec;
@@ -947,7 +950,70 @@ module external_interfaces::interfaces {
         })
     }
 
-    public entry fun get_user_total_allowed_borrow(
+    public fun get_reward_per_second(
+        storage: &mut Storage,
+        reward_pool: address,
+        dola_pool_id: u16,
+        reward_action: u8,
+    ): u256 {
+        let storage_id = storage::get_storage_id(storage);
+        let reward_per_second = 0;
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
+            let i = 0;
+            while (i < vector::length(reward_pools)) {
+                let reward_pool_info = vector::borrow(reward_pools, i);
+                let reward_pool_action = boost::get_reward_action(reward_pool_info);
+                let escrow_fund = boost::get_escrow_fund(reward_pool_info);
+                if (reward_action == reward_pool_action
+                    && id_to_address(escrow_fund) == reward_pool
+                ) {
+                    reward_per_second = reward_per_second + boost::get_reward_per_second(reward_pool_info);
+                };
+                i = i + 1;
+            };
+        };
+
+        reward_per_second
+    }
+
+    public fun get_user_rewrad(
+        storage: &mut Storage,
+        reward_pool: address,
+        dola_user_id: u64,
+        dola_pool_id: u16,
+        reward_action: u8
+    ): (u256, u256) {
+        let storage_id = storage::get_storage_id(storage);
+
+        let unclaimed_reward = 0;
+        let claimed_reward = 0;
+
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
+            let i = 0;
+            while (i < vector::length(reward_pools)) {
+                let reward_pool_info = vector::borrow(reward_pools, i);
+                let reward_pool_action = boost::get_reward_action(reward_pool_info);
+                let escrow_fund = boost::get_escrow_fund(reward_pool_info);
+                if (reward_action == reward_pool_action
+                    && id_to_address(escrow_fund) == reward_pool
+                ) {
+                    let (unclaimed_balance, claimed_balance, _) = boost::get_user_reward_info(
+                        reward_pool_info,
+                        dola_user_id
+                    );
+                    unclaimed_reward = unclaimed_reward + unclaimed_balance;
+                    claimed_reward = claimed_reward + claimed_balance;
+                };
+                i = i + 1;
+            };
+        };
+
+        (unclaimed_reward, claimed_reward)
+    }
+
+    public fun get_user_total_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -1018,7 +1084,7 @@ module external_interfaces::interfaces {
         while (i < vector::length(&dola_pool_ids)) {
             let dola_pool_id = *vector::borrow(&dola_pool_ids, i);
             let reward_pool = *vector::borrow(&reward_pool_id, i);
-            let (unclaimed_balance, claimed_balance) = boost::get_user_rewrad(
+            let (unclaimed_balance, claimed_balance) = get_user_rewrad(
                 storage,
                 reward_pool,
                 dola_user_id,
@@ -1043,7 +1109,7 @@ module external_interfaces::interfaces {
             };
             vector::push_back(&mut user_reward_infos, user_reward_info);
 
-            let (unclaimed_balance, claimed_balance) = boost::get_user_rewrad(
+            let (unclaimed_balance, claimed_balance) = get_user_rewrad(
                 storage,
                 reward_pool,
                 dola_user_id,
@@ -1089,7 +1155,7 @@ module external_interfaces::interfaces {
         reward_pool_id: u16,
         reward_action: u8
     ) {
-        let reward_per_second = boost::get_reward_per_second(storage, reward_pool, reward_pool_id, reward_action);
+        let reward_per_second = get_reward_per_second(storage, reward_pool, reward_pool_id, reward_action);
         let total_balance = 0;
         if (reward_action == lending_codec::get_supply_type()) {
             total_balance = lending_logic::total_otoken_supply(storage, reward_pool_id);
