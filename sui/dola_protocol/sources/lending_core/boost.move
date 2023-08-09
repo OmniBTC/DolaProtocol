@@ -195,18 +195,18 @@ module dola_protocol::boost {
         assert!(dynamic_field::exists_(storage_id, dola_pool_id), ENOT_REWARD_POOL);
         let reward_pools = dynamic_field::borrow_mut<u16, RewardPoolInfos>(storage_id, dola_pool_id);
         assert!(table::contains(&reward_pools.catalog, reward_pool_balance.associate_pool), ENOT_REWARD_POOL);
+        let cur_reward_pool_index = table::remove(&mut reward_pools.catalog, reward_pool_balance.associate_pool);
 
         let last_reward_pool_index = vector::length(&reward_pools.info) - 1;
-        let last_reward_pool = vector::borrow(&reward_pools.info, last_reward_pool_index);
-        let last_reward_pool_id = object::id(last_reward_pool);
-        let cur_reward_pool_index = *table::borrow(&reward_pools.catalog, reward_pool_balance.associate_pool);
+        if (cur_reward_pool_index != last_reward_pool_index)  {
+            let last_reward_pool = vector::borrow(&reward_pools.info, last_reward_pool_index);
+            let last_reward_pool_id = object::id(last_reward_pool);
+            table::remove(&mut reward_pools.catalog, last_reward_pool_id);
+            table::add(&mut reward_pools.catalog, last_reward_pool_id, cur_reward_pool_index);
+        };
 
         let reward_pool = vector::swap_remove(&mut reward_pools.info, cur_reward_pool_index);
         let remain_balance = destory_reward_pool(reward_pool, reward_pool_balance, ctx);
-
-        table::remove(&mut reward_pools.catalog, reward_pool_balance.associate_pool);
-        table::remove(&mut reward_pools.catalog, last_reward_pool_id);
-        table::add(&mut reward_pools.catalog, last_reward_pool_id, cur_reward_pool_index);
 
         remain_balance
     }
