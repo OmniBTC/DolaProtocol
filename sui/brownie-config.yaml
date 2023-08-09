@@ -76,7 +76,7 @@ networks:
         dola_pool_id: 0
         is_isolated_asset: false
         optimal_utilization: 0.45
-        supply_cap_ceiling: 5
+        supply_cap_ceiling: 50
         treasury: 0
         treasury_factor: 0.23
       ETH:
@@ -90,7 +90,7 @@ networks:
         dola_pool_id: 4
         is_isolated_asset: false
         optimal_utilization: 0.8
-        supply_cap_ceiling: 50
+        supply_cap_ceiling: 500
         treasury: 0
         treasury_factor: 0.23
       OP:
@@ -104,7 +104,7 @@ networks:
         dola_pool_id: 7
         is_isolated_asset: false
         optimal_utilization: 0.8
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
       ARB:
@@ -118,7 +118,7 @@ networks:
         dola_pool_id: 6
         is_isolated_asset: false
         optimal_utilization: 0.8
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
       MATIC:
@@ -132,7 +132,7 @@ networks:
         dola_pool_id: 5
         is_isolated_asset: false
         optimal_utilization: 0.75
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
       SUI:
@@ -146,7 +146,7 @@ networks:
         dola_pool_id: 3
         is_isolated_asset: false
         optimal_utilization: 0.8
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
       USDC:
@@ -160,7 +160,7 @@ networks:
         dola_pool_id: 2
         is_isolated_asset: false
         optimal_utilization: 0.9
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
       USDT:
@@ -174,7 +174,7 @@ networks:
         dola_pool_id: 1
         is_isolated_asset: false
         optimal_utilization: 0.8
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.05
       whUSDCeth:
@@ -188,7 +188,7 @@ networks:
         dola_pool_id: 2
         is_isolated_asset: false
         optimal_utilization: 0.9
-        supply_cap_ceiling: 100000
+        supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
     tokens:
