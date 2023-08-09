@@ -1,29 +1,31 @@
 module dola_protocol::boost {
-    use sui::balance::Balance;
-    use sui::object::{UID, ID};
-    use sui::table::Table;
-    use sui::coin::Coin;
-    use sui::tx_context::TxContext;
-    use sui::coin;
-    use sui::transfer;
-    use sui::object;
-    use sui::table;
-    use sui::tx_context;
-    use sui::balance;
-    use sui::clock::Clock;
-    use dola_protocol::lending_core_storage::Storage;
-    use dola_protocol::lending_core_storage as storage;
-    use dola_protocol::ray_math;
-    use dola_protocol::lending_codec;
-    use dola_protocol::genesis::{GovernanceGenesis, GovernanceCap};
-    use dola_protocol::genesis;
-    use dola_protocol::user_manager;
-    use dola_protocol::user_manager::UserManagerInfo;
-    use dola_protocol::dola_address;
-    use sui::dynamic_field;
     use std::vector;
 
+    use sui::balance;
+    use sui::balance::Balance;
+    use sui::clock::Clock;
+    use sui::coin;
+    use sui::coin::Coin;
+    use sui::dynamic_field;
+    use sui::object;
+    use sui::object::{ID, UID};
+    use sui::table;
+    use sui::table::Table;
+    use sui::transfer;
+    use sui::tx_context;
+    use sui::tx_context::TxContext;
+
+    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::lending_codec;
+    use dola_protocol::lending_core_storage as storage;
+    use dola_protocol::lending_core_storage::Storage;
+    use dola_protocol::merge_coins::merge_coin;
+    use dola_protocol::ray_math;
+
     friend dola_protocol::lending_logic;
+
+    #[test_only]
+    friend dola_protocol::logic_tests;
 
     /// Errors
 
@@ -39,6 +41,7 @@ module dola_protocol::boost {
 
     const ENOT_REWARD_POOL: u64 = 5;
 
+    const U64_MAX: u64 = 18446744073709551615;
 
     struct UserReward has store, drop {
         // Reward index when `acc_user_index` was last updated
@@ -145,7 +148,10 @@ module dola_protocol::boost {
         ctx: &mut TxContext
     ): PoolReward {
         assert!(end_time > start_time, EINVALID_TIME);
-        assert!(reward_action < 2, EINVALID_ACTION);
+        assert!(
+            reward_action == lending_codec::get_borrow_type() || reward_action == lending_codec::get_supply_type(),
+            EINVALID_ACTION
+        );
         let initial_balance = coin::value(&reward);
         let reward_per_second = ray_math::ray_div((initial_balance as u256), end_time - start_time);
         let pool_reward_uid = object::new(ctx);
@@ -182,11 +188,13 @@ module dola_protocol::boost {
         assert!(reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
         assert!(reward_pool_balance.associate_pool_reward == object::id(reward_pool), ENOT_ASSOCIATE_POOL);
         let user_reward = table::borrow_mut(&mut reward_pool.user_reward, dola_user_id);
-        let actual_user_reward = (ray_math::min(
+        let actual_user_reward = ray_math::min(
             user_reward.balance,
             (balance::value(&reward_pool_balance.balance) as u256)
-        ) as u64);
-        coin::from_balance(balance::split(&mut reward_pool_balance.balance, actual_user_reward), ctx)
+        );
+        user_reward.balance = user_reward.balance - actual_user_reward;
+
+        coin::from_balance(balance::split(&mut reward_pool_balance.balance, (actual_user_reward as u64)), ctx)
     }
 
     public(friend) fun destory_reward_pool<X>(
@@ -295,24 +303,20 @@ module dola_protocol::boost {
                     update_pool_reward(reward_pool, total_scaled_balance, clock);
                     update_user_reward(reward_pool, user_scaled_balance, dola_user_id);
                 };
+                i = i + 1;
             }
         }
     }
 
-    entry fun claim<X>(
+    public(friend) fun claim<X>(
         storage: &mut Storage,
-        genesis: &GovernanceGenesis,
-        user_manager_info: &UserManagerInfo,
         dola_pool_id: u16,
+        dola_user_id: u64,
         reward_action: u8,
         reward_pool_balance: &mut PoolRewardBalance<X>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {
-        genesis::check_latest_version(genesis);
-        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
-        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
-
+    ): Coin<X> {
         let total_scaled_balance = get_total_scaled_balance(
             storage,
             dola_pool_id,
@@ -326,6 +330,7 @@ module dola_protocol::boost {
         );
 
         let storage_id = storage::get_storage_id(storage);
+        let rewards = vector[];
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
             let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
             let i = 0;
@@ -337,9 +342,11 @@ module dola_protocol::boost {
                     update_pool_reward(reward_pool, total_scaled_balance, clock);
                     update_user_reward(reward_pool, user_scaled_balance, dola_user_id);
                     let reward = claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx);
-                    transfer::public_transfer(reward, tx_context::sender(ctx));
-                }
+                    vector::push_back(&mut rewards, reward);
+                };
+                i = i + 1;
             }
-        }
+        };
+        merge_coin<X>(rewards, U64_MAX, ctx)
     }
 }
