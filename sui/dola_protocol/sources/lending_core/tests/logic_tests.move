@@ -1154,6 +1154,62 @@ module dola_protocol::logic_tests {
 
             transfer::public_transfer(reward_0, creator);
             transfer::public_transfer(reward_1, creator);
+
+            clock::set_for_testing(&mut clock, duration * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 3 + 1, 106);
+            assert!(coin::value(&reward_1) == SUPPLY_REWARD / 4 / 3 * 2 + 1, 107);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            clock::set_for_testing(&mut clock, (duration + 1000) * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == 0, 108);
+            assert!(coin::value(&reward_1) == 0, 109);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
             test_scenario::return_shared(reward_balance);
             test_scenario::return_shared(pool_manager_info);
             test_scenario::return_shared(storage);
