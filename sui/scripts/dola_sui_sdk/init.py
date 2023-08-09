@@ -178,7 +178,7 @@ def get_reserve_proposal():
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     reserve_proposal = sui_project.network_config['packages']['reserve_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{reserve_proposal}" \
-           f"::genesis_proposal::Certificate>"
+           f"::reserve_proposal::Certificate>"
 
 
 def query_pool_relay_event(tx_digest, limit=10):
@@ -378,9 +378,7 @@ def build_vote_proposal_final_tx_block(genesis_proposal):
 def build_reserve_proposal_final_tx_block(reserve_proposal):
     return [[
         reserve_proposal.reserve_proposal.vote_proposal_final,
-        [
-            Argument("Input", U16(0))
-        ],
+        [Argument("Input", U16(0)), Argument("Input", U16(1))],
         []
     ]]
 
@@ -426,7 +424,7 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_treasury_factor,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 0), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 1)),
@@ -436,7 +434,7 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_borrow_rate_factors,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 1), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 2)),
@@ -449,11 +447,12 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_supply_cap_ceiling,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 2), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 6)),
-            ]
+            ],
+            []
         ]
     ]
 
@@ -916,10 +915,10 @@ def set_reserve_params():
             reserve_pool_id,
             reserve_treasury_factor,
             reserve_base_borrow_rate,
-            reserve_supply_cap_ceiling,
             reserve_borrow_rate_slope1,
             reserve_borrow_rate_slope2,
-            reserve_optimal_utilization
+            reserve_optimal_utilization,
+            reserve_supply_cap_ceiling,
         ]
         reserve_params.extend(reserve_param)
 
@@ -930,7 +929,7 @@ def set_reserve_params():
 
     vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, reserves_num)
+    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, reserves_num * 3)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + set_reserve_params_tx_blocks + finish_proposal_tx_block
@@ -1481,4 +1480,5 @@ def batch_init():
 
 if __name__ == '__main__':
     # batch_init()
-    register_new_reserve(reserve="whUSDCeth")
+    # register_new_reserve(reserve="whUSDCeth")
+    set_reserve_params()

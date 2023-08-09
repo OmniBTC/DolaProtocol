@@ -56,7 +56,7 @@ networks:
       external_interfaces: '0x69db6489e56174474b2da72687256cc0f08975b92fe687a0bc485fadfb82a698'
       genesis_proposal: '0xc95fe09ac1aa09b84fbf09fde3af85b9348cc12a83f0f3f414bf6bd3e0c7da9c'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
-      reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'
+      reserve_proposal: '0xb62cbf8e23b5c02bdb822f68e549d5c8abf609f0d477c8200197718f045d4741'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pools:
       SUI:
@@ -81,7 +81,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 6
+        dola_pool_id: 0
         is_isolated_asset: false
         optimal_utilization: 0.45
         supply_cap_ceiling: 50
@@ -95,7 +95,7 @@ networks:
         borrow_rate_slope2: 0.8
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
-        dola_pool_id: 0
+        dola_pool_id: 4
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 500
@@ -109,7 +109,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
-        dola_pool_id: 4
+        dola_pool_id: 7
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 1000000
@@ -123,7 +123,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 5
+        dola_pool_id: 6
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 1000000
@@ -137,7 +137,7 @@ networks:
         borrow_rate_slope2: 1
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 7
+        dola_pool_id: 5
         is_isolated_asset: false
         optimal_utilization: 0.75
         supply_cap_ceiling: 1000000
