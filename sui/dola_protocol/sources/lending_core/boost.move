@@ -111,11 +111,12 @@ module dola_protocol::boost {
         total_scaled_balance: u256,
         clock: &Clock,
     ) {
-        let current_timestamp = ray_math::min(storage::get_timestamp(clock), reward_pool.end_time);
+        let current_timestamp = ray_math::max(storage::get_timestamp(clock), reward_pool.start_time);
+        let current_timestamp = ray_math::min(current_timestamp, reward_pool.end_time);
 
         if (total_scaled_balance == 0) {
             reward_pool.reward_index = 0;
-        }else {
+        } else {
             reward_pool.reward_index = reward_pool.reward_index + reward_pool.reward_per_second * (current_timestamp - reward_pool.last_update_time) / total_scaled_balance
         };
 
@@ -251,21 +252,21 @@ module dola_protocol::boost {
 
     public fun remove_reward_pool<X>(
         _: &GovernanceCap,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
         storage: &mut Storage,
+        reward_pool_balance: &mut PoolRewardBalance<X>,
         dola_pool_id: u16,
-        reward_pool: address,
         ctx: &mut TxContext
     ): Coin<X> {
         let storage_id = storage::get_storage_id(storage);
         assert!(dynamic_field::exists_(storage_id, dola_pool_id), ENOT_REWARD_POOL);
+        let reward_pool = &reward_pool_balance.associate_pool_reward;
         let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
 
         let i = 0;
         let remain_balance: Coin<X> = coin::zero(ctx);
         let flag = false;
         while (i < vector::length(reward_pools)) {
-            if (reward_pool == object::id_to_address(&object::id(vector::borrow(reward_pools, i)))) {
+            if (reward_pool == &object::id(vector::borrow(reward_pools, i))) {
                 flag = true;
                 let reward_pool = vector::remove(reward_pools, i);
                 coin::join(&mut remain_balance, destory_reward_pool(reward_pool, reward_pool_balance, ctx));
