@@ -16,6 +16,8 @@ module dola_protocol::boost {
     use dola_protocol::ray_math;
     use dola_protocol::lending_codec;
 
+    friend dola_protocol::lending_logic;
+
     /// Errors
 
     const EINVALID_TIME: u64 = 0;
@@ -28,14 +30,14 @@ module dola_protocol::boost {
 
     const ENOT_ASSOCIATE_POOL: u64 = 4;
 
-    struct UserReward has store {
+    struct UserReward has store, drop {
         // Reward index when `acc_user_index` was last updated
         last_update_reward_index: u256,
         // The unclaimed reward balance
         balance: u256
     }
 
-    struct PoolReward has key {
+    struct PoolReward has key, store {
         id: UID,
         associate_pool_reward_balance: ID,
         owner: address,
@@ -65,8 +67,7 @@ module dola_protocol::boost {
         reward_action: u8,
         clock: &Clock,
     ) {
-        let current_timestamp = lending_core_storage::get_timestamp(clock);
-        assert!(current_timestamp >= reward_pool.last_update_time, EINVALID_TIME);
+        let current_timestamp = ray_math::min(lending_core_storage::get_timestamp(clock), reward_pool.end_time);
 
         let total_scaled_balance;
         if (reward_action == lending_codec::get_supply_type()) {
@@ -74,7 +75,7 @@ module dola_protocol::boost {
         }else if (reward_action == lending_codec::get_borrow_type()) {
             total_scaled_balance = lending_core_storage::get_dtoken_scaled_total_supply(storage, dola_pool_id);
         }else {
-            abort EINVALID_ACTION;
+            abort EINVALID_ACTION
         };
 
         if (total_scaled_balance == 0) {
@@ -99,7 +100,7 @@ module dola_protocol::boost {
         }else if (reward_action == lending_codec::get_borrow_type()) {
             user_scaled_balance = lending_core_storage::get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id);
         }else {
-            abort EINVALID_ACTION;
+            abort EINVALID_ACTION
         };
         if (!table::contains(&reward_pool.user_reward, dola_user_id)) {
             table::add(&mut reward_pool.user_reward, dola_user_id, UserReward {
@@ -120,7 +121,7 @@ module dola_protocol::boost {
         dola_pool_id: u16,
         reward_action: u8,
         ctx: &mut TxContext
-    ) {
+    ): PoolReward {
         assert!(end_time > start_time, EINVALID_TIME);
         assert!(reward_action < 2, EINVALID_ACTION);
         let initial_balance = coin::value(&reward);
@@ -129,7 +130,12 @@ module dola_protocol::boost {
         let associate_pool_reward = object::uid_to_inner(&pool_reward_uid);
         let pool_reward_balance_uid = object::new(ctx);
         let associate_pool_reward_balance = object::uid_to_inner(&pool_reward_balance_uid);
-        transfer::share_object(PoolReward {
+        transfer::share_object(PoolRewardBalance<X> {
+            id: pool_reward_balance_uid,
+            associate_pool_reward,
+            balance: coin::into_balance(reward)
+        });
+        PoolReward {
             id: pool_reward_uid,
             associate_pool_reward_balance,
             start_time,
@@ -142,12 +148,7 @@ module dola_protocol::boost {
             dola_pool_id,
             reward_action,
             owner: tx_context::sender(ctx)
-        });
-        transfer::share_object(PoolRewardBalance<X> {
-            id: pool_reward_balance_uid,
-            associate_pool_reward,
-            balance: coin::into_balance(reward)
-        });
+        }
     }
 
     public(friend) fun boost(
@@ -165,9 +166,10 @@ module dola_protocol::boost {
             reward_action = lending_codec::get_borrow_type()
         );
         assert!(dola_pool_id == reward_pool.dola_pool_id, EINVALID_POOL);
-        assert!(reward_action == reward_pool.reward_action, EINVALID_ACTION);
-        update_pool_reward(reward_pool, storage, dola_pool_id, reward_action, clock);
-        update_user_reward(reward_pool, storage, dola_pool_id, dola_user_id, reward_action);
+        if (reward_action == reward_pool.reward_action) {
+            update_pool_reward(reward_pool, storage, dola_pool_id, reward_action, clock);
+            update_user_reward(reward_pool, storage, dola_pool_id, dola_user_id, reward_action);
+        }
     }
 
     public(friend) fun claim_reward<X>(
@@ -184,5 +186,31 @@ module dola_protocol::boost {
             (balance::value(&reward_pool_balance.balance) as u256)
         ) as u64);
         coin::from_balance(balance::split(&mut reward_pool_balance.balance, actual_user_reward), ctx)
+    }
+
+    public(friend) fun destory_reward_pool<X>(
+        reward_pool: PoolReward,
+        reward_pool_balance: &mut PoolRewardBalance<X>,
+        ctx: &mut TxContext
+    ): Coin<X> {
+        assert!(reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
+        assert!(reward_pool_balance.associate_pool_reward == object::id(&reward_pool), ENOT_ASSOCIATE_POOL);
+        let PoolReward {
+            id,
+            associate_pool_reward_balance: _,
+            owner: _,
+            start_time: _,
+            end_time: _,
+            reward_index: _,
+            reward_action: _,
+            initial_balance: _,
+            dola_pool_id: _,
+            last_update_time: _,
+            reward_per_second: _,
+            user_reward,
+        } = reward_pool;
+        object::delete(id);
+        table::drop(user_reward);
+        coin::from_balance(balance::withdraw_all(&mut reward_pool_balance.balance), ctx)
     }
 }

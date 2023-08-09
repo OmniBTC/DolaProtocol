@@ -638,6 +638,10 @@ module dola_protocol::lending_core_storage {
         reserve.current_liquidity_rate = new_liquidity_rate;
     }
 
+    public(friend) fun get_storage_id(storage: &mut Storage): &mut UID {
+        &mut storage.id
+    }
+
     /// === Helper Functions ===
 
     public fun ensure_user_info_exist(

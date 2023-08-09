@@ -14,6 +14,13 @@ module dola_protocol::lending_logic {
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
     use dola_protocol::scaled_balance;
+    use sui::coin::Coin;
+    use sui::tx_context::TxContext;
+    use dola_protocol::boost;
+    use sui::dynamic_field;
+    use dola_protocol::boost::{PoolReward, PoolRewardBalance};
+    use sui::object;
+    use sui::coin;
 
     friend dola_protocol::lending_core_wormhole_adapter;
     friend dola_protocol::lending_portal;
@@ -64,6 +71,8 @@ module dola_protocol::lending_logic {
 
     const EREACH_SUPPLY_CEILING: u64 = 16;
 
+    const ENOT_REWARD_POOL: u64 = 17;
+
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
         user_id: u64,
@@ -74,6 +83,85 @@ module dola_protocol::lending_logic {
     }
 
     /// === Friend Functions ===
+
+    public fun create_reward_pool<X>(
+        _: &GovernanceCap,
+        storage: &mut Storage,
+        start_time: u256,
+        end_time: u256,
+        reward: Coin<X>,
+        dola_pool_id: u16,
+        reward_action: u8,
+        ctx: &mut TxContext
+    ) {
+        let reward_pool = boost::create_reward_pool(
+            start_time,
+            end_time,
+            reward,
+            dola_pool_id,
+            reward_action,
+            ctx
+        );
+        let storage_id = storage::get_storage_id(storage);
+        if (!dynamic_field::exists_(storage_id, dola_pool_id)) {
+            dynamic_field::add(storage_id, dola_pool_id, vector::empty<PoolReward>());
+        };
+        let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+        vector::push_back(reward_pools, reward_pool);
+    }
+
+    public fun remove_reward_pool<X>(
+        _: &GovernanceCap,
+        reward_pool_balance: &mut PoolRewardBalance<X>,
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        reward_pool: address,
+        ctx: &mut TxContext
+    ): Coin<X> {
+        let storage_id = storage::get_storage_id(storage);
+        assert!(dynamic_field::exists_(storage_id, dola_pool_id), ENOT_REWARD_POOL);
+        let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+
+        let i = 0;
+        let remain_balance: Coin<X> = coin::zero(ctx);
+        let flag = false;
+        while (i < vector::length(reward_pools)) {
+            if (reward_pool == object::id_to_address(&object::id(vector::borrow(reward_pools, i)))) {
+                flag = true;
+                let reward_pool = vector::remove(reward_pools, i);
+                coin::join(&mut remain_balance, boost::destory_reward_pool(reward_pool, reward_pool_balance, ctx));
+                break
+            };
+            i = i + 1;
+        };
+        assert!(flag, ENOT_REWARD_POOL);
+        remain_balance
+    }
+
+    fun boost_pool(
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        dola_user_id: u64,
+        lending_action: u8,
+        clock: &Clock
+    ) {
+        let storage_id = storage::get_storage_id(storage);
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+            let i = 0;
+            while (i < vector::length(reward_pools)) {
+                let reward_pool = vector::borrow_mut(reward_pools, i);
+                boost::boost(
+                    reward_pool,
+                    storage,
+                    dola_pool_id,
+                    dola_user_id,
+                    lending_action,
+                    clock
+                );
+            }
+        }
+    }
 
     public(friend) fun execute_liquidate(
         pool_manager_info: &PoolManagerInfo,
@@ -88,6 +176,7 @@ module dola_protocol::lending_logic {
         assert!(is_collateral(storage, violator, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
         assert!(is_collateral(storage, liquidator, loan), ENOT_COLLATERAL);
+        // todo! boost code?
 
         update_state(storage, clock, loan);
         update_state(storage, clock, collateral);
@@ -186,6 +275,7 @@ module dola_protocol::lending_logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
         assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
+        boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_supply_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         mint_otoken(storage, dola_user_id, dola_pool_id, supply_amount);
@@ -237,6 +327,7 @@ module dola_protocol::lending_logic {
         // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_withdraw_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
@@ -282,6 +373,7 @@ module dola_protocol::lending_logic {
         // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
+        boost_pool(storage, borrow_pool_id, dola_user_id, lending_codec::get_borrow_type(), clock);
 
         update_state(storage, clock, borrow_pool_id);
 
@@ -328,6 +420,7 @@ module dola_protocol::lending_logic {
     ) {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_repay_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);
