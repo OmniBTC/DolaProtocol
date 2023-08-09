@@ -63,6 +63,12 @@ networks:
         pool_address: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         pool_name: SUI
         pool_weight: 1
+      whUSDCeth:
+        dola_chain_id: 0
+        dola_pool_id: 8
+        pool_address: 5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
+        pool_name: whUSDCeth
+        pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
     reserves:
       BTC:
@@ -185,7 +191,7 @@ networks:
         borrow_rate_slope2: 0.6
         borrowable_in_isolation: true
         collateral_coefficient: 0.9
-        dola_pool_id: 2
+        dola_pool_id: 8
         is_isolated_asset: false
         optimal_utilization: 0.9
         supply_cap_ceiling: 1000000

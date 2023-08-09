@@ -786,6 +786,42 @@ def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, seque
     ]
 
 
+def register_new_pool(pool: str = "whUSDCeth"):
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    create_proposal()
+
+    pool_params = []
+
+    pool_address = sui_project.network_config['pools'][pool]['pool_address']
+    dola_chain_id = sui_project.network_config['pools'][pool]['dola_chain_id']
+    pool_name = sui_project.network_config['pools'][pool]['pool_name']
+    dola_pool_id = sui_project.network_config['pools'][pool]['dola_pool_id']
+    pool_weight = sui_project.network_config['pools'][pool]['pool_weight']
+    pool_params.extend([coin_type_to_vector(pool_address), dola_chain_id, coin_type_to_vector(pool_name),
+                        dola_pool_id, pool_weight])
+
+    basic_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        dola_protocol.pool_manager.PoolManagerInfo[-1],  # 2
+    ]
+
+    pool_num = len(pool_params) // 5
+    register_new_pool_tx_blocks = [
+        build_register_new_pool_tx_block(genesis_proposal, len(basic_params), i) for i in range(pool_num)
+    ]
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, pool_num)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + pool_params,
+        transactions=vote_proposal_final_tx_block + register_new_pool_tx_blocks + finish_proposal_tx_block
+    )
+
+
 def batch_execute_proposal():
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package()
