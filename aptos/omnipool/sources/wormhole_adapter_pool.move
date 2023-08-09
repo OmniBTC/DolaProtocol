@@ -29,9 +29,9 @@ module omnipool::wormhole_adapter_pool {
 
     /// Errors
 
-    const EINVALIE_DOLA_CONTRACT: u64 = 0;
+    const EINVALID_DOLA_CONTRACT: u64 = 0;
 
-    const EINVALIE_DOLA_CHAIN: u64 = 1;
+    const EINVALID_DOLA_CHAIN: u64 = 1;
 
     const EINVLIAD_SENDER: u64 = 2;
 
@@ -143,7 +143,7 @@ module omnipool::wormhole_adapter_pool {
         let payload = vaa::destroy(vaa);
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
         assert!(call_type == pool_codec::get_register_owner_type(), EINVALID_CALL_TYPE);
-        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALID_DOLA_CHAIN);
         dola_pool::register_owner(&pool_state.dola_contract, dola_contract);
     }
 
@@ -161,7 +161,7 @@ module omnipool::wormhole_adapter_pool {
         let payload = vaa::destroy(vaa);
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
         assert!(call_type == pool_codec::get_register_spender_type(), EINVALID_CALL_TYPE);
-        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALID_DOLA_CHAIN);
         dola_pool::register_spender(&pool_state.dola_contract, dola_contract);
     }
 
@@ -179,7 +179,7 @@ module omnipool::wormhole_adapter_pool {
         let payload = vaa::destroy(vaa);
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
         assert!(call_type == pool_codec::get_delete_owner_type(), EINVALID_CALL_TYPE);
-        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALID_DOLA_CHAIN);
         dola_pool::delete_owner(&pool_state.dola_contract, dola_contract);
     }
 
@@ -197,7 +197,7 @@ module omnipool::wormhole_adapter_pool {
         let payload = vaa::destroy(vaa);
         let (dola_chain_id, dola_contract, call_type) = pool_codec::decode_manage_pool_payload(payload);
         assert!(call_type == pool_codec::get_delete_spender_type(), EINVALID_CALL_TYPE);
-        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALIE_DOLA_CHAIN);
+        assert!(dola_chain_id == dola_address::get_native_dola_chain_id(), EINVALID_DOLA_CHAIN);
         dola_pool::delete_spender(&pool_state.dola_contract, dola_contract);
     }
 

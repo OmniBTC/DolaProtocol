@@ -91,7 +91,7 @@ contract WormholeAdapterPool {
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
             "INVALID CALL TYPE"
         );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        require(payload.dolaChainId == dolaChainId, "INVALID DOLA CHAIN");
         dolaPool.registerSpender(address(uint160(payload.dolaContract)));
     }
 
@@ -109,7 +109,7 @@ contract WormholeAdapterPool {
             payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
             "INVALID CALL TYPE"
         );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        require(payload.dolaChainId == dolaChainId, "INVALID DOLA CHAIN");
         dolaPool.deleteSpender(address(uint160(payload.dolaContract)));
     }
 
@@ -127,7 +127,7 @@ contract WormholeAdapterPool {
         require(payload.opcode == LibGovCodec.ADD_RELAYER_OPCODE);
         require(
             payload.relayer.dolaChainId == dolaChainId,
-            "INVALIE DOLA CHAIN"
+            "INVALID DOLA CHAIN"
         );
         address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
         require(!registeredRelayers[relayer], "RELAYER ALREADY REGISTERED");
@@ -149,7 +149,7 @@ contract WormholeAdapterPool {
         require(payload.opcode == LibGovCodec.REMOVE_RELAYER_OPCODE);
         require(
             payload.relayer.dolaChainId == dolaChainId,
-            "INVALIE DOLA CHAIN"
+            "INVALID DOLA CHAIN"
         );
         address relayer = LibDolaTypes.dolaAddressToAddress(payload.relayer);
 

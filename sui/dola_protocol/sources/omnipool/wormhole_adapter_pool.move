@@ -37,9 +37,9 @@ module dola_protocol::wormhole_adapter_pool {
 
     /// Errors
 
-    const EINVALIE_DOLA_CONTRACT: u64 = 0;
+    const EINVALID_DOLA_CONTRACT: u64 = 0;
 
-    const EINVALIE_DOLA_CHAIN: u64 = 1;
+    const EINVALID_DOLA_CHAIN: u64 = 1;
 
     const EINVLIAD_SENDER: u64 = 2;
 

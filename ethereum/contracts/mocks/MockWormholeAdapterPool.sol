@@ -84,7 +84,7 @@ contract MockWormholeAdapterPool {
             payload.poolCallType == LibPoolCodec.POOL_REGISTER_SPENDER,
             "INVALID CALL TYPE"
         );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        require(payload.dolaChainId == dolaChainId, "INVALID DOLA CHAIN");
         dolaPool.registerSpender(address(uint160(payload.dolaContract)));
     }
 
@@ -102,7 +102,7 @@ contract MockWormholeAdapterPool {
             payload.poolCallType == LibPoolCodec.POOL_DELETE_SPENDER,
             "INVALID CALL TYPE"
         );
-        require(payload.dolaChainId == dolaChainId, "INVALIE DOLA CHAIN");
+        require(payload.dolaChainId == dolaChainId, "INVALID DOLA CHAIN");
         dolaPool.deleteSpender(address(uint160(payload.dolaContract)));
     }
 
