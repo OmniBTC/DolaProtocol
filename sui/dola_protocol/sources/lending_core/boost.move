@@ -43,14 +43,14 @@ module dola_protocol::boost {
 
     const U64_MAX: u64 = 18446744073709551615;
 
-    struct UserReward has store, drop {
+    struct UserRewardInfo has store, drop {
         // Reward index when `acc_user_index` was last updated
         last_update_reward_index: u256,
         // The unclaimed reward balance
         balance: u256
     }
 
-    struct PoolReward has key, store {
+    struct RewardPoolInfo has key, store {
         id: UID,
         associate_pool_reward_balance: ID,
         owner: address,
@@ -64,10 +64,10 @@ module dola_protocol::boost {
         last_update_time: u256,
         // [math::ray]
         reward_per_second: u256,
-        user_reward: Table<u64, UserReward>,
+        user_reward: Table<u64, UserRewardInfo>,
     }
 
-    struct PoolRewardBalance<phantom X> has key {
+    struct RewardPool<phantom X> has key {
         id: UID,
         associate_pool_reward: ID,
         balance: Balance<X>
@@ -107,7 +107,7 @@ module dola_protocol::boost {
     }
 
     fun update_pool_reward(
-        reward_pool: &mut PoolReward,
+        reward_pool: &mut RewardPoolInfo,
         total_scaled_balance: u256,
         clock: &Clock,
     ) {
@@ -124,12 +124,12 @@ module dola_protocol::boost {
     }
 
     fun update_user_reward(
-        reward_pool: &mut PoolReward,
+        reward_pool: &mut RewardPoolInfo,
         user_scaled_balance: u256,
         dola_user_id: u64,
     ) {
         if (!table::contains(&reward_pool.user_reward, dola_user_id)) {
-            table::add(&mut reward_pool.user_reward, dola_user_id, UserReward {
+            table::add(&mut reward_pool.user_reward, dola_user_id, UserRewardInfo {
                 last_update_reward_index: 0,
                 balance: 0
             })
@@ -147,7 +147,7 @@ module dola_protocol::boost {
         dola_pool_id: u16,
         reward_action: u8,
         ctx: &mut TxContext
-    ): PoolReward {
+    ): RewardPoolInfo {
         assert!(end_time > start_time, EINVALID_TIME);
         assert!(
             reward_action == lending_codec::get_borrow_type() || reward_action == lending_codec::get_supply_type(),
@@ -159,12 +159,12 @@ module dola_protocol::boost {
         let associate_pool_reward = object::uid_to_inner(&pool_reward_uid);
         let pool_reward_balance_uid = object::new(ctx);
         let associate_pool_reward_balance = object::uid_to_inner(&pool_reward_balance_uid);
-        transfer::share_object(PoolRewardBalance<X> {
+        transfer::share_object(RewardPool<X> {
             id: pool_reward_balance_uid,
             associate_pool_reward,
             balance: coin::into_balance(reward)
         });
-        PoolReward {
+        RewardPoolInfo {
             id: pool_reward_uid,
             associate_pool_reward_balance,
             start_time,
@@ -181,8 +181,8 @@ module dola_protocol::boost {
     }
 
     public(friend) fun claim_reward<X>(
-        reward_pool: &mut PoolReward,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
+        reward_pool: &mut RewardPoolInfo,
+        reward_pool_balance: &mut RewardPool<X>,
         dola_user_id: u64,
         ctx: &mut TxContext
     ): Coin<X> {
@@ -199,13 +199,13 @@ module dola_protocol::boost {
     }
 
     public(friend) fun destory_reward_pool<X>(
-        reward_pool: PoolReward,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
+        reward_pool: RewardPoolInfo,
+        reward_pool_balance: &mut RewardPool<X>,
         ctx: &mut TxContext
     ): Coin<X> {
         assert!(reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
         assert!(reward_pool_balance.associate_pool_reward == object::id(&reward_pool), ENOT_ASSOCIATE_POOL);
-        let PoolReward {
+        let RewardPoolInfo {
             id,
             associate_pool_reward_balance: _,
             owner: _,
@@ -244,23 +244,23 @@ module dola_protocol::boost {
         );
         let storage_id = storage::get_storage_id(storage);
         if (!dynamic_field::exists_(storage_id, dola_pool_id)) {
-            dynamic_field::add(storage_id, dola_pool_id, vector::empty<PoolReward>());
+            dynamic_field::add(storage_id, dola_pool_id, vector::empty<RewardPoolInfo>());
         };
-        let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+        let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
         vector::push_back(reward_pools, reward_pool);
     }
 
     public fun remove_reward_pool<X>(
         _: &GovernanceCap,
         storage: &mut Storage,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
+        reward_pool_balance: &mut RewardPool<X>,
         dola_pool_id: u16,
         ctx: &mut TxContext
     ): Coin<X> {
         let storage_id = storage::get_storage_id(storage);
         assert!(dynamic_field::exists_(storage_id, dola_pool_id), ENOT_REWARD_POOL);
         let reward_pool = &reward_pool_balance.associate_pool_reward;
-        let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+        let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
 
         let i = 0;
         let remain_balance: Coin<X> = coin::zero(ctx);
@@ -295,7 +295,7 @@ module dola_protocol::boost {
         let user_scaled_balance = get_user_scaled_balance(storage, dola_pool_id, dola_user_id, reward_action);
         let storage_id = storage::get_storage_id(storage);
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
             let i = 0;
             while (i < vector::length(reward_pools)) {
                 let reward_pool = vector::borrow_mut(reward_pools, i);
@@ -314,7 +314,7 @@ module dola_protocol::boost {
         dola_pool_id: u16,
         dola_user_id: u64,
         reward_action: u8,
-        reward_pool_balance: &mut PoolRewardBalance<X>,
+        reward_pool_balance: &mut RewardPool<X>,
         clock: &Clock,
         ctx: &mut TxContext
     ): Coin<X> {
@@ -333,7 +333,7 @@ module dola_protocol::boost {
         let storage_id = storage::get_storage_id(storage);
         let rewards = vector[];
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<PoolReward>>(storage_id, dola_pool_id);
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
             let i = 0;
             while (i < vector::length(reward_pools)) {
                 let reward_pool = vector::borrow_mut(reward_pools, i);

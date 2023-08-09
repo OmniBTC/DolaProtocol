@@ -14,7 +14,7 @@ module dola_protocol::logic_tests {
 
     use dola_protocol::app_manager::{Self, TotalAppInfo};
     use dola_protocol::boost;
-    use dola_protocol::boost::PoolRewardBalance;
+    use dola_protocol::boost::RewardPool;
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::genesis;
     use dola_protocol::lending_codec;
@@ -1048,7 +1048,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let ctx = test_scenario::ctx(scenario);
             let clock = clock::create_for_testing(ctx);
 
@@ -1101,7 +1101,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             let ctx = test_scenario::ctx(scenario);
 
@@ -1267,7 +1267,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
             let clock = clock::create_for_testing(ctx);
@@ -1348,7 +1348,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
             let clock = clock::create_for_testing(ctx);
@@ -1416,7 +1416,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let cap = genesis::register_governance_cap_for_testing();
             let ctx = test_scenario::ctx(scenario);
             let clock = clock::create_for_testing(ctx);
@@ -1880,7 +1880,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let clock = clock::create_for_testing(test_scenario::ctx(scenario));
             let ctx = test_scenario::ctx(scenario);
 
@@ -1937,7 +1937,7 @@ module dola_protocol::logic_tests {
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let storage = test_scenario::take_shared<Storage>(scenario);
             let oracle = test_scenario::take_shared<PriceOracle>(scenario);
-            let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
             let clock = test_scenario::take_shared<Clock>(scenario);
             let ctx = test_scenario::ctx(scenario);
 
