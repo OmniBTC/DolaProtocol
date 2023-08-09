@@ -1099,31 +1099,6 @@ module external_interfaces::interfaces {
             };
             vector::push_back(&mut user_reward_infos, user_reward_info);
 
-            let (unclaimed_balance, claimed_balance) = get_user_rewrad(
-                storage,
-                reward_pool,
-                dola_user_id,
-                dola_pool_id,
-            );
-
-            let unclaimed_borrow_reward = logic::calculate_value(oracle, dola_pool_id, unclaimed_balance);
-            let claimed_borrow_reward = logic::calculate_value(oracle, dola_pool_id, claimed_balance);
-
-            total_reward = total_reward + unclaimed_borrow_reward + claimed_borrow_reward;
-            total_reward_value = total_reward_value + unclaimed_borrow_reward + claimed_borrow_reward;
-            total_unclaimed_reward = total_unclaimed_reward + unclaimed_balance;
-            total_unclaimed_reward_value = total_unclaimed_reward_value + unclaimed_borrow_reward;
-
-            let user_reward_info = UserRewardInfo {
-                dola_pool_id,
-                action: lending_codec::get_borrow_type(),
-                unclaimed_reward: unclaimed_balance,
-                unclaimed_reward_value: unclaimed_borrow_reward,
-                claimed_reward: claimed_balance,
-                claimed_reward_value: claimed_borrow_reward,
-            };
-            vector::push_back(&mut user_reward_infos, user_reward_info);
-
             i = i + 1;
         };
 
