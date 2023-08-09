@@ -101,20 +101,37 @@ def get_pool_liquidity(dola_chain_id, pool_address):
 
 
 def get_all_pool_liquidity(dola_pool_id):
-    '''
+    """
     public entry fun get_all_pool_liquidity(
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16
     )
     :return:
-    '''
+    """
     external_interfaces = load.external_interfaces_package()
-    pool_manager = load.pool_manager_package()
+    pool_manager = sui_project.network_config['objects']['PoolManagerInfo']
     result = external_interfaces.interfaces.get_all_pool_liquidity.simulate(
-        pool_manager.pool_manager.PoolManagerInfo[-1],
+        pool_manager,
         dola_pool_id,
     )
 
+    return result['events'][-1]['parsedJson']
+
+
+def get_all_reserve_info():
+    """
+
+    :return:
+    """
+    external_interfaces = load.external_interfaces_package()
+
+    pool_manager = sui_project.network_config['objects']['PoolManagerInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    result = external_interfaces.interfaces.get_all_reserve_info.inspect(
+        pool_manager,
+        lending_storage
+    )
+    pprint(result)
     return result['events'][-1]['parsedJson']
 
 
@@ -237,11 +254,12 @@ def get_user_lending_info(user):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    lending = load.lending_core_package()
-    oracle = load.oracle_package()
+
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
     result = external_interfaces.interfaces.get_user_lending_info.simulate(
-        lending.storage.Storage[-1],
-        oracle.oracle.PriceOracle[-1],
+        lending_storage,
+        price_oracle,
         user,
     )
 
@@ -290,7 +308,7 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
     lending_storage = sui_project.network_config['objects']['LendingStorage']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    result = external_interfaces.interfaces.get_user_allowed_borrow.simulate(
+    result = external_interfaces.interfaces.get_user_allowed_borrow.inspect(
         pool_manager_info,
         lending_storage,
         price_oracle,
@@ -299,6 +317,7 @@ def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
         dola_pool_id
     )
 
+    pprint(result)
     return result['events'][-1]['parsedJson']
 
 
@@ -380,5 +399,6 @@ if __name__ == "__main__":
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
-    # pprint(get_user_allowed_borrow(5, 1, 1))
-    pprint(get_user_total_allowed_borrow(1))
+    pprint(get_user_allowed_borrow(6, 1, 1))
+    # pprint(get_all_pool_liquidity(1))
+    # pprint(get_all_reserve_info())

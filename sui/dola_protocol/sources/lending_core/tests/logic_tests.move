@@ -6,12 +6,18 @@ module dola_protocol::logic_tests {
     use std::ascii;
 
     use sui::clock::{Self, Clock};
+    use sui::coin;
+    use sui::sui::SUI;
     use sui::test_scenario::{Self, Scenario};
+    use sui::transfer;
     use sui::tx_context::TxContext;
 
     use dola_protocol::app_manager::{Self, TotalAppInfo};
+    use dola_protocol::boost;
+    use dola_protocol::boost::RewardPool;
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::genesis;
+    use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
     use dola_protocol::lending_logic as logic;
     use dola_protocol::oracle::{Self, PriceOracle};
@@ -85,10 +91,27 @@ module dola_protocol::logic_tests {
     const ETH_BF: u256 = 1100000000000000000000000000;
 
     /// 4
-    const ISOLATE_POOL_ID: u16 = 4;
+    const SUI_POOL_ID: u16 = 4;
+
+    /// 0.9
+    const SUI_CF: u256 = 900000000000000000000000000;
+
+    /// 1.1
+    const SUI_BF: u256 = 1100000000000000000000000000;
+
+    /// 4
+    const ISOLATE_POOL_ID: u16 = 5;
 
     /// 0.7
     const ISOLATE_CF: u256 = 700000000000000000000000000;
+
+    const SUPPLY_REWARD: u64 = 20000;
+
+    const BORROW_REWARD: u64 = 40000;
+
+    const REWARD_START_TIME: u64 = 0;
+
+    const REWARD_END_TIME: u64 = 10000;
 
     public fun init_for_testing(ctx: &mut TxContext) {
         oracle::init_for_testing(ctx);
@@ -98,6 +121,13 @@ module dola_protocol::logic_tests {
 
     public fun init_oracle(oracle: &mut PriceOracle, clock: &Clock) {
         let cap = genesis::register_governance_cap_for_testing();
+
+        // set fresh price for testing
+        oracle::set_price_fresh_time(
+            &cap,
+            oracle,
+            100000
+        );
 
         // register btc oracle
         oracle::register_token_price(
@@ -139,6 +169,17 @@ module dola_protocol::logic_tests {
             x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
             ETH_POOL_ID,
             200000,
+            2,
+            clock
+        );
+
+        // register eth oracle
+        oracle::register_token_price(
+            &cap,
+            oracle,
+            x"44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e",
+            SUI_POOL_ID,
+            100,
             2,
             clock
         );
@@ -220,6 +261,19 @@ module dola_protocol::logic_tests {
             ctx
         );
         pool_manager::register_pool(&governance_cap, pool_manager_info, pool, ETH_POOL_ID);
+        pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
+
+        // register eth pool
+        let pool = dola_address::create_dola_address(0, b"SUI");
+        let pool_name = ascii::string(b"SUI");
+        pool_manager::register_pool_id(
+            &governance_cap,
+            pool_manager_info,
+            pool_name,
+            SUI_POOL_ID,
+            ctx
+        );
+        pool_manager::register_pool(&governance_cap, pool_manager_info, pool, SUI_POOL_ID);
         pool_manager::set_pool_weight(&governance_cap, pool_manager_info, pool, 1);
 
         // register isolated pool
@@ -323,6 +377,27 @@ module dola_protocol::logic_tests {
             ctx
         );
 
+        // register sui reserve
+        storage::register_new_reserve(
+            &cap,
+            storage,
+            clock,
+            SUI_POOL_ID,
+            false,
+            false,
+            666,
+            TREASURY_FACTOR,
+            0,
+            0,
+            SUI_CF,
+            SUI_BF,
+            BASE_BORROW_RATE,
+            BORROW_RATE_SLOPE1,
+            BORROW_RATE_SLOPE2,
+            OPTIMAL_UTILIZATION,
+            ctx
+        );
+
         // register isolated reserve
         storage::register_new_reserve(
             &cap,
@@ -345,6 +420,7 @@ module dola_protocol::logic_tests {
         );
         genesis::destroy(cap);
     }
+
 
     public fun init_test_scenario(creator: address): Scenario {
         let scenario_val = test_scenario::begin(creator);
@@ -386,7 +462,82 @@ module dola_protocol::logic_tests {
             test_scenario::return_shared(oracle);
             clock::destroy_for_testing(clock);
         };
+
         (scenario_val)
+    }
+
+    public fun init_supply_reward_pool(scenario: &mut Scenario, creator: address) {
+        test_scenario::next_tx(scenario, creator);
+        {
+            let cap = genesis::register_governance_cap_for_testing();
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+            let supply_reward = coin::mint_for_testing<SUI>(SUPPLY_REWARD, ctx);
+            boost::create_reward_pool(
+                &cap,
+                &mut storage,
+                (REWARD_START_TIME as u256),
+                (REWARD_END_TIME as u256),
+                supply_reward,
+                SUI_POOL_ID,
+                lending_codec::get_supply_type(),
+                ctx
+            );
+
+            test_scenario::return_shared(storage);
+            genesis::destroy(cap);
+        };
+    }
+
+    public fun init_supply_reward_pool_with_time(
+        scenario: &mut Scenario,
+        creator: address,
+        start_time: u64,
+        end_time: u64
+    ) {
+        test_scenario::next_tx(scenario, creator);
+        {
+            let cap = genesis::register_governance_cap_for_testing();
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+            let supply_reward = coin::mint_for_testing<SUI>(SUPPLY_REWARD, ctx);
+            boost::create_reward_pool(
+                &cap,
+                &mut storage,
+                (start_time as u256),
+                (end_time as u256),
+                supply_reward,
+                SUI_POOL_ID,
+                lending_codec::get_supply_type(),
+                ctx
+            );
+
+            test_scenario::return_shared(storage);
+            genesis::destroy(cap);
+        };
+    }
+
+    public fun init_borrow_reward_pool(scenario: &mut Scenario, creator: address) {
+        test_scenario::next_tx(scenario, creator);
+        {
+            let cap = genesis::register_governance_cap_for_testing();
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+            let borrow_reward = coin::mint_for_testing<SUI>(40000, ctx);
+            boost::create_reward_pool(
+                &cap,
+                &mut storage,
+                0,
+                10000,
+                borrow_reward,
+                SUI_POOL_ID,
+                lending_codec::get_borrow_type(),
+                ctx
+            );
+
+            test_scenario::return_shared(storage);
+            genesis::destroy(cap);
+        };
     }
 
     public fun supply_scenario(
@@ -880,6 +1031,537 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
+    public fun test_supply_with_reward() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        init_supply_reward_pool(scenario, creator);
+
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
+        let supply_pool_id = SUI_POOL_ID;
+        let supply_user_id_0 = 0;
+        let supply_amount_0 = ONE;
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+            let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0
+            );
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 4 * 1000);
+
+            let reward = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward) == SUPPLY_REWARD / 4, 101);
+
+            transfer::public_transfer(reward, creator);
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        let supply_user_id_1 = 1;
+        let supply_amount_1 = ONE;
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_1,
+                supply_pool_id,
+                supply_amount_1
+            );
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 2 * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 2, 102);
+            assert!(coin::value(&reward_0) == coin::value(&reward_1), 103);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            logic::execute_withdraw(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0 / 2
+            );
+
+            clock::set_for_testing(&mut clock, duration / 4 * 3 * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 3 + 1, 104);
+            assert!(coin::value(&reward_1) == SUPPLY_REWARD / 4 / 3 * 2 + 1, 105);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            clock::set_for_testing(&mut clock, duration * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 3 + 1, 106);
+            assert!(coin::value(&reward_1) == SUPPLY_REWARD / 4 / 3 * 2 + 1, 107);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            clock::set_for_testing(&mut clock, (duration + 1000) * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == 0, 108);
+            assert!(coin::value(&reward_1) == 0, 109);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_supply_with_multi_reward_pool() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        init_supply_reward_pool(scenario, creator);
+        init_supply_reward_pool(scenario, creator);
+
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
+        let supply_pool_id = SUI_POOL_ID;
+        let supply_user_id_0 = 0;
+        let supply_amount_0 = ONE;
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_pool_0 = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let reward_pool_1 = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+            let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0
+            );
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 4 * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_pool_0,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_pool_1,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4, 101);
+            assert!(coin::value(&reward_1) == SUPPLY_REWARD / 4, 102);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            test_scenario::return_shared(reward_pool_0);
+            test_scenario::return_shared(reward_pool_1);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_claim_supply_reward_before_start() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
+        let supply_pool_id = SUI_POOL_ID;
+        let supply_user_id_0 = 0;
+        let supply_amount_0 = ONE;
+
+        init_supply_reward_pool_with_time(scenario, creator, REWARD_END_TIME, REWARD_END_TIME * 2);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let cap = genesis::register_governance_cap_for_testing();
+            let ctx = test_scenario::ctx(scenario);
+            let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0
+            );
+
+            clock::set_for_testing(&mut clock, (REWARD_END_TIME / 2) * 1000);
+
+            let reward = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward) == 0, 101);
+
+            transfer::public_transfer(reward, creator);
+
+            let left_reward = boost::remove_reward_pool<SUI>(
+                &cap,
+                &mut storage,
+                &mut reward_balance,
+                SUI_POOL_ID,
+                ctx
+            );
+
+            assert!(coin::value(&left_reward) == SUPPLY_REWARD, 102);
+
+            transfer::public_transfer(left_reward, creator);
+
+            genesis::destroy(cap);
+
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_remove_supply_reward() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
+        let supply_pool_id = SUI_POOL_ID;
+        let supply_user_id_0 = 0;
+        let supply_amount_0 = ONE;
+
+        init_supply_reward_pool(scenario, creator);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let cap = genesis::register_governance_cap_for_testing();
+            let ctx = test_scenario::ctx(scenario);
+            let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0
+            );
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 2 * 1000);
+
+            let reward = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward) == SUPPLY_REWARD / 2, 101);
+
+            transfer::public_transfer(reward, creator);
+
+            let left_reward = boost::remove_reward_pool<SUI>(
+                &cap,
+                &mut storage,
+                &mut reward_balance,
+                SUI_POOL_ID,
+                ctx
+            );
+
+            assert!(coin::value(&left_reward) == SUPPLY_REWARD / 2, 102);
+
+            transfer::public_transfer(left_reward, creator);
+
+            genesis::destroy(cap);
+
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        init_supply_reward_pool(scenario, creator);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let cap = genesis::register_governance_cap_for_testing();
+            let ctx = test_scenario::ctx(scenario);
+            let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
+
+            logic::execute_supply(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0
+            );
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration * 1000);
+
+            let reward = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward) == SUPPLY_REWARD, 201);
+
+            transfer::public_transfer(reward, creator);
+
+            let left_reward = boost::remove_reward_pool<SUI>(
+                &cap,
+                &mut storage,
+                &mut reward_balance,
+                SUI_POOL_ID,
+                ctx
+            );
+
+            assert!(coin::value(&left_reward) == 0, 202);
+            coin::destroy_zero(left_reward);
+
+            genesis::destroy(cap);
+
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_supply_isolate_asset() {
         let creator = @0xA;
 
@@ -1251,6 +1933,155 @@ module dola_protocol::logic_tests {
 
         // User 0 borrow 5000 usdt
         borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
+    public fun test_borrow_with_reward() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+        init_borrow_reward_pool(scenario, creator);
+
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
+        let supply_sui_amount = 1000 * ONE;
+        let supply_user_id_0 = 0;
+        let supply_user_id_1 = 1;
+        let borrow_sui_amount = 100 * ONE;
+
+        // User 0 supply 10000 sui
+        supply_scenario(scenario, creator, sui_pool, SUI_POOL_ID, supply_user_id_0, supply_sui_amount);
+
+        // User 1 supply 10000 sui
+        supply_scenario(scenario, creator, sui_pool, BTC_POOL_ID, 1, supply_sui_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+            let ctx = test_scenario::ctx(scenario);
+
+            let before_user_debt = logic::user_loan_balance(&mut storage, supply_user_id_0, SUI_POOL_ID);
+
+            logic::execute_borrow(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                SUI_POOL_ID,
+                borrow_sui_amount
+            );
+
+            pool_manager::remove_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                borrow_sui_amount
+            );
+
+            // Check user dtoken
+            let after_user_debt = logic::user_loan_balance(&mut storage, supply_user_id_0, SUI_POOL_ID);
+            assert!(after_user_debt - before_user_debt == borrow_sui_amount, 301);
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 4 * 1000);
+
+            let reward = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_borrow_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward) == BORROW_REWARD / 4, 302);
+
+            transfer::public_transfer(reward, creator);
+
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::share_for_testing(clock);
+        };
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let reward_balance = test_scenario::take_shared<RewardPool<SUI>>(scenario);
+            let clock = test_scenario::take_shared<Clock>(scenario);
+            let ctx = test_scenario::ctx(scenario);
+
+            let before_user_debt = logic::user_loan_balance(&mut storage, supply_user_id_1, SUI_POOL_ID);
+
+            logic::execute_borrow(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_1,
+                SUI_POOL_ID,
+                borrow_sui_amount
+            );
+
+            pool_manager::remove_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                borrow_sui_amount
+            );
+
+            // Check user dtoken
+            let after_user_debt = logic::user_loan_balance(&mut storage, supply_user_id_1, SUI_POOL_ID);
+            assert!(after_user_debt - before_user_debt == borrow_sui_amount, 401);
+
+            let duration = REWARD_END_TIME - REWARD_START_TIME;
+
+            clock::set_for_testing(&mut clock, duration / 2 * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_borrow_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_borrow_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == BORROW_REWARD / 4 / 2, 402);
+            assert!(coin::value(&reward_1) == coin::value(&reward_0), 403);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            test_scenario::return_shared(reward_balance);
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            test_scenario::return_shared(clock);
+        };
 
         test_scenario::end(scenario_val);
     }

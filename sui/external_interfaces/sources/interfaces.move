@@ -9,12 +9,17 @@ module external_interfaces::interfaces {
     use std::vector;
 
     use sui::clock::{Self, Clock};
+    use sui::dynamic_field;
     use sui::event::emit;
+    use sui::object::id_to_address;
 
+    use dola_protocol::boost;
+    use dola_protocol::boost::{RewardPoolInfo, RewardPoolInfos};
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::equilibrium_fee;
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
+    use dola_protocol::lending_logic;
     use dola_protocol::lending_logic as logic;
     use dola_protocol::oracle::{Self, PriceOracle};
     use dola_protocol::pool_codec;
@@ -24,6 +29,7 @@ module external_interfaces::interfaces {
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole::vaa;
+    use sui::object;
 
     const HOUR: u64 = 60 * 60;
 
@@ -32,6 +38,8 @@ module external_interfaces::interfaces {
     const U256_MAX: u256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     const TARGET_HF: u256 = 1050000000000000000000000000;
+
+    const SECONDS_PER_YEAR: u256 = 31536000;
 
     struct TokenLiquidityInfo has copy, drop {
         dola_pool_id: u16,
@@ -186,7 +194,29 @@ module external_interfaces::interfaces {
     }
 
     struct FeedTokens has copy, drop {
-        dola_pool_ids: vector<u16>
+        feed_pool_ids: vector<u16>,
+        skip_pool_ids: vector<u16>,
+    }
+
+    struct RewardPoolApy has copy, drop {
+        apy: u256
+    }
+
+    struct UserTotalRewardInfo has copy, drop {
+        total_reward: u256,
+        total_reward_value: u256,
+        total_unclaimed_reward: u256,
+        total_unclaimed_reward_value: u256,
+        user_reward_infos: vector<UserRewardInfo>,
+    }
+
+    struct UserRewardInfo has copy, drop {
+        dola_pool_id: u16,
+        action: u8,
+        unclaimed_reward: u256,
+        unclaimed_reward_value: u256,
+        claimed_reward: u256,
+        claimed_reward_value: u256,
     }
 
     public entry fun get_dola_token_liquidity(pool_manager_info: &mut PoolManagerInfo, dola_pool_id: u16) {
@@ -249,24 +279,27 @@ module external_interfaces::interfaces {
         pool_manager_info: &mut PoolManagerInfo,
         dola_pool_id: u16
     ): vector<PoolLiquidityInfo> {
-        let pool_addresses = pool_manager::get_pools_by_id(pool_manager_info, dola_pool_id);
-        let length = vector::length(&pool_addresses);
-        let i = 0;
         let pool_infos = vector::empty<PoolLiquidityInfo>();
-        while (i < length) {
-            let pool_address = *vector::borrow(&pool_addresses, i);
-            let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
-            let pool_equilibrium_fee = pool_manager::get_pool_equilibrium_fee(pool_manager_info, pool_address);
-            let pool_weight = pool_manager::get_pool_weight(pool_manager_info, pool_address);
-            let pool_info = PoolLiquidityInfo {
-                pool_address,
-                pool_liquidity,
-                pool_equilibrium_fee,
-                pool_weight
+        if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            let pool_addresses = pool_manager::get_pools_by_id(pool_manager_info, dola_pool_id);
+            let length = vector::length(&pool_addresses);
+            let i = 0;
+            while (i < length) {
+                let pool_address = *vector::borrow(&pool_addresses, i);
+                let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+                let pool_equilibrium_fee = pool_manager::get_pool_equilibrium_fee(pool_manager_info, pool_address);
+                let pool_weight = pool_manager::get_pool_weight(pool_manager_info, pool_address);
+                let pool_info = PoolLiquidityInfo {
+                    pool_address,
+                    pool_liquidity,
+                    pool_equilibrium_fee,
+                    pool_weight
+                };
+                vector::push_back(&mut pool_infos, pool_info);
+                i = i + 1;
             };
-            vector::push_back(&mut pool_infos, pool_info);
-            i = i + 1;
         };
+
         pool_infos
     }
 
@@ -490,8 +523,21 @@ module external_interfaces::interfaces {
         dola_pool_id: u16
     ) {
         let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
-        let total_pool_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
+        let total_pool_weight = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id)
+        } else {
+            0
+        };
         let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
+        let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+            pool_manager::get_app_liquidity(
+                pool_manager_info,
+                dola_pool_id,
+                storage::get_app_id(storage)
+            )
+        }else {
+            0
+        };
         let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
         let borrow_rate = storage::get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / ray_math::ray();
@@ -499,7 +545,6 @@ module external_interfaces::interfaces {
         let supply_apy = liquidity_rate * 10000 / ray_math::ray();
         let supply = logic::total_otoken_supply(storage, dola_pool_id);
         let debt = logic::total_dtoken_supply(storage, dola_pool_id);
-        let reserve = pool_manager::get_app_liquidity(pool_manager_info, dola_pool_id, storage::get_app_id(storage));
         let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
         let isolate_debt_ceiling = storage::get_reserve_borrow_ceiling(storage, dola_pool_id);
         let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
@@ -540,7 +585,11 @@ module external_interfaces::interfaces {
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
             let pools = all_pool_liquidity(pool_manager_info, dola_pool_id);
-            let total_pool_weight = pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id);
+            let total_pool_weight = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+                pool_manager::get_pool_total_weight(pool_manager_info, dola_pool_id)
+            } else {
+                0
+            };
             let borrow_coefficient = storage::get_borrow_coefficient(storage, dola_pool_id);
             let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
             let borrow_rate = storage::get_borrow_rate(storage, dola_pool_id);
@@ -549,11 +598,15 @@ module external_interfaces::interfaces {
             let supply_apy = liquidity_rate * 10000 / ray_math::ray();
             let supply = logic::total_otoken_supply(storage, dola_pool_id);
             let debt = logic::total_dtoken_supply(storage, dola_pool_id);
-            let reserve = pool_manager::get_app_liquidity(
-                pool_manager_info,
-                dola_pool_id,
-                storage::get_app_id(storage)
-            );
+            let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
+                pool_manager::get_app_liquidity(
+                    pool_manager_info,
+                    dola_pool_id,
+                    storage::get_app_id(storage)
+                )
+            }else {
+                0
+            };
             let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
             let isolate_debt_ceiling = storage::get_reserve_borrow_ceiling(storage, dola_pool_id);
             let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
@@ -772,15 +825,16 @@ module external_interfaces::interfaces {
         is_liquidate: bool,
         is_cancel_collateral: bool,
         clock: &Clock
-    ): vector<u16> {
+    ): (vector<u16>, vector<u16>) {
         let vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
         let payload = vaa::take_payload(vaa);
-        let dola_pool_ids = vector[];
+        let feed_pool_ids = vector[];
+        let skip_pool_ids = vector[];
 
         if (is_withdraw) {
             let (user_address, _, _, app_payload) =
                 pool_codec::decode_send_message_payload(payload);
-            let (_, _, _, pool, _, _) = lending_codec::decode_withdraw_payload(
+            let (_, _, _, pool, _, call_type) = lending_codec::decode_withdraw_payload(
                 app_payload
             );
             let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
@@ -788,26 +842,33 @@ module external_interfaces::interfaces {
             let collaterals = storage::get_user_collaterals(storage, dola_user_id);
             let loans = storage::get_user_loans(storage, dola_user_id);
             if (!vector::contains(&loans, &dola_pool_id)) {
-                vector::push_back(&mut dola_pool_ids, dola_pool_id);
+                vector::push_back(&mut feed_pool_ids, dola_pool_id);
             };
 
-            if (vector::length(&loans) > 0) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+            if (vector::length(&loans) > 0 || call_type == lending_codec::get_borrow_type()) {
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             };
         };
 
         if (is_liquidate) {
-            let (_, _, _, _, _, app_payload) =
-                pool_codec::decode_deposit_payload(payload);
-            let (_, _, _, liquidate_user_id, _) = lending_codec::decode_liquidate_payload(
+            let (sender, _, _, app_payload) =
+                pool_codec::decode_send_message_payload(payload);
+            let (_, _, _, liquidate_user_id, _, _) = lending_codec::decode_liquidate_payload_v2(
                 app_payload
             );
+            let sender_dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+            let sender_collaterals = storage::get_user_collaterals(storage, sender_dola_user_id);
+            let sender_loans = storage::get_user_loans(storage, sender_dola_user_id);
+
+            vector::append(&mut feed_pool_ids, sender_collaterals);
+            vector::append(&mut feed_pool_ids, sender_loans);
+
             let collaterals = storage::get_user_collaterals(storage, liquidate_user_id);
             let loans = storage::get_user_loans(storage, liquidate_user_id);
 
-            vector::append(&mut dola_pool_ids, collaterals);
-            vector::append(&mut dola_pool_ids, loans);
+            vector::append(&mut feed_pool_ids, collaterals);
+            vector::append(&mut feed_pool_ids, loans);
         };
 
         if (is_cancel_collateral) {
@@ -818,27 +879,26 @@ module external_interfaces::interfaces {
             let loans = storage::get_user_loans(storage, dola_user_id);
 
             if (vector::length(&loans) > 0) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             };
         };
 
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
-        let (ok, index) = vector::index_of(&dola_pool_ids, &1);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdt_pool_id = 1;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdt_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdt_pool_id);
         };
-        let (ok, index) = vector::index_of(&dola_pool_ids, &2);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdc_pool_id = 2;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdc_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdc_pool_id);
         };
-        dola_pool_ids
+
+        (feed_pool_ids, skip_pool_ids)
     }
 
     public entry fun get_feed_tokens(
@@ -851,38 +911,39 @@ module external_interfaces::interfaces {
     ) {
         let collaterals = storage::get_user_collaterals(storage, dola_user_id);
         let loans = storage::get_user_loans(storage, dola_user_id);
-        let dola_pool_ids = vector[];
+        let feed_pool_ids = vector[];
+        let skip_pool_ids = vector[];
+
         if (is_borrow) {
             if (!vector::contains(&loans, &borrow_pool_id)) {
-                vector::push_back(&mut dola_pool_ids, borrow_pool_id)
+                vector::push_back(&mut feed_pool_ids, borrow_pool_id)
             };
-            vector::append(&mut dola_pool_ids, collaterals);
-            vector::append(&mut dola_pool_ids, loans);
+            vector::append(&mut feed_pool_ids, collaterals);
+            vector::append(&mut feed_pool_ids, loans);
         } else {
             if (vector::length(&loans) > 0) {
-                vector::append(&mut dola_pool_ids, collaterals);
-                vector::append(&mut dola_pool_ids, loans);
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
             }
         };
 
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
-        let (ok, index) = vector::index_of(&dola_pool_ids, &1);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 1);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdt_pool_id = 1;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdt_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdt_pool_id);
         };
-        let (ok, index) = vector::index_of(&dola_pool_ids, &2);
-        if (ok) {
-            let (_, _, timestamp) = oracle::get_token_price(price_oracle, 2);
-            if (current_timestamp - timestamp < HOUR - MINUATE) {
-                vector::remove(&mut dola_pool_ids, index);
-            }
+
+        let usdc_pool_id = 2;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdc_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdc_pool_id);
         };
 
         emit(FeedTokens {
-            dola_pool_ids
+            feed_pool_ids,
+            skip_pool_ids,
         })
     }
 
@@ -980,7 +1041,60 @@ module external_interfaces::interfaces {
         })
     }
 
-    public entry fun get_user_total_allowed_borrow(
+    public fun get_reward_per_second(
+        storage: &mut Storage,
+        reward_pool: address,
+        dola_pool_id: u16,
+        reward_action: u8,
+    ): u256 {
+        let storage_id = storage::get_storage_id(storage);
+        let reward_per_second = 0;
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
+            let i = 0;
+            while (i < vector::length(reward_pools)) {
+                let reward_pool_info = vector::borrow(reward_pools, i);
+                let reward_pool_action = boost::get_reward_action(reward_pool_info);
+                let escrow_fund = boost::get_escrow_fund(reward_pool_info);
+                if (reward_action == reward_pool_action
+                    && id_to_address(escrow_fund) == reward_pool
+                ) {
+                    reward_per_second = reward_per_second + boost::get_reward_per_second(reward_pool_info);
+                };
+                i = i + 1;
+            };
+        };
+
+        reward_per_second
+    }
+
+    public fun get_user_rewrad(
+        storage: &mut Storage,
+        reward_pool: address,
+        dola_user_id: u64,
+        dola_pool_id: u16
+    ): (u256, u256) {
+        let storage_id = storage::get_storage_id(storage);
+        let reward_pool = object::id_from_address(reward_pool);
+
+        let unclaimed_reward = 0;
+        let claimed_reward = 0;
+
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, RewardPoolInfos>(storage_id, dola_pool_id);
+            let reward_pool_info = boost::get_reward_pool(reward_pools, reward_pool);
+            let (unclaimed_balance, claimed_balance, _) = boost::get_user_reward_info(
+                reward_pool_info,
+                dola_user_id
+            );
+            unclaimed_reward = unclaimed_reward + unclaimed_balance;
+            claimed_reward = claimed_reward + claimed_balance;
+        };
+
+        (unclaimed_reward, claimed_reward)
+    }
+
+    public fun get_user_total_allowed_borrow(
         pool_manager_info: &mut PoolManagerInfo,
         storage: &mut Storage,
         oracle: &mut PriceOracle,
@@ -1032,5 +1146,82 @@ module external_interfaces::interfaces {
                 total_allowed_borrow: user_total_allowed_borrow
             }
         )
+    }
+
+    public entry fun get_user_total_reward_info(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_user_id: u64,
+        dola_pool_ids: vector<u16>,
+        reward_pool_id: vector<address>
+    ) {
+        let total_reward = 0;
+        let total_reward_value = 0;
+        let total_unclaimed_reward = 0;
+        let total_unclaimed_reward_value = 0;
+        let user_reward_infos = vector::empty<UserRewardInfo>();
+
+        let i = 0;
+        while (i < vector::length(&dola_pool_ids)) {
+            let dola_pool_id = *vector::borrow(&dola_pool_ids, i);
+            let reward_pool = *vector::borrow(&reward_pool_id, i);
+            let (unclaimed_balance, claimed_balance) = get_user_rewrad(
+                storage,
+                reward_pool,
+                dola_user_id,
+                dola_pool_id,
+            );
+            let unclaimed_supply_reward = logic::calculate_value(oracle, dola_pool_id, unclaimed_balance);
+            let claimed_supply_reward = logic::calculate_value(oracle, dola_pool_id, claimed_balance);
+
+            total_reward = total_reward + unclaimed_balance + claimed_balance;
+            total_reward_value = total_reward_value + unclaimed_supply_reward + claimed_supply_reward;
+            total_unclaimed_reward = total_unclaimed_reward + unclaimed_balance;
+            total_unclaimed_reward_value = total_unclaimed_reward_value + unclaimed_supply_reward;
+
+            let user_reward_info = UserRewardInfo {
+                dola_pool_id,
+                action: lending_codec::get_supply_type(),
+                unclaimed_reward: unclaimed_balance,
+                unclaimed_reward_value: unclaimed_supply_reward,
+                claimed_reward: claimed_balance,
+                claimed_reward_value: claimed_supply_reward,
+            };
+            vector::push_back(&mut user_reward_infos, user_reward_info);
+
+            i = i + 1;
+        };
+
+        emit(
+            UserTotalRewardInfo {
+                total_reward,
+                total_reward_value,
+                total_unclaimed_reward,
+                total_unclaimed_reward_value,
+                user_reward_infos,
+            }
+        )
+    }
+
+    public entry fun get_reward_pool_apy(
+        storage: &mut Storage,
+        reward_pool: address,
+        reward_pool_id: u16,
+        reward_action: u8
+    ) {
+        let reward_per_second = get_reward_per_second(storage, reward_pool, reward_pool_id, reward_action);
+        let total_balance = 0;
+        if (reward_action == lending_codec::get_supply_type()) {
+            total_balance = lending_logic::total_otoken_supply(storage, reward_pool_id);
+        };
+        if (reward_action == lending_codec::get_borrow_type()) {
+            total_balance = lending_logic::total_dtoken_supply(storage, reward_pool_id);
+        };
+
+        let year_reward = reward_per_second * SECONDS_PER_YEAR;
+        let apy = ray_math::ray_div(year_reward, total_balance) * 10000 / ray_math::ray();
+        emit(RewardPoolApy {
+            apy
+        })
     }
 }

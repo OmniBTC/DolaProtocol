@@ -14,6 +14,7 @@ module dola_protocol::lending_logic {
     use dola_protocol::rates;
     use dola_protocol::ray_math as math;
     use dola_protocol::scaled_balance;
+    use dola_protocol::boost;
 
     friend dola_protocol::lending_core_wormhole_adapter;
     friend dola_protocol::lending_portal;
@@ -63,6 +64,8 @@ module dola_protocol::lending_logic {
     const EIS_LOAN: u64 = 15;
 
     const EREACH_SUPPLY_CEILING: u64 = 16;
+
+    const ENOT_REWARD_POOL: u64 = 17;
 
     /// Lending core execute event
     struct LendingCoreExecuteEvent has drop, copy {
@@ -186,6 +189,7 @@ module dola_protocol::lending_logic {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
         assert!(not_reach_supply_ceiling(storage, dola_pool_id, supply_amount), EREACH_SUPPLY_CEILING);
+        boost::boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_supply_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         mint_otoken(storage, dola_user_id, dola_pool_id, supply_amount);
@@ -237,6 +241,7 @@ module dola_protocol::lending_logic {
         // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        boost::boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_withdraw_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         let otoken_amount = user_collateral_balance(storage, dola_user_id, dola_pool_id);
@@ -282,6 +287,7 @@ module dola_protocol::lending_logic {
         // Check user info exist
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, borrow_pool_id), EINVALID_POOL_ID);
+        boost::boost_pool(storage, borrow_pool_id, dola_user_id, lending_codec::get_borrow_type(), clock);
 
         update_state(storage, clock, borrow_pool_id);
 
@@ -328,6 +334,7 @@ module dola_protocol::lending_logic {
     ) {
         storage::ensure_user_info_exist(storage, clock, dola_user_id);
         assert!(storage::exist_reserve(storage, dola_pool_id), EINVALID_POOL_ID);
+        boost::boost_pool(storage, dola_pool_id, dola_user_id, lending_codec::get_repay_type(), clock);
 
         update_state(storage, clock, dola_pool_id);
         let debt = user_loan_balance(storage, dola_user_id, dola_pool_id);

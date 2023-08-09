@@ -47,7 +47,7 @@ def sui_package(package_id: str = None, package_path: Union[Path, str] = None):
 
 def dola_protocol_package(package_id: str = None):
     if package_id is None:
-        package_id: str = sui_project.network_config['packages']['dola_protocol']
+        package_id: str = sui_project.network_config['packages']['dola_protocol']['latest']
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol"))
 
 

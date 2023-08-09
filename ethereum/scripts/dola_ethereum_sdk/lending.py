@@ -1,8 +1,6 @@
 from brownie import Contract, network
 
-import dola_ethereum_sdk.load as load
-from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network
-from dola_ethereum_sdk.init import usdt
+from dola_ethereum_sdk import get_account, DOLA_CONFIG, set_ethereum_network, load, init
 
 
 def portal_binding(bind_address, dola_chain_id=5, fee=0):
@@ -155,7 +153,7 @@ def pool_withdraw(vaa):
     wormhole_adapter_pool.receiveWithdraw(vaa, {'from': account})
 
 
-def portal_borrow(token, amount, dst_chain=1, receiver=None):
+def portal_borrow(token, amount, dst_chain=1, receiver=None, relay_fee=0):
     """
     function borrow(
         bytes memory token,
@@ -166,32 +164,42 @@ def portal_borrow(token, amount, dst_chain=1, receiver=None):
     :return:
     """
     account = get_account()
+    if receiver is None:
+        receiver = account.address
+
     lending_portal = load.lending_portal_package(network.show_active())
     lending_portal.borrow(
         str(token),
         str(receiver),
         dst_chain,
         int(amount),
-        {'from': account}
+        int(relay_fee),
+        {'from': account, 'value': int(relay_fee)}
     )
 
 
-def portal_repay(token, amount):
+def portal_repay(token, amount, relay_fee=0):
     """
     function repay(address token, uint256 amount)
 
     :return:
     """
     account = get_account()
-    lending_portal = load.lending_portal_package()
+    lending_portal = load.lending_portal_package(network.show_active())
 
-    token = Contract.from_abi(
-        "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+    if "test" in network.show_active():
+        token = Contract.from_abi(
+            "MockToken", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"].abi)
+        token.mint(account.address, amount, {'from': account})
+    else:
+        token = Contract.from_abi(
+            "ERC20", token, DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
     token.approve(lending_portal.address, amount, {'from': account})
     lending_portal.repay(
         token,
         int(amount),
-        {'from': account}
+        relay_fee,
+        {'from': account, 'value': relay_fee}
     )
 
 
@@ -230,15 +238,15 @@ def get_account_balance():
 
 
 def main():
-    portal_supply(usdt()['address'], 0.1 * 1e6)
+    portal_supply(init.usdc()['address'], 1000 * 1e18, 520860657513348)
     # portal_cancel_as_collateral([1, 2])
-    # portal_withdraw(usdt()['address'], 0.1 * 1e8, 23, relay_fee=int(1e14))
+    # portal_withdraw(init.usdt()['address'], 3000 * 1e8, 6, relay_fee=3609491324739440)
     # portal_binding(
-    #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, fee=int(1e14))
-    # monitor_borrow(usdt_pool(), 1000, receiver=get_account().address)
-    # monitor_repay(usdt_pool())
+    #     "0x29b710abd287961d02352a5e34ec5886c63aa5df87a209b2acbdd7c9282e6566", 0, 468422798598415)
+    # portal_borrow(init.usdc()['address'], 98390311310, 6, relay_fee=3693305517931413)
+    # portal_repay(init.usdt()['address'], 1000 * 1e18, 520860657513348)
 
 
 if __name__ == "__main__":
-    set_ethereum_network("polygon-main")
+    set_ethereum_network("avax-test")
     main()

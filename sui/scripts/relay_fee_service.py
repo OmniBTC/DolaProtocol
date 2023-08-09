@@ -9,6 +9,9 @@ import relayer
 app = Flask(__name__)
 CORS(app)
 
+dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+relayer.init_markets()
+
 
 @app.route('/unrelay_txs/<src_chain_id>/<call_name>')
 @app.route('/unrelay_txs/<src_chain_id>/<call_name>/<limit>')
@@ -33,6 +36,4 @@ def max_relay_fee(src_chain_id, dst_chain_id, call_name):
 
 
 if __name__ == '__main__':
-    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-
     app.run(host='::', port=5000)
