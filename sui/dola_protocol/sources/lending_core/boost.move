@@ -15,6 +15,11 @@ module dola_protocol::boost {
     use dola_protocol::lending_core_storage;
     use dola_protocol::ray_math;
     use dola_protocol::lending_codec;
+    use dola_protocol::genesis::GovernanceGenesis;
+    use dola_protocol::genesis;
+    use dola_protocol::user_manager;
+    use dola_protocol::user_manager::UserManagerInfo;
+    use dola_protocol::dola_address;
 
     friend dola_protocol::lending_logic;
 
@@ -212,5 +217,19 @@ module dola_protocol::boost {
         object::delete(id);
         table::drop(user_reward);
         coin::from_balance(balance::withdraw_all(&mut reward_pool_balance.balance), ctx)
+    }
+
+    entry fun claim<X>(
+        genesis: &GovernanceGenesis,
+        user_manager_info: &UserManagerInfo,
+        reward_pool: &mut PoolReward,
+        reward_pool_balance: &mut PoolRewardBalance<X>,
+        ctx: &mut TxContext
+    ) {
+        genesis::check_latest_version(genesis);
+        let user_address = dola_address::convert_address_to_dola(tx_context::sender(ctx));
+        let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+        let reward = claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx);
+        transfer::public_transfer(reward, tx_context::sender(ctx));
     }
 }

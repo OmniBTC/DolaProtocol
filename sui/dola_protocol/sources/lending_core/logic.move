@@ -176,7 +176,6 @@ module dola_protocol::lending_logic {
         assert!(is_collateral(storage, violator, collateral), ENOT_COLLATERAL);
         assert!(is_loan(storage, violator, loan), ENOT_LOAN);
         assert!(is_collateral(storage, liquidator, loan), ENOT_COLLATERAL);
-        // todo! boost code?
 
         update_state(storage, clock, loan);
         update_state(storage, clock, collateral);
