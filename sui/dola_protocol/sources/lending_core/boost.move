@@ -12,17 +12,20 @@ module dola_protocol::boost {
     use sui::table;
     use sui::table::Table;
     use sui::transfer;
-    use sui::tx_context;
     use sui::tx_context::TxContext;
 
     use dola_protocol::genesis::GovernanceCap;
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage as storage;
     use dola_protocol::lending_core_storage::Storage;
-    use dola_protocol::merge_coins::merge_coin;
     use dola_protocol::ray_math;
+    use std::ascii::String;
+    use sui::event;
+    use std::type_name;
+    use sui::tx_context;
 
     friend dola_protocol::lending_logic;
+    friend dola_protocol::lending_portal_v2;
 
     #[test_only]
     friend dola_protocol::logic_tests;
@@ -41,8 +44,6 @@ module dola_protocol::boost {
 
     const ENOT_REWARD_POOL: u64 = 5;
 
-    const U64_MAX: u64 = 18446744073709551615;
-
     struct UserRewardInfo has store, drop {
         // Reward index when `acc_user_index` was last updated
         last_update_reward_index: u256,
@@ -52,25 +53,62 @@ module dola_protocol::boost {
 
     struct RewardPoolInfo has key, store {
         id: UID,
-        associate_pool_reward_balance: ID,
-        owner: address,
+        // Escrow fund object [PoolRewardBalance]
+        escrow_fund: ID,
+        // Start time
         start_time: u256,
+        // End time
         end_time: u256,
-        // [math::ray]
+        // Pool reward index [math::ray]
         reward_index: u256,
+        // Pool reward action [supply|borrow]
         reward_action: u8,
-        initial_balance: u64,
+        // Total reward
+        total_reward: u64,
+        // The pool id that needs to be rewarded
         dola_pool_id: u16,
+        // Last update time
         last_update_time: u256,
-        // [math::ray]
+        // Number of rewards per second [math::ray]
         reward_per_second: u256,
+        // User reward record
         user_reward: Table<u64, UserRewardInfo>,
     }
 
     struct RewardPool<phantom X> has key {
         id: UID,
-        associate_pool_reward: ID,
+        // Associate pool reward [PoolReward]
+        associate_pool: ID,
+        // Escrow fund
         balance: Balance<X>
+    }
+
+    /// Event
+
+    struct UpdatePoolRewardEvent has drop, copy {
+        dola_pool_id: u16,
+        old_timestamp: u256,
+        new_timestamp: u256,
+        old_reward_index: u256,
+        new_reward_index: u256
+    }
+
+    struct UpdateUserRewardEvent has drop, copy {
+        dola_pool_id: u16,
+        dola_user_id: u64,
+        old_balance: u256,
+        new_balance: u256,
+        old_reward_index: u256,
+        new_reward_index: u256
+    }
+
+    struct ClaimRewardEvent has drop, copy {
+        token: String,
+        dola_pool_id: u16,
+        dola_user_id: u64,
+        reward_action: u8,
+        amount: u64,
+        sender: address
     }
 
     fun get_total_scaled_balance(
@@ -114,6 +152,8 @@ module dola_protocol::boost {
         let current_timestamp = ray_math::max(storage::get_timestamp(clock), reward_pool.start_time);
         let current_timestamp = ray_math::min(current_timestamp, reward_pool.end_time);
 
+        let old_timestamp = reward_pool.last_update_time;
+        let old_reward_index = reward_pool.reward_index;
         if (total_scaled_balance == 0) {
             reward_pool.reward_index = 0;
         } else {
@@ -121,6 +161,16 @@ module dola_protocol::boost {
         };
 
         reward_pool.last_update_time = current_timestamp;
+
+        event::emit(
+            UpdatePoolRewardEvent {
+                dola_pool_id: reward_pool.dola_pool_id,
+                old_timestamp,
+                new_timestamp: reward_pool.last_update_time,
+                old_reward_index,
+                new_reward_index: reward_pool.reward_index
+            }
+        );
     }
 
     fun update_user_reward(
@@ -136,8 +186,21 @@ module dola_protocol::boost {
         };
         let user_reward = table::borrow_mut(&mut reward_pool.user_reward, dola_user_id);
         let delta_index = reward_pool.reward_index - user_reward.last_update_reward_index;
+        let old_balance = user_reward.balance;
+        let old_reward_index = user_reward.last_update_reward_index;
         user_reward.balance = user_reward.balance + ray_math::ray_mul(delta_index, user_scaled_balance);
         user_reward.last_update_reward_index = reward_pool.reward_index;
+
+        event::emit(
+            UpdateUserRewardEvent {
+                dola_pool_id: reward_pool.dola_pool_id,
+                dola_user_id,
+                old_balance,
+                new_balance: user_reward.balance,
+                old_reward_index,
+                new_reward_index: user_reward.last_update_reward_index
+            }
+        );
     }
 
     fun create_reward_pool_inner<X>(
@@ -153,30 +216,29 @@ module dola_protocol::boost {
             reward_action == lending_codec::get_borrow_type() || reward_action == lending_codec::get_supply_type(),
             EINVALID_ACTION
         );
-        let initial_balance = coin::value(&reward);
-        let reward_per_second = ray_math::ray_div((initial_balance as u256), end_time - start_time);
+        let total_reward = coin::value(&reward);
+        let reward_per_second = ray_math::ray_div((total_reward as u256), end_time - start_time);
         let pool_reward_uid = object::new(ctx);
-        let associate_pool_reward = object::uid_to_inner(&pool_reward_uid);
+        let associate_pool = object::uid_to_inner(&pool_reward_uid);
         let pool_reward_balance_uid = object::new(ctx);
-        let associate_pool_reward_balance = object::uid_to_inner(&pool_reward_balance_uid);
+        let escrow_fund = object::uid_to_inner(&pool_reward_balance_uid);
         transfer::share_object(RewardPool<X> {
             id: pool_reward_balance_uid,
-            associate_pool_reward,
+            associate_pool,
             balance: coin::into_balance(reward)
         });
         RewardPoolInfo {
             id: pool_reward_uid,
-            associate_pool_reward_balance,
+            escrow_fund,
             start_time,
             end_time,
             last_update_time: start_time,
-            initial_balance,
+            total_reward,
             reward_index: 0,
             reward_per_second,
             user_reward: table::new(ctx),
             dola_pool_id,
-            reward_action,
-            owner: tx_context::sender(ctx)
+            reward_action
         }
     }
 
@@ -186,14 +248,26 @@ module dola_protocol::boost {
         dola_user_id: u64,
         ctx: &mut TxContext
     ): Coin<X> {
-        assert!(reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
-        assert!(reward_pool_balance.associate_pool_reward == object::id(reward_pool), ENOT_ASSOCIATE_POOL);
+        assert!(reward_pool.escrow_fund == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
+        assert!(reward_pool_balance.associate_pool == object::id(reward_pool), ENOT_ASSOCIATE_POOL);
         let user_reward = table::borrow_mut(&mut reward_pool.user_reward, dola_user_id);
         let actual_user_reward = ray_math::min(
             user_reward.balance,
             (balance::value(&reward_pool_balance.balance) as u256)
         );
+        let old_balance = user_reward.balance;
         user_reward.balance = user_reward.balance - actual_user_reward;
+
+        event::emit(
+            UpdateUserRewardEvent {
+                dola_pool_id: reward_pool.dola_pool_id,
+                dola_user_id,
+                old_balance,
+                new_balance: user_reward.balance,
+                old_reward_index: user_reward.last_update_reward_index,
+                new_reward_index: user_reward.last_update_reward_index
+            }
+        );
 
         coin::from_balance(balance::split(&mut reward_pool_balance.balance, (actual_user_reward as u64)), ctx)
     }
@@ -203,17 +277,16 @@ module dola_protocol::boost {
         reward_pool_balance: &mut RewardPool<X>,
         ctx: &mut TxContext
     ): Coin<X> {
-        assert!(reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
-        assert!(reward_pool_balance.associate_pool_reward == object::id(&reward_pool), ENOT_ASSOCIATE_POOL);
+        assert!(reward_pool.escrow_fund == object::id(reward_pool_balance), ENOT_ASSOCIATE_POOL);
+        assert!(reward_pool_balance.associate_pool == object::id(&reward_pool), ENOT_ASSOCIATE_POOL);
         let RewardPoolInfo {
             id,
-            associate_pool_reward_balance: _,
-            owner: _,
+            escrow_fund: _,
             start_time: _,
             end_time: _,
             reward_index: _,
             reward_action: _,
-            initial_balance: _,
+            total_reward: _,
             dola_pool_id: _,
             last_update_time: _,
             reward_per_second: _,
@@ -259,7 +332,7 @@ module dola_protocol::boost {
     ): Coin<X> {
         let storage_id = storage::get_storage_id(storage);
         assert!(dynamic_field::exists_(storage_id, dola_pool_id), ENOT_REWARD_POOL);
-        let reward_pool = &reward_pool_balance.associate_pool_reward;
+        let reward_pool = &reward_pool_balance.associate_pool;
         let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
 
         let i = 0;
@@ -331,23 +404,31 @@ module dola_protocol::boost {
         );
 
         let storage_id = storage::get_storage_id(storage);
-        let rewards = vector[];
+        let reward = coin::zero<X>(ctx);
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
             let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
             let i = 0;
             while (i < vector::length(reward_pools)) {
                 let reward_pool = vector::borrow_mut(reward_pools, i);
-                if (reward_pool.dola_pool_id == dola_pool_id && reward_pool.reward_action == reward_action &&
-                    reward_pool.associate_pool_reward_balance == object::id(reward_pool_balance)
-                ) {
+                if (reward_pool.escrow_fund == object::id(reward_pool_balance)) {
                     update_pool_reward(reward_pool, total_scaled_balance, clock);
                     update_user_reward(reward_pool, user_scaled_balance, dola_user_id);
-                    let reward = claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx);
-                    vector::push_back(&mut rewards, reward);
+                    coin::join(&mut reward, claim_reward(reward_pool, reward_pool_balance, dola_user_id, ctx));
                 };
                 i = i + 1;
             }
         };
-        merge_coin<X>(rewards, U64_MAX, ctx)
+
+        event::emit(
+            ClaimRewardEvent {
+                token: type_name::into_string(type_name::get<X>()),
+                dola_pool_id,
+                dola_user_id,
+                reward_action,
+                amount: coin::value(&reward),
+                sender: tx_context::sender(ctx)
+            }
+        );
+        reward
     }
 }
