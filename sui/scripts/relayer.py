@@ -1055,21 +1055,30 @@ def main():
 
     pt = ProcessExecutor(executor=17)
 
+    sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
+    polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
+    optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
+    arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
+
     pt.run([
+        # One monitoring pool balance per chain
         functools.partial(dola_monitor.sui_pool_monitor, logger.getChild("[sui_pool_monitor]"),
-                          all_pools[config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']], q),
+                          all_pools[sui_dola_chain_id], q),
         functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[polygon_pool_monitor]"),
-                          config.NET_TO_DOLA_CHAIN_ID['polygon-main'],
-                          all_pools[config.NET_TO_DOLA_CHAIN_ID['polygon-main']], q),
+                          polygon_dola_chain_id,
+                          all_pools[polygon_dola_chain_id], q),
         functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[optimism_pool_monitor]"),
-                          config.NET_TO_DOLA_CHAIN_ID['arbitrum-main'],
-                          all_pools[config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']], q),
+                          optimism_dola_chain_id,
+                          all_pools[optimism_dola_chain_id], q),
         functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
-                          config.NET_TO_DOLA_CHAIN_ID['optimism-main'],
-                          all_pools[config.NET_TO_DOLA_CHAIN_ID['optimism-main']], q),
+                          arbitrum_dola_chain_id,
+                          all_pools[arbitrum_dola_chain_id], q),
+        # Protocol health monitoring
         functools.partial(dola_monitor.dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
+        # Two core executor
         functools.partial(sui_core_executor, "Relayer1", 2, 0),
         functools.partial(sui_core_executor, "Relayer2", 2, 1),
+        # User transaction watcher
         functools.partial(sui_portal_watcher, health),
         functools.partial(eth_portal_watcher, health, "polygon-main"),
         functools.partial(wormhole_vaa_guardian, "polygon-main"),
@@ -1077,7 +1086,9 @@ def main():
         functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
         functools.partial(eth_portal_watcher, health, "optimism-main"),
         functools.partial(wormhole_vaa_guardian, "optimism-main"),
+        # User withdraw watcher
         functools.partial(pool_withdraw_watcher, health),
+        # User withdraw executor
         functools.partial(sui_pool_executor, "Relayer3"),
         eth_pool_executor,
     ])
