@@ -1010,6 +1010,7 @@ module dola_protocol::logic_tests {
         let scenario = &mut scenario_val;
         init_supply_reward_pool(scenario, creator);
 
+        let sui_pool = dola_address::create_dola_address(0, b"SUI");
         let supply_pool_id = SUI_POOL_ID;
         let supply_user_id_0 = 0;
         let supply_amount_0 = ONE;
@@ -1022,6 +1023,13 @@ module dola_protocol::logic_tests {
             let reward_balance = test_scenario::take_shared<PoolRewardBalance<SUI>>(scenario);
             let ctx = test_scenario::ctx(scenario);
             let clock = clock::create_for_testing(ctx);
+
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                sui_pool,
+                LENDING_APP_ID,
+                supply_amount_0,
+            );
 
             logic::execute_supply(
                 &mut pool_manager_info,
@@ -1105,6 +1113,44 @@ module dola_protocol::logic_tests {
 
             assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 2, 102);
             assert!(coin::value(&reward_0) == coin::value(&reward_1), 103);
+
+            transfer::public_transfer(reward_0, creator);
+            transfer::public_transfer(reward_1, creator);
+
+            logic::execute_withdraw(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                supply_user_id_0,
+                supply_pool_id,
+                supply_amount_0 / 2
+            );
+
+            clock::set_for_testing(&mut clock, duration / 4 * 3 * 1000);
+
+            let reward_0 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_0,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            let reward_1 = boost::claim<SUI>(
+                &mut storage,
+                SUI_POOL_ID,
+                supply_user_id_1,
+                lending_codec::get_supply_type(),
+                &mut reward_balance,
+                &clock,
+                ctx
+            );
+
+            assert!(coin::value(&reward_0) == SUPPLY_REWARD / 4 / 3 + 1, 104);
+            assert!(coin::value(&reward_1) == SUPPLY_REWARD / 4 / 3 * 2 + 1, 105);
 
             transfer::public_transfer(reward_0, creator);
             transfer::public_transfer(reward_1, creator);
