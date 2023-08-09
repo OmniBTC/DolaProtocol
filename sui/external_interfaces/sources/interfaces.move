@@ -14,7 +14,7 @@ module external_interfaces::interfaces {
     use sui::object::id_to_address;
 
     use dola_protocol::boost;
-    use dola_protocol::boost::RewardPoolInfo;
+    use dola_protocol::boost::{RewardPoolInfo, RewardPoolInfos};
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::equilibrium_fee;
     use dola_protocol::lending_codec;
@@ -29,6 +29,7 @@ module external_interfaces::interfaces {
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole::vaa;
+    use sui::object;
 
     const HOUR: u64 = 60 * 60;
 
@@ -981,33 +982,23 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         reward_pool: address,
         dola_user_id: u64,
-        dola_pool_id: u16,
-        reward_action: u8
+        dola_pool_id: u16
     ): (u256, u256) {
         let storage_id = storage::get_storage_id(storage);
+        let reward_pool = object::id_from_address(reward_pool);
 
         let unclaimed_reward = 0;
         let claimed_reward = 0;
 
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
-            let i = 0;
-            while (i < vector::length(reward_pools)) {
-                let reward_pool_info = vector::borrow(reward_pools, i);
-                let reward_pool_action = boost::get_reward_action(reward_pool_info);
-                let escrow_fund = boost::get_escrow_fund(reward_pool_info);
-                if (reward_action == reward_pool_action
-                    && id_to_address(escrow_fund) == reward_pool
-                ) {
-                    let (unclaimed_balance, claimed_balance, _) = boost::get_user_reward_info(
-                        reward_pool_info,
-                        dola_user_id
-                    );
-                    unclaimed_reward = unclaimed_reward + unclaimed_balance;
-                    claimed_reward = claimed_reward + claimed_balance;
-                };
-                i = i + 1;
-            };
+            let reward_pools = dynamic_field::borrow_mut<u16, RewardPoolInfos>(storage_id, dola_pool_id);
+            let reward_pool_info = boost::get_reward_pool(reward_pools, reward_pool);
+            let (unclaimed_balance, claimed_balance, _) = boost::get_user_reward_info(
+                reward_pool_info,
+                dola_user_id
+            );
+            unclaimed_reward = unclaimed_reward + unclaimed_balance;
+            claimed_reward = claimed_reward + claimed_balance;
         };
 
         (unclaimed_reward, claimed_reward)
@@ -1089,7 +1080,6 @@ module external_interfaces::interfaces {
                 reward_pool,
                 dola_user_id,
                 dola_pool_id,
-                lending_codec::get_supply_type()
             );
             let unclaimed_supply_reward = logic::calculate_value(oracle, dola_pool_id, unclaimed_balance);
             let claimed_supply_reward = logic::calculate_value(oracle, dola_pool_id, claimed_balance);
@@ -1114,7 +1104,6 @@ module external_interfaces::interfaces {
                 reward_pool,
                 dola_user_id,
                 dola_pool_id,
-                lending_codec::get_borrow_type()
             );
 
             let unclaimed_borrow_reward = logic::calculate_value(oracle, dola_pool_id, unclaimed_balance);

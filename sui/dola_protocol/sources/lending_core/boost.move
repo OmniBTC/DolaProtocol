@@ -151,6 +151,14 @@ module dola_protocol::boost {
         (user_reward_info.unclaimed_balance, user_reward_info.claimed_balance, user_reward_info.last_update_reward_index)
     }
 
+    public fun get_reward_pool(
+        reward_pools: &RewardPoolInfos,
+        reward_pool_id: ID
+    ): &RewardPoolInfo {
+        let reward_pool_index = *table::borrow(&reward_pools.catalog, reward_pool_id);
+        vector::borrow(&reward_pools.info, reward_pool_index)
+    }
+
     /// Governance
 
     public fun create_reward_pool<X>(
@@ -198,7 +206,7 @@ module dola_protocol::boost {
         let cur_reward_pool_index = table::remove(&mut reward_pools.catalog, reward_pool_balance.associate_pool);
 
         let last_reward_pool_index = vector::length(&reward_pools.info) - 1;
-        if (cur_reward_pool_index != last_reward_pool_index)  {
+        if (cur_reward_pool_index != last_reward_pool_index) {
             let last_reward_pool = vector::borrow(&reward_pools.info, last_reward_pool_index);
             let last_reward_pool_id = object::id(last_reward_pool);
             table::remove(&mut reward_pools.catalog, last_reward_pool_id);
