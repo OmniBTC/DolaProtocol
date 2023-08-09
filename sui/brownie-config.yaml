@@ -53,7 +53,7 @@ networks:
       dola_protocol:
         origin: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
         latest: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
-      external_interfaces: '0xc167b39fdfc8764cfb08952cb919f51a4646e672018488cc6a8b982755cf94f4'
+      external_interfaces: '0x69db6489e56174474b2da72687256cc0f08975b92fe687a0bc485fadfb82a698'
       genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'

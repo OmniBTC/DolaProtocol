@@ -10,10 +10,13 @@ module dola_protocol::oracle {
 
     use sui::clock::{Self, Clock};
     use sui::coin::Coin;
+    use sui::dynamic_field;
+    use sui::event;
     use sui::object::{Self, UID};
     use sui::sui::SUI;
     use sui::table::{Self, Table};
     use sui::transfer;
+    use sui::tx_context;
     use sui::tx_context::TxContext;
 
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
@@ -40,6 +43,17 @@ module dola_protocol::oracle {
 
     const EWRONG_FEED_TOKEN: u64 = 4;
 
+    const EDUPLICATED_RELAYER: u64 = 5;
+
+    const ENOT_RELAYER: u64 = 6;
+
+    const ERELAYER_NOT_INIT: u64 = 7;
+
+    const ERELAYER_NOT_EXIST: u64 = 8;
+
+
+    const DEPRECATED: u64 = 0;
+
     struct PriceOracle has key {
         id: UID,
         // price guard period
@@ -58,6 +72,19 @@ module dola_protocol::oracle {
         decimal: u8,
         // last update timestamp
         last_update_timestamp: u64
+    }
+
+    /// Only certain users are allowed to act as Relayer
+    struct Relayer has copy, drop, store {}
+
+    /// Event for add relayer
+    struct AddRelayer has drop, copy {
+        new_relayer: address
+    }
+
+    /// Event for remove relayer
+    struct RemoveRelayer has drop, copy {
+        removed_relayer: address
     }
 
     fun init(ctx: &mut TxContext) {
@@ -82,6 +109,41 @@ module dola_protocol::oracle {
     }
 
     /// === Governance Functions ===
+
+    public fun add_relayer(
+        _: &GovernanceCap,
+        price_oracle: &mut PriceOracle,
+        relayer: address
+    ) {
+        if (dynamic_field::exists_with_type<Relayer, vector<address>>(&mut price_oracle.id, Relayer {})) {
+            let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut price_oracle.id, Relayer {});
+            assert!(!vector::contains(relayers, &relayer), EDUPLICATED_RELAYER);
+            vector::push_back(relayers, relayer);
+        } else {
+            dynamic_field::add<Relayer, vector<address>>(&mut price_oracle.id, Relayer {}, vector[relayer]);
+        };
+        event::emit(AddRelayer {
+            new_relayer: relayer
+        });
+    }
+
+    public fun remove_relayer(
+        _: &GovernanceCap,
+        price_oracle: &mut PriceOracle,
+        relayer: address
+    ) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut price_oracle.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow_mut<Relayer, vector<address>>(&mut price_oracle.id, Relayer {});
+        assert!(vector::contains(relayers, &relayer), ERELAYER_NOT_EXIST);
+        let (_, index) = vector::index_of(relayers, &relayer);
+        vector::remove(relayers, index);
+        event::emit(RemoveRelayer {
+            removed_relayer: relayer
+        });
+    }
 
     public fun set_price_guard_time(
         _: &GovernanceCap,
@@ -168,7 +230,7 @@ module dola_protocol::oracle {
 
     /// === Entry Functions ===
 
-    public fun feed_token_price_by_pyth(
+    entry fun feed_token_price_by_pyth_v2(
         genesis: &GovernanceGenesis,
         wormhole_state: &mut WormholeState,
         pyth_state: &mut PythState,
@@ -177,10 +239,14 @@ module dola_protocol::oracle {
         dola_pool_id: u16,
         vaa: vector<u8>,
         clock: &Clock,
-        fee: Coin<SUI>
+        fee: Coin<SUI>,
+        ctx: &mut TxContext,
     ) {
         // Check current protocol version
         genesis::check_latest_version(genesis);
+
+        // Check valid oracle relayer
+        check_relayer(price_oracle, ctx);
 
         // Check feed token is correct
         assert!(table::contains(&price_oracle.price_identifiers, dola_pool_id), ENONEXISTENT_ORACLE);
@@ -209,6 +275,31 @@ module dola_protocol::oracle {
         price.value = (price_value as u256);
         price.decimal = (expo as u8);
         price.last_update_timestamp = current_timestamp;
+    }
+
+    public fun feed_token_price_by_pyth(
+        _genesis: &GovernanceGenesis,
+        _wormhole_state: &mut WormholeState,
+        _pyth_state: &mut PythState,
+        _price_info_object: &mut PriceInfoObject,
+        _price_oracle: &mut PriceOracle,
+        _dola_pool_id: u16,
+        _vaa: vector<u8>,
+        _clock: &Clock,
+        _fee: Coin<SUI>
+    ) {
+        abort DEPRECATED
+    }
+
+    /// === Internal Functions ===
+
+    fun check_relayer(price_oracle: &mut PriceOracle, ctx: &mut TxContext) {
+        assert!(
+            dynamic_field::exists_with_type<Relayer, vector<address>>(&mut price_oracle.id, Relayer {}),
+            ERELAYER_NOT_INIT
+        );
+        let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut price_oracle.id, Relayer {});
+        assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
     }
 
     #[test_only]
