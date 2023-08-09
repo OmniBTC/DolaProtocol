@@ -143,6 +143,46 @@ networks:
   avax-test:
     wormhole: '0x7bbcE28e64B3F8b84d876Ab298393c38ad7aac4C'
     wormhole_chainid: 6
+    core_emitter: '0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0'
+    lending_portal: '0x18928c95bA9f91a3ad814a7C2DFdCF03f1725a36'
+    system_portal: '0x7628C9886Dba014c6DB310fa9f32CA520174473B'
+    dola_pool: '0xcADD60D3DCF8146c57Df0F8b672696F84E1EEc8e'
+    graphql_url: https://api.studio.thegraph.com/query/48530/fujidola/version/latest
+    pools:
+      USDC:
+        dola_chain_id: 6
+        dola_pool_id: 2
+        pool_address: '0x92682ce0591b788767dCF2997df74Ac50C0b50CD'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 6
+        dola_pool_id: 1
+        pool_address: '0x966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 6
+        dola_pool_id: 0
+        pool_address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
+        pool_name: WBTC
+        pool_weight: 1
+    tokens:
+      USDC:
+        address: '0x92682ce0591b788767dCF2997df74Ac50C0b50CD'
+        decimals: 18
+        dola_pool_id: 2
+      USDT:
+        address: '0x966CCd1ae8b81c7fEB27ffF65c630D9F8cFfBf28'
+        decimals: 18
+        dola_pool_id: 1
+      WBTC:
+        address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
+        decimals: 18
+        dola_pool_id: 0
+    wormhole_adapter_pool: '0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec'
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 200
   bsc-test:
     btc: '0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5'
     lending_portal: '0x3bDCd3dE2FAaEed58Ae5E9FD5e7c92Bfa938B5d0'
@@ -217,17 +257,58 @@ networks:
     wormhole_instant_consistency: 200
     wormhole_finality_consistency: 200
   polygon-test:
-    core_emitter: '0x9031f04d97adacea16a923f20b9348738a496fb98f9649b93f68406bafb2437e'
-    lending_portal: '0x56Cf618fC2FB892b74C5850B391F381423d667b7'
+    core_emitter: '0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0'
+    lending_portal: '0x1aDA087B6c051C77003966d669D1149d0c2dEE5F'
     scan_rpc_url: https://api-testnet.polygonscan.com/api
-    system_portal: '0x6812cB17A4d1FE33535a551dB270b3b92fe2B95C'
-    usdc: '0x2A66Cf335a4cDd0D3b3904254520556C9894A266'
-    usdt: '0x8Ad2188372a9321b5cfb1fC0AC0BbA75772424c6'
-    wbtc: '0xE0332679Baf5d55Da6dbcF8199322F111c7005D8'
+    system_portal: '0x2c0E6c7F14014F9D5D89F12DaB5c2Ea6eEfc481b'
+    graphql_url: https://api.studio.thegraph.com/query/48530/mumbaidola/version/latest
+    pools:
+      MATIC:
+        dola_chain_id: 5
+        dola_pool_id: 5
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: MATIC
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 5
+        dola_pool_id: 2
+        pool_address: '0x2A66Cf335a4cDd0D3b3904254520556C9894A266'
+        pool_name: USDC
+        pool_weight: 1
+      USDT:
+        dola_chain_id: 5
+        dola_pool_id: 1
+        pool_address: '0x8Ad2188372a9321b5cfb1fC0AC0BbA75772424c6'
+        pool_name: USDT
+        pool_weight: 1
+      WBTC:
+        dola_chain_id: 5
+        dola_pool_id: 0
+        pool_address: '0xE0332679Baf5d55Da6dbcF8199322F111c7005D8'
+        pool_name: WBTC
+        pool_weight: 1
+    tokens:
+      MATIC:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 5
+      USDC:
+        address: '0x2A66Cf335a4cDd0D3b3904254520556C9894A266'
+        decimals: 18
+        dola_pool_id: 2
+      USDT:
+        address: '0x8Ad2188372a9321b5cfb1fC0AC0BbA75772424c6'
+        decimals: 18
+        dola_pool_id: 1
+      WBTC:
+        address: '0xE0332679Baf5d55Da6dbcF8199322F111c7005D8'
+        decimals: 18
+        dola_pool_id: 0
     wormhole: '0x0CBE91CF822c73C2315FB05100C2F714765d5c20'
-    wormhole_adapter_pool: '0xE5230B6bA30Ca157988271DC1F3da25Da544Dd3c'
+    wormhole_adapter_pool: '0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7'
     wormhole_chainid: 5
-    wormhole_finality: 200
+    wormhole_instant_consistency: 200
+    wormhole_finality_consistency: 200
   polygon-zk-test:
     btc: '0x9895bcd049eE00560599b1458fC2436793E3E011'
     lending_portal: '0x4e7AE7De13Db1587EA9B6C306299f66c3991D57e'
