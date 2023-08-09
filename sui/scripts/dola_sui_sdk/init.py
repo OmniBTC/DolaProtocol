@@ -461,7 +461,6 @@ def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, seque
     return [
         genesis_proposal.genesis_proposal.register_new_reserve,
         [Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
-         Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
          Argument("Input", U16(basic_param_num - 2)),
          Argument("Input", U16(basic_param_num - 1)),
          Argument("Input", U16(basic_param_num + 13 * sequence + 0)),
@@ -1480,4 +1479,5 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
+    # batch_init()
+    register_new_reserve()

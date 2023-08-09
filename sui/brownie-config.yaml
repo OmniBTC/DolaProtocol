@@ -13,7 +13,7 @@ networks:
     node_url: http://127.0.0.1:9000
   sui-mainnet:
     dola_chain_id: 0
-    node_url: https://fullnode.mainnet.sui.io:443
+    node_url: https://api.shinami.com:443/node/v1/sui_mainnet_de3f17a71e69f9730b692d39a74a6e0e
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       CoreState: '0xffee67f1fc55a72caab7d150abef55625ac6420ca43c5798f5d52db31fb800a7'
