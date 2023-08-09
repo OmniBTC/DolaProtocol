@@ -36,14 +36,23 @@ def deploy_upgrade_proposal():
     )
 
 
-def deploy_migrate_proposal():
+def deploy_migrate_proposal(version):
     upgrade_proposal_template_package = sui_brownie.SuiPackage(
-        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal")
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            f"proposals/migrate_version_proposal/migrate_{version.lower()}")
     )
 
     upgrade_proposal_template_package.program_publish_package(
-        replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']),
-        replace_publish_at=dict(dola_protocol=get_latest_dola_protocol())
+        replace_address=dict(
+            dola_protocol=sui_project.network_config['packages']['dola_protocol']["origin"],
+            wormhole=sui_project.network_config['packages']['wormhole'],
+            pyth=sui_project.network_config['packages']['pyth']
+        ),
+        replace_publish_at=dict(
+            dola_protocol=get_latest_dola_protocol(),
+            wormhole=sui_project.network_config['packages']['wormhole'],
+            pyth=sui_project.network_config['packages']['pyth'],
+        )
     )
 
 
@@ -94,7 +103,7 @@ def upgrade_dola_protocol():
 def migrate_version():
     migrate_version_proposal = load.migrate_version_proposal_package()
 
-    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']}::governance_v1::Proposal<{migrate_version_proposal.package_id}" \
+    cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']['origin']}::governance_v1::Proposal<{migrate_version_proposal.package_id}" \
                    f"::migrate_proposal::Certificate>"
 
     migrate_version_proposal.migrate_proposal.migrate_version(
@@ -119,8 +128,8 @@ def dola_upgrade_test():
 
 
 def migrate_version_test():
-    deploy_migrate_proposal()
-    migrate_create_proposal()
+    # deploy_migrate_proposal(version="version_1_0_1")
+    # migrate_create_proposal()
     migrate_version()
 
 
@@ -141,7 +150,7 @@ if __name__ == "__main__":
         3. after the front-end upgrade, migrate_version_test
     """
     # generate_dola_protocol_package_info()
-    dola_upgrade_test()
+    # dola_upgrade_test()
     # migrate_version_test()
-    # check_version(sui_project.network_config['packages']['dola_protocol'])
-    # check_version(get_latest_dola_protocol())
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_1'])
+    check_version(get_latest_dola_protocol())

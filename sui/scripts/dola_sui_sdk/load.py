@@ -94,7 +94,7 @@ def upgrade_proposal_template_package(package_id: str = None):
 def migrate_version_proposal_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.MigrateVersionProposal[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal"))
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/migrate_version_proposal/migrate_version_1_0_0"))
 
 
 def test_coins_package(package_id: str = None):

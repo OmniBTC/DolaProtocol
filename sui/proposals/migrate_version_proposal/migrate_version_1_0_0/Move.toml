@@ -12,4 +12,4 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "09b2081498366df936abae26eea4b2d5cafb2788"
 
 [dependencies.DolaProtocol]
-local = "../../dola_protocol"
+local = "../../../dola_protocol"
