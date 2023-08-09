@@ -168,7 +168,7 @@ module dola_protocol::governance_v2 {
             id: object::new(ctx),
             governance_manager_cap: option::none(),
             governance_coin_type: option::none(),
-            guardians: vector::empty(),
+            guardians,
             active: false,
             announce_delay: 0,
             voting_delay: 1,
