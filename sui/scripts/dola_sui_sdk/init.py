@@ -173,6 +173,13 @@ def proposal():
            f"::genesis_proposal::Certificate>"
 
 
+def get_reserve_proposal():
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
+    reserve_proposal = sui_project.network_config['packages']['reserve_proposal']
+    return f"{dola_protocol}::governance_v1::Proposal<{reserve_proposal}" \
+           f"::genesis_proposal::Certificate>"
+
+
 def query_pool_relay_event(tx_digest, limit=10):
     """
     note: eventSeq may have impact on the result
@@ -367,10 +374,12 @@ def build_vote_proposal_final_tx_block(genesis_proposal):
     ]]
 
 
-def build_reserve_proposal_final_tx_block(genesis_proposal):
+def build_reserve_proposal_final_tx_block(reserve_proposal):
     return [[
-        genesis_proposal.reserve_proposal.vote_proposal_final,
-        [Argument("Input", U16(0)), Argument("Input", U16(1))],
+        reserve_proposal.reserve_proposal.vote_proposal_final,
+        [
+            Argument("Input", U16(0))
+        ],
         []
     ]]
 
@@ -385,12 +394,11 @@ def build_finish_proposal_tx_block(genesis_proposal, tx_block_num):
     ]]
 
 
-def build_reserve_proposal_tx_block(genesis_proposal, tx_block_num):
+def build_finish_reserve_proposal_tx_block(reserve_proposal, tx_block_num):
     return [[
-        genesis_proposal.reserve_proposal.destory,
+        reserve_proposal.reserve_proposal.destory,
         [
             Argument("NestedResult", NestedResult(U16(tx_block_num), U16(0))),
-            Argument("NestedResult", NestedResult(U16(tx_block_num), U16(1)))
         ],
         []
     ]]
@@ -409,6 +417,43 @@ def build_register_new_pool_tx_block(genesis_proposal, basic_param_num, sequence
             Argument("Input", U16(basic_param_num + 5 * sequence + 4)),
         ],
         []
+    ]
+
+
+def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequence):
+    return [
+        [
+            reserve_proposal.reserve_proposal.set_treasury_factor,
+            [
+                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 1)),
+            ],
+            []
+        ],
+        [
+            reserve_proposal.reserve_proposal.set_borrow_rate_factors,
+            [
+                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 2)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 3)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 4)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 5)),
+            ],
+            []
+        ],
+        [
+            reserve_proposal.reserve_proposal.set_supply_cap_ceiling,
+            [
+                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
+                Argument("Input", U16(basic_param_num + 7 * sequence + 6)),
+            ]
+        ]
     ]
 
 
@@ -804,6 +849,62 @@ def deploy_reserve_proposal():
     deploy.export_package_to_config('reserve_proposal', reserve_proposal_package.package_id)
 
 
+def set_reserve_params():
+    reserve_proposal = load.reserve_proposal_package()
+
+    create_reserve_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+
+    proposal_id = sui_project[get_reserve_proposal()][-1]
+
+    basic_params = [
+        governance_info,  # 0
+        proposal_id,  # 1
+        lending_storage,  # 2
+    ]
+
+    reserve_params = []
+    reserves_num = len(sui_project.network_config['reserves'])
+
+    for reserve in sui_project.network_config['reserves']:
+        reserve_pool_id = sui_project.network_config['reserves'][reserve]['dola_pool_id']
+        reserve_treasury_factor = int(sui_project.network_config['reserves'][reserve]['treasury_factor'] * RAY)
+        reserve_supply_cap_ceiling = int(sui_project.network_config['reserves'][reserve]['supply_cap_ceiling'] * 1e8)
+        reserve_base_borrow_rate = int(sui_project.network_config['reserves'][reserve]['base_borrow_rate'] * RAY)
+        reserve_borrow_rate_slope1 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope1'] * RAY)
+        reserve_borrow_rate_slope2 = int(sui_project.network_config['reserves'][reserve]['borrow_rate_slope2'] * RAY)
+        reserve_optimal_utilization = int(sui_project.network_config['reserves'][reserve]['optimal_utilization'] * RAY)
+        reserve_param = [
+            reserve_pool_id,
+            reserve_treasury_factor,
+            reserve_base_borrow_rate,
+            reserve_supply_cap_ceiling,
+            reserve_borrow_rate_slope1,
+            reserve_borrow_rate_slope2,
+            reserve_optimal_utilization
+        ]
+        reserve_params.extend(reserve_param)
+
+    set_reserve_params_tx_blocks = []
+    for i in range(reserves_num):
+        set_reserve_params_tx_block = build_set_reserve_params_tx_blocks(reserve_proposal, len(basic_params), i)
+        set_reserve_params_tx_blocks.extend(set_reserve_params_tx_block)
+
+    vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
+
+    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, reserves_num)
+
+    actual_params = basic_params + reserve_params
+    transactions = vote_proposal_final_tx_block + set_reserve_params_tx_blocks + finish_proposal_tx_block
+
+    sui_project.batch_transaction(
+        actual_params=actual_params,
+        transactions=transactions
+    )
+
+
 def set_reserve_coefficient(reserve: str = 'SUI'):
     reserve_proposal = load.reserve_proposal_package()
     dola_protocol = load.dola_protocol_package()
@@ -861,7 +962,7 @@ def set_reserve_coefficient(reserve: str = 'SUI'):
 
     vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_reserve_proposal_tx_block(reserve_proposal, 2)
+    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, 2)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + set_coefficient_tx_block + finish_proposal_tx_block
@@ -1010,7 +1111,7 @@ def set_is_isolated_asset(reserve):
 
     vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_reserve_proposal_tx_block(reserve_proposal, 1)
+    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, 1)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + [set_is_isolated_asset_tx_block] + finish_proposal_tx_block
