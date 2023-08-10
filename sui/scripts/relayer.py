@@ -1076,8 +1076,9 @@ def main():
         # Protocol health monitoring
         functools.partial(dola_monitor.dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
         # Two core executor
-        functools.partial(sui_core_executor, "Relayer1", 2, 0),
-        functools.partial(sui_core_executor, "Relayer2", 2, 1),
+        functools.partial(sui_core_executor, "LendingCore1", 3, 0),
+        functools.partial(sui_core_executor, "LendingCore2", 3, 1),
+        functools.partial(sui_core_executor, "LendingCore3", 3, 2),
         # User transaction watcher
         functools.partial(sui_portal_watcher, health),
         functools.partial(eth_portal_watcher, health, "polygon-main"),
@@ -1089,7 +1090,7 @@ def main():
         # User withdraw watcher
         functools.partial(pool_withdraw_watcher, health),
         # User withdraw executor
-        functools.partial(sui_pool_executor, "Relayer3"),
+        functools.partial(sui_pool_executor, "LendingPool"),
         eth_pool_executor,
     ])
 

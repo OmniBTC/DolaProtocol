@@ -363,9 +363,9 @@ networks:
     wormhole_scan_url: https://api.testnet.wormscan.io/api/v1/
 sui_wallets:
   from_mnemonic:
-    Oracle: ${ORACLE_MNEMONIC}
-    Relayer0: ${RELAYER0_MNEMONIC}
-    Relayer1: ${RELAYER1_MNEMONIC}
-    Relayer2: ${RELAYER2_MNEMONIC}
-    Relayer3: ${RELAYER3_MNEMONIC}
-    TestAccount: ${TEST_ACCOUNT_MNEMONIC}
+    TestAccount: ${DEFAULT}
+    OracleGuard: ${LENDING_ORACLE_GUARD}
+    LendingCore1: ${LENDING_CORE1}
+    LendingCore2: ${LENDING_CORE2}
+    LendingCore3: ${LENDING_CORE3}
+    LendingPool: ${LENDING_POOL}

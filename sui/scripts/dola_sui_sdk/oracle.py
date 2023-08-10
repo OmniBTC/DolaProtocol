@@ -443,7 +443,9 @@ def oracle_guard(symbols=None):
 
     if symbols is None:
         symbols = []
-    sui_project.active_account("Oracle")
+
+    sui_project.active_account("OracleGuard")
+    
     while True:
         try:
             for symbol in symbols:
