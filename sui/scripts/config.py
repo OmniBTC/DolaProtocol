@@ -1,7 +1,7 @@
 # Some constants for the scripts
 
 # dola reserves count
-DOLA_RESERVES_COUNT = 8
+DOLA_RESERVES_COUNT = 9
 
 # dola protocol decimal
 DOLA_DECIMAL = 8
@@ -52,9 +52,9 @@ NET_TO_DOLA_CHAIN_ID = {
 # network name -> wormhole emitter
 NET_TO_WORMHOLE_EMITTER = {
     # mainnet
-    "optimism-main": "0x94650D61b940496b1BD88767b7B541b1121e0cCF",
-    "arbitrum-main": "0x098D26E4d2E98C1Dde14C543Eb6804Fd98Af9CB4",
-    "polygon-main": "0x4445c48e9B70F78506E886880a9e09B501ED1E13",
+    "optimism-main": "0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68",
+    "arbitrum-main": "0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5",
+    "polygon-main": "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet
@@ -132,7 +132,8 @@ NETWORK_TO_NATIVE_TOKEN = {
 # sui token -> sui pool
 # mainnet
 SUI_TOKEN_TO_POOL = {
-    "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73"
+    "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73",
+    "5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN": "0xe3544997abc93c211ef7e35cd5e0af719bed4810cec8d2d3bf4b7653310a75fb"
 }
 
 #  testnet
