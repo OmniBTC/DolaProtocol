@@ -19,7 +19,7 @@ contract WormholeAdapterPool {
     // Dola chain id
     uint16 public immutable dolaChainId;
     // Dola pool
-    DolaPool public immutable dolaPool;
+    DolaPool public dolaPool;
 
     // Wormhole required number of block confirmations to assume finality
     uint8 public wormholeInstantConsistency;
@@ -54,10 +54,14 @@ contract WormholeAdapterPool {
     ) {
         wormhole = _wormhole;
         dolaChainId = _dolaChainId;
-        // First deploy pool
-        // dolaPool = new DolaPool(_dolaChainId, address(this));
-        // Upgrade
-        dolaPool = _dolaPool;
+        if (address(_dolaPool) == address(0x0)) {
+            // First deploy pool
+            dolaPool = new DolaPool(_dolaChainId, address(this));
+        } else {
+            // Upgrade
+            dolaPool = _dolaPool;
+        }
+
         wormholeInstantConsistency = _wormholeInstantConsistency;
         wormholeFinalityConsistency = _wormholeFinalityConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
@@ -81,11 +85,11 @@ contract WormholeAdapterPool {
     function registerSpender(bytes memory encodedVm) external {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
-            wormhole,
-            registeredEmitters,
-            consumedVaas,
-            encodedVm
-        );
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(vaa.payload);
         require(
@@ -99,11 +103,11 @@ contract WormholeAdapterPool {
     function deleteSpender(bytes memory encodedVm) external {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
-            wormhole,
-            registeredEmitters,
-            consumedVaas,
-            encodedVm
-        );
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.ManagePoolPayload memory payload = LibPoolCodec
             .decodeManagePoolPayload(vaa.payload);
         require(
@@ -117,11 +121,11 @@ contract WormholeAdapterPool {
     function registerRelayer(bytes memory encodedVm) external {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
-            wormhole,
-            registeredEmitters,
-            consumedVaas,
-            encodedVm
-        );
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibGovCodec.RelayerPayload memory payload = LibGovCodec
             .decodeRelayerPayload(vaa.payload);
 
@@ -139,11 +143,11 @@ contract WormholeAdapterPool {
     function removeRelayer(bytes memory encodedVm) external {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
-            wormhole,
-            registeredEmitters,
-            consumedVaas,
-            encodedVm
-        );
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibGovCodec.RelayerPayload memory payload = LibGovCodec
             .decodeRelayerPayload(vaa.payload);
 
@@ -190,38 +194,38 @@ contract WormholeAdapterPool {
         );
         return
             wormhole.publishMessage{value: wormholeFee}(
-            0,
-            payload,
-            wormholeFinalityConsistency
-        );
+                0,
+                payload,
+                wormholeFinalityConsistency
+            );
     }
 
     /// Send message that do not involve incoming or outgoing funds by application
     function sendMessage(uint16 appId, bytes memory appPayload)
-    external
-    payable
-    returns (uint64)
+        external
+        payable
+        returns (uint64)
     {
         uint256 wormholeFee = wormhole.messageFee();
         require(msg.value >= wormholeFee, "FEE NOT ENOUGH");
         bytes memory payload = dolaPool.sendMessage(appId, appPayload);
         return
             wormhole.publishMessage{value: msg.value}(
-            0,
-            payload,
-            wormholeInstantConsistency
-        );
+                0,
+                payload,
+                wormholeInstantConsistency
+            );
     }
 
     /// Receive withdraw
     function receiveWithdraw(bytes memory encodedVm) public onlyRelayer {
         IWormhole.VM memory vaa = LibWormholeAdapterVerify
             .parseVerifyAndReplayProtect(
-            wormhole,
-            registeredEmitters,
-            consumedVaas,
-            encodedVm
-        );
+                wormhole,
+                registeredEmitters,
+                consumedVaas,
+                encodedVm
+            );
         LibPoolCodec.WithdrawPayload memory payload = LibPoolCodec
             .decodeWithdrawPayload(vaa.payload);
         dolaPool.withdraw(payload.user, payload.amount, payload.pool);
