@@ -1,6 +1,6 @@
 from pprint import pprint
 
-from dola_sui_sdk import load, sui_project
+from dola_sui_sdk import load, sui_project, init
 
 
 # btc -> dola_pool_id 0
@@ -382,6 +382,28 @@ def calculate_changed_health_factor(dola_user_id, dola_pool_id, amount):
     return result['events'][-1]['parsedJson']
 
 
+def reward_claim_inspect(
+        dola_pool_id,
+        reward_pool,
+        reward_action,
+):
+    dola_protocol = load.dola_protocol_package()
+    user_manager_info = sui_project.network_config['objects']['UserManagerInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    clock = sui_project.network_config['objects']['Clock']
+
+    result = dola_protocol.lending_portal_v2.claim.inspect(
+        user_manager_info,
+        lending_storage,
+        dola_pool_id,
+        reward_action,
+        reward_pool,
+        clock,
+        type_arguments=[init.sui()["coin_type"]]
+    )
+    return result['events'][-1]['parsedJson']
+
+
 def get_user_total_reward_info(
         dola_user_id,
         dola_pool_ids,
@@ -392,14 +414,6 @@ def get_user_total_reward_info(
     lending_storage = sui_project.network_config['objects']['LendingStorage']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
 
-    result = external_interface.interfaces.get_user_rewrad.inspect(
-        lending_storage,
-        reward_pools[0],
-        dola_user_id,
-        dola_pool_ids[0],
-    )
-    print(result)
-
     result = external_interface.interfaces.get_user_total_reward_info.inspect(
         lending_storage,
         price_oracle,
@@ -407,8 +421,6 @@ def get_user_total_reward_info(
         dola_pool_ids,
         reward_pools,
     )
-    print(result)
-    print(result['events'])
     return result['events'][-1]['parsedJson']
 
 
@@ -432,8 +444,6 @@ if __name__ == "__main__":
     # pprint(get_user_allowed_borrow(6, 1, 1))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
-    print(get_user_total_reward_info(
-        dola_user_id=10,
-        dola_pool_ids=[3],
-        reward_pools=["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]
-    ))
+    # pprint(get_user_total_reward_info(10, [3],
+    # ["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]))
+    pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
