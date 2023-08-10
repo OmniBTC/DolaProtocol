@@ -790,7 +790,6 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
         genesis_proposal.genesis_proposal.register_token_price,
         [
             Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
-            Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
             Argument("Input", U16(basic_param_num - 2)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 0)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 1)),
@@ -804,43 +803,45 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
 
 def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
-
     create_proposal()
 
-    btc_token_param = construct_register_token_price_param(
-        "BTC/USD", 'BTC'
-    )
-    usdt_token_param = construct_register_token_price_param(
-        "USDT/USD", 'USDT'
-    )
-    usdc_token_param = construct_register_token_price_param(
-        "USDC/USD", 'USDC'
-    )
-    sui_token_param = construct_register_token_price_param(
-        "SUI/USD", 'SUI'
-    )
-    eth_token_param = construct_register_token_price_param(
-        "ETH/USD", 'ETH'
-    )
-    matic_token_param = construct_register_token_price_param(
-        "MATIC/USD", 'MATIC'
-    )
-    op_token_param = construct_register_token_price_param(
-        "OP/USD", 'OP'
-    )
-    arb_token_param = construct_register_token_price_param(
-        "ARB/USD", 'ARB'
+    # btc_token_param = construct_register_token_price_param(
+    #     "BTC/USD", 'BTC'
+    # )
+    # usdt_token_param = construct_register_token_price_param(
+    #     "USDT/USD", 'USDT'
+    # )
+    # usdc_token_param = construct_register_token_price_param(
+    #     "USDC/USD", 'USDC'
+    # )
+    # sui_token_param = construct_register_token_price_param(
+    #     "SUI/USD", 'SUI'
+    # )
+    # eth_token_param = construct_register_token_price_param(
+    #     "ETH/USD", 'ETH'
+    # )
+    # matic_token_param = construct_register_token_price_param(
+    #     "MATIC/USD", 'MATIC'
+    # )
+    # op_token_param = construct_register_token_price_param(
+    #     "OP/USD", 'OP'
+    # )
+    # arb_token_param = construct_register_token_price_param(
+    #     "ARB/USD", 'ARB'
+    # )
+    whusdceth_token_param = construct_register_token_price_param(
+        "USDC/USD", 'whUSDCeth'
     )
 
     basic_params = [
-        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project.network_config["objects"]["GovernanceInfo"],  # 0
         sui_project[SuiObject.from_type(proposal())][-1],  # 1
-        dola_protocol.oracle.PriceOracle[-1],  # 2
+        sui_project.network_config["objects"]["PriceOracle"],  # 2
         clock(),  # 3
     ]
 
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
+    # token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
+    token_params = whusdceth_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
@@ -1483,4 +1484,5 @@ if __name__ == '__main__':
     # batch_init()
     # register_new_reserve(reserve="whUSDCeth")
     # set_reserve_params()
-    register_new_pool()
+    # register_new_pool()
+    batch_init_oracle()
