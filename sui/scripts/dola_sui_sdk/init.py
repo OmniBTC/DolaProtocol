@@ -1572,4 +1572,7 @@ if __name__ == '__main__':
     # add_core_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
     # add_core_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
     # add_core_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
-    add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
+    add_oracle_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
+    add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
+    add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
+    # add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
