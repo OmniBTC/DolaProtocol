@@ -1371,6 +1371,88 @@ def remove_core_relayer(relayer_address):
     )
 
 
+def add_oracle_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        price_oracle,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.add_oracle_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remove_oracle_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        price_oracle,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remove_oracle_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
 def remote_add_relayer(dola_chain_id, relayer_address):
     genesis_proposal = load.genesis_proposal_package()
 
@@ -1485,4 +1567,9 @@ if __name__ == '__main__':
     # register_new_reserve(reserve="whUSDCeth")
     # set_reserve_params()
     # register_new_pool()
-    batch_init_oracle()
+    # batch_init_oracle()
+    # add_pool_relayer("0x1e549762ed8f6af7d8f2ce3d41b5344a84899f60f38549d8b4307236ba4274a4")
+    # add_core_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
+    # add_core_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
+    # add_core_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
+    add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
