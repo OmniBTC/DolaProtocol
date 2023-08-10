@@ -1555,6 +1555,61 @@ def remote_remove_relayer(dola_chain_id, relayer_address):
     )
 
 
+def create_reward_pool(
+        start_time,
+        end_time,
+        reward_amount,
+        dola_pool_id,
+        reward_action,
+):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    # create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    storage = sui_project.network_config['objects']['LendingStorage']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    reward_params = [
+        storage,
+        start_time,
+        end_time,
+        reward_amount,
+        dola_pool_id,
+        reward_action,
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.create_reward_pool,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+                Argument("Input", U16(4)),
+                Argument("Input", U16(5)),
+                Argument("Input", U16(6)),
+                Argument("Input", U16(7)),
+            ],
+            [sui()["coin_type"]]
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 2)
+
+    return sui_project.batch_transaction(
+        actual_params=basic_params + reward_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1572,7 +1627,14 @@ if __name__ == '__main__':
     # add_core_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
     # add_core_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
     # add_core_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
-    add_oracle_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
-    add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
-    add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
+    # add_oracle_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
+    # add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
+    # add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
     # add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
+    create_reward_pool(
+        start_time=1691658000,
+        end_time=1691917200,
+        reward_amount=int(10 * 1e9),
+        dola_pool_id=3,
+        reward_action=0
+    )
