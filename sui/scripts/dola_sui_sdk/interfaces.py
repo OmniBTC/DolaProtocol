@@ -403,6 +403,7 @@ def reward_claim_inspect(
 
 def get_user_total_reward_info(
         dola_user_id,
+        reward_tokens,
         dola_pool_ids,
         reward_pools
 ):
@@ -410,11 +411,35 @@ def get_user_total_reward_info(
 
     lending_storage = sui_project.network_config['objects']['LendingStorage']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
+    clock = sui_project.network_config['objects']['Clock']
 
     result = external_interface.interfaces.get_user_total_reward_info.inspect(
         lending_storage,
         price_oracle,
         dola_user_id,
+        reward_tokens,
+        dola_pool_ids,
+        reward_pools,
+        clock
+    )
+    return result['events'][-1]['parsedJson']
+
+
+def get_reward_pool_apys(
+        reward_tokens,
+        reward_pools,
+        dola_pool_ids
+
+):
+    external_interface = load.external_interfaces_package()
+
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    result = external_interface.interfaces.get_reward_pool_apys.inspect(
+        lending_storage,
+        price_oracle,
+        reward_tokens,
         dola_pool_ids,
         reward_pools,
     )
@@ -440,7 +465,11 @@ if __name__ == "__main__":
     # pprint(get_user_lending_info(6))
     # pprint(get_user_allowed_borrow(6, 1, 1))
     # pprint(get_all_pool_liquidity(1))
-    pprint(get_all_reserve_info())
-    # pprint(get_user_total_reward_info(10, [3],
-    # ["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]))
+    # pprint(get_all_reserve_info())
+    pprint(get_user_total_reward_info(
+        66, [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
+    ))
+    # pprint(get_reward_pool_apys(
+    #     [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
+    # ))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
