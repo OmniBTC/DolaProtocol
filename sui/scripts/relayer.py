@@ -415,7 +415,9 @@ def eth_portal_watcher(health, network="polygon-test"):
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
             # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents'])
+            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents']) \
+                           or dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
+                                                                               latest_relay_block_number)
 
             for event in relay_events:
                 nonce = int(event['nonce'])
