@@ -11,21 +11,34 @@ class ApiError(Exception):
         self.status_code = status_code
 
 
-class SuiClient(httpx.Client):
+class SuiClient:
     def __init__(self, base_url, timeout):
-        super(SuiClient, self).__init__(base_url=base_url, timeout=timeout)
+        self.base_urls = [base_url]
         self.endpoint = base_url
+        self.timeout = timeout
+        self._client = httpx.Client(base_url=self.endpoint, timeout=self.timeout)
+
+    def add_endpoint(self, base_url):
+        self.base_urls.append(base_url)
+
+    def update_endpoint(self):
+        self.endpoint = self.base_urls[(self.base_urls.index(self.endpoint) + 1) % len(self.base_urls)]
+        self._client = httpx.Client(base_url=self.endpoint, timeout=self.timeout)
 
     @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
     def get(self, *args, **kwargs):
-        return super().get(*args, **kwargs)
+        return self._client.get(*args, **kwargs)
 
     @retry(stop_max_attempt_number=5, wait_random_min=500, wait_random_max=1000)
-    def post(self, *args, **kwargs):
-        response = super().post(*args, **kwargs)
-        if response.status_code >= 400:
-            raise ApiError(response.text, response.status_code)
-        return response
+    def post(self, _endpoint, json):
+        try:
+            response = self._client.post(url=self.endpoint, json=json)
+            if response.status_code >= 400:
+                raise ApiError(response.text, response.status_code)
+            return response
+        except Exception as e:
+            self.update_endpoint()
+            raise e
 
     def sui_devInspectTransactionBlock(
             self,

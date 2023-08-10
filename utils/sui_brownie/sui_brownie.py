@@ -1635,6 +1635,10 @@ class SuiProject:
 
         _load_project.append(self)
 
+    def add_endpoints(self, base_urls):
+        for base_url in base_urls:
+            self.client.add_endpoint(base_url)
+
     def set_gas_budget(self, gas_budget):
         """Set global gas budget"""
         self.gas_budget = gas_budget
@@ -1708,7 +1712,7 @@ class SuiProject:
 
         # Create client
         assert "node_url" in self.network_config, "Endpoint not config"
-        self.client = SuiClient(base_url=self.network_config["node_url"], timeout=30)
+        self.client = SuiClient(base_url=self.network_config["node_url"], timeout=3)
 
     def generate_account(self, account_name):
         assert account_name not in self.accounts
