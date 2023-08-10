@@ -124,22 +124,64 @@ module dola_protocol::boost {
 
     /// Public
 
-    public fun get_reward_per_second(
-        reward_pool_info: &RewardPoolInfo
-    ): u256 {
-        reward_pool_info.reward_per_second
-    }
-
     public fun get_escrow_fund(
         reward_pool_info: &RewardPoolInfo
     ): &ID {
         &reward_pool_info.escrow_fund
     }
 
+    public fun get_start_time(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.start_time
+    }
+
+    public fun get_end_time(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.end_time
+    }
+
+    public fun get_reward_index(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.reward_index
+    }
+
     public fun get_reward_action(
         reward_pool_info: &RewardPoolInfo
     ): u8 {
         reward_pool_info.reward_action
+    }
+
+    public fun get_total_reward(
+        reward_pool_info: &RewardPoolInfo
+    ): u64 {
+        reward_pool_info.total_reward
+    }
+
+    public fun get_dola_pool_id(
+        reward_pool_info: &RewardPoolInfo
+    ): u16 {
+        reward_pool_info.dola_pool_id
+    }
+
+    public fun get_last_update_time(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.last_update_time
+    }
+
+    public fun get_reward_per_second(
+        reward_pool_info: &RewardPoolInfo
+    ): u256 {
+        reward_pool_info.reward_per_second
+    }
+
+    public fun is_exist_user_reward(
+        reward_pool_info: &RewardPoolInfo,
+        dola_user_id: u64): bool {
+        table::contains(&reward_pool_info.user_reward, dola_user_id)
     }
 
     public fun get_user_reward_info(
@@ -158,6 +200,40 @@ module dola_protocol::boost {
         let reward_pool_index = *table::borrow(&reward_pools.catalog, reward_pool_id);
         vector::borrow(&reward_pools.info, reward_pool_index)
     }
+
+    public fun get_total_scaled_balance(
+        storage: &Storage,
+        dola_pool_id: u16,
+        reward_action: u8,
+    ): u256 {
+        let total_scaled_balance;
+        if (reward_action == lending_codec::get_supply_type()) {
+            total_scaled_balance = storage::get_otoken_scaled_total_supply_v2(storage, dola_pool_id);
+        }else if (reward_action == lending_codec::get_borrow_type()) {
+            total_scaled_balance = storage::get_dtoken_scaled_total_supply_v2(storage, dola_pool_id);
+        }else {
+            abort EINVALID_ACTION
+        };
+        total_scaled_balance
+    }
+
+    public fun get_user_scaled_balance(
+        storage: &Storage,
+        dola_pool_id: u16,
+        dola_user_id: u64,
+        reward_action: u8
+    ): u256 {
+        let user_scaled_balance;
+        if (reward_action == lending_codec::get_supply_type()) {
+            user_scaled_balance = storage::get_user_scaled_otoken_v2(storage, dola_user_id, dola_pool_id);
+        }else if (reward_action == lending_codec::get_borrow_type()) {
+            user_scaled_balance = storage::get_user_scaled_dtoken_v2(storage, dola_user_id, dola_pool_id);
+        }else {
+            abort EINVALID_ACTION
+        };
+        user_scaled_balance
+    }
+
 
     /// Governance
 
@@ -220,39 +296,6 @@ module dola_protocol::boost {
     }
 
     /// Private
-
-    fun get_total_scaled_balance(
-        storage: &Storage,
-        dola_pool_id: u16,
-        reward_action: u8,
-    ): u256 {
-        let total_scaled_balance;
-        if (reward_action == lending_codec::get_supply_type()) {
-            total_scaled_balance = storage::get_otoken_scaled_total_supply_v2(storage, dola_pool_id);
-        }else if (reward_action == lending_codec::get_borrow_type()) {
-            total_scaled_balance = storage::get_dtoken_scaled_total_supply_v2(storage, dola_pool_id);
-        }else {
-            abort EINVALID_ACTION
-        };
-        total_scaled_balance
-    }
-
-    fun get_user_scaled_balance(
-        storage: &Storage,
-        dola_pool_id: u16,
-        dola_user_id: u64,
-        reward_action: u8
-    ): u256 {
-        let user_scaled_balance;
-        if (reward_action == lending_codec::get_supply_type()) {
-            user_scaled_balance = storage::get_user_scaled_otoken_v2(storage, dola_user_id, dola_pool_id);
-        }else if (reward_action == lending_codec::get_borrow_type()) {
-            user_scaled_balance = storage::get_user_scaled_dtoken_v2(storage, dola_user_id, dola_pool_id);
-        }else {
-            abort EINVALID_ACTION
-        };
-        user_scaled_balance
-    }
 
     fun update_pool_reward(
         reward_pool: &mut RewardPoolInfo,
