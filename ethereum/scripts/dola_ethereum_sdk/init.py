@@ -224,9 +224,7 @@ def get_payload_from_chain(tx_id):
 
 
 def get_dola_pool():
-    network = brownie.network.show_active()
-    wormhole_adapter = load.wormhole_adapter_pool_package(network)
-    return wormhole_adapter.dolaPool()
+    return config["networks"][network.show_active()]["dola_pool"]
 
 
 def get_dola_contract():
