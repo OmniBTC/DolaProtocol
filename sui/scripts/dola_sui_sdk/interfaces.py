@@ -469,7 +469,7 @@ if __name__ == "__main__":
     pprint(get_user_total_reward_info(
         66, [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
     ))
-    # pprint(get_reward_pool_apys(
-    #     [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
-    # ))
+    pprint(get_reward_pool_apys(
+        [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
+    ))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))

@@ -1253,7 +1253,11 @@ module external_interfaces::interfaces {
             let total_reward_balance = boost::get_reward_per_second(reward_pool_info) * SECONDS_PER_YEAR;
             let total_reward_value = logic::calculate_value(oracle, reward_token, total_reward_balance);
 
-            apy = ray_math::ray_div(total_reward_value, total_value) * 10000 / ray_math::ray();
+            if (total_value == 0) {
+                apy = 0;
+            }else {
+                apy = total_reward_value * 10000 / total_value / ray_math::ray();
+            };
         };
 
         apy
