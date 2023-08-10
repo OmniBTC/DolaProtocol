@@ -11,10 +11,9 @@ module external_interfaces::interfaces {
     use sui::clock::{Self, Clock};
     use sui::dynamic_field;
     use sui::event::emit;
-    use sui::object::id_to_address;
 
     use dola_protocol::boost;
-    use dola_protocol::boost::{RewardPoolInfo, RewardPoolInfos};
+    use dola_protocol::boost::RewardPoolInfos;
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::equilibrium_fee;
     use dola_protocol::lending_codec;
@@ -199,7 +198,12 @@ module external_interfaces::interfaces {
     }
 
     struct RewardPoolApy has copy, drop {
+        reward_pool: address,
         apy: u256
+    }
+
+    struct RewardPoolApys has copy, drop {
+        apys: vector<RewardPoolApy>
     }
 
     struct UserTotalRewardInfo has copy, drop {
@@ -1042,33 +1046,6 @@ module external_interfaces::interfaces {
         })
     }
 
-    public fun get_reward_per_second(
-        storage: &mut Storage,
-        reward_pool: address,
-        dola_pool_id: u16,
-        reward_action: u8,
-    ): u256 {
-        let storage_id = storage::get_storage_id(storage);
-        let reward_per_second = 0;
-        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
-            let reward_pools = dynamic_field::borrow_mut<u16, vector<RewardPoolInfo>>(storage_id, dola_pool_id);
-            let i = 0;
-            while (i < vector::length(reward_pools)) {
-                let reward_pool_info = vector::borrow(reward_pools, i);
-                let reward_pool_action = boost::get_reward_action(reward_pool_info);
-                let escrow_fund = boost::get_escrow_fund(reward_pool_info);
-                if (reward_action == reward_pool_action
-                    && id_to_address(escrow_fund) == reward_pool
-                ) {
-                    reward_per_second = reward_per_second + boost::get_reward_per_second(reward_pool_info);
-                };
-                i = i + 1;
-            };
-        };
-
-        reward_per_second
-    }
-
     public fun get_user_rewrad(
         storage: &mut Storage,
         reward_pool: address,
@@ -1191,9 +1168,9 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_user_id: u64,
-        reward_token: u16,
+        reward_tokens: vector<u16>,
         dola_pool_ids: vector<u16>,
-        reward_pool_id: vector<address>,
+        reward_pools: vector<address>,
         clock: &Clock
     ) {
         let total_reward = 0;
@@ -1205,7 +1182,8 @@ module external_interfaces::interfaces {
         let i = 0;
         while (i < vector::length(&dola_pool_ids)) {
             let dola_pool_id = *vector::borrow(&dola_pool_ids, i);
-            let reward_pool = *vector::borrow(&reward_pool_id, i);
+            let reward_pool = *vector::borrow(&reward_pools, i);
+            let reward_token = *vector::borrow(&reward_tokens, i);
             let (unclaimed_balance, claimed_balance, reward_action) = get_user_rewrad(
                 storage,
                 reward_pool,
@@ -1248,23 +1226,68 @@ module external_interfaces::interfaces {
 
     public entry fun get_reward_pool_apy(
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        reward_token: u16,
         reward_pool: address,
-        reward_pool_id: u16,
-        reward_action: u8
-    ) {
-        let reward_per_second = get_reward_per_second(storage, reward_pool, reward_pool_id, reward_action);
-        let total_balance = 0;
-        if (reward_action == lending_codec::get_supply_type()) {
-            total_balance = lending_logic::total_otoken_supply(storage, reward_pool_id);
-        };
-        if (reward_action == lending_codec::get_borrow_type()) {
-            total_balance = lending_logic::total_dtoken_supply(storage, reward_pool_id);
+        dola_pool_id: u16,
+    ): u256 {
+        let total_otoken_balance = lending_logic::total_otoken_supply(storage, dola_pool_id);
+        let total_dtoken_balance = lending_logic::total_dtoken_supply(storage, dola_pool_id);
+
+        let storage_id = storage::get_storage_id(storage);
+        let reward_pool = object::id_from_address(reward_pool);
+        let apy = 0;
+
+        if (dynamic_field::exists_(storage_id, dola_pool_id)) {
+            let reward_pools = dynamic_field::borrow_mut<u16, RewardPoolInfos>(storage_id, dola_pool_id);
+            let reward_pool_info = boost::get_reward_pool(reward_pools, reward_pool);
+            let reward_action = boost::get_reward_action(reward_pool_info);
+            let total_balance;
+            if (reward_action == lending_codec::get_supply_type()) {
+                total_balance = total_otoken_balance;
+            }else {
+                total_balance = total_dtoken_balance;
+            };
+            let total_value = logic::calculate_value(oracle, dola_pool_id, total_balance);
+
+            let total_reward_balance = boost::get_reward_per_second(reward_pool_info) * SECONDS_PER_YEAR;
+            let total_reward_value = logic::calculate_value(oracle, reward_token, total_reward_balance);
+
+            apy = ray_math::ray_div(total_reward_value, total_value) * 10000 / ray_math::ray();
         };
 
-        let year_reward = reward_per_second * SECONDS_PER_YEAR;
-        let apy = ray_math::ray_div(year_reward, total_balance) * 10000 / ray_math::ray();
-        emit(RewardPoolApy {
-            apy
+        apy
+    }
+
+    public entry fun get_reward_pool_apys(
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        reward_tokens: vector<u16>,
+        reward_pools: vector<address>,
+        dola_pool_ids: vector<u16>,
+    ) {
+        let apys = vector::empty<RewardPoolApy>();
+        let i = 0;
+        while (i < vector::length(&reward_pools)) {
+            let dola_pool_id = *vector::borrow(&dola_pool_ids, i);
+            let reward_pool = *vector::borrow(&reward_pools, i);
+            let reward_token = *vector::borrow(&reward_tokens, i);
+
+            let apy = get_reward_pool_apy(
+                storage,
+                oracle,
+                reward_token,
+                reward_pool,
+                dola_pool_id
+            );
+            vector::push_back(&mut apys, RewardPoolApy {
+                reward_pool,
+                apy
+            });
+            i = i + 1;
+        };
+        emit(RewardPoolApys {
+            apys
         })
     }
 }
