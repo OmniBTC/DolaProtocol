@@ -890,17 +890,29 @@ class TransactionBuild:
                     has_actual_params[actual_params_index] = True
                 if "Struct" in abi["parameters"][i] and abi["parameters"][i]["Struct"]["address"] == "0x2" and \
                         abi["parameters"][i]["Struct"]["module"] == "coin" \
-                        and abi["parameters"][i]["Struct"]["name"] == "Coin" and \
-                        "Struct" in abi["parameters"][i]["Struct"]["typeArguments"][0] and \
-                        abi["parameters"][i]["Struct"]["typeArguments"][0]["Struct"]['module'] == "sui":
-                    batch_commands.append(
-                        Command("SplitCoins", SplitCoins(
-                            Argument("GasCoin", NONE()),
-                            [call_arg]
-                        ))
-                    )
-                    call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
-                    batch_parameters[-1] = "U64"
+                        and abi["parameters"][i]["Struct"]["name"] == "Coin":
+                    if "Struct" in abi["parameters"][i]["Struct"]["typeArguments"][0] and \
+                            abi["parameters"][i]["Struct"]["typeArguments"][0]["Struct"]['module'] == "sui":
+                        batch_commands.append(
+                            Command("SplitCoins", SplitCoins(
+                                Argument("GasCoin", NONE()),
+                                [call_arg]
+                            ))
+                        )
+                        call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
+                        batch_parameters[-1] = "U64"
+                    elif "TypeParameter" in abi["parameters"][i]["Struct"]["typeArguments"][0] and "sui::SUI" in \
+                            type_args[
+                                abi["parameters"][i]["Struct"]["typeArguments"][0]["TypeParameter"]
+                            ]:
+                        batch_commands.append(
+                            Command("SplitCoins", SplitCoins(
+                                Argument("GasCoin", NONE()),
+                                [call_arg]
+                            ))
+                        )
+                        call_args[i] = Argument("NestedResult", NestedResult(U16(len(batch_commands) - 1), U16(0)))
+                        batch_parameters[-1] = "U64"
             # generate commands
             type_arguments = [
                 cls.generate_type_arg(v) for v in type_args
@@ -924,7 +936,8 @@ class TransactionBuild:
                                  cls.generate_call_arg(batch_parameters[i], batch_call_args[i], object_infos)))
         batch_inputs.sort(key=lambda x: x[0])
         batch_inputs = [v[1] for v in batch_inputs]
-        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget, call_args=actual_params)
+        return cls.build_intent_message(sender, batch_inputs, batch_commands, gas_price, gas_budget,
+                                        call_args=actual_params)
 
     @classmethod
     def upgrade(
