@@ -382,6 +382,36 @@ def calculate_changed_health_factor(dola_user_id, dola_pool_id, amount):
     return result['events'][-1]['parsedJson']
 
 
+def get_user_total_reward_info(
+        dola_user_id,
+        dola_pool_ids,
+        reward_pools
+):
+    external_interface = load.external_interfaces_package()
+
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    result = external_interface.interfaces.get_user_rewrad.inspect(
+        lending_storage,
+        reward_pools[0],
+        dola_user_id,
+        dola_pool_ids[0],
+    )
+    print(result)
+
+    result = external_interface.interfaces.get_user_total_reward_info.inspect(
+        lending_storage,
+        price_oracle,
+        dola_user_id,
+        dola_pool_ids,
+        reward_pools,
+    )
+    print(result)
+    print(result['events'])
+    return result['events'][-1]['parsedJson']
+
+
 if __name__ == "__main__":
     # pprint.pp(get_dola_token_liquidity(1))
     # dola_addresses = get_dola_user_addresses(1)
@@ -399,6 +429,11 @@ if __name__ == "__main__":
     # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
     # pprint.pp(get_user_lending_info(6))
-    pprint(get_user_allowed_borrow(6, 1, 1))
+    # pprint(get_user_allowed_borrow(6, 1, 1))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
+    print(get_user_total_reward_info(
+        dola_user_id=10,
+        dola_pool_ids=[3],
+        reward_pools=["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]
+    ))
