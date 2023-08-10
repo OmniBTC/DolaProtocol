@@ -1098,7 +1098,7 @@ module external_interfaces::interfaces {
             let total_scaled_balance = boost::get_total_scaled_balance(
                 storage,
                 dola_pool_id,
-                boost::get_reward_action(reward_pool_info)
+                reward_action,
             );
             let new_reward_index;
             if (total_scaled_balance == 0) {
@@ -1125,7 +1125,7 @@ module external_interfaces::interfaces {
                     storage,
                     dola_pool_id,
                     dola_user_id,
-                    boost::get_reward_action(reward_pool_info)
+                    reward_action,
                 )
             );
         };
