@@ -25,6 +25,9 @@ module genesis_proposal::genesis_proposal {
     use dola_protocol::wormhole_adapter_pool;
     use dola_protocol::wormhole_adapter_pool::PoolState;
     use wormhole::state::State;
+    use dola_protocol::boost;
+    use dola_protocol::boost::RewardPool;
+    use sui::transfer;
 
     const EIS_FINAL_VOTE: u64 = 0;
 
@@ -40,7 +43,7 @@ module genesis_proposal::genesis_proposal {
     }
 
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
-        governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
+        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
     }
 
     public fun vote_porposal(
@@ -414,6 +417,48 @@ module genesis_proposal::genesis_proposal {
             wormhole_message_fee,
             clock
         );
+        hot_potato
+    }
+
+    public fun create_reward_pool<X>(
+        hot_potato: HotPotato,
+        storage: &mut Storage,
+        start_time: u256,
+        end_time: u256,
+        reward: Coin<X>,
+        dola_pool_id: u16,
+        reward_action: u8,
+        ctx: &mut TxContext
+    ): HotPotato {
+        boost::create_reward_pool<X>(
+            &hot_potato.gov_cap,
+            storage,
+            start_time,
+            end_time,
+            reward,
+            dola_pool_id,
+            reward_action,
+            ctx
+        );
+        hot_potato
+    }
+
+    public fun remove_reward_pool<X>(
+        hot_potato: HotPotato,
+        storage: &mut Storage,
+        reward_pool_balance: &mut RewardPool<X>,
+        dola_pool_id: u16,
+        refund_address: address,
+        ctx: &mut TxContext
+    ): HotPotato {
+        let refund = boost::remove_reward_pool<X>(
+            &hot_potato.gov_cap,
+            storage,
+            reward_pool_balance,
+            dola_pool_id,
+            ctx
+        );
+        transfer::public_transfer(refund, refund_address);
         hot_potato
     }
 }
