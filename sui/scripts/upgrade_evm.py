@@ -129,10 +129,10 @@ def upgrade_evm_contract(network):
 
     print(f"Successfully upgraded the evm contract for {network}.")
     print(f"Please update the following addresses in the ethereum/brownie-config.yaml for {network}:")
-    # print(f"  wormhole_adapter_pool: {wormhole_adapter_pool.address}")
-    # print(f"  lending_portal: {lending_portal.address}")
-    # print(f"  system_portal: {system_portal.address}")
+    print(f"  wormhole_adapter_pool: {wormhole_adapter_pool.address}")
+    print(f"  lending_portal: {lending_portal.address}")
+    print(f"  system_portal: {system_portal.address}")
 
 
 if __name__ == '__main__':
-    upgrade_evm_contract('optimism-main')
+    upgrade_evm_contract('polygon-main')
