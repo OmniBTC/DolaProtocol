@@ -87,6 +87,8 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
+    dola_chain_id = get_dola_chain_id()
+    wormhole_chain_id = get_wormhole_chain_id()
 
     old_wormhole_adapter_pool_address = config["networks"][network]["wormhole_adapter_pool"][old_version]
     old_wormhole_adapter_pool = dola_ethereum_load.wormhole_adapter_pool_package(
@@ -99,7 +101,6 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
     new_wormhole_adapter_pool_address = wormhole_adapter_pool.address
 
     # 2. register new remote spender
-    dola_chain_id = get_dola_chain_id()
     new_dola_contract = get_dola_contract(network, new_wormhole_adapter_pool_address)
     tx_hash = create_register_new_spender_proposal(dola_chain_id, new_dola_contract)
     # wait for vaa
@@ -117,21 +118,20 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
             register_new_relayer(vaa, new_wormhole_adapter_pool_address)
             break
 
-    # # 4. delete old bridge
-    # wormhole_chain_id = get_wormhole_chain_id()
-    # remove_old_bridge(wormhole_chain_id)
-    #
-    # # 5. register new bridge
-    # register_new_bridge(wormhole_chain_id, new_wormhole_adapter_pool_address)
-    #
-    # # 6. delete old remote spender
-    # new_dola_contract = get_dola_contract(network, new_wormhole_adapter_pool_address)
-    # tx_hash = create_delete_old_spender_proposal(dola_chain_id, new_dola_contract)
-    # # wait for vaa
-    # while True:
-    #     if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
-    #         delete_old_spender(vaa, old_wormhole_adapter_pool_address)
-    #         break
+    # 4. delete old bridge
+    remove_old_bridge(wormhole_chain_id)
+
+    # 5. register new bridge
+    register_new_bridge(wormhole_chain_id, new_wormhole_adapter_pool_address)
+
+    # 6. delete old remote spender
+    old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool_address)
+    tx_hash = create_delete_old_spender_proposal(dola_chain_id, old_dola_contract)
+    # wait for vaa
+    while True:
+        if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
+            delete_old_spender(vaa, new_wormhole_adapter_pool_address)
+            break
 
     print(f"Successfully upgraded the evm contract for {network}.")
     print(f"Please update the following addresses in the ethereum/brownie-config.yaml for {network}:")
@@ -141,4 +141,4 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
 
 
 if __name__ == '__main__':
-    upgrade_evm_wormhole_adapter('polygon-main')
+    upgrade_evm_wormhole_adapter('arbitrum-main')
