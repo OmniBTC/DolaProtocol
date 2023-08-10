@@ -116,3 +116,26 @@ NETWORK_TO_NATIVE_TOKEN = {
 #     "arbitrum-test": "eth",
 #     "optimism-test": "eth",
 # }
+
+SYMBOL_TO_DEVIATION = {
+    "BTC/USD": 0.005,
+    "ETH/USD": 0.005,
+    "USDT/USD": 0.005,
+    "USDC/USD": 0.005,
+    "SUI/USD": 0.01,
+    "MATIC/USD": 0.01,
+    "ARB/USD": 0.01,
+    "OP/USD": 0.01
+}
+
+DOLA_POOL_ID_TO_SYMBOL = {
+    0: "BTC/USD",
+    1: "USDT/USD",
+    2: "USDC/USD",
+    3: "SUI/USD",
+    4: "ETH/USD",
+    5: "MATIC/USD",
+    6: "ARB/USD",
+    7: "OP/USD",
+    8: "USDC/USD"
+}

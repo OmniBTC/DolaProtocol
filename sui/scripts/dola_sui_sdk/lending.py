@@ -6,6 +6,7 @@ import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16
 
+import config
 from dola_sui_sdk import load, init, oracle
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
@@ -14,37 +15,17 @@ from dola_sui_sdk.oracle import get_price_info_object
 
 U64_MAX = 18446744073709551615
 
+coinbase = ccxt.coinbase()
+coinbase.load_markets()
+
 
 def calculate_sui_gas(gas_used):
     return int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
         gas_used['storageRebate'])
 
 
-def dola_pool_id_to_symbol(dola_pool_id):
-    if dola_pool_id == 0:
-        return 'BTC/USD'
-    elif dola_pool_id == 1:
-        return 'USDT/USD'
-    elif dola_pool_id == 2:
-        return 'USDC/USD'
-    elif dola_pool_id == 3:
-        return 'SUI/USD'
-    elif dola_pool_id == 4:
-        return 'ETH/USD'
-    elif dola_pool_id == 5:
-        return 'MATIC/USD'
-    elif dola_pool_id == 6:
-        return 'ARB/USD'
-    elif dola_pool_id == 7:
-        return 'OP/USD'
-    else:
-        raise ValueError('dola_pool_id must be 0, 1, 2, 3, 4 or 5')
-
-
 def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     dola_protocol = load.dola_protocol_package()
-    kucoin = ccxt.kucoin()
-    kucoin.load_markets()
 
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -54,7 +35,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
 
     feed_gas = 0
 
-    symbols = [dola_pool_id_to_symbol(pool_id) for pool_id in asset_ids]
+    symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
     vaas = oracle.get_batch_feed_vaa(symbols)
     for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
         result = sui_project.batch_transaction_inspect(
@@ -99,21 +80,17 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        if symbol in ['USDT/USD', 'USDC/USD']:
-            kucoin_price = 1
-        else:
-            kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
+        coinbase_price = coinbase.fetch_ticker(symbol)['close']
 
-        if pyth_price > kucoin_price:
-            deviation = 1 - kucoin_price / pyth_price
+        if pyth_price > coinbase_price:
+            deviation = 1 - coinbase_price / pyth_price
         else:
-            deviation = 1 - pyth_price / kucoin_price
+            deviation = 1 - pyth_price / coinbase_price
 
-        print(f'{symbol} price deviation: {deviation}')
-        # todo: use this for mainnet
-        # todo: use different price deviation standards for different tokens.
-        # if deviation > 0.01:
-        #     raise ValueError("The oracle price difference is too large!")
+        print(f"{symbol} price deviation: {deviation}")
+        deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
+        if deviation <= deviation_threshold:
+            raise ValueError("The oracle price difference is too large!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas

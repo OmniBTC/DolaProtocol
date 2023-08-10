@@ -8,6 +8,7 @@ import requests
 import sui_brownie
 from sui_brownie import Argument, U16
 
+import config
 from dola_sui_sdk import load, sui_project, init
 
 
@@ -105,7 +106,7 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
-def feed_token_price_by_pyth(symbol, simulate=True, kucoin=None):
+def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
     dola_protocol = load.dola_protocol_package()
 
     pyth_fee_amount = 0
@@ -159,20 +160,18 @@ def feed_token_price_by_pyth(symbol, simulate=True, kucoin=None):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        if symbol in ['USDT/USD', 'USDC/USD']:
-            kucoin_price = 1
-        else:
-            kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
 
-        if pyth_price > kucoin_price:
-            deviation = 1 - kucoin_price / pyth_price
+        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+
+        if pyth_price > coinbase_price:
+            deviation = 1 - coinbase_price / pyth_price
         else:
-            deviation = 1 - pyth_price / kucoin_price
+            deviation = 1 - pyth_price / coinbase_price
 
         print(f"{symbol} price deviation: {deviation}")
-        # todo: use this for mainnet
-        # if deviation > 0.01:
-        #     raise ValueError("The oracle price difference is too large!")
+        deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
+        if deviation <= deviation_threshold:
+            raise ValueError("The oracle price difference is too large!")
     else:
         sui_project.batch_transaction(
             actual_params=[
@@ -345,8 +344,8 @@ def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
 
 def test_verify_oracle():
     dola_protocol = load.dola_protocol_package()
-    kucoin = ccxt.kucoin()
-    kucoin.load_markets()
+    coinbase = ccxt.coinbase()
+    coinbase.load_markets()
 
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -401,12 +400,13 @@ def test_verify_oracle():
     pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
     print("\n")
     print(f"Pyth price:{pyth_price}")
-    kucoin_price = kucoin.fetch_ticker(f"{symbol}T")['close']
-    print(f"Kucoin price:{kucoin_price}")
-    if pyth_price > kucoin_price:
-        deviation = 1 - kucoin_price / pyth_price
+
+    coinbase_price = coinbase.fetch_ticker(symbol)['close']
+    print(f"Coinbase price:{coinbase_price}")
+    if pyth_price > coinbase_price:
+        deviation = 1 - coinbase_price / pyth_price
     else:
-        deviation = 1 - pyth_price / kucoin_price
+        deviation = 1 - pyth_price / coinbase_price
     print(f"Bias:{deviation}")
     assert deviation < 0.01
 
@@ -460,5 +460,8 @@ def oracle_guard(symbols=None):
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    print(get_token_price("USDT/USD"))
+    coinbase = ccxt.coinbase()
+    coinbase.load_markets()
+    print(coinbase.fetch_ticker("BTC/USD"))
+    # print(get_token_price("USDT/USD"))
     # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
