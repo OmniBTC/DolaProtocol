@@ -7,7 +7,7 @@ module upgrade_proposal_template::upgrade_proposal {
     use sui::tx_context::TxContext;
 
     /// The digest of the new contract
-    const DIGEST: vector<u8> = x"3a269267336095995b8ffbf75178e0a221f69ae73e6bc6b9ff30b3ee9e3829b5";
+    const DIGEST: vector<u8> = x"2bd461d0f107cf98f2a972e089bd8be3c1e1f05a03b4f2fe104eef37a7081cd6";
     const POLICY: u8 = 0;
 
     /// Errors
@@ -20,7 +20,7 @@ module upgrade_proposal_template::upgrade_proposal {
     struct Certificate has store, drop {}
 
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
-        governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
+        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
     }
 
     public entry fun vote_porposal(
