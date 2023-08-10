@@ -30,3 +30,8 @@ def system_portal_package(network):
 
 def test_coins_package():
     return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MockToken"][-1]
+
+
+def erc20_package(package_address):
+    return Contract.from_abi("ERC20", package_address,
+                             DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)

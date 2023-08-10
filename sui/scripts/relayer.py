@@ -7,6 +7,7 @@ import logging
 import time
 import traceback
 from hmac import compare_digest
+from multiprocessing import Manager
 from pathlib import Path
 
 import brownie
@@ -24,6 +25,7 @@ import config
 import dola_ethereum_sdk
 import dola_ethereum_sdk.init as dola_ethereum_init
 import dola_ethereum_sdk.load as dola_ethereum_load
+import dola_monitor
 import dola_sui_sdk
 import dola_sui_sdk.init as dola_sui_init
 import dola_sui_sdk.lending as dola_sui_lending
@@ -248,7 +250,7 @@ class GasRecord:
         return self.db.find(filter)
 
 
-def sui_portal_watcher():
+def sui_portal_watcher(health):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[sui_portal_watcher]")
     local_logger.info("Start to watch sui portal ^-^")
@@ -278,6 +280,10 @@ def sui_portal_watcher():
                 sequence = int(fields['sequence'])
                 call_name = get_call_name(app_id, int(call_type))
                 nonce = int(fields['nonce'])
+
+                if not health.value:
+                    local_logger.error(f"src_chain_nonce: {nonce}, sequence: {sequence}")
+                    raise ValueError("Health check failed, sui portal watcher blocked")
 
                 if not relay_record.find_one({'src_chain_id': src_chain_id, 'nonce': nonce, 'sequence': sequence}):
                     relay_fee_amount = int(fields['fee_amount'])
@@ -377,7 +383,7 @@ def wormhole_vaa_guardian(network="polygon-test"):
         time.sleep(5)
 
 
-def eth_portal_watcher(network="polygon-test"):
+def eth_portal_watcher(health, network="polygon-test"):
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
 
@@ -414,6 +420,10 @@ def eth_portal_watcher(network="polygon-test"):
             for event in relay_events:
                 nonce = int(event['nonce'])
                 sequence = int(event['sequence'])
+
+                if not health.value:
+                    local_logger.error(f"src_chain_nonce: {nonce}, sequence: {sequence}")
+                    raise ValueError(f"health check failed, {network} portal watcher blocked")
 
                 # check if the event has been recorded
                 if not list(relay_record.find(
@@ -476,7 +486,7 @@ def eth_portal_watcher(network="polygon-test"):
             time.sleep(2)
 
 
-def pool_withdraw_watcher():
+def pool_withdraw_watcher(health):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     local_logger = logger.getChild("[pool_withdraw_watcher]")
     local_logger.info("Start to read withdraw vaa ^-^")
@@ -487,7 +497,7 @@ def pool_withdraw_watcher():
 
     # query latest core tx
     result = list(
-        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
+        relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}, 'status': 'success'})
         .sort("start_time", -1).limit(1))
     latest_sui_tx = result[0]['core_tx_id']
 
@@ -505,6 +515,11 @@ def pool_withdraw_watcher():
 
                 source_chain_id = int(fields['source_chain_id'])
                 source_chain_nonce = int(fields['source_chain_nonce'])
+
+                if not health.value:
+                    local_logger.error(
+                        f"Processing src_chain_id: {source_chain_id}, source_chain_nonce: {source_chain_nonce}")
+                    raise ValueError("health check failed, withdraw watcher blocked")
 
                 if relay_record.find_one(
                         {'src_chain_id': source_chain_id, 'nonce': source_chain_nonce, 'status': 'waitForWithdraw'}):
@@ -618,8 +633,8 @@ def sui_core_executor(relayer_account, divisor=1, remainder=0):
                 else:
                     relay_record.update_record({'vaa': tx['vaa']},
                                                {"$set": {'status': 'fail', 'reason': status}})
-                    local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
                     local_logger.warning("Execute sui core fail! ")
+                    local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
                 status = eval(str(e))
@@ -1027,19 +1042,55 @@ def main():
     # fix request ssl error
     fix_requests_ssl()
 
-    pt = ProcessExecutor(executor=11)
+    # init dola monitor
+    all_pools = dola_monitor.get_all_pools()
+
+    manager = Manager()
+
+    health = manager.Value('b', True)
+
+    lock = manager.Lock()
+
+    q = manager.Queue()
+
+    pt = ProcessExecutor(executor=17)
+
+    sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
+    polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
+    optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
+    arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
 
     pt.run([
-        functools.partial(sui_core_executor, "Relayer1"),
-        sui_portal_watcher,
-        functools.partial(eth_portal_watcher, "arbitrum-main"),
-        functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
-        functools.partial(eth_portal_watcher, "optimism-main"),
-        functools.partial(wormhole_vaa_guardian, "optimism-main"),
-        functools.partial(eth_portal_watcher, "polygon-main"),
+        # One monitoring pool balance per chain
+        functools.partial(dola_monitor.sui_pool_monitor, logger.getChild("[sui_pool_monitor]"),
+                          all_pools[sui_dola_chain_id], q),
+        functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[polygon_pool_monitor]"),
+                          polygon_dola_chain_id,
+                          all_pools[polygon_dola_chain_id], q),
+        functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[optimism_pool_monitor]"),
+                          optimism_dola_chain_id,
+                          all_pools[optimism_dola_chain_id], q),
+        functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
+                          arbitrum_dola_chain_id,
+                          all_pools[arbitrum_dola_chain_id], q),
+        # Protocol health monitoring
+        functools.partial(dola_monitor.dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
+        # Two core executor
+        functools.partial(sui_core_executor, "LendingCore1", 3, 0),
+        functools.partial(sui_core_executor, "LendingCore2", 3, 1),
+        functools.partial(sui_core_executor, "LendingCore3", 3, 2),
+        # User transaction watcher
+        functools.partial(sui_portal_watcher, health),
+        functools.partial(eth_portal_watcher, health, "polygon-main"),
         functools.partial(wormhole_vaa_guardian, "polygon-main"),
-        pool_withdraw_watcher,
-        functools.partial(sui_pool_executor, "Relayer0"),
+        functools.partial(eth_portal_watcher, health, "arbitrum-main"),
+        functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
+        functools.partial(eth_portal_watcher, health, "optimism-main"),
+        functools.partial(wormhole_vaa_guardian, "optimism-main"),
+        # User withdraw watcher
+        functools.partial(pool_withdraw_watcher, health),
+        # User withdraw executor
+        functools.partial(sui_pool_executor, "LendingPool"),
         eth_pool_executor,
     ])
 
