@@ -229,15 +229,12 @@ def get_user_collateral(user, dola_pool_id):
     :return:
     """
     external_interfaces = load.external_interfaces_package()
-    user_manager = load.user_manager_package()
-    lending = load.lending_package()
-    oracle = load.oracle_package()
-    result = external_interfaces.interfaces.get_user_collateral.simulate(
-        lending.storage.Storage[-1],
-        oracle.oracle.PriceOracle[-1],
-        user_manager.user_manager.UserManagerInfo[-1],
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    result = external_interfaces.interfaces.get_user_collateral.inspect(
+        lending_storage,
+        price_oracle,
         user,
-        0,
         dola_pool_id
     )
 
@@ -425,25 +422,25 @@ def get_user_total_reward_info(
 
 
 if __name__ == "__main__":
-    # pprint.pp(get_dola_token_liquidity(1))
+    # pprint(get_dola_token_liquidity(1))
     # dola_addresses = get_dola_user_addresses(1)
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
     # pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
-    # pprint.pp(result)
-    # pprint.pp(get_user_all_collateral(1))
-    # pprint.pp(get_user_health_factor(1))
-    # pprint.pp(get_reserve_info(1))
-    # pprint.pp(get_app_token_liquidity(1, 0))
-    # pprint.pp(get_all_pool_liquidity(4))
-    # pprint.pp(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
-    # pprint.pp(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
-    # pprint.pp(get_user_collateral("0xdc1f21230999232d6cfc230c4730021683f6546f", 0))
-    # pprint.pp(get_user_lending_info(6))
+    # pprint(result)
+    # pprint(get_user_all_collateral(1))
+    # pprint(get_user_health_factor(1))
+    # pprint(get_reserve_info(1))
+    # pprint(get_app_token_liquidity(1, 0))
+    # pprint(get_all_pool_liquidity(4))
+    # pprint(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
+    # pprint(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
+    # pprint(get_user_collateral(66, 3))
+    # pprint(get_user_lending_info(6))
     # pprint(get_user_allowed_borrow(6, 1, 1))
     # pprint(get_all_pool_liquidity(1))
-    # pprint(get_all_reserve_info())
+    pprint(get_all_reserve_info())
     # pprint(get_user_total_reward_info(10, [3],
     # ["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]))
-    pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
+    # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
