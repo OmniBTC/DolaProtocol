@@ -78,7 +78,8 @@ def create_proposal():
     :return:
     """
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(
+        package_id=sui_project.network_config['packages']['dola_protocol']['origin'])
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
     )
@@ -177,7 +178,7 @@ def get_reserve_proposal():
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
     reserve_proposal = sui_project.network_config['packages']['reserve_proposal']
     return f"{dola_protocol}::governance_v1::Proposal<{reserve_proposal}" \
-           f"::genesis_proposal::Certificate>"
+           f"::reserve_proposal::Certificate>"
 
 
 def query_pool_relay_event(tx_digest, limit=10):
@@ -377,9 +378,7 @@ def build_vote_proposal_final_tx_block(genesis_proposal):
 def build_reserve_proposal_final_tx_block(reserve_proposal):
     return [[
         reserve_proposal.reserve_proposal.vote_proposal_final,
-        [
-            Argument("Input", U16(0))
-        ],
+        [Argument("Input", U16(0)), Argument("Input", U16(1))],
         []
     ]]
 
@@ -425,7 +424,7 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_treasury_factor,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 0), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 1)),
@@ -435,7 +434,7 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_borrow_rate_factors,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 1), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 2)),
@@ -448,11 +447,12 @@ def build_set_reserve_params_tx_blocks(reserve_proposal, basic_param_num, sequen
         [
             reserve_proposal.reserve_proposal.set_supply_cap_ceiling,
             [
-                Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
+                Argument("NestedResult", NestedResult(U16(sequence * 3 + 2), U16(0))),
                 Argument("Input", U16(2)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 0)),
                 Argument("Input", U16(basic_param_num + 7 * sequence + 6)),
-            ]
+            ],
+            []
         ]
     ]
 
@@ -461,7 +461,6 @@ def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, seque
     return [
         genesis_proposal.genesis_proposal.register_new_reserve,
         [Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
-         Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
          Argument("Input", U16(basic_param_num - 2)),
          Argument("Input", U16(basic_param_num - 1)),
          Argument("Input", U16(basic_param_num + 13 * sequence + 0)),
@@ -484,7 +483,8 @@ def build_register_new_reserve_tx_block(genesis_proposal, basic_param_num, seque
 
 def register_new_pool(pool: str = "whUSDCeth"):
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
+    dola_protocol = load.dola_protocol_package(
+        package_id=sui_project.network_config['packages']['dola_protocol']['origin'])
 
     create_proposal()
 
@@ -790,7 +790,6 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
         genesis_proposal.genesis_proposal.register_token_price,
         [
             Argument("NestedResult", NestedResult(U16(sequence), U16(0))),
-            Argument("NestedResult", NestedResult(U16(sequence), U16(1))),
             Argument("Input", U16(basic_param_num - 2)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 0)),
             Argument("Input", U16(basic_param_num + sequence * 4 + 1)),
@@ -804,43 +803,45 @@ def build_register_token_price_tx_block(genesis_proposal, basic_param_num, seque
 
 def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
-    dola_protocol = load.dola_protocol_package()
-
     create_proposal()
 
-    btc_token_param = construct_register_token_price_param(
-        "BTC/USD", 'BTC'
-    )
-    usdt_token_param = construct_register_token_price_param(
-        "USDT/USD", 'USDT'
-    )
-    usdc_token_param = construct_register_token_price_param(
-        "USDC/USD", 'USDC'
-    )
-    sui_token_param = construct_register_token_price_param(
-        "SUI/USD", 'SUI'
-    )
-    eth_token_param = construct_register_token_price_param(
-        "ETH/USD", 'ETH'
-    )
-    matic_token_param = construct_register_token_price_param(
-        "MATIC/USD", 'MATIC'
-    )
-    op_token_param = construct_register_token_price_param(
-        "OP/USD", 'OP'
-    )
-    arb_token_param = construct_register_token_price_param(
-        "ARB/USD", 'ARB'
+    # btc_token_param = construct_register_token_price_param(
+    #     "BTC/USD", 'BTC'
+    # )
+    # usdt_token_param = construct_register_token_price_param(
+    #     "USDT/USD", 'USDT'
+    # )
+    # usdc_token_param = construct_register_token_price_param(
+    #     "USDC/USD", 'USDC'
+    # )
+    # sui_token_param = construct_register_token_price_param(
+    #     "SUI/USD", 'SUI'
+    # )
+    # eth_token_param = construct_register_token_price_param(
+    #     "ETH/USD", 'ETH'
+    # )
+    # matic_token_param = construct_register_token_price_param(
+    #     "MATIC/USD", 'MATIC'
+    # )
+    # op_token_param = construct_register_token_price_param(
+    #     "OP/USD", 'OP'
+    # )
+    # arb_token_param = construct_register_token_price_param(
+    #     "ARB/USD", 'ARB'
+    # )
+    whusdceth_token_param = construct_register_token_price_param(
+        "USDC/USD", 'whUSDCeth'
     )
 
     basic_params = [
-        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project.network_config["objects"]["GovernanceInfo"],  # 0
         sui_project[SuiObject.from_type(proposal())][-1],  # 1
-        dola_protocol.oracle.PriceOracle[-1],  # 2
+        sui_project.network_config["objects"]["PriceOracle"],  # 2
         clock(),  # 3
     ]
 
-    token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
+    # token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
+    token_params = whusdceth_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
@@ -916,10 +917,10 @@ def set_reserve_params():
             reserve_pool_id,
             reserve_treasury_factor,
             reserve_base_borrow_rate,
-            reserve_supply_cap_ceiling,
             reserve_borrow_rate_slope1,
             reserve_borrow_rate_slope2,
-            reserve_optimal_utilization
+            reserve_optimal_utilization,
+            reserve_supply_cap_ceiling,
         ]
         reserve_params.extend(reserve_param)
 
@@ -930,7 +931,7 @@ def set_reserve_params():
 
     vote_proposal_final_tx_block = build_reserve_proposal_final_tx_block(reserve_proposal)
 
-    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, reserves_num)
+    finish_proposal_tx_block = build_finish_reserve_proposal_tx_block(reserve_proposal, reserves_num * 3)
 
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + set_reserve_params_tx_blocks + finish_proposal_tx_block
@@ -1370,6 +1371,88 @@ def remove_core_relayer(relayer_address):
     )
 
 
+def add_oracle_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        price_oracle,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.add_oracle_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
+def remove_oracle_relayer(relayer_address):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    relayer_params = [
+        price_oracle,
+        relayer_address
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.remove_oracle_relayer,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+            ],
+            []
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+
+    sui_project.batch_transaction(
+        actual_params=basic_params + relayer_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
 def remote_add_relayer(dola_chain_id, relayer_address):
     genesis_proposal = load.genesis_proposal_package()
 
@@ -1390,7 +1473,7 @@ def remote_add_relayer(dola_chain_id, relayer_address):
         wormhole_state,
         core_state,
         dola_chain_id,
-        relayer_address,
+        list(bytes.fromhex(relayer_address.replace("0x", ""))),
         wormhole_fee,
         clock()
     ]
@@ -1413,9 +1496,9 @@ def remote_add_relayer(dola_chain_id, relayer_address):
 
     vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
 
-    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 2)
 
-    sui_project.batch_transaction(
+    return sui_project.batch_transaction(
         actual_params=basic_params + relayer_params,
         transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
     )
@@ -1472,6 +1555,61 @@ def remote_remove_relayer(dola_chain_id, relayer_address):
     )
 
 
+def create_reward_pool(
+        start_time,
+        end_time,
+        reward_amount,
+        dola_pool_id,
+        reward_action,
+):
+    genesis_proposal = load.genesis_proposal_package()
+
+    # Init chain group id param
+    # create_proposal()
+
+    governance_info = sui_project.network_config['objects']['GovernanceInfo']
+    storage = sui_project.network_config['objects']['LendingStorage']
+
+    basic_params = [
+        governance_info,
+        sui_project[SuiObject.from_type(proposal())][-1],
+    ]
+
+    reward_params = [
+        storage,
+        start_time,
+        end_time,
+        reward_amount,
+        dola_pool_id,
+        reward_action,
+    ]
+
+    tx_blocks = [
+        [
+            genesis_proposal.genesis_proposal.create_reward_pool,
+            [
+                Argument("Result", U16(0)),
+                Argument("Input", U16(2)),
+                Argument("Input", U16(3)),
+                Argument("Input", U16(4)),
+                Argument("Input", U16(5)),
+                Argument("Input", U16(6)),
+                Argument("Input", U16(7)),
+            ],
+            [sui()["coin_type"]]
+        ]
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 2)
+
+    return sui_project.batch_transaction(
+        actual_params=basic_params + reward_params,
+        transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
+    )
+
+
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1480,4 +1618,23 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    batch_init()
+    # batch_init()
+    # register_new_reserve(reserve="whUSDCeth")
+    # set_reserve_params()
+    # register_new_pool()
+    # batch_init_oracle()
+    # add_pool_relayer("0x1e549762ed8f6af7d8f2ce3d41b5344a84899f60f38549d8b4307236ba4274a4")
+    # add_core_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
+    # add_core_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
+    # add_core_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
+    # add_oracle_relayer("0xec57a013e75f59340ade7f8ca0db0fba2459ef57a0a1b04bff57fd61b1fa7cc4")
+    # add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
+    # add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
+    # add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
+    create_reward_pool(
+        start_time=1691658000,
+        end_time=1691917200,
+        reward_amount=int(10 * 1e9),
+        dola_pool_id=3,
+        reward_action=0
+    )

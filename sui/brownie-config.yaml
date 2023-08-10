@@ -13,7 +13,7 @@ networks:
     node_url: http://127.0.0.1:9000
   sui-mainnet:
     dola_chain_id: 0
-    node_url: https://fullnode.mainnet.sui.io:443
+    node_url: https://api.shinami.com:443/node/v1/sui_mainnet_de3f17a71e69f9730b692d39a74a6e0e
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       CoreState: '0xffee67f1fc55a72caab7d150abef55625ac6420ca43c5798f5d52db31fb800a7'
@@ -47,18 +47,16 @@ networks:
         USDC/USD: '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a'
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
     packages:
-      # origin: "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
-      # v1.0.1: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
-      # v1.0.2: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
       dola_protocol:
         origin: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
         v_1_0_1: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
         v_1_0_2: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
-        latest: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
+        v_1_0_3: '0x185fd351ad61ac620093373ffb514cd0e755da3a6447c176df0a51b790119978'
+        latest: '0x185fd351ad61ac620093373ffb514cd0e755da3a6447c176df0a51b790119978'
       external_interfaces: '0x69db6489e56174474b2da72687256cc0f08975b92fe687a0bc485fadfb82a698'
-      genesis_proposal: '0x9372ae1a16c6fdf9150cba486d1f2de572978fd151d9625c0d617cf2b0262fd1'
+      genesis_proposal: '0x693828fbf1322d43f23ad365ab27b7d6f6649133aa3761ff55be6380e53c1b70'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
-      reserve_proposal: '0xa84ef0f2e0ac30766c473b49e68c2f41a1a3f9afc8eb126301b81c159c882fb2'
+      reserve_proposal: '0xb62cbf8e23b5c02bdb822f68e549d5c8abf609f0d477c8200197718f045d4741'
       wormhole: '0x5306f64e312b581766351c07af79c72fcb1cd25147157fdc2f8ad76de9a3fb6a'
     pools:
       SUI:
@@ -83,7 +81,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 6
+        dola_pool_id: 0
         is_isolated_asset: false
         optimal_utilization: 0.45
         supply_cap_ceiling: 50
@@ -97,7 +95,7 @@ networks:
         borrow_rate_slope2: 0.8
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
-        dola_pool_id: 0
+        dola_pool_id: 4
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 500
@@ -111,7 +109,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.88
-        dola_pool_id: 4
+        dola_pool_id: 7
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 1000000
@@ -125,7 +123,7 @@ networks:
         borrow_rate_slope2: 3
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 5
+        dola_pool_id: 6
         is_isolated_asset: false
         optimal_utilization: 0.8
         supply_cap_ceiling: 1000000
@@ -139,7 +137,7 @@ networks:
         borrow_rate_slope2: 1
         borrowable_in_isolation: false
         collateral_coefficient: 0.66
-        dola_pool_id: 7
+        dola_pool_id: 5
         is_isolated_asset: false
         optimal_utilization: 0.75
         supply_cap_ceiling: 1000000

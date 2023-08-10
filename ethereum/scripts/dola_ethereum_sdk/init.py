@@ -28,6 +28,10 @@ def get_wormhole_chain_id():
     return config["networks"][network.show_active()]["wormhole_chainid"]
 
 
+def get_dola_chain_id():
+    return config["networks"][network.show_active()]["dola_chain_id"]
+
+
 def get_wormhole():
     return config["networks"][network.show_active()]["wormhole"]
 
@@ -66,10 +70,22 @@ def register_spender(vaa, package_address):
     omnipool.registerSpender(vaa, {'from': account})
 
 
+def register_relayer(vaa, package_address):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
+    omnipool.registerRelayer(vaa, {'from': account})
+
+
 def delete_spender(vaa, package_address):
     account = get_account()
     omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteSpender(vaa, {'from': account})
+
+
+def delete_relayer(vaa, package_address):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
+    omnipool.removeRelayer(vaa, {'from': account})
 
 
 def bridge_pool_read_vaa(nonce=None):
@@ -233,9 +249,7 @@ def get_payload_from_chain(tx_id):
 
 
 def get_dola_pool():
-    network = brownie.network.show_active()
-    wormhole_adapter = load.wormhole_adapter_pool_package(network)
-    return wormhole_adapter.dolaPool()
+    return config["networks"][network.show_active()]["dola_pool"]
 
 
 def get_dola_contract():
@@ -244,6 +258,22 @@ def get_dola_contract():
     return wormhole_adapter.getDolaContract()
 
 
+def get_all_spenders():
+    dola_pool = load.dola_pool_package(brownie.network.show_active())
+    all_spenders = []
+    i = 0
+    while True:
+        try:
+            result = dola_pool.allSpenders(i)
+        except:
+            break
+        if str(result)[:2] != "0x":
+            break
+        all_spenders.append(result)
+        i += 1
+    return all_spenders
+
+
 if __name__ == "__main__":
-    set_ethereum_network("avax-test")
-    print(get_dola_pool())
+    set_ethereum_network("arbitrum-main")
+    print(get_all_spenders())

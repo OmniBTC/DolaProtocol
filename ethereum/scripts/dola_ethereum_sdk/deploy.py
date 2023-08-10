@@ -15,14 +15,17 @@ def deploy():
     wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
+    dola_pool = "0x0000000000000000000000000000000000000000"
+
     print("deploy wormhole adapter pool...")
     # Set relayer
     wormhole_adapter_pool = DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].deploy(
         wormhole_address,
         wormhole_chainid,
+        dola_pool,
         wormhole_instant_consistency,
         wormhole_finality_consistency,
-        21,
+        21,  # sui _emitterChainId
         core_emitter,
         account.address,
         {'from': account}
@@ -44,7 +47,7 @@ def deploy():
     with open(path, "r") as f:
         config_file = yaml.safe_load(f)
 
-    config_file["networks"][cur_net]["wormhole_adapter_pool"] = wormhole_adapter_pool.address
+    config_file["networks"][cur_net]["wormhole_adapter_pool"]["latest"] = wormhole_adapter_pool.address
     config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
     config_file["networks"][cur_net]["system_portal"] = system_portal.address
     config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
@@ -76,6 +79,7 @@ def redeploy():
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = init.get_dola_pool()
+    print(f"init dola pool: {dola_pool}")
 
     print("deploy wormhole adapter pool...")
     # Set relayer
@@ -85,7 +89,7 @@ def redeploy():
         dola_pool,
         wormhole_instant_consistency,
         wormhole_finality_consistency,
-        21,
+        21,  # sui _emitterChainId
         core_emitter,
         account.address,
         {'from': account}
