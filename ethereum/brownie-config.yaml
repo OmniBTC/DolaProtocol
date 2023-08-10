@@ -65,9 +65,9 @@ networks:
         dola_pool_id: 0
     wormhole: '0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722'
     wormhole_chainid: 24
-    wormhole_adapter_pool: '0x94650D61b940496b1BD88767b7B541b1121e0cCF'
-    lending_portal: '0xD3588acd2A3b69E84a127F92dA3b5f8d81951c16'
-    system_portal: '0x3dd7b63a9b52761F89bd1bBBd31324242A0DaE01'
+    wormhole_adapter_pool: '0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68'
+    lending_portal: '0xB4011A52C1F49A8B51161485D39BA1e70906bE38'
+    system_portal: '0x8F3Ff39FE8565b787453F3e5735BF6f0863853aC'
     dola_pool: '0x233DDEce6a96c49ecE6Ad9ae820690fE62a28975'
     wormhole_instant_consistency: 200
     wormhole_finality_consistency: 200

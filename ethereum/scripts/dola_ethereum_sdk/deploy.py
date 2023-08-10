@@ -79,6 +79,7 @@ def redeploy():
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = init.get_dola_pool()
+    print(f"init dola pool: {dola_pool}")
 
     print("deploy wormhole adapter pool...")
     # Set relayer

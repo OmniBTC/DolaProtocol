@@ -28,6 +28,10 @@ def get_wormhole_chain_id():
     return config["networks"][network.show_active()]["wormhole_chainid"]
 
 
+def get_dola_chain_id():
+    return config["networks"][network.show_active()]["dola_chain_id"]
+
+
 def get_wormhole():
     return config["networks"][network.show_active()]["wormhole"]
 
@@ -66,10 +70,22 @@ def register_spender(vaa, package_address):
     omnipool.registerSpender(vaa, {'from': account})
 
 
+def register_relayer(vaa, package_address):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
+    omnipool.registerRelayer(vaa, {'from': account})
+
+
 def delete_spender(vaa, package_address):
     account = get_account()
     omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
     omnipool.deleteSpender(vaa, {'from': account})
+
+
+def delete_relayer(vaa, package_address):
+    account = get_account()
+    omnipool = load.wormhole_adapter_pool_package(network=network.show_active(), package_address=package_address)
+    omnipool.removeRelayer(vaa, {'from': account})
 
 
 def bridge_pool_read_vaa(nonce=None):

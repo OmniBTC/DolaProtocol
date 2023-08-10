@@ -30,6 +30,10 @@ def get_dola_contract(network, contract_address):
 
 
 def get_dola_chain_id():
+    return dola_ethereum_init.get_dola_chain_id()
+
+
+def get_wormhole_chain_id():
     return dola_ethereum_init.get_wormhole_chain_id()
 
 
@@ -46,6 +50,10 @@ def register_new_spender(vaa, old_wormhole_adapter_pool_address):
     dola_ethereum_init.register_spender(vaa, old_wormhole_adapter_pool_address)
 
 
+def register_new_relayer(vaa, old_wormhole_adapter_pool_address):
+    dola_ethereum_init.register_relayer(vaa, old_wormhole_adapter_pool_address)
+
+
 def create_delete_old_spender_proposal(dola_chain_id, old_dola_contract):
     result = dola_sui_init.remote_delete_spender(dola_chain_id, old_dola_contract)
     return result['effects']['transactionDigest']
@@ -55,18 +63,23 @@ def delete_old_spender(vaa, new_wormhole_adapter_pool):
     dola_ethereum_init.delete_spender(vaa, new_wormhole_adapter_pool)
 
 
-def remove_old_bridge(dola_chain_id):
-    dola_sui_init.delete_remote_bridge(dola_chain_id)
+def remove_old_bridge(wormhole_emitter_chain):
+    dola_sui_init.delete_remote_bridge(wormhole_emitter_chain)
 
 
-def register_new_bridge(dola_chain_id, new_wormhole_adapter_pool):
-    dola_sui_init.register_remote_bridge(dola_chain_id, new_wormhole_adapter_pool)
+def register_new_bridge(wormhole_emitter_chain, new_wormhole_adapter_pool):
+    dola_sui_init.register_remote_bridge(wormhole_emitter_chain, new_wormhole_adapter_pool)
 
 
 def get_core_emitter():
     core_emitter_list = dola_sui_init.get_wormhole_adapter_core_emitter()
     core_emitter = bytes(core_emitter_list).hex()
     return f'0x{core_emitter}'
+
+
+def remote_add_relayer(dola_chain_id, relayer_address):
+    result = dola_sui_init.remote_add_relayer(dola_chain_id, relayer_address)
+    return result['effects']['transactionDigest']
 
 
 def upgrade_evm_contract(network):
@@ -89,27 +102,37 @@ def upgrade_evm_contract(network):
             register_new_spender(vaa, old_wormhole_adapter_pool.address)
             break
 
-    # 3. delete old bridge
-    remove_old_bridge(dola_chain_id)
-
-    # 4. register new bridge
-    register_new_bridge(dola_chain_id, wormhole_adapter_pool.address)
-
-    # 5. delete old remote spender
-    old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool.address)
-    tx_hash = create_delete_old_spender_proposal(dola_chain_id, old_dola_contract)
+    # 3. remote add relayer
+    relayer_address = "0x252CDE02Ec05bB96381FeC47DCc8C58c49499681"
+    tx_hash = remote_add_relayer(dola_chain_id, relayer_address)
     # wait for vaa
     while True:
         if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
-            delete_old_spender(vaa, wormhole_adapter_pool.address)
+            register_new_relayer(vaa, wormhole_adapter_pool.address)
             break
+
+    # # 4. delete old bridge
+    # wormhole_chain_id = get_wormhole_chain_id()
+    # remove_old_bridge(wormhole_chain_id)
+    #
+    # # 5. register new bridge
+    # register_new_bridge(wormhole_chain_id, wormhole_adapter_pool.address)
+    #
+    # # 6. delete old remote spender
+    # old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool.address)
+    # tx_hash = create_delete_old_spender_proposal(dola_chain_id, old_dola_contract)
+    # # wait for vaa
+    # while True:
+    #     if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
+    #         delete_old_spender(vaa, wormhole_adapter_pool.address)
+    #         break
 
     print(f"Successfully upgraded the evm contract for {network}.")
     print(f"Please update the following addresses in the ethereum/brownie-config.yaml for {network}:")
-    print(f"  wormhole_adapter_pool: {wormhole_adapter_pool.address}")
-    print(f"  lending_portal: {lending_portal.address}")
-    print(f"  system_portal: {system_portal.address}")
+    # print(f"  wormhole_adapter_pool: {wormhole_adapter_pool.address}")
+    # print(f"  lending_portal: {lending_portal.address}")
+    # print(f"  system_portal: {system_portal.address}")
 
 
 if __name__ == '__main__':
-    upgrade_evm_contract('avax-test')
+    upgrade_evm_contract('optimism-main')

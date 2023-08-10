@@ -1473,7 +1473,7 @@ def remote_add_relayer(dola_chain_id, relayer_address):
         wormhole_state,
         core_state,
         dola_chain_id,
-        relayer_address,
+        list(bytes.fromhex(relayer_address.replace("0x", ""))),
         wormhole_fee,
         clock()
     ]
@@ -1496,9 +1496,9 @@ def remote_add_relayer(dola_chain_id, relayer_address):
 
     vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
 
-    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 2)
 
-    sui_project.batch_transaction(
+    return sui_project.batch_transaction(
         actual_params=basic_params + relayer_params,
         transactions=vote_proposal_final_tx_block + tx_blocks + finish_proposal_tx_block
     )
