@@ -186,7 +186,7 @@ def decode_relay_events(response):
 
 def query_relay_event_by_get_logs(lending_portal: str, system_portal: str, start_block=0):
     log_filter = {'fromBlock': start_block, 'address': [lending_portal, system_portal],
-                  'topics': ['0x262e3a296d702e5f4781f85336010cc0549f5344a6f46b406efdce9a120f6598']}
+                  'topics': ['0x5ed67fb05a814ff06302127070d306aa25929e34ac0e29ed7dfe3f0212854078']}
     logs = brownie.web3.eth.get_logs(log_filter)
     return decode_relay_logs(logs)
 
@@ -200,15 +200,24 @@ def decode_relay_logs(logs):
             tx_hash = log['transactionHash'].hex()
             timestamp = int(time.time())
             data = log['data']
-            nonce = int(data[2:66], 16)
-            sequence = int(data[66:130], 16)
-            relay_fee = int(data[130:], 16)
+            index = 2
+            nonce = int(data[index:index + 64], 16)
+            index += 64
+            sequence = int(data[index:index + 64], 16)
+            index += 64
+            relay_fee = int(data[index:index + 64], 16)
+            index += 64
+            app_id = int(data[index:index + 64], 16)
+            index += 64
+            call_type = int(data[index:index + 64], 16)
             events.append({
                 'blockNumber': block_number,
                 'transactionHash': tx_hash,
                 'nonce': nonce,
                 'sequence': sequence,
-                'amount': relay_fee,
+                'feeAmount': relay_fee,
+                'appId': app_id,
+                'callType': call_type,
                 'blockTimestamp': timestamp,
             })
     return events
