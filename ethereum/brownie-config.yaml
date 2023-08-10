@@ -65,7 +65,10 @@ networks:
         dola_pool_id: 0
     wormhole: '0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722'
     wormhole_chainid: 24
-    wormhole_adapter_pool: '0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68'
+    wormhole_adapter_pool:
+      v2: "0x94650D61b940496b1BD88767b7B541b1121e0cCF"
+      v3: "0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68"
+      latest: '0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68'
     lending_portal: '0xB4011A52C1F49A8B51161485D39BA1e70906bE38'
     system_portal: '0x8F3Ff39FE8565b787453F3e5735BF6f0863853aC'
     dola_pool: '0x233DDEce6a96c49ecE6Ad9ae820690fE62a28975'
@@ -76,7 +79,11 @@ networks:
     dola_chain_id: 23
     lending_portal: '0x01ebb222C04894Fc402F8772d2BF2b19D2eEA607'
     system_portal: '0x9AB575ab5b2c58c07345cE2DB9b36F0CF54753A5'
-    wormhole_adapter_pool: '0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5'
+    wormhole_adapter_pool:
+      v1: "0x37c15055bf8146E2BF904DACF71b53cc3779Bf49"
+      v2: "0x098D26E4d2E98C1Dde14C543Eb6804Fd98Af9CB4"
+      v3: "0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5"
+      latest: '0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5'
     dola_pool: '0x53eCC006a0073b3351E9e38d94f052E3864C7935'
     pools:
       ETH:
@@ -209,7 +216,11 @@ networks:
     dola_chain_id: 5
     lending_portal: '0x941ECfC6f02d037aF921fDC7431C78785638acDE'
     system_portal: '0xd660fFe65bC32f34053d011dfbb6B74AaD415Bd0'
-    wormhole_adapter_pool: '0x8F65495ca94cCdb3F159369Cf27a91464Db87E98'
+    wormhole_adapter_pool:
+      v1: "0x6A028B4911078F80A20c8De434316C427E3A6Fa5"
+      v2: "0x4445c48e9B70F78506E886880a9e09B501ED1E13"
+      v3: "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98"
+      latest: '0x8F65495ca94cCdb3F159369Cf27a91464Db87E98'
     dola_pool: '0xC3Eb696184b8927D677D8AB390A26563De4798c3'
     pools:
       MATIC:

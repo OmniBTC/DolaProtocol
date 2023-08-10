@@ -11,9 +11,16 @@ def womrhole_package(network):
 
 def wormhole_adapter_pool_package(network, package_address=None):
     if package_address is None:
-        package_address = config["networks"][network]["wormhole_adapter_pool"]
+        package_address = config["networks"][network]["wormhole_adapter_pool"]["latest"]
     return Contract.from_abi("WormholeAdapterPool", package_address,
                              DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["WormholeAdapterPool"].abi)
+
+
+def dola_pool_package(network, package_address=None):
+    if package_address is None:
+        package_address = config["networks"][network]["dola_pool"]
+    return Contract.from_abi("DolaPool", package_address,
+                             DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["DolaPool"].abi)
 
 
 def lending_portal_package(network):

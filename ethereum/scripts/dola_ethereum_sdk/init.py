@@ -249,6 +249,22 @@ def get_dola_contract():
     return wormhole_adapter.getDolaContract()
 
 
+def get_all_spenders():
+    dola_pool = load.dola_pool_package(brownie.network.show_active())
+    all_spenders = []
+    i = 0
+    while True:
+        try:
+            result = dola_pool.allSpenders(i)
+        except:
+            break
+        if str(result)[:2] != "0x":
+            break
+        all_spenders.append(result)
+        i += 1
+    return all_spenders
+
+
 if __name__ == "__main__":
-    set_ethereum_network("avax-test")
-    print(get_dola_pool())
+    set_ethereum_network("polygon-main")
+    print(get_all_spenders())

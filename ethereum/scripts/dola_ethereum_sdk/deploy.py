@@ -47,7 +47,7 @@ def deploy():
     with open(path, "r") as f:
         config_file = yaml.safe_load(f)
 
-    config_file["networks"][cur_net]["wormhole_adapter_pool"] = wormhole_adapter_pool.address
+    config_file["networks"][cur_net]["wormhole_adapter_pool"]["latest"] = wormhole_adapter_pool.address
     config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
     config_file["networks"][cur_net]["system_portal"] = system_portal.address
     config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()

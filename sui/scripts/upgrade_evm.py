@@ -2,6 +2,7 @@ import base64
 from pathlib import Path
 
 import requests
+from brownie import config
 from retrying import retry
 
 import dola_ethereum_sdk
@@ -82,12 +83,16 @@ def remote_add_relayer(dola_chain_id, relayer_address):
     return result['effects']['transactionDigest']
 
 
-def upgrade_evm_contract(network):
+def upgrade_evm_wormhole_adapter(network, old_version="v2"):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
 
-    old_wormhole_adapter_pool = dola_ethereum_load.wormhole_adapter_pool_package(network)
+    old_wormhole_adapter_pool_address = config["networks"][network]["wormhole_adapter_pool"][old_version]
+    old_wormhole_adapter_pool = dola_ethereum_load.wormhole_adapter_pool_package(
+        network,
+        config["networks"][network]["wormhole_adapter_pool"][old_version]
+    )
 
     # 1. redeploy evm contract
     (wormhole_adapter_pool, lending_portal, system_portal) = redeploy_evm_contract()
@@ -99,7 +104,7 @@ def upgrade_evm_contract(network):
     # wait for vaa
     while True:
         if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
-            register_new_spender(vaa, old_wormhole_adapter_pool.address)
+            register_new_spender(vaa, old_wormhole_adapter_pool_address)
             break
 
     # 3. remote add relayer
@@ -119,12 +124,12 @@ def upgrade_evm_contract(network):
     # register_new_bridge(wormhole_chain_id, wormhole_adapter_pool.address)
     #
     # # 6. delete old remote spender
-    # old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool.address)
+    # old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool_address)
     # tx_hash = create_delete_old_spender_proposal(dola_chain_id, old_dola_contract)
     # # wait for vaa
     # while True:
     #     if vaa := get_vaa_by_wormhole(tx_hash, get_core_emitter()):
-    #         delete_old_spender(vaa, wormhole_adapter_pool.address)
+    #         delete_old_spender(vaa, old_wormhole_adapter_pool_address)
     #         break
 
     print(f"Successfully upgraded the evm contract for {network}.")
@@ -135,4 +140,4 @@ def upgrade_evm_contract(network):
 
 
 if __name__ == '__main__':
-    upgrade_evm_contract('polygon-main')
+    upgrade_evm_wormhole_adapter('polygon-main')
