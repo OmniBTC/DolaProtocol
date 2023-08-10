@@ -1565,7 +1565,7 @@ def create_reward_pool(
     genesis_proposal = load.genesis_proposal_package()
 
     # Init chain group id param
-    # create_proposal()
+    create_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     storage = sui_project.network_config['objects']['LendingStorage']
@@ -1635,6 +1635,6 @@ if __name__ == '__main__':
         start_time=1691658000,
         end_time=1691917200,
         reward_amount=int(10 * 1e9),
-        dola_pool_id=3,
+        dola_pool_id=8,
         reward_action=0
     )
