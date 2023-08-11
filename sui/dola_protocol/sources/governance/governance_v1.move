@@ -27,6 +27,7 @@ module dola_protocol::governance_v1 {
     use sui::package;
     #[test_only]
     use sui::test_scenario::{Self, Scenario};
+    use sui::dynamic_field;
 
     /// Proposal State
     /// PROPOSAL_ANNOUNCEMENT_PENDING -> PROPOSAL_VOTING_PENDING -> PROPOSAL_SUCCESS/PROPOSAL_FAIL
@@ -237,6 +238,13 @@ module dola_protocol::governance_v1 {
         }
     }
 
+    /// Get his proposal
+    public fun get_his_proposal(
+        governance_info: &GovernanceInfo
+    ): &vector<ID> {
+        &governance_info.his_proposal
+    }
+
     /// Destory governance cap
     public fun destroy_governance_cap(
         governance_cap: GovernanceCap
@@ -417,6 +425,16 @@ module dola_protocol::governance_v1 {
             proposal_id: object::id(proposal),
             new_state: PROPOSAL_CANCEL
         });
+    }
+
+    /// Allow proposal creator to add additional description to proposal
+    public entry fun add_description_for_proposal<T: store + drop, V: store>(
+        proposal: &mut Proposal<T>,
+        desc: V,
+        ctx: &mut TxContext
+    ) {
+        assert!(proposal.creator == tx_context::sender(ctx), ENOT_CREATEOR);
+        dynamic_field::add(&mut proposal.id, 0, desc);
     }
 
 
