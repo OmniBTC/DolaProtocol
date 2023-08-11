@@ -101,6 +101,9 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
                     balance = get_erc20_balance(dola_pool, token)
 
                 if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
+                    change = balance - pool_info[dola_pool_id]
+                    local_logger.info(
+                        f"dola pool {config.DOLA_POOL_ID_TO_SYMBOL[dola_pool_id]} on chain {network} balance: {balance} change: {change}")
                     pool_info[dola_pool_id] = balance
                     q.put((dola_chain_id, dola_pool_id, balance))
         except Exception as e:
@@ -121,6 +124,9 @@ def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
                 pool_address = config.SUI_TOKEN_TO_POOL[token]
                 balance = get_sui_pool_balance(pool_address)
                 if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
+                    change = balance - pool_info[dola_pool_id]
+                    local_logger.info(
+                        f"dola pool {config.DOLA_POOL_ID_TO_SYMBOL[dola_pool_id]} on chain sui balance: {balance} change: {change}")
                     pool_info[dola_pool_id] = balance
                     q.put((0, dola_pool_id, balance))
         except Exception as e:
@@ -153,8 +159,6 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
     while True:
         try:
             (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
-            local_logger.info(
-                f"dola pool {dola_pool_id} on chain {config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]} balance: {balance}")
             if dola_pool_id not in pool_infos:
                 pool_infos[dola_pool_id] = {}
 
