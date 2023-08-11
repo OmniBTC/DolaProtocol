@@ -1,7 +1,6 @@
-module migrate_version_proposal::proposal {
+module add_member_proposal::proposal {
     use std::option;
 
-    use dola_protocol::genesis::{Self, GovernanceGenesis, Version_1_0_3, Version_1_0_4};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::tx_context::TxContext;
     use std::ascii::String;
@@ -16,6 +15,11 @@ module migrate_version_proposal::proposal {
     /// Errors
 
     const ENOT_CREATOR: u64 = 0;
+
+    /// Constant
+
+    // Member address to be added
+    const MEMBER_ADDRESS: vector<u8> = b"2d8a1f9e142f4462098394765ce62e51b999b47a4bae5d15cde4f8499313e4d0";
 
     struct ProposalInfo has key {
         id: UID,
@@ -40,15 +44,11 @@ module migrate_version_proposal::proposal {
         let governance_info: address = address::from_bytes(
             x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d"
         );
-        let gov_genesis: address = address::from_bytes(
-            x"42ef90066e649215e6ab91399a83e1a5467fd7cc436e8b83adb8743a0efba621"
-        );
         let create_proposal = vector::empty<address>();
         vector::push_back(&mut create_proposal, governance_info);
 
         let vote_porposal = vector::empty<address>();
         vector::push_back(&mut vote_porposal, governance_info);
-        vector::push_back(&mut vote_porposal, gov_genesis);
 
         let uid = object::new(ctx);
         let id = object::uid_to_inner(&uid);
@@ -89,16 +89,15 @@ module migrate_version_proposal::proposal {
     }
 
     public entry fun vote_porposal(
-        governance_info: &GovernanceInfo,
-        gov_genesis: &mut GovernanceGenesis,
+        governance_info: &mut GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
         if (option::is_some(&governance_cap)) {
             let cap = option::extract(&mut governance_cap);
-            let new_version = genesis::get_version_1_0_4();
-            genesis::migrate_version<Version_1_0_3, Version_1_0_4>(&cap, gov_genesis, new_version);
+            let member = address::from_bytes(MEMBER_ADDRESS);
+            governance_v1::add_member(&cap, governance_info, member);
             governance_v1::destroy_governance_cap(cap);
         };
         option::destroy_none(governance_cap);
