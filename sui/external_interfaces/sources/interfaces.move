@@ -11,6 +11,7 @@ module external_interfaces::interfaces {
     use sui::clock::{Self, Clock};
     use sui::dynamic_field;
     use sui::event::emit;
+    use sui::object;
 
     use dola_protocol::boost;
     use dola_protocol::boost::RewardPoolInfos;
@@ -28,7 +29,6 @@ module external_interfaces::interfaces {
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole::vaa;
-    use sui::object;
 
     const HOUR: u64 = 60 * 60;
 
@@ -1224,7 +1224,7 @@ module external_interfaces::interfaces {
         )
     }
 
-    public entry fun get_reward_pool_apy(
+    public fun get_reward_pool_apy(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         reward_token: u16,

@@ -190,8 +190,8 @@ def portal_as_collateral(pool_ids=None, bridge_fee=0):
         genesis,
         pool_state,
         wormhole_state,
-        coins[0],
         pool_ids,
+        coins[0],
         init.clock(),
     )
 
@@ -1432,6 +1432,7 @@ if __name__ == "__main__":
     # sui_project.pay_all_sui()
     # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
     # portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=14813999)
-    portal_liquidate(2, 2, 1, bridge_fee=13076999)
+    # portal_liquidate(2, 2, 1, bridge_fee=13076999)
+    portal_as_collateral([3], bridge_fee=0)
 
     # export_objects()
