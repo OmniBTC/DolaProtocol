@@ -193,10 +193,12 @@ def query_pool_relay_event(tx_digest, limit=10):
     # v 1.0.3
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['v_1_0_3']
 
+    cursor = None if tx_digest == "" else {"txDigest": tx_digest, "eventSeq": "1"}
+
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"},
         limit=limit,
-        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
+        cursor=cursor, descending_order=False)['data']
 
 
 def query_core_relay_event(tx_digest, limit=10):
@@ -209,9 +211,11 @@ def query_core_relay_event(tx_digest, limit=10):
     """
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
 
+    cursor = None if tx_digest == "" else {"txDigest": tx_digest, "eventSeq": "1"}
+
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
-        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
+        cursor=cursor, descending_order=False)['data']
 
 
 @functools.lru_cache()
