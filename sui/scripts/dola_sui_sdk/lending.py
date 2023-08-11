@@ -15,8 +15,8 @@ from dola_sui_sdk.oracle import get_price_info_object
 
 U64_MAX = 18446744073709551615
 
-coinbase = ccxt.coinbase()
-coinbase.load_markets()
+kraken = ccxt.kraken()
+kraken.load_markets()
 
 
 def calculate_sui_gas(gas_used):
@@ -31,7 +31,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_fee_amount = 0
+    pyth_fee_amount = 1
 
     feed_gas = 0
 
@@ -52,7 +52,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -80,17 +80,16 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+        kraken_price = kraken.fetch_ticker(symbol)['close']
 
-        if pyth_price > coinbase_price:
-            deviation = 1 - coinbase_price / pyth_price
+        if pyth_price > kraken_price:
+            deviation = 1 - kraken_price / pyth_price
         else:
-            deviation = 1 - pyth_price / coinbase_price
+            deviation = 1 - pyth_price / kraken_price
 
-        print(f"{symbol} price deviation: {deviation}")
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
-        if deviation <= deviation_threshold:
-            raise ValueError("The oracle price difference is too large!")
+        if deviation > deviation_threshold:
+            raise ValueError(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
@@ -112,7 +111,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
                 ],
                 transactions=[
                     [
-                        dola_protocol.oracle.feed_token_price_by_pyth,
+                        dola_protocol.oracle.feed_token_price_by_pyth_v2,
                         [
                             Argument("Input", U16(0)),
                             Argument("Input", U16(1)),
@@ -1387,7 +1386,10 @@ def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_c
 
     feed_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][0][0])
     feed_token_ids = list(set(feed_token_ids))
-    skip_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][1][0])
+    if len(result['results'][0]['returnValues']) == 2:
+        skip_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][1][0])
+    else:
+        skip_token_ids = []
 
     return [x for x in feed_token_ids if x not in skip_token_ids]
 

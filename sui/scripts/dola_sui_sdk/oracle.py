@@ -106,10 +106,10 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
-def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
+def feed_token_price_by_pyth(symbol, simulate=True, kraken=None):
     dola_protocol = load.dola_protocol_package()
 
-    pyth_fee_amount = 0
+    pyth_fee_amount = 1
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
@@ -132,7 +132,7 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -161,17 +161,16 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
 
-        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+        kraken_price = kraken.fetch_ticker(symbol)['close']
 
-        if pyth_price > coinbase_price:
-            deviation = 1 - coinbase_price / pyth_price
+        if pyth_price > kraken_price:
+            deviation = 1 - kraken_price / pyth_price
         else:
-            deviation = 1 - pyth_price / coinbase_price
+            deviation = 1 - pyth_price / kraken_price
 
-        print(f"{symbol} price deviation: {deviation}")
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
-        if deviation <= deviation_threshold:
-            raise ValueError("The oracle price difference is too large!")
+        if deviation > deviation_threshold:
+            raise ValueError(f"The oracle price difference is too large! {symbol} price deviation: {deviation}")
     else:
         sui_project.batch_transaction(
             actual_params=[
@@ -445,7 +444,7 @@ def oracle_guard(symbols=None):
         symbols = []
 
     sui_project.active_account("OracleGuard")
-    
+
     while True:
         try:
             for symbol in symbols:
