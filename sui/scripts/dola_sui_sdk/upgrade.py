@@ -152,5 +152,6 @@ if __name__ == "__main__":
     # generate_dola_protocol_package_info()
     # dola_upgrade_test()
     # migrate_version_test()
-    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_3'])
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
     check_version(get_latest_dola_protocol())
