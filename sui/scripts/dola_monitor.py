@@ -158,7 +158,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
     pool_infos = {}
     while True:
         try:
-            (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
+            (dola_chain_id, dola_pool_id, balance) = q.get()
             if dola_pool_id not in pool_infos:
                 pool_infos[dola_pool_id] = {}
 
