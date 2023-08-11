@@ -7,10 +7,11 @@ import yaml
 from sui_brownie import SuiObject, Argument, U16
 
 import config
-from dola_sui_sdk import load, init, oracle
+from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
+from dola_sui_sdk.oracle import get_feed_vaa
 
 U64_MAX = 18446744073709551615
 
@@ -36,7 +37,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
 
     symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
     price_info_objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id] for pool_id in asset_ids]
-    vaas = oracle.get_batch_feed_vaa(symbols)
+    vaas = [get_feed_vaa(symbol) for symbol in symbols]
     for (pool_id, vaa, symbol, price_info_object) in zip(asset_ids, vaas, symbols, price_info_objects):
         result = sui_project.batch_transaction_inspect(
             actual_params=[
