@@ -4,13 +4,10 @@ module add_member_proposal::proposal {
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::tx_context::TxContext;
     use std::ascii::String;
-    use sui::transfer;
     use sui::object;
-    use sui::object::UID;
     use std::ascii;
     use std::vector;
     use sui::address;
-    use sui::tx_context;
 
     /// Errors
 
@@ -21,72 +18,45 @@ module add_member_proposal::proposal {
     // Member address to be added
     const MEMBER_ADDRESS: vector<u8> = b"2d8a1f9e142f4462098394765ce62e51b999b47a4bae5d15cde4f8499313e4d0";
 
-    struct ProposalInfo has key {
-        id: UID,
+    struct ProposalDesc has store {
         // Description of proposal content
         description: String,
-        // Params of `create_proposal`
-        create_proposal: vector<address>,
         // Params of `vote_porposal`
-        vote_porposal: vector<address>,
-        // Whether `create_proposal` has been executed
-        is_create_proposal: bool,
-        // Creator of the proposal
-        creator: address,
+        vote_porposal: vector<address>
     }
 
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
     struct Certificate has store, drop {}
 
-    fun init(ctx: &mut TxContext) {
+    public entry fun create_proposal(
+        governance_info: &mut GovernanceInfo,
+        ctx: &mut TxContext
+    ) {
+        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx);
+    }
+
+    public entry fun add_description_for_proposal(
+        proposal: &mut Proposal<Certificate>,
+        ctx: &mut TxContext
+    ) {
         let description: String = ascii::string(b"Migrate version from v_1_0_3 to v_1_0_4");
+
         let governance_info: address = address::from_bytes(
             x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d"
         );
-        let create_proposal = vector::empty<address>();
-        vector::push_back(&mut create_proposal, governance_info);
-
         let vote_porposal = vector::empty<address>();
         vector::push_back(&mut vote_porposal, governance_info);
 
-        let uid = object::new(ctx);
-        let id = object::uid_to_inner(&uid);
-        let proposal_info = ProposalInfo {
-            id: uid,
+        let proposal_desc = ProposalDesc {
             description,
-            create_proposal,
             vote_porposal,
-            is_create_proposal: false,
-            creator: tx_context::sender(ctx)
         };
 
-        vector::push_back(&mut proposal_info.create_proposal, object::id_to_address(&id));
-
-        transfer::share_object(proposal_info);
+        vector::push_back(&mut proposal_desc.vote_porposal, object::id_to_address(&object::id(proposal)));
+        governance_v1::add_description_for_proposal<Certificate, ProposalDesc>(proposal, proposal_desc, ctx);
     }
 
-    public entry fun create_proposal(
-        governance_info: &mut GovernanceInfo,
-        proposal_info: &mut ProposalInfo,
-        ctx: &mut TxContext
-    ) {
-        assert!(proposal_info.creator == tx_context::sender(ctx), ENOT_CREATOR);
-
-        // todo! The next upgrade needs to allow reading current proposal from governance_info
-        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
-    }
-
-    // todo! Future DEPRECATED
-    public entry fun add_vote_porposal(
-        proposal_info: &mut ProposalInfo,
-        proposal: &Proposal<Certificate>,
-        ctx: &mut TxContext
-    ) {
-        assert!(proposal_info.creator == tx_context::sender(ctx), ENOT_CREATOR);
-
-        vector::push_back(&mut proposal_info.vote_porposal, object::id_to_address(&object::id(proposal)));
-    }
 
     public entry fun vote_porposal(
         governance_info: &mut GovernanceInfo,
