@@ -14,9 +14,9 @@ import brownie
 import ccxt
 import requests
 from dotenv import dotenv_values
-from gql import gql, Client
+from gql import gql
 from gql.client import log as gql_client_logs
-from gql.transport.aiohttp import AIOHTTPTransport, log as gql_logs
+from gql.transport.aiohttp import log as gql_logs
 from pymongo import MongoClient
 from retrying import retry
 from sui_brownie.parallelism import ProcessExecutor
@@ -173,7 +173,7 @@ class RelayRecord:
         self.db.insert_one(record)
 
     def add_withdraw_record(self, src_chain_id, src_tx_id, nonce, call_name, block_number, sequence, vaa, relay_fee,
-                            start_time, core_tx_id="", core_costed_fee=0, withdraw_chain_id: str | int = "",
+                            start_time, core_tx_id="", core_costed_fee=0, withdraw_chain_id="",
                             withdraw_tx_id="",
                             withdraw_sequence=0, withdraw_vaa="", withdraw_pool="", withdraw_costed_fee=0,
                             status='false'):
@@ -263,13 +263,13 @@ def sui_portal_watcher(health):
 
     # query latest tx
     result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("start_time", -1).limit(1))
-    latest_sui_tx = result[0]['src_tx_id']
+    latest_sui_tx = result[0]['src_tx_id'] if 'src_tx_id' in result[0] else ""
 
     while True:
         try:
             prev_sui_tx = latest_sui_tx
             result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("start_time", -1).limit(1))
-            latest_sui_tx = result[0]['src_tx_id'] if result else prev_sui_tx
+            latest_sui_tx = result[0]['src_tx_id'] if 'src_tx_id' in result[0] else prev_sui_tx
             relay_events = dola_sui_init.query_pool_relay_event(latest_sui_tx)
 
             for event in relay_events:
@@ -398,16 +398,15 @@ def eth_portal_watcher(health, network="polygon-test"):
     lending_portal = dola_ethereum_load.lending_portal_package(network).address
     system_portal = dola_ethereum_load.system_portal_package(network).address
 
-    graphql_url = dola_ethereum_init.graphql_url(network)
-    transport = AIOHTTPTransport(url=graphql_url)
-
-    # Create a GraphQL client using the defined transport
-    client = Client(transport=transport, fetch_schema_from_transport=True)
+    # graphql_url = dola_ethereum_init.graphql_url(network)
+    # transport = AIOHTTPTransport(url=graphql_url)
+    #
+    # # Create a GraphQL client using the defined transport
+    # client = Client(transport=transport, fetch_schema_from_transport=True)
 
     # query latest block number
     result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
     latest_relay_block_number = result[0]['block_number'] if result else 0
-    limit = 5
 
     while True:
         try:
@@ -415,9 +414,8 @@ def eth_portal_watcher(health, network="polygon-test"):
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
             # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = list(client.execute(graph_query(latest_relay_block_number, limit))['relayEvents']) \
-                           or dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
-                                                                               latest_relay_block_number)
+            relay_events = dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
+                                                                            latest_relay_block_number)
 
             for event in relay_events:
                 nonce = int(event['nonce'])
@@ -507,7 +505,7 @@ def pool_withdraw_watcher(health):
         try:
             prev_sui_tx = latest_sui_tx
             result = list(
-                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}})
+                relay_record.find({"withdraw_tx_id": {"$exists": 1}, 'core_tx_id': {"$ne": ""}, 'status': 'success'})
                 .sort("start_time", -1).limit(1))
             latest_sui_tx = result[0]['core_tx_id'] if result else prev_sui_tx
             relay_events = dola_sui_init.query_core_relay_event(latest_sui_tx)
@@ -911,8 +909,8 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id):
     relay_fee = (calculate_core_fee(max_record['core_gas'], core_gas_price) +
                  calculate_withdraw_fee(max_record['withdraw_gas'], withdraw_gas_price, dst_net))
     src_net = get_dola_network(src_chain_id)
-
-    return {'relay_fee': str(get_fee_amount(relay_fee, get_gas_token(src_net)))}
+    relay_fee = int(get_fee_amount(relay_fee, get_gas_token(src_net)) * 1.2)
+    return {'relay_fee': str(relay_fee)}
 
 
 def calculate_core_fee(core_gas, gas_price):
@@ -1055,7 +1053,7 @@ def main():
 
     q = manager.Queue()
 
-    pt = ProcessExecutor(executor=17)
+    pt = ProcessExecutor(executor=18)
 
     sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
     polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
