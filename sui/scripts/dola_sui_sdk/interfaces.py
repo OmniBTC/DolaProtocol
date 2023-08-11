@@ -467,9 +467,18 @@ if __name__ == "__main__":
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
     pprint(get_user_total_reward_info(
-        66, [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
+        66, [3, 3, 3, 3], [3, 3, 8, 8],
+        ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a",
+         "0xa70f54de256c18852819c7af5ffe2c45c2cb384b74660bcd30144c723de590d6",
+         "0xe98a7e77770e856b22d9473bf91426b2b792154739a790bd994415a0419b4fc1",
+         "0xb2a295969004313fc59e64e2c5b07577c505fb509845e23f2c0b5850ae1db869"
+         ]
     ))
     pprint(get_reward_pool_apys(
-        [3], [3], ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a"]
+        [3, 3],
+        [3, 3],
+        ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a",
+         "0xa70f54de256c18852819c7af5ffe2c45c2cb384b74660bcd30144c723de590d6"
+         ]
     ))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))

@@ -29,7 +29,6 @@ module external_interfaces::interfaces {
     use wormhole::state::State;
     use wormhole::vaa;
     use sui::object;
-    use dola_protocol::dola_pool;
 
     const HOUR: u64 = 60 * 60;
 
@@ -1261,11 +1260,11 @@ module external_interfaces::interfaces {
             let total_value = logic::calculate_value(oracle, dola_pool_id, total_balance);
 
             let total_reward_balance = boost::get_reward_per_second(reward_pool_info) * SECONDS_PER_YEAR;
-            let total_reward_balance = (dola_pool::convert_amount(
-                (total_reward_balance as u64),
-                reward_token_decimal,
-                8
-            ) as u256);
+            if (reward_token_decimal > 8) {
+                total_reward_balance = total_reward_balance / (sui::math::pow(10, reward_token_decimal - 8) as u256)
+            }else if (reward_token_decimal < 8) {
+                total_reward_balance = total_reward_balance * (sui::math::pow(10, 8 - reward_token_decimal) as u256)
+            };
             let total_reward_value = logic::calculate_value(oracle, reward_token, total_reward_balance);
 
             if (total_value == 0) {
