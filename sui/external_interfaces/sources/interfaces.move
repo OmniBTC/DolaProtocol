@@ -11,6 +11,7 @@ module external_interfaces::interfaces {
     use sui::clock::{Self, Clock};
     use sui::dynamic_field;
     use sui::event::emit;
+    use sui::object;
 
     use dola_protocol::boost;
     use dola_protocol::boost::RewardPoolInfos;
@@ -28,7 +29,6 @@ module external_interfaces::interfaces {
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole::vaa;
-    use sui::object;
 
     const HOUR: u64 = 60 * 60;
 
@@ -972,7 +972,9 @@ module external_interfaces::interfaces {
             (health_collateral_value - health_loan_value),
             collateral_coefficient
         );
-        let withdraw_amount = logic::calculate_amount(oracle, withdraw_pool_id, can_withdraw_value);
+        let can_withdraw_amount = logic::calculate_amount(oracle, withdraw_pool_id, can_withdraw_value);
+        let withdraw_amount = logic::user_collateral_balance(storage, dola_user_id, withdraw_pool_id);
+        let withdraw_amount = ray_math::min(can_withdraw_amount, withdraw_amount);
         let pool_address = pool_manager::find_pool_by_chain(pool_manager_info, withdraw_pool_id, dola_chain_id);
 
         let pool_liquidity = 0;
