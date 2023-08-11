@@ -16,7 +16,9 @@ module add_member_proposal::proposal {
     /// Constant
 
     // Member address to be added
-    const MEMBER_ADDRESS: vector<u8> = b"2d8a1f9e142f4462098394765ce62e51b999b47a4bae5d15cde4f8499313e4d0";
+    const MEMBER_ADDRESS: vector<u8> = x"2d8a1f9e142f4462098394765ce62e51b999b47a4bae5d15cde4f8499313e4d0";
+
+    const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
 
     struct ProposalDesc has store {
         // Description of proposal content
@@ -42,11 +44,8 @@ module add_member_proposal::proposal {
     ) {
         let description: String = ascii::string(b"Migrate version from v_1_0_3 to v_1_0_4");
 
-        let governance_info: address = address::from_bytes(
-            x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d"
-        );
         let vote_porposal = vector::empty<address>();
-        vector::push_back(&mut vote_porposal, governance_info);
+        vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_INFO));
 
         let proposal_desc = ProposalDesc {
             description,
@@ -66,8 +65,7 @@ module add_member_proposal::proposal {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
         if (option::is_some(&governance_cap)) {
             let cap = option::extract(&mut governance_cap);
-            let member = address::from_bytes(MEMBER_ADDRESS);
-            governance_v1::add_member(&cap, governance_info, member);
+            governance_v1::add_member(&cap, governance_info, address::from_bytes(MEMBER_ADDRESS));
             governance_v1::destroy_governance_cap(cap);
         };
         option::destroy_none(governance_cap);
