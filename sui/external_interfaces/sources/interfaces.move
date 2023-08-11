@@ -29,6 +29,7 @@ module external_interfaces::interfaces {
     use wormhole::state::State;
     use wormhole::vaa;
     use sui::object;
+    use dola_protocol::dola_pool;
 
     const HOUR: u64 = 60 * 60;
 
@@ -1224,7 +1225,7 @@ module external_interfaces::interfaces {
         )
     }
 
-    public entry fun get_reward_pool_apy(
+    public fun get_reward_pool_apy(
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         reward_token: u16,
@@ -1237,6 +1238,15 @@ module external_interfaces::interfaces {
         let storage_id = storage::get_storage_id(storage);
         let reward_pool_info = object::id_from_address(reward_pool_info);
         let apy = 0;
+
+        let reward_token_decimal;
+        if (reward_token == 3) {
+            reward_token_decimal = 9;
+        }else if (dola_pool_id == 8) {
+            reward_token_decimal = 6;
+        }else {
+            reward_token_decimal = 8;
+        };
 
         if (dynamic_field::exists_(storage_id, dola_pool_id)) {
             let reward_pools = dynamic_field::borrow_mut<u16, RewardPoolInfos>(storage_id, dola_pool_id);
@@ -1251,6 +1261,11 @@ module external_interfaces::interfaces {
             let total_value = logic::calculate_value(oracle, dola_pool_id, total_balance);
 
             let total_reward_balance = boost::get_reward_per_second(reward_pool_info) * SECONDS_PER_YEAR;
+            let total_reward_balance = (dola_pool::convert_amount(
+                (total_reward_balance as u64),
+                reward_token_decimal,
+                8
+            ) as u256);
             let total_reward_value = logic::calculate_value(oracle, reward_token, total_reward_balance);
 
             if (total_value == 0) {
