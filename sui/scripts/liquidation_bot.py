@@ -6,7 +6,6 @@ from retrying import retry
 
 import dola_ethereum_sdk
 import dola_sui_sdk
-import notify
 from dola_sui_sdk import interfaces, lending, sui_project
 
 

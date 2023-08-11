@@ -140,7 +140,7 @@ def check_pool_health(dola_pool_id, pool_info):
     total_debt = get_dtoken_total_supply(dola_pool_id)
 
     liquidity = sum(pool_info[dola_chain_id] for dola_chain_id in pool_info)
-    return liquidity + total_debt >= total_supply
+    return liquidity + total_debt + config.DOLA_RESERVES_COUNT >= total_supply
 
 
 def check_dola_health(pool_infos):
@@ -158,7 +158,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
     pool_infos = {}
     while True:
         try:
-            (dola_chain_id, dola_pool_id, balance) = q.get()
+            (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
             if dola_pool_id not in pool_infos:
                 pool_infos[dola_pool_id] = {}
 
@@ -201,7 +201,6 @@ def get_all_pools():
 
 def main():
     all_pools = get_all_pools()
-    monitor_num = len(all_pools.keys())
 
     manager = Manager()
 
@@ -211,7 +210,7 @@ def main():
 
     q = manager.Queue()
 
-    pt = ProcessExecutor(executor=monitor_num + 1)
+    pt = ProcessExecutor(executor=4)
 
     pt.run([
         functools.partial(sui_pool_monitor, all_pools[0], q),
