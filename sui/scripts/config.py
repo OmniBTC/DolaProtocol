@@ -54,7 +54,7 @@ NET_TO_WORMHOLE_EMITTER = {
     # mainnet
     "optimism-main": "0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68",
     "arbitrum-main": "0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5",
-    "polygon-main": "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98",
+    "polygon-main": "0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
     # testnet

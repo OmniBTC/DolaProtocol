@@ -214,13 +214,14 @@ networks:
   polygon-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 5
-    lending_portal: '0x941ECfC6f02d037aF921fDC7431C78785638acDE'
-    system_portal: '0xd660fFe65bC32f34053d011dfbb6B74AaD415Bd0'
+    lending_portal: '0xD51Ef1Cf286cb403ec2767e7b52Ce402f37E930d'
+    system_portal: '0x75950Df2bAfa1b0EE5dB22aaa5e00EBCED982315'
     wormhole_adapter_pool:
       v1: "0x6A028B4911078F80A20c8De434316C427E3A6Fa5"
       v2: "0x4445c48e9B70F78506E886880a9e09B501ED1E13"
       v3: "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98"
-      latest: '0x8F65495ca94cCdb3F159369Cf27a91464Db87E98'
+      v4: "0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5"
+      latest: '0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5'
     dola_pool: '0xC3Eb696184b8927D677D8AB390A26563De4798c3'
     pools:
       MATIC:
@@ -248,7 +249,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.polygonscan.com/api
-    graphql_url: https://api.studio.thegraph.com/query/48530/polygondolarelayer/v0.0.3
+    graphql_url: https://api.studio.thegraph.com/query/48530/polygondolarelayer/v0.0.4
     tokens:
       MATIC:
         address: '0x0000000000000000000000000000000000000000'

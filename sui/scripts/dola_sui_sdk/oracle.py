@@ -461,8 +461,6 @@ def oracle_guard(symbols=None):
 if __name__ == '__main__':
     # deploy_oracle()
     # print(get_price_info_object('ETH/USD'))
-    coinbase = ccxt.coinbase()
-    coinbase.load_markets()
-    print(coinbase.fetch_ticker("BTC/USD"))
+    pprint(get_price_info_object('USDC/USD'))
     # print(get_token_price("USDT/USD"))
     # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
