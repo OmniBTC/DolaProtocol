@@ -118,12 +118,13 @@ def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
 
     if simulate:
         vaa = get_feed_vaa(symbol)
+        price_info_object = get_price_info_object(symbol)
         result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
                 wormhole_state,
                 pyth_state,
-                get_price_info_object(symbol),
+                price_info_object,
                 price_oracle,
                 pool_id,
                 list(bytes.fromhex(vaa.replace("0x", ""))),
@@ -156,6 +157,9 @@ def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
                 ]
             ]
         )
+        print(f"pool_id: {pool_id}")
+        print(f"symbol: {symbol}")
+        print(f"price_info_object: {price_info_object}")
 
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
@@ -461,4 +465,4 @@ def oracle_guard(symbols=None):
 if __name__ == '__main__':
     kraken = ccxt.kraken()
     kraken.load_markets()
-    feed_token_price_by_pyth(8, kraken=kraken)
+    feed_token_price_by_pyth(3, kraken=kraken)
