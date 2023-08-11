@@ -41,7 +41,7 @@ networks:
         pool_name: OP
         pool_weight: 1
     scan_rpc_url: https://api-optimistic.etherscan.io/api
-    graphql_url: https://api.studio.thegraph.com/query/48530/opdolarelayer/version/latest
+    graphql_url: https://api.studio.thegraph.com/query/48530/opdolarelayer/v0.0.3
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
@@ -117,7 +117,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.arbiscan.io/api
-    graphql_url: https://api.studio.thegraph.com/query/48530/arbdolarelayer/version/latest
+    graphql_url: https://api.studio.thegraph.com/query/48530/arbdolarelayer/v0.0.3
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
@@ -248,7 +248,7 @@ networks:
         pool_name: WBTC
         pool_weight: 1
     scan_rpc_url: https://api.polygonscan.com/api
-    graphql_url: https://api.studio.thegraph.com/query/48530/polygondolarelayer/version/latest
+    graphql_url: https://api.studio.thegraph.com/query/48530/polygondolarelayer/v0.0.3
     tokens:
       MATIC:
         address: '0x0000000000000000000000000000000000000000'

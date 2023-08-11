@@ -217,9 +217,9 @@ def decode_relay_logs(logs):
             timestamp = int(time.time())
             data = log['data']
             index = 2
-            nonce = int(data[index:index + 64], 16)
-            index += 64
             sequence = int(data[index:index + 64], 16)
+            index += 64
+            nonce = int(data[index:index + 64], 16)
             index += 64
             relay_fee = int(data[index:index + 64], 16)
             index += 64

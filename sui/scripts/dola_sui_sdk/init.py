@@ -1620,7 +1620,7 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    # batch_init()
+    batch_init()
     # register_new_reserve(reserve="whUSDCeth")
     # set_reserve_params()
     # register_new_pool()
@@ -1633,10 +1633,3 @@ if __name__ == '__main__':
     # add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
     # add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
     # add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
-    create_reward_pool(
-        start_time=1691658000,
-        end_time=1691917200,
-        reward_amount=int(10 * 1e9),
-        dola_pool_id=3,
-        reward_action=0
-    )
