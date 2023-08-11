@@ -128,7 +128,7 @@ def dola_upgrade_test():
 
 
 def migrate_version_test():
-    deploy_migrate_proposal(version="version_1_0_3")
+    deploy_migrate_proposal(version="version_1_0_4")
     migrate_create_proposal()
     migrate_version()
 

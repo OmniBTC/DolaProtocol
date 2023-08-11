@@ -1635,6 +1635,6 @@ if __name__ == '__main__':
         start_time=1691658000,
         end_time=1691917200,
         reward_amount=int(10 * 1e9),
-        dola_pool_id=8,
-        reward_action=0
+        dola_pool_id=3,
+        reward_action=2
     )
