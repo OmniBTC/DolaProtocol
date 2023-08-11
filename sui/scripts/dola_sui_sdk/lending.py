@@ -38,7 +38,8 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
     price_info_objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id] for pool_id in asset_ids]
     vaas = [get_feed_vaa(symbol) for symbol in symbols]
-    for (pool_id, vaa, symbol, price_info_object) in zip(asset_ids, vaas, symbols, price_info_objects):
+    for (pool_id, symbol, price_info_object) in zip(asset_ids, symbols, price_info_objects):
+        vaa = get_feed_vaa(symbol)
         result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
@@ -77,9 +78,6 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
                 ]
             ]
         )
-        print(f"pool_id: {pool_id}")
-        print(f"symbol: {symbol}")
-        print(f"price_info_object: {price_info_object}")
 
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 

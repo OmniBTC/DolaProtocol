@@ -6,6 +6,7 @@ import requests
 import sui_brownie
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
+import config
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 
 RAY = 1000000000000000000000000000
@@ -163,8 +164,7 @@ def pool(coin_type):
 
 
 def pool_id(coin_type):
-    coin_name = coin_type.split("::")[-1]
-    return sui_project.network_config['objects'][f"Pool<{coin_name}>"]
+    return config.SUI_TOKEN_TO_POOL[coin_type]
 
 
 def proposal():
