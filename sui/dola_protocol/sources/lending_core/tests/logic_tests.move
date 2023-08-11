@@ -2356,6 +2356,69 @@ module dola_protocol::logic_tests {
     }
 
     #[test]
+    public fun test_repay_with_circular_borrow() {
+        let creator = @0xA;
+
+        let scenario_val = init_test_scenario(creator);
+        let scenario = &mut scenario_val;
+
+        let usdt_pool = dola_address::create_dola_address(0, b"USDT");
+        let supply_usdt_amount = 10000 * ONE;
+        let borrow_usdt_amount = 1000 * ONE;
+
+        // User 1 supply 10000 usdt
+        supply_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, supply_usdt_amount);
+
+        // User 0 borrow 1000 usdt
+        borrow_scenario(scenario, creator, usdt_pool, USDT_POOL_ID, 0, borrow_usdt_amount);
+
+        test_scenario::next_tx(scenario, creator);
+        {
+            let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
+            let oracle = test_scenario::take_shared<PriceOracle>(scenario);
+            let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+
+            let repay_usdt_amount = 2000 * ONE;
+
+            // User 0 repay 1000 usdt
+            pool_manager::add_liquidity(
+                &mut pool_manager_info,
+                usdt_pool,
+                LENDING_APP_ID,
+                repay_usdt_amount,
+            );
+            logic::execute_repay(
+                &mut pool_manager_info,
+                &mut storage,
+                &mut oracle,
+                &clock,
+                0,
+                USDT_POOL_ID,
+                repay_usdt_amount
+            );
+
+            // check user collaterals
+            assert!(
+                storage::get_user_collaterals(&mut storage, 0) == vector[USDT_POOL_ID],
+                201
+            );
+
+            // check user liquid assets
+            assert!(
+                storage::get_user_liquid_assets(&mut storage, 0) == vector[],
+                202
+            );
+
+            test_scenario::return_shared(pool_manager_info);
+            test_scenario::return_shared(storage);
+            test_scenario::return_shared(oracle);
+            clock::destroy_for_testing(clock);
+        };
+        test_scenario::end(scenario_val);
+    }
+
+    #[test]
     public fun test_repay_with_excess_amount() {
         let creator = @0xA;
 

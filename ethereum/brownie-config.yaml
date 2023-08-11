@@ -72,8 +72,8 @@ networks:
     lending_portal: '0xB4011A52C1F49A8B51161485D39BA1e70906bE38'
     system_portal: '0x8F3Ff39FE8565b787453F3e5735BF6f0863853aC'
     dola_pool: '0x233DDEce6a96c49ecE6Ad9ae820690fE62a28975'
-    wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 200
+    not_involve_fund_consistency: 200
+    involve_fund_consistency: 200
   arbitrum-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 23
@@ -141,8 +141,8 @@ networks:
         dola_pool_id: 0
     wormhole: '0xa5f208e072434bC67592E4C49C1B991BA79BCA46'
     wormhole_chainid: 23
-    wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 200
+    not_involve_fund_consistency: 200
+    involve_fund_consistency: 200
   arbitrum-test:
     core_emitter: '0xd978abe951a42fb60f00015718efa1e1a9f2256676419fb66551db2816d983b7'
     scan_rpc_url: https://api-goerli.arbiscan.io/api
@@ -190,8 +190,8 @@ networks:
         address: '0x351B7351F2DE7Cb58b37CEDd4c61A7B804F58170'
         decimals: 18
         dola_pool_id: 0
-    wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 200
+    not_involve_fund_consistency: 200
+    involve_fund_consistency: 200
   bsc-test:
     btc: '0x534BF426a64d93d4CaCeCFa1Eb1FD1aCC2A988a5'
     lending_portal: '0x3bDCd3dE2FAaEed58Ae5E9FD5e7c92Bfa938B5d0'
@@ -214,13 +214,14 @@ networks:
   polygon-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 5
-    lending_portal: '0x941ECfC6f02d037aF921fDC7431C78785638acDE'
-    system_portal: '0xd660fFe65bC32f34053d011dfbb6B74AaD415Bd0'
+    lending_portal: '0xD51Ef1Cf286cb403ec2767e7b52Ce402f37E930d'
+    system_portal: '0x75950Df2bAfa1b0EE5dB22aaa5e00EBCED982315'
     wormhole_adapter_pool:
       v1: "0x6A028B4911078F80A20c8De434316C427E3A6Fa5"
       v2: "0x4445c48e9B70F78506E886880a9e09B501ED1E13"
       v3: "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98"
-      latest: '0x8F65495ca94cCdb3F159369Cf27a91464Db87E98'
+      v4: "0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5"
+      latest: '0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5'
     dola_pool: '0xC3Eb696184b8927D677D8AB390A26563De4798c3'
     pools:
       MATIC:
@@ -268,8 +269,8 @@ networks:
         dola_pool_id: 0
     wormhole: '0x7A4B5a56256163F07b2C80A7cA55aBE66c4ec4d7'
     wormhole_chainid: 5
-    wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 200
+    not_involve_fund_consistency: 1
+    involve_fund_consistency: 1
   polygon-test:
     core_emitter: '0x4f9f241cd3a249e0ef3d9ece8b1cd464c38c95d6d65c11a2ddd5645632e6e8a0'
     lending_portal: '0x1aDA087B6c051C77003966d669D1149d0c2dEE5F'
@@ -321,8 +322,8 @@ networks:
     wormhole: '0x0CBE91CF822c73C2315FB05100C2F714765d5c20'
     wormhole_adapter_pool: '0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7'
     wormhole_chainid: 5
-    wormhole_instant_consistency: 200
-    wormhole_finality_consistency: 200
+    not_involve_fund_consistency: 200
+    involve_fund_consistency: 200
   polygon-zk-test:
     btc: '0x9895bcd049eE00560599b1458fC2436793E3E011'
     lending_portal: '0x4e7AE7De13Db1587EA9B6C306299f66c3991D57e'

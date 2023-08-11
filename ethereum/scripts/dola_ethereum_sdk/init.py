@@ -275,5 +275,5 @@ def get_all_spenders():
 
 
 if __name__ == "__main__":
-    set_ethereum_network("arbitrum-main")
+    set_ethereum_network("polygon-main")
     print(get_all_spenders())
