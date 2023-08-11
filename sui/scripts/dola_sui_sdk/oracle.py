@@ -106,7 +106,7 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
-def feed_token_price_by_pyth(symbol, simulate=True, kraken=None):
+def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
     dola_protocol = load.dola_protocol_package()
 
     pyth_fee_amount = 1
@@ -114,7 +114,7 @@ def feed_token_price_by_pyth(symbol, simulate=True, kraken=None):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pool_id = get_pool_id(symbol)
+    symbol = config.DOLA_POOL_ID_TO_SYMBOL[pool_id]
 
     if simulate:
         vaa = get_feed_vaa(symbol)
@@ -459,9 +459,6 @@ def oracle_guard(symbols=None):
 
 
 if __name__ == '__main__':
-    # deploy_oracle()
-    # print(get_price_info_object('ETH/USD'))
-    for symbol in config.DOLA_POOL_ID_TO_SYMBOL.values():
-        print(get_price_info_object(symbol))
-    # print(get_token_price("USDT/USD"))
-    # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
+    kraken = ccxt.kraken()
+    kraken.load_markets()
+    feed_token_price_by_pyth(8, kraken=kraken)

@@ -76,6 +76,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
                 ]
             ]
         )
+        print(f"pool_id: {pool_id}")
         print(f"symbol: {symbol}")
         print(f"price_info_object: {price_info_object}")
 
