@@ -487,7 +487,7 @@ if __name__ == "__main__":
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
-    pprint(int(calculate_changed_health_factor(1, 3, 72971248867)['health_factor']) / 1e27)
+    pprint(int(calculate_changed_health_factor(1, 3, 69496427494)['health_factor']) / 1e27)
     # pprint(result)
     # pprint(get_user_all_collateral(1))
     # pprint(get_user_health_factor(1))
@@ -498,7 +498,7 @@ if __name__ == "__main__":
     # pprint(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint(get_user_collateral(66, 3))
     # pprint(get_user_lending_info(6))
-    pprint(get_user_allowed_borrow(0, 1, 3))
+    # pprint(get_user_allowed_borrow(0, 1, 3))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
     # pprint(get_user_allowed_withdraw(23, 1, 2))
