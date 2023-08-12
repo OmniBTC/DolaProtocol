@@ -589,15 +589,16 @@ def sui_core_executor(relayer_account, divisor=1, remainder=0):
 
                 # If no gas record exists, relay once for free.
                 fee_rate = 0.8
-                if not list(gas_record.find({'src_chain_id': tx['src_chain_id'], 'call_name': call_name})):
+                if not list(gas_record.find(
+                        {'src_chain_id': tx['src_chain_id'], 'dst_chain_id': 0, 'call_name': call_name})):
                     fee_rate = 0
 
                 gas, executed, status, feed_nums, digest = execute_sui_core(
                     call_name, tx['vaa'], relay_fee, fee_rate)
 
                 # Relay not existent feed_num tx for free.
-                if not executed and status == 'success' and not list(gas_record.find(
-                        {'src_chain_id': tx['src_chain_id'], 'call_name': call_name,
+                if not executed and not list(gas_record.find(
+                        {'src_chain_id': tx['src_chain_id'], 'dst_chain_id': 0, 'call_name': call_name,
                          'feed_nums': feed_nums})):
                     fee_rate = 0
                     gas, executed, status, feed_nums, digest = execute_sui_core(
