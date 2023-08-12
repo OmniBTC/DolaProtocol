@@ -1,9 +1,9 @@
 [package]
-name = "UpgradeProposalTemplate"
+name = "UpgradeProposal"
 version = "0.0.1"
 
 [addresses]
-upgrade_proposal_template = "0x0"
+upgrade_proposal = "0x0"
 dola_protocol = "0x0"
 sui = "0x2"
 
@@ -13,4 +13,4 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "09b2081498366df936abae26eea4b2d5cafb2788"
 
 [dependencies.DolaProtocol]
-local = "../../dola_protocol"
+local = "../../../dola_protocol"
