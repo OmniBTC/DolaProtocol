@@ -754,6 +754,13 @@ module external_interfaces::interfaces {
         is_as_collateral: bool,
         is_cancel_collateral: bool,
     ) {
+        if (!storage::exist_user_info(storage, dola_user_id)) {
+            emit(UserHealthFactor {
+                health_factor: U256_MAX
+            });
+            return
+        };
+
         let health_collateral_value = logic::user_health_collateral_value(storage, price_oracle, dola_user_id);
         let health_loan_value = logic::user_health_loan_value(storage, price_oracle, dola_user_id);
 
