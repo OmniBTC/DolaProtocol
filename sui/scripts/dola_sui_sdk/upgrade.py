@@ -159,11 +159,11 @@ if __name__ == "__main__":
         3. after the front-end upgrade, migrate_version
     """
     # generate_dola_protocol_package_info()
-    deploy_upgrade_proposal("upgrade_proposal_V_1_0_6")
-    # upgrade_dola_protocol(
-    #     package_id="0x155e64b2545693210d432903787a4525c279a6f574fdca210804736a84e62306",
-    #     file_dir="upgrade_proposal_V_1_0_6"
-    # )
+    # deploy_upgrade_proposal("upgrade_proposal_V_1_0_6")
+    upgrade_dola_protocol(
+        package_id="0x5e3e4eb7dc8e8230bd4c18777d5db7ff3ae821db32e921dfb2c150087c7bf90b",
+        file_dir="upgrade_proposal_V_1_0_6"
+    )
 
     # migrate_version()
     # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
