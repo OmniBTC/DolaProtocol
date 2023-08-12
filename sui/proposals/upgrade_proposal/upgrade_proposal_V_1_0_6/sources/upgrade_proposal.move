@@ -1,13 +1,18 @@
-module upgrade_proposal_template::upgrade_proposal {
+module upgrade_proposal::proposal {
     use std::option;
 
     use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use sui::package::{UpgradeReceipt, UpgradeTicket};
     use sui::tx_context::TxContext;
+    use std::ascii::String;
+    use std::vector;
+    use sui::address;
+    use std::ascii;
+    use sui::object;
 
     /// The digest of the new contract
-    const DIGEST: vector<u8> = x"73f723bd91f72fdafa545cba4ded10a1623dfa613fac4703ebbe43505392727e";
+    const DIGEST: vector<u8> = x"da3af819193b9b81bc3ce47d76ae0f8eb4a1a73aad414d31bd174fd9297a9cad";
     const POLICY: u8 = 0;
 
     /// Errors
@@ -15,12 +20,39 @@ module upgrade_proposal_template::upgrade_proposal {
 
     const EIS_FINAL_VOTE: u64 = 0;
 
+    const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
+
+    struct ProposalDesc has store {
+        // Description of proposal content
+        description: String,
+        // Params of `vote_porposal`
+        vote_porposal: vector<address>
+    }
+
     /// To prove that this is a proposal, make sure that the `certificate` in the proposal will only flow to
     /// governance contract.
     struct Certificate has store, drop {}
 
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
         governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
+    }
+
+    public entry fun add_description_for_proposal(
+        proposal: &mut Proposal<Certificate>,
+        ctx: &mut TxContext
+    ) {
+        let description: String = ascii::string(b"Upgrade version from v_1_0_5 to v_1_0_6");
+
+        let vote_porposal = vector::empty<address>();
+        vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_INFO));
+        vector::push_back(&mut vote_porposal, object::id_to_address(&object::id(proposal)));
+
+        let proposal_desc = ProposalDesc {
+            description,
+            vote_porposal,
+        };
+
+        governance_v1::add_description_for_proposal<Certificate, ProposalDesc>(proposal, proposal_desc, ctx);
     }
 
     public entry fun vote_porposal(

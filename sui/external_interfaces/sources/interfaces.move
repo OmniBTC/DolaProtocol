@@ -5,7 +5,6 @@
 /// by simulating calls to trigger events.
 module external_interfaces::interfaces {
     use std::ascii::into_bytes;
-    use std::option::Self;
     use std::vector;
 
     use sui::clock::{Self, Clock};
@@ -964,6 +963,7 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_chain_id: u16,
+        dola_address: vector<u8>,
         dola_user_id: u64,
         withdraw_pool_id: u16,
         withdarw_all: bool,
@@ -985,13 +985,10 @@ module external_interfaces::interfaces {
         let can_withdraw_amount = logic::calculate_amount(oracle, withdraw_pool_id, can_withdraw_value);
         let withdraw_amount = logic::user_collateral_balance(storage, dola_user_id, withdraw_pool_id);
         let withdraw_amount = ray_math::min(can_withdraw_amount, withdraw_amount);
-        let pool_address = pool_manager::find_pool_by_chain(pool_manager_info, withdraw_pool_id, dola_chain_id);
 
-        let pool_liquidity = 0;
-        if (option::is_some(&pool_address)) {
-            let pool_address = option::extract(&mut pool_address);
-            pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
-        };
+        let pool_address = dola_address::create_dola_address(dola_chain_id, dola_address);
+
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         let reserve = pool_manager::get_app_liquidity(
             pool_manager_info,
             withdraw_pool_id,
@@ -1021,6 +1018,7 @@ module external_interfaces::interfaces {
         storage: &mut Storage,
         oracle: &mut PriceOracle,
         dola_chain_id: u16,
+        dola_address: vector<u8>,
         dola_user_id: u64,
         borrow_pool_id: u16,
     ) {
@@ -1039,13 +1037,9 @@ module external_interfaces::interfaces {
             borrow_coefficient
         );
         let borrow_amount = logic::calculate_amount(oracle, borrow_pool_id, can_borrow_value);
-        let pool_address = pool_manager::find_pool_by_chain(pool_manager_info, borrow_pool_id, dola_chain_id);
+        let pool_address = dola_address::create_dola_address(dola_chain_id, dola_address);
 
-        let pool_liquidity = 0;
-        if (option::is_some(&pool_address)) {
-            let pool_address = option::extract(&mut pool_address);
-            pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
-        };
+        let pool_liquidity =  pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, borrow_pool_id, storage::get_app_id(storage));
 
         let max_borrow_amount = ray_math::min(borrow_amount, reserve);
@@ -1147,7 +1141,7 @@ module external_interfaces::interfaces {
 
             let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
             let borrow_coefficient = storage::get_borrow_coefficient(storage, borrow_pool_id);
-            
+
             let can_borrow_value = ray_math::ray_div(
                 (target_collateral_value - health_loan_value),
                 borrow_coefficient

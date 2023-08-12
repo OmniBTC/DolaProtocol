@@ -1,7 +1,6 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 module dola_protocol::lending_core_wormhole_adapter {
-    use std::option;
     use std::vector;
 
     use sui::clock::Clock;
@@ -137,10 +136,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         let amount = (amount as u256);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
-        let dst_chain = dola_address::get_dola_chain_id(&receiver);
-        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
-        let dst_pool = option::destroy_some(dst_pool);
+        let dst_pool = pool;
 
         // If the withdrawal exceeds the user's balance, use the maximum withdrawal
         let actual_amount = lending_logic::execute_withdraw(
@@ -222,10 +218,7 @@ module dola_protocol::lending_core_wormhole_adapter {
         let amount = (amount as u256);
         let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
         let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user);
-        let dst_chain = dola_address::get_dola_chain_id(&receiver);
-        let dst_pool = pool_manager::find_pool_by_chain(pool_manager_info, dola_pool_id, dst_chain);
-        assert!(option::is_some(&dst_pool), ENOT_FIND_POOL);
-        let dst_pool = option::destroy_some(dst_pool);
+        let dst_pool = pool;
 
         lending_logic::execute_borrow(
             pool_manager_info,
