@@ -912,7 +912,7 @@ def calculate_relay_fee(records, src_chain_id, dst_chain_id):
     relay_fee = (calculate_core_fee(max_record['core_gas'], core_gas_price) +
                  calculate_withdraw_fee(max_record['withdraw_gas'], withdraw_gas_price, dst_net))
     src_net = get_dola_network(src_chain_id)
-    relay_fee = int(get_fee_amount(relay_fee, get_gas_token(src_net)) * 1.2)
+    relay_fee = int(get_fee_amount(relay_fee, get_gas_token(src_net)) * 1.4)
     return {'relay_fee': str(relay_fee)}
 
 
