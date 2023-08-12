@@ -42,12 +42,12 @@ def deploy_upgrade_proposal(file_dir):
 
 
 def deploy_migrate_proposal(version):
-    upgrade_proposal_package = sui_brownie.SuiPackage(
+    migrate_proposal_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
             f"proposals/migrate_version_proposal/migrate_{version.lower()}")
     )
 
-    upgrade_proposal_package.program_publish_package(
+    migrate_proposal_package.program_publish_package(
         replace_address=dict(
             dola_protocol=sui_project.network_config['packages']['dola_protocol']["origin"],
             wormhole=sui_project.network_config['packages']['wormhole'],
@@ -59,6 +59,8 @@ def deploy_migrate_proposal(version):
             pyth=sui_project.network_config['packages']['pyth'],
         )
     )
+    print("package_id:", migrate_proposal_package.package_id)
+    migrate_create_proposal(migrate_proposal_package.package_id)
 
 
 def upgrade_create_proposal(package_id, file_dir):
@@ -77,17 +79,17 @@ def upgrade_create_proposal(package_id, file_dir):
     )
 
 
-def migrate_create_proposal():
+def migrate_create_proposal(package_id):
     """
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
     :return:
     """
-    migrate_version_proposal = load.migrate_version_proposal_package()
+    migrate_version_proposal = load.migrate_version_proposal_package(package_id)
     result = migrate_version_proposal.proposal.create_proposal(
         sui_project.network_config['objects']['GovernanceInfo']
     )
     proposal_id = result["events"][0]["parsedJson"]["proposal_id"]
-    print("proposal_id:", proposal_id)
+    print("proposal:", proposal_id)
     migrate_version_proposal.proposal.add_description_for_proposal(
         proposal_id
     )
@@ -136,12 +138,6 @@ def check_version(package_id=None):
     print(result['effects']['status']['status'])
 
 
-def migrate_version():
-    deploy_migrate_proposal(version="version_1_0_4")
-    # migrate_create_proposal()
-    # migrate_version()
-
-
 def get_latest_dola_protocol():
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     result = sui_project.client.sui_getObject(governance_genesis, {'showContent': True})
@@ -160,12 +156,12 @@ if __name__ == "__main__":
     """
     # generate_dola_protocol_package_info()
     # deploy_upgrade_proposal("upgrade_proposal_V_1_0_6")
-    upgrade_dola_protocol(
-        package_id="0x5e3e4eb7dc8e8230bd4c18777d5db7ff3ae821db32e921dfb2c150087c7bf90b",
-        file_dir="upgrade_proposal_V_1_0_6"
-    )
+    # upgrade_dola_protocol(
+    #     package_id="0x5e3e4eb7dc8e8230bd4c18777d5db7ff3ae821db32e921dfb2c150087c7bf90b",
+    #     file_dir="upgrade_proposal_V_1_0_6"
+    # )
 
-    # migrate_version()
-    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
-    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
+    deploy_migrate_proposal(version="version_1_0_5")
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_6'])
     # check_version(get_latest_dola_protocol())

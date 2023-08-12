@@ -1,4 +1,4 @@
-module migrate_version_proposal::migrate_proposal {
+module migrate_version_proposal::proposal {
     use std::option;
 
     use dola_protocol::genesis::{Self, GovernanceGenesis, Version_1_0_5, Version_1_0_6};
@@ -30,7 +30,7 @@ module migrate_version_proposal::migrate_proposal {
 
 
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
-        governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
+        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
     }
 
     public entry fun add_description_for_proposal(
