@@ -16,6 +16,7 @@ def generate_package_info(package, replace_address: dict = None, replace_publish
 
 def generate_dola_protocol_package_info():
     generate_package_info("dola_protocol", replace_address=dict(
+        dola_protocol="0x0",
         wormhole=sui_project.network_config['packages']['wormhole'],
         pyth=sui_project.network_config['packages']['pyth']
     ), replace_publish_at=dict(
@@ -25,24 +26,28 @@ def generate_dola_protocol_package_info():
     ))
 
 
-def deploy_upgrade_proposal():
-    upgrade_proposal_template_package = sui_brownie.SuiPackage(
-        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/upgrade_proposal_template")
+def deploy_upgrade_proposal(file_dir):
+    upgrade_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(f"proposals/upgrade_proposal/{file_dir}")
     )
 
-    upgrade_proposal_template_package.program_publish_package(
+    upgrade_proposal_package.program_publish_package(
         replace_address=dict(dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin']),
         replace_publish_at=dict(dola_protocol=get_latest_dola_protocol())
     )
+    print("package id:", upgrade_proposal_package.package_id)
+
+    upgrade_create_proposal(package_id=upgrade_proposal_package.package_id,
+                            file_dir="upgrade_proposal_V_1_0_6")
 
 
 def deploy_migrate_proposal(version):
-    upgrade_proposal_template_package = sui_brownie.SuiPackage(
+    upgrade_proposal_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
             f"proposals/migrate_version_proposal/migrate_{version.lower()}")
     )
 
-    upgrade_proposal_template_package.program_publish_package(
+    upgrade_proposal_package.program_publish_package(
         replace_address=dict(
             dola_protocol=sui_project.network_config['packages']['dola_protocol']["origin"],
             wormhole=sui_project.network_config['packages']['wormhole'],
@@ -56,14 +61,19 @@ def deploy_migrate_proposal(version):
     )
 
 
-def upgrade_create_proposal():
+def upgrade_create_proposal(package_id, file_dir):
     """
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext)
     :return:
     """
-    upgrade_proposal_template = load.upgrade_proposal_template_package()
-    upgrade_proposal_template.upgrade_proposal.create_proposal(
+    upgrade_proposal_template = load.upgrade_proposal_package(package_id, file_dir=file_dir)
+    result = upgrade_proposal_template.proposal.create_proposal(
         sui_project.network_config['objects']['GovernanceInfo']
+    )
+    proposal_id = result["events"][0]["parsedJson"]["proposal_id"]
+    print("proposal_id:", proposal_id)
+    upgrade_proposal_template.proposal.add_description_for_proposal(
+        proposal_id
     )
 
 
@@ -73,16 +83,21 @@ def migrate_create_proposal():
     :return:
     """
     migrate_version_proposal = load.migrate_version_proposal_package()
-    migrate_version_proposal.migrate_proposal.create_proposal(
+    result = migrate_version_proposal.proposal.create_proposal(
         sui_project.network_config['objects']['GovernanceInfo']
+    )
+    proposal_id = result["events"][0]["parsedJson"]["proposal_id"]
+    print("proposal_id:", proposal_id)
+    migrate_version_proposal.proposal.add_description_for_proposal(
+        proposal_id
     )
 
 
-def upgrade_dola_protocol():
-    upgrade_proposal_template = load.upgrade_proposal_template_package()
+def upgrade_dola_protocol(package_id, file_dir):
+    upgrade_proposal_template = load.upgrade_proposal_package(package_id, file_dir)
     dola_protocol = load.dola_protocol_package(get_latest_dola_protocol())
     cur_proposal = f"{sui_project.network_config['packages']['dola_protocol']['origin']}::governance_v1::Proposal<{upgrade_proposal_template.package_id}" \
-                   f"::upgrade_proposal::Certificate>"
+                   f"::proposal::Certificate>"
 
     dola_protocol.program_dola_upgrade_package(
         upgrade_proposal_template.package_id,
@@ -121,16 +136,10 @@ def check_version(package_id=None):
     print(result['effects']['status']['status'])
 
 
-def dola_upgrade_test():
-    deploy_upgrade_proposal()
-    upgrade_create_proposal()
-    upgrade_dola_protocol()
-
-
-def migrate_version_test():
+def migrate_version():
     deploy_migrate_proposal(version="version_1_0_4")
-    migrate_create_proposal()
-    migrate_version()
+    # migrate_create_proposal()
+    # migrate_version()
 
 
 def get_latest_dola_protocol():
@@ -144,14 +153,19 @@ if __name__ == "__main__":
     Upgrade step:
         1. generate_dola_protocol_package_info to generate digest:
             - note: dola_protocol is 0x0, publish at is latest
-        2. dola_upgrade_test to upgrade:
+        2. dola_upgrade to upgrade:
             - deploy upgrade:  dola_protocol is origin, publish at is latest
             - call upgrade:  dola_protocol is 0x0, publish at is latest
-        3. after the front-end upgrade, migrate_version_test
+        3. after the front-end upgrade, migrate_version
     """
     # generate_dola_protocol_package_info()
-    # dola_upgrade_test()
-    # migrate_version_test()
-    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
-    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
-    check_version(get_latest_dola_protocol())
+    deploy_upgrade_proposal("upgrade_proposal_V_1_0_6")
+    # upgrade_dola_protocol(
+    #     package_id="0x155e64b2545693210d432903787a4525c279a6f574fdca210804736a84e62306",
+    #     file_dir="upgrade_proposal_V_1_0_6"
+    # )
+
+    # migrate_version()
+    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
+    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
+    # check_version(get_latest_dola_protocol())
