@@ -1032,7 +1032,7 @@ class TransactionBuild:
         commands = [
             Command("MoveCall", ProgrammableMoveCall(
                 ObjectID(proposal_package_id),
-                Identifier("upgrade_proposal"),
+                Identifier("proposal"),
                 Identifier("vote_proposal_final"),
                 [],
                 arguments
@@ -1045,7 +1045,7 @@ class TransactionBuild:
             )),
             Command("MoveCall", ProgrammableMoveCall(
                 ObjectID(proposal_package_id),
-                Identifier("upgrade_proposal"),
+                Identifier("proposal"),
                 Identifier("commit_upgrade"),
                 [],
                 [Argument("Input", U16(2)), Argument("Result", U16(1))]

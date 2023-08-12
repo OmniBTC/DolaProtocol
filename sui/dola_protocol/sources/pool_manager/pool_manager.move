@@ -4,7 +4,7 @@
 /// Manage the liquidity of all chains' pools
 module dola_protocol::pool_manager {
     use std::ascii::String;
-    use std::option::{Self, Option};
+    use std::option::Option;
     use std::vector;
 
     use sui::event;
@@ -35,6 +35,8 @@ module dola_protocol::pool_manager {
 
     /// Fee ratio 0.5%
     const DEFAULT_LAMBDA_1: u256 = 5000000000000000000000000;
+
+    const DEPRECATED: u64 = 0;
 
     /// Errors
     const EEXIST_POOL_ID: u64 = 0;
@@ -366,21 +368,11 @@ module dola_protocol::pool_manager {
 
     /// Find DolaAddress according to dola pool id and dst chain
     public fun find_pool_by_chain(
-        pool_manager_info: &mut PoolManagerInfo,
-        dola_pool_id: u16,
-        dst_chain: u16
+        _pool_manager_info: &mut PoolManagerInfo,
+        _dola_pool_id: u16,
+        _dst_chain: u16
     ): Option<DolaAddress> {
-        let pools = get_pools_by_id(pool_manager_info, dola_pool_id);
-        let len = vector::length(&pools);
-        let i = 0;
-        while (i < len) {
-            let d = *vector::borrow(&pools, i);
-            if (dola_address::get_dola_chain_id(&d) == dst_chain) {
-                return option::some(d)
-            };
-            i = i + 1;
-        };
-        option::none()
+        abort DEPRECATED
     }
 
     /// Determine if the dola pool id is registered

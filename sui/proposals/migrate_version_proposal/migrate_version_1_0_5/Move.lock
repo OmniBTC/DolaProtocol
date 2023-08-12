@@ -10,7 +10,7 @@ dependencies = [
 
 [[move.package]]
 name = "DolaProtocol"
-source = { local = "../../dola_protocol" }
+source = { local = "../../../dola_protocol" }
 
 dependencies = [
   { name = "Pyth" },
