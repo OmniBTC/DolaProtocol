@@ -162,7 +162,7 @@ def main():
 
 
 if __name__ == "__main__":
-    # redeploy_external_interfaces()
+    redeploy_external_interfaces()
     # redeploy_genesis_proposal()
     # redeploy_reserve_proposal()
-    deploy_add_member("add_member_0")
+

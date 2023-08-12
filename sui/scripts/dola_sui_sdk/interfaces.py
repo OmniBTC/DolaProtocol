@@ -287,6 +287,41 @@ def get_reserve_info(dola_pool_id):
     return result['events'][-1]['parsedJson']
 
 
+def get_user_allowed_withdraw(dola_chain_id, dola_user_id, dola_pool_id, withdraw_all=False):
+    """
+    public entry fun get_user_allowed_withdraw(
+        pool_manager_info: &mut PoolManagerInfo,
+        storage: &mut Storage,
+        oracle: &mut PriceOracle,
+        dola_chain_id: u16,
+        dola_user_id: u64,
+        withdraw_pool_id: u16,
+        withdarw_all: bool,
+    )
+
+    :param dola_chain_id:
+    :param dola_user_id:
+    :param dola_pool_id:
+    :return:
+    """
+    external_interfaces = load.external_interfaces_package()
+    pool_manager_info = sui_project.network_config['objects']['PoolManagerInfo']
+    lending_storage = sui_project.network_config['objects']['LendingStorage']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+
+    result = external_interfaces.interfaces.get_user_allowed_withdraw.inspect(
+        pool_manager_info,
+        lending_storage,
+        price_oracle,
+        dola_chain_id,
+        dola_user_id,
+        dola_pool_id,
+        withdraw_all
+    )
+
+    return result['events'][-1]['parsedJson']
+
+
 def get_user_allowed_borrow(dola_chain_id, dola_user_id, dola_pool_id):
     """
     public entry fun get_user_allowed_borrow(
@@ -368,10 +403,11 @@ def calculate_changed_health_factor(dola_user_id, dola_pool_id, amount):
         dola_user_id,
         dola_pool_id,
         amount,
-        False,
-        False,
+        True,
         False,
         True,
+        False,
+        False,
         False,
         False
     )
@@ -452,7 +488,7 @@ if __name__ == "__main__":
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
-    # pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
+    pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
     # pprint(result)
     # pprint(get_user_all_collateral(1))
     # pprint(get_user_health_factor(1))
@@ -463,23 +499,10 @@ if __name__ == "__main__":
     # pprint(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint(get_user_collateral(66, 3))
     # pprint(get_user_lending_info(6))
-    # pprint(get_user_allowed_borrow(6, 1, 1))
+    # pprint(get_user_allowed_borrow(0, 1, 3))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
-    pprint(get_user_total_reward_info(
-        66, [3, 3, 3, 3], [3, 3, 8, 8],
-        ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a",
-         "0xa70f54de256c18852819c7af5ffe2c45c2cb384b74660bcd30144c723de590d6",
-         "0xe98a7e77770e856b22d9473bf91426b2b792154739a790bd994415a0419b4fc1",
-         "0xb2a295969004313fc59e64e2c5b07577c505fb509845e23f2c0b5850ae1db869"
-         ]
-    ))
-    pprint(get_reward_pool_apys(
-        [3, 3, 3, 3], [3, 3, 8, 8],
-        ["0xd5bc31a90ae4568d4ad434dda896550cd2e3e5a1d745ab8994d115fc4364706a",
-         "0xa70f54de256c18852819c7af5ffe2c45c2cb384b74660bcd30144c723de590d6",
-         "0xe98a7e77770e856b22d9473bf91426b2b792154739a790bd994415a0419b4fc1",
-         "0xb2a295969004313fc59e64e2c5b07577c505fb509845e23f2c0b5850ae1db869"
-         ]
-    ))
+    # pprint(get_user_allowed_withdraw(23, 1, 2))
+    # pprint(get_user_total_reward_info(10, [3],
+    # ["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
