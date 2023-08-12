@@ -18,8 +18,10 @@ module register_new_pool_proposal::proposal {
 
     /// Constant
 
+    // Arbitrum circle usdc
     const POOL_ADDRESS: vector<u8> = x"af88d065e77c8cC2239327C5EDb3A432268e5831";
 
+    // Arbitrum dola chain id
     const DOLA_CHAIN_ID: u16 = 23;
 
     const DOLA_POOL_ID: u16 = 2;
@@ -27,6 +29,8 @@ module register_new_pool_proposal::proposal {
     const POOL_WEIGHT: u256 = 1;
 
     const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
+
+    const POOL_MANAGER_INFO: vector<u8> = x"1be839a23e544e8d4ba7fab09eab50626c5cfed80f6a22faf7ff71b814689cfb";
 
     struct ProposalDesc has store {
         // Description of proposal content
@@ -54,21 +58,22 @@ module register_new_pool_proposal::proposal {
 
         let vote_porposal = vector::empty<address>();
         vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_INFO));
+        vector::push_back(&mut vote_porposal, address::from_bytes(POOL_MANAGER_INFO));
+        vector::push_back(&mut vote_porposal, object::id_to_address(&object::id(proposal)));
 
         let proposal_desc = ProposalDesc {
             description,
             vote_porposal,
         };
 
-        vector::push_back(&mut proposal_desc.vote_porposal, object::id_to_address(&object::id(proposal)));
         governance_v1::add_description_for_proposal<Certificate, ProposalDesc>(proposal, proposal_desc, ctx);
     }
 
 
     public entry fun vote_porposal(
         governance_info: &mut GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
         pool_manager_info: &mut PoolManagerInfo,
+        proposal: &mut Proposal<Certificate>,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
