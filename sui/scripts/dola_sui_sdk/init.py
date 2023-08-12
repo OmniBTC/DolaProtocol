@@ -1614,7 +1614,7 @@ def create_reward_pool_v1(file_dir):
     proposal_id = "0xe61f29e49591ea4cc705b2e65a23511b0bccb6ddcce63923686f324c531553b1"
     reward_proposal = load.sui_package(proposal_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
         f"proposals/manage_reward_proposal/{file_dir}"))
-    reward_amount = 28312280000000
+    reward_amount = 28312280000200
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     escrow_reward = "0xfd19c89a87cbd6239faa35e9918cdc22ce5d859f286ff2f3d3004091ec590f8b"
 
