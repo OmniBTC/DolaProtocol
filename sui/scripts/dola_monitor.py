@@ -5,6 +5,7 @@ import queue
 import time
 from multiprocessing import Manager
 from pathlib import Path
+from pprint import pprint
 
 import brownie
 from sui_brownie.parallelism import ProcessExecutor
@@ -100,12 +101,20 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
                 else:
                     balance = get_erc20_balance(dola_pool, token)
 
-                if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
-                    change = balance - pool_info[dola_pool_id] if dola_pool_id in pool_info else balance
+                if dola_pool_id not in pool_info:
+                    pool_info[dola_pool_id] = {}
+
+                if token not in pool_info[dola_pool_id]:
+                    pool_info[dola_pool_id][token] = 0
+
+                if pool_info[dola_pool_id][token] != balance:
+                    change = balance - pool_info[dola_pool_id][token]
                     local_logger.info(
                         f"dola pool {config.DOLA_POOL_ID_TO_SYMBOL[dola_pool_id]} on chain {network} balance: {balance} change: {change}")
-                    pool_info[dola_pool_id] = balance
-                    q.put((dola_chain_id, dola_pool_id, balance))
+                    pool_info[dola_pool_id][token] = balance
+                    pool_balance = sum(pool_info[dola_pool_id][token] for token in pool_info[dola_pool_id])
+                    q.put((dola_chain_id, dola_pool_id, pool_balance))
+
         except Exception as e:
             local_logger.error(e)
 
@@ -220,4 +229,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    pprint(get_all_pools())
