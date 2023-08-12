@@ -11,8 +11,8 @@ def deploy():
 
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
-    wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
-    wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
+    not_involve_fund_consistency = config["networks"][cur_net]["not_involve_fund_consistency"]
+    involve_fund_consistency = config["networks"][cur_net]["involve_fund_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = "0x0000000000000000000000000000000000000000"
@@ -23,8 +23,8 @@ def deploy():
         wormhole_address,
         wormhole_chainid,
         dola_pool,
-        wormhole_instant_consistency,
-        wormhole_finality_consistency,
+        not_involve_fund_consistency,
+        involve_fund_consistency,
         21,  # sui _emitterChainId
         core_emitter,
         account.address,
@@ -74,8 +74,8 @@ def redeploy():
 
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
-    wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
-    wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
+    not_involve_fund_consistency = config["networks"][cur_net]["not_involve_fund_consistency"]
+    involve_fund_consistency = config["networks"][cur_net]["involve_fund_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = init.get_dola_pool()
@@ -87,8 +87,8 @@ def redeploy():
         wormhole_address,
         wormhole_chainid,
         dola_pool,
-        wormhole_instant_consistency,
-        wormhole_finality_consistency,
+        not_involve_fund_consistency,
+        involve_fund_consistency,
         21,  # sui _emitterChainId
         core_emitter,
         account.address,

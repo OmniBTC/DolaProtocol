@@ -551,13 +551,16 @@ module dola_protocol::lending_core_storage {
         dtoken_scaled.total_supply = dtoken_scaled.total_supply - scaled_amount;
     }
 
+    /// Ensure that the collateral and liquid assets are not duplicated
     public(friend) fun add_user_liquid_asset(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        if (!vector::contains(&user_info.liquid_assets, &dola_pool_id)) {
+        if (!vector::contains(&user_info.liquid_assets, &dola_pool_id) &&
+            !vector::contains(&user_info.collaterals, &dola_pool_id)
+        ) {
             vector::push_back(&mut user_info.liquid_assets, dola_pool_id)
         }
     }
@@ -576,13 +579,16 @@ module dola_protocol::lending_core_storage {
         }
     }
 
+    /// Ensure that the collateral and liquid assets are not duplicated
     public(friend) fun add_user_collateral(
         storage: &mut Storage,
         dola_user_id: u64,
         dola_pool_id: u16
     ) {
         let user_info = table::borrow_mut(&mut storage.user_infos, dola_user_id);
-        if (!vector::contains(&user_info.collaterals, &dola_pool_id)) {
+        if (!vector::contains(&user_info.collaterals, &dola_pool_id) &&
+            !vector::contains(&user_info.liquid_assets, &dola_pool_id)
+        ) {
             vector::push_back(&mut user_info.collaterals, dola_pool_id)
         }
     }

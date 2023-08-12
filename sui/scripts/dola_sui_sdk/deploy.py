@@ -38,6 +38,25 @@ def export_package_to_config(package_name, package_id):
         yaml.safe_dump(config, f)
 
 
+def deploy_add_member(file_dir):
+    add_member_proposal_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            f"proposals/manage_member_proposal/{file_dir}")
+    )
+
+    add_member_proposal_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+    print("Package id:", add_member_proposal_package.package_id)
+
+
 def deploy():
     dola_protocol_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")

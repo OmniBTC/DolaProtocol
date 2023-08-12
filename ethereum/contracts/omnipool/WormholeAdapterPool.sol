@@ -21,9 +21,10 @@ contract WormholeAdapterPool {
     // Dola pool
     DolaPool public dolaPool;
 
-    // Wormhole required number of block confirmations to assume finality
-    uint8 public wormholeInstantConsistency;
-    uint8 public wormholeFinalityConsistency;
+    // Wormhole finality that does not involve funding
+    uint8 public notInvolveFundConsistency;
+    // Wormhole finality involving funding
+    uint8 public involveFundConsistency;
     // Used to verify that (emitter_chain, wormhole_emitter_address) is correct
     mapping(uint16 => bytes32) public registeredEmitters;
     // Used to verify that the VAA has been processed
@@ -46,8 +47,8 @@ contract WormholeAdapterPool {
         IWormhole _wormhole,
         uint16 _dolaChainId,
         DolaPool _dolaPool,
-        uint8 _wormholeInstantConsistency,
-        uint8 _wormholeFinalityConsistency,
+        uint8 _notInvolveFundConsistency,
+        uint8 _involveFundConsistency,
         uint16 _emitterChainId,
         bytes32 _emitterAddress,
         address _initialRelayer
@@ -62,8 +63,8 @@ contract WormholeAdapterPool {
             dolaPool = _dolaPool;
         }
 
-        wormholeInstantConsistency = _wormholeInstantConsistency;
-        wormholeFinalityConsistency = _wormholeFinalityConsistency;
+        notInvolveFundConsistency = _notInvolveFundConsistency;
+        involveFundConsistency = _involveFundConsistency;
         registeredEmitters[_emitterChainId] = _emitterAddress;
         registeredRelayers[_initialRelayer] = true;
         relayers.push(_initialRelayer);
@@ -196,7 +197,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: wormholeFee}(
                 0,
                 payload,
-                wormholeFinalityConsistency
+                involveFundConsistency
             );
     }
 
@@ -213,7 +214,7 @@ contract WormholeAdapterPool {
             wormhole.publishMessage{value: msg.value}(
                 0,
                 payload,
-                wormholeInstantConsistency
+                notInvolveFundConsistency
             );
     }
 

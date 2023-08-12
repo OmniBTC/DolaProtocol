@@ -128,7 +128,7 @@ def dola_upgrade_test():
 
 
 def migrate_version_test():
-    deploy_migrate_proposal(version="version_1_0_1")
+    deploy_migrate_proposal(version="version_1_0_4")
     migrate_create_proposal()
     migrate_version()
 
@@ -150,7 +150,8 @@ if __name__ == "__main__":
         3. after the front-end upgrade, migrate_version_test
     """
     # generate_dola_protocol_package_info()
-    dola_upgrade_test()
+    # dola_upgrade_test()
     # migrate_version_test()
-    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_1'])
-    # check_version(get_latest_dola_protocol())
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_4'])
+    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_5'])
+    check_version(get_latest_dola_protocol())
