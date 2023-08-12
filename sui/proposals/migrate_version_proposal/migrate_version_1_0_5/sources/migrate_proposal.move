@@ -1,26 +1,21 @@
-module upgrade_proposal::proposal {
+module migrate_version_proposal::migrate_proposal {
     use std::option;
 
-    use dola_protocol::genesis::{Self, GovernanceGenesis};
+    use dola_protocol::genesis::{Self, GovernanceGenesis, Version_1_0_5, Version_1_0_6};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
-    use sui::package::{UpgradeReceipt, UpgradeTicket};
     use sui::tx_context::TxContext;
     use std::ascii::String;
+    use std::ascii;
     use std::vector;
     use sui::address;
-    use std::ascii;
     use sui::object;
 
-    /// The digest of the new contract
-    const DIGEST: vector<u8> = x"73f723bd91f72fdafa545cba4ded10a1623dfa613fac4703ebbe43505392727e";
-    const POLICY: u8 = 0;
-
     /// Errors
-    const ENOT_FINAL_VOTE: u64 = 0;
-
-    const EIS_FINAL_VOTE: u64 = 0;
 
     const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
+
+    const GOVERNANCE_GENESIS: vector<u8> = x"42ef90066e649215e6ab91399a83e1a5467fd7cc436e8b83adb8743a0efba621";
+
 
     struct ProposalDesc has store {
         // Description of proposal content
@@ -33,18 +28,20 @@ module upgrade_proposal::proposal {
     /// governance contract.
     struct Certificate has store, drop {}
 
+
     public entry fun create_proposal(governance_info: &mut GovernanceInfo, ctx: &mut TxContext) {
-        governance_v1::create_proposal_with_history<Certificate>(governance_info, Certificate {}, ctx)
+        governance_v1::create_proposal<Certificate>(governance_info, Certificate {}, ctx)
     }
 
     public entry fun add_description_for_proposal(
         proposal: &mut Proposal<Certificate>,
         ctx: &mut TxContext
     ) {
-        let description: String = ascii::string(b"Upgrade version from v_1_0_5 to v_1_0_6");
+        let description: String = ascii::string(b"Migrate version from v_1_0_5 to v_1_0_6");
 
         let vote_porposal = vector::empty<address>();
         vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_INFO));
+        vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_GENESIS));
         vector::push_back(&mut vote_porposal, object::id_to_address(&object::id(proposal)));
 
         let proposal_desc = ProposalDesc {
@@ -58,32 +55,16 @@ module upgrade_proposal::proposal {
     public entry fun vote_porposal(
         governance_info: &GovernanceInfo,
         proposal: &mut Proposal<Certificate>,
+        gov_genesis: &mut GovernanceGenesis,
         ctx: &mut TxContext
     ) {
         let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-        assert!(option::is_none(&governance_cap), EIS_FINAL_VOTE);
+        if (option::is_some(&governance_cap)) {
+            let cap = option::extract(&mut governance_cap);
+            let new_version = genesis::get_version_1_0_6();
+            genesis::migrate_version<Version_1_0_5, Version_1_0_6>(&cap, gov_genesis, new_version);
+            governance_v1::destroy_governance_cap(cap);
+        };
         option::destroy_none(governance_cap)
-    }
-
-    public fun vote_proposal_final(
-        governance_info: &GovernanceInfo,
-        proposal: &mut Proposal<Certificate>,
-        gov_genesis: &mut GovernanceGenesis,
-        ctx: &mut TxContext
-    ): UpgradeTicket {
-        let governance_cap = governance_v1::vote_proposal(governance_info, Certificate {}, proposal, true, ctx);
-        assert!(option::is_some(&governance_cap), ENOT_FINAL_VOTE);
-        let cap = option::extract(&mut governance_cap);
-        let ticket = genesis::authorize_upgrade(&cap, gov_genesis, POLICY, DIGEST);
-        governance_v1::destroy_governance_cap(cap);
-        option::destroy_none(governance_cap);
-        ticket
-    }
-
-    public fun commit_upgrade(
-        gov_genesis: &mut GovernanceGenesis,
-        receipt: UpgradeReceipt,
-    ) {
-        genesis::commit_upgrade(gov_genesis, receipt)
     }
 }
