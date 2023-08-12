@@ -118,7 +118,7 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(1)
+        time.sleep(10)
 
 
 def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
@@ -186,7 +186,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
         lock.acquire()
         value.value = health
         lock.release()
-        time.sleep(1)
+        time.sleep(2)
 
 
 def get_all_pools():
