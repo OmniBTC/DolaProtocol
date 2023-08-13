@@ -1,11 +1,10 @@
 # Some constants for the scripts
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
-account_sid = os.getenv("ACCOUNT_SID")
+load_dotenv(Path(__file__).parent.parent.joinpath('env/.env'))
 
 # dola reserves count
 DOLA_RESERVES_COUNT = 9
