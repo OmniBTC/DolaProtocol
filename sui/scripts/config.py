@@ -1,4 +1,11 @@
 # Some constants for the scripts
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+account_sid = os.getenv("ACCOUNT_SID")
 
 # dola reserves count
 DOLA_RESERVES_COUNT = 9
@@ -175,4 +182,11 @@ DOLA_POOL_ID_TO_PRICE_INFO_OBJECT = {
     6: "0x3f5facfd23427362a17d5e0dca85c94098fb49bded49a2555058a352bb516a56",
     7: "0xb0526b6a2960ebacda89119c86e446017fa42b9e1b33dc6d7bf57c86cfa6e311",
     8: "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f"
+}
+
+# monitor rpc
+NETWORK_TO_MONITOR_RPC = {
+    "polygon-main": os.getenv('POLYGON_MAIN_MONITOR_RPC'),
+    "arbitrum-main": os.getenv('ARBITRUM_MAIN_MONITOR_RPC'),
+    "optimism-main": os.getenv('OPTIMISM_MAIN_MONITOR_RPC'),
 }

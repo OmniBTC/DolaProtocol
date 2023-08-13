@@ -5,7 +5,6 @@ import queue
 import time
 from multiprocessing import Manager
 from pathlib import Path
-from pprint import pprint
 
 import brownie
 from sui_brownie.parallelism import ProcessExecutor
@@ -88,6 +87,8 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
 
     network = config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]
     dola_ethereum_sdk.set_ethereum_network(network)
+    rpc_url = config.NETWORK_TO_MONITOR_RPC[network]
+    brownie.web3.connect(rpc_url)
 
     dola_pool = dola_ethereum_init.get_dola_pool()
 
@@ -213,20 +214,38 @@ def main():
 
     manager = Manager()
 
-    value = manager.Value('b', True)
+    logger = logging.getLogger("dola_monitor")
 
     lock = manager.Lock()
+
+    health = manager.Value('b', True)
 
     q = manager.Queue()
 
     pt = ProcessExecutor(executor=4)
 
+    sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
+    polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
+    optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
+    arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
+
     pt.run([
-        functools.partial(sui_pool_monitor, all_pools[0], q),
-        functools.partial(eth_pool_monitor, 6, all_pools[6], q),
-        functools.partial(dola_monitor, q, value, lock)
+        # One monitoring pool balance per chain
+        functools.partial(sui_pool_monitor, logger.getChild("[sui_pool_monitor]"),
+                          all_pools[sui_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[polygon_pool_monitor]"),
+                          polygon_dola_chain_id,
+                          all_pools[polygon_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[optimism_pool_monitor]"),
+                          optimism_dola_chain_id,
+                          all_pools[optimism_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
+                          arbitrum_dola_chain_id,
+                          all_pools[arbitrum_dola_chain_id], q),
+        # Protocol health monitoring
+        functools.partial(dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
     ])
 
 
 if __name__ == '__main__':
-    pprint(get_all_pools())
+    main()
