@@ -1,9 +1,10 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from twilio.rest import Client
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent.joinpath('env/.env'))
 
 account_sid = os.getenv("ACCOUNT_SID")
 auth_token = os.getenv("AUTH_TOKEN")

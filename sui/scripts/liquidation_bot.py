@@ -4,8 +4,10 @@ from pathlib import Path
 import requests
 from retrying import retry
 
+import config
 import dola_ethereum_sdk
 import dola_sui_sdk
+import sms
 from dola_sui_sdk import interfaces, lending, sui_project
 
 
@@ -97,11 +99,12 @@ def liquidation_bot(liquidator_user_id):
                 # todo: better ensure that the liquidation is completed properly
                 time.sleep(60)
             else:
-                symbol = lending.dola_pool_id_to_symbol(repay_pool_id)
+                symbol = config.DOLA_POOL_ID_TO_SYMBOL(repay_pool_id)
                 msg = f'liquidator {liquidator_user_id} has no liquidity to repay user {user_id} {symbol} debt'
-                notify.notify(msg)
+                sms.notify(msg)
         time.sleep(5)
 
 
 if __name__ == '__main__':
+    sui_project.active_account("Liquidator")
     liquidation_bot(1)
