@@ -42,6 +42,7 @@ networks:
         pool_weight: 1
     scan_rpc_url: https://api-optimistic.etherscan.io/api
     graphql_url: https://api.studio.thegraph.com/query/48530/opdolarelayer/v0.0.3
+    endpoints: [ "https://rpc.ankr.com/optimism", "https://optimism.api.onfinality.io/public", "https://mainnet.optimism.io", "https://1rpc.io/op", "https://api.zan.top/node/v1/opt/mainnet/public", "https://optimism.blockpi.network/v1/rpc/public" ]
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'

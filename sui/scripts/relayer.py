@@ -402,6 +402,9 @@ def eth_portal_watcher(health, network="polygon-test"):
     lending_portal = dola_ethereum_load.lending_portal_package(network).address
     system_portal = dola_ethereum_load.system_portal_package(network).address
 
+    external_endpoint = brownie.web3.provider.endpoint_uri
+    w3_client = dola_ethereum_init.multi_endpoints_web3(network, [external_endpoint])
+
     # graphql_url = dola_ethereum_init.graphql_url(network)
     # transport = AIOHTTPTransport(url=graphql_url)
     #
@@ -418,7 +421,7 @@ def eth_portal_watcher(health, network="polygon-test"):
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
             # query relay events from latest relay block number + 1 to actual latest block number
-            relay_events = dola_ethereum_init.query_relay_event_by_get_logs(lending_portal, system_portal,
+            relay_events = dola_ethereum_init.query_relay_event_by_get_logs(w3_client, lending_portal, system_portal,
                                                                             latest_relay_block_number)
 
             for event in relay_events:
