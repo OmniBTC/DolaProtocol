@@ -104,11 +104,11 @@ networks:
     wormhole: '0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6'
     wormhole_chainid: 30
     wormhole_adapter_pool:
-      v3: ""
-      latest: ''
-    lending_portal: ''
-    system_portal: ''
-    dola_pool: ''
+      v3: "0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e"
+      latest: '0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e'
+    lending_portal: '0x92113298552f99271cb0b9545C40096eE7B0a351'
+    system_portal: '0x845fB08635f3C19944ed2750787D262d92607d8C'
+    dola_pool: '0x68953027738216A63B39D55B18C02FeD5c329Dfa'
     not_involve_fund_consistency: 200
     involve_fund_consistency: 200
   arbitrum-main:
