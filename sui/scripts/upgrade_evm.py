@@ -83,7 +83,7 @@ def remote_add_relayer(dola_chain_id, relayer_address):
     return result['effects']['transactionDigest']
 
 
-def upgrade_evm_wormhole_adapter(network, old_version="v2"):
+def upgrade_evm_wormhole_adapter(network, old_version="v3"):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_ethereum_network(network)
@@ -98,9 +98,13 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
 
     # 1. redeploy evm contract
     (wormhole_adapter_pool, lending_portal, system_portal) = redeploy_evm_contract()
+    print(f"wormhole_adapter_pool:"
+          f" involveFundConsistency: {wormhole_adapter_pool.involveFundConsistency()}, "
+          f" notInvolveFundConsistency: {wormhole_adapter_pool.notInvolveFundConsistency()}")
     new_wormhole_adapter_pool_address = wormhole_adapter_pool.address
 
     # 2. register new remote spender
+    print(f"register new remote spender...")
     new_dola_contract = get_dola_contract(network, new_wormhole_adapter_pool_address)
     tx_hash = create_register_new_spender_proposal(dola_chain_id, new_dola_contract)
     # wait for vaa
@@ -110,6 +114,7 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
             break
 
     # 3. remote add relayer
+    print(f"remote add relayer...")
     relayer_address = "0x252CDE02Ec05bB96381FeC47DCc8C58c49499681"
     tx_hash = remote_add_relayer(dola_chain_id, relayer_address)
     # wait for vaa
@@ -119,12 +124,15 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
             break
 
     # 4. delete old bridge
+    print(f"delete old bridge...")
     remove_old_bridge(wormhole_chain_id)
 
     # 5. register new bridge
+    print(f"\nregister new bridge...")
     register_new_bridge(wormhole_chain_id, new_wormhole_adapter_pool_address)
 
     # 6. delete old remote spender
+    print(f"\ndelete old remote spender...")
     old_dola_contract = get_dola_contract(network, old_wormhole_adapter_pool_address)
     tx_hash = create_delete_old_spender_proposal(dola_chain_id, old_dola_contract)
     # wait for vaa
@@ -140,5 +148,15 @@ def upgrade_evm_wormhole_adapter(network, old_version="v2"):
     print(f"  system_portal: {system_portal.address}")
 
 
+def register_relayer(network):
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network(network)
+    tx_hash = "ENKaHNgJkawnN5rRF7yaE9CYNasEsXWtLe6zYPQUUTzx"
+    wormhole_adapter_pool = "0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e"
+    vaa = get_vaa_by_wormhole(tx_hash, get_core_emitter())
+    register_new_relayer(vaa, wormhole_adapter_pool)
+
+
 if __name__ == '__main__':
-    upgrade_evm_wormhole_adapter('arbitrum-main')
+    # upgrade_evm_wormhole_adapter('polygon-main')
+    register_relayer("base-main")

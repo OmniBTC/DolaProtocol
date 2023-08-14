@@ -11,12 +11,13 @@ from dola_sui_sdk import load, init
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
+from dola_sui_sdk.oracle import get_price_info_object
+from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.oracle import get_feed_vaa
 
 U64_MAX = 18446744073709551615
 
-kraken = ccxt.kraken()
-kraken.load_markets()
+exchange_manager = ExchangeManager()
 
 
 def calculate_sui_gas(gas_used):
@@ -82,13 +83,14 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        kraken_price = kraken.fetch_ticker(symbol)['close']
+        coinbase_price = exchange_manager.fetch_fastest_ticker(symbol)['close']
 
-        if pyth_price > kraken_price:
-            deviation = 1 - kraken_price / pyth_price
+        if pyth_price > coinbase_price:
+            deviation = 1 - coinbase_price / pyth_price
         else:
-            deviation = 1 - pyth_price / kraken_price
+            deviation = 1 - pyth_price / coinbase_price
 
+        print(f"{symbol} price deviation: {deviation}")
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
         if deviation > deviation_threshold:
             raise ValueError(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
@@ -146,15 +148,17 @@ def get_zero_coin():
 
 
 def get_amount_coins_if_exist(amounts: [int]):
+    amounts = [int(amount) for amount in amounts]
+    sui_project.pay_sui(amounts)
     sui_coins = sui_project.get_account_sui()
-    balances = [int(coin['balance']) for coin in sui_coins.values()]
-    coins = [coin_object for coin_object, coin in sui_coins.items() if int(coin['balance']) in amounts]
+    coin_objects = list(sui_coins.keys())
+    balances = [int(sui_coins[coin_object]["balance"]) for coin_object in coin_objects]
+    coins = []
     for amount in amounts:
-        if amount not in balances:
-            if sui_coins.__len__() > 1:
-                sui_project.pay_all_sui()
-            result = sui_project.pay_sui(amounts)
-            return [coin['reference']['objectId'] for coin in result['effects']['created']]
+        index = balances.index(amount)
+        coins.append(coin_objects[index])
+        del balances[index]
+        del coin_objects[index]
 
     return coins
 
@@ -191,8 +195,8 @@ def portal_as_collateral(pool_ids=None, bridge_fee=0):
         genesis,
         pool_state,
         wormhole_state,
-        pool_ids,
         coins[0],
+        pool_ids,
         init.clock(),
     )
 
@@ -1436,7 +1440,6 @@ if __name__ == "__main__":
     # sui_project.pay_all_sui()
     # portal_supply(init.sui()['coin_type'], int(1e8), bridge_fee=7626000)
     # portal_withdraw(init.sui()['coin_type'], int(1e8), bridge_fee=14813999)
-    # portal_liquidate(2, 2, 1, bridge_fee=13076999)
-    portal_as_collateral([3], bridge_fee=0)
+    portal_liquidate(2, 2, 1, bridge_fee=13076999)
 
     # export_objects()

@@ -11,8 +11,8 @@ def deploy():
 
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
-    wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
-    wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
+    not_involve_fund_consistency = config["networks"][cur_net]["not_involve_fund_consistency"]
+    involve_fund_consistency = config["networks"][cur_net]["involve_fund_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = "0x0000000000000000000000000000000000000000"
@@ -23,8 +23,8 @@ def deploy():
         wormhole_address,
         wormhole_chainid,
         dola_pool,
-        wormhole_instant_consistency,
-        wormhole_finality_consistency,
+        not_involve_fund_consistency,
+        involve_fund_consistency,
         21,  # sui _emitterChainId
         core_emitter,
         account.address,
@@ -51,6 +51,7 @@ def deploy():
     config_file["networks"][cur_net]["lending_portal"] = lending_portal.address
     config_file["networks"][cur_net]["system_portal"] = system_portal.address
     config_file["networks"][cur_net]["dola_pool"] = wormhole_adapter_pool.dolaPool()
+    print("dolaPool", wormhole_adapter_pool.dolaPool())
 
     if "test" in cur_net:
         wbtc = deploy_token("WBTC")
@@ -74,8 +75,8 @@ def redeploy():
 
     wormhole_address = config["networks"][cur_net]["wormhole"]
     wormhole_chainid = config["networks"][cur_net]["wormhole_chainid"]
-    wormhole_instant_consistency = config["networks"][cur_net]["wormhole_instant_consistency"]
-    wormhole_finality_consistency = config["networks"][cur_net]["wormhole_finality_consistency"]
+    not_involve_fund_consistency = config["networks"][cur_net]["not_involve_fund_consistency"]
+    involve_fund_consistency = config["networks"][cur_net]["involve_fund_consistency"]
     core_emitter = config["networks"][cur_net]["core_emitter"]
 
     dola_pool = init.get_dola_pool()
@@ -87,8 +88,8 @@ def redeploy():
         wormhole_address,
         wormhole_chainid,
         dola_pool,
-        wormhole_instant_consistency,
-        wormhole_finality_consistency,
+        not_involve_fund_consistency,
+        involve_fund_consistency,
         21,  # sui _emitterChainId
         core_emitter,
         account.address,
@@ -119,5 +120,5 @@ def deploy_token(token_name="USDT"):
 
 
 if __name__ == "__main__":
-    set_ethereum_network("avax-test")
+    set_ethereum_network("base-main")
     deploy()

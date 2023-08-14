@@ -85,10 +85,8 @@ def reserve_proposal_package(package_id: str = None):
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/reserve_params_proposal"))
 
 
-def upgrade_proposal_template_package(package_id: str = None):
-    if package_id is None:
-        package_id: str = sui_project.UpgradeProposalTemplate[-1]
-    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("proposals/upgrade_proposal_template"))
+def upgrade_proposal_package(package_id, file_dir):
+    return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(f"proposals/upgrade_proposal/{file_dir}"))
 
 
 def migrate_version_proposal_package(package_id: str = None):
