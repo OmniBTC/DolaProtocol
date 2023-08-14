@@ -30,11 +30,11 @@ class ExchangeManager:
                 exchange.load_markets()
                 exchanges.append(exchange)
 
-            except AttributeError:  # If ccxt does not have the mentioned exchange
-                print(f"Warning: {exchange_name} not found in ccxt. Skipping.")
+            except Exception as e:
+                print(f"Error initializing {exchange_name}. Error: {e}")
+                continue  # Continue to the next exchange
 
         return exchanges
-
 
     def fetch_ticker_with_delay(self, exchange, symbol):
         time.sleep(0.1)
