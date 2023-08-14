@@ -13,7 +13,7 @@ class ExchangeManager:
         exchanges = []
 
         # List of exchanges to set up
-        exchange_names = ['binance', 'okex']  # Add more exchanges if needed in future
+        exchange_names = ['okex']  # Add more exchanges if needed in future
 
         for exchange_name in exchange_names:
             api_key = os.environ.get(f"{exchange_name.upper()}_API_KEY", None)
@@ -30,8 +30,8 @@ class ExchangeManager:
 
     def fetch_ticker_with_delay(self, exchange, symbol):
         # 使用rate_limit属性进行延迟
-        time.sleep(exchange.rate_limit / 1000)  # ccxt中的rate_limit是毫秒
-        return exchange.fetch_ticker(symbol)['close']
+        time.sleep(1)  # ccxt中的rate_limit是毫秒
+        return exchange.fetch_ticker(symbol)
 
     def fetch_fastest_ticker(self, symbol):
         with ThreadPoolExecutor(max_workers=len(self.exchanges)) as executor:
