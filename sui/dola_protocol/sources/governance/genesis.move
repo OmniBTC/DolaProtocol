@@ -96,6 +96,13 @@ module dola_protocol::genesis {
         Version_1_0_6 {}
     }
 
+    /// Version 1.0.7
+    struct Version_1_0_7 has store, drop, copy {}
+
+    public fun get_version_1_0_7(): Version_1_0_7 {
+        Version_1_0_7 {}
+    }
+
     /// Add a new version structure when upgrading, and upgrade
     /// the version through version migration.
     ///
@@ -111,8 +118,8 @@ module dola_protocol::genesis {
     /// Note: Update the function to set the version limit.
     public fun check_latest_version(genesis: &GovernanceGenesis) {
         assert!(
-            dynamic_field::exists_with_type<Version, Version_1_0_5>(&genesis.id, Version {}) ||
-                dynamic_field::exists_with_type<Version, Version_1_0_6>(&genesis.id, Version {}),
+            dynamic_field::exists_with_type<Version, Version_1_0_6>(&genesis.id, Version {}) ||
+                dynamic_field::exists_with_type<Version, Version_1_0_7>(&genesis.id, Version {}),
             E_NOT_LATEST_VERISON
         );
     }
