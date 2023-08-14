@@ -45,11 +45,15 @@ module register_new_chain_proposal::proposal {
     // Base dola chain id
     const DOLA_CHAIN_ID: u16 = 30;
 
+    const WORMHOLE_STATE: vector<u8> = x"aeab97f96cf9877fee2883315d459552b2b921edc16d7ceac6eab944dd88919c";
+
     const WORMHOLE_CORE_STATE: vector<u8> = x"ffee67f1fc55a72caab7d150abef55625ac6420ca43c5798f5d52db31fb800a7";
 
     const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
 
     const POOL_MANAGER_INFO: vector<u8> = x"1be839a23e544e8d4ba7fab09eab50626c5cfed80f6a22faf7ff71b814689cfb";
+
+    const CLOCK: vector<u8> = x"0000000000000000000000000000000000000000000000000000000000000006";
 
     const RELAYER_ADDRESS: vector<u8> = x"252CDE02Ec05bB96381FeC47DCc8C58c49499681";
 
@@ -80,7 +84,9 @@ module register_new_chain_proposal::proposal {
         let vote_porposal = vector::empty<address>();
         vector::push_back(&mut vote_porposal, address::from_bytes(GOVERNANCE_INFO));
         vector::push_back(&mut vote_porposal, address::from_bytes(POOL_MANAGER_INFO));
+        vector::push_back(&mut vote_porposal, address::from_bytes(WORMHOLE_STATE));
         vector::push_back(&mut vote_porposal, address::from_bytes(WORMHOLE_CORE_STATE));
+        vector::push_back(&mut vote_porposal, address::from_bytes(CLOCK));
         vector::push_back(&mut vote_porposal, object::id_to_address(&object::id(proposal)));
 
         let proposal_desc = ProposalDesc {
