@@ -12,7 +12,7 @@ class ExchangeManager:
     def setup_exchanges(self):
         exchanges = []
         # List of exchanges to set up. Use 'okx,kucoin,coinbase' as default if not set.
-        exchange_names = os.environ.get("EXCHANGE_NAMES", "okx,kucoin,coinbase").split(",")
+        exchange_names = os.environ.get("EXCHANGE_NAMES", "okx,kucoin").split(",")
 
         for exchange_name in exchange_names:
             api_key = os.environ.get(f"{exchange_name.upper()}_API_KEY", None)
