@@ -232,3 +232,4 @@ if __name__ == "__main__":
     erc20 = load.w3_erc20_package(w3_client.eth, usdc()['address'])
     balance = erc20.functions.balanceOf(account.address).call()
     print(balance)
+    print(w3_client.eth.get_balance(account.address))

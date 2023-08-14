@@ -73,8 +73,23 @@ def get_erc20_balance(dola_pool, token):
     return convert_dola_decimal(balance, decimal)
 
 
+def get_w3_erc20_balance(w3_eth, dola_pool, token):
+    erc20 = dola_ethereum_load.w3_erc20_package(w3_eth, token)
+    decimal = erc20.functions.decimals().call()
+    balance = erc20.functions.balanceOf(dola_pool).call()
+
+    return convert_dola_decimal(balance, decimal)
+
+
 def get_eth_balance(dola_pool):
     balance = brownie.web3.eth.get_balance(dola_pool)
+    decimal = config.ETH_DECIMAL
+
+    return convert_dola_decimal(balance, decimal)
+
+
+def get_w3_eth_balance(w3_eth, dola_pool):
+    balance = w3_eth.get_balance(dola_pool)
     decimal = config.ETH_DECIMAL
 
     return convert_dola_decimal(balance, decimal)
@@ -87,8 +102,12 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
 
     network = config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]
     dola_ethereum_sdk.set_ethereum_network(network)
-    rpc_url = config.NETWORK_TO_MONITOR_RPC[network]
-    brownie.web3.connect(rpc_url)
+    if network in config.NETWORK_TO_MONITOR_RPC:
+        rpc_url = config.NETWORK_TO_MONITOR_RPC[network]
+        external_endpoint = [rpc_url]
+    else:
+        external_endpoint = []
+    w3_client = dola_ethereum_init.multi_endpoints_web3(network, external_endpoint)
 
     dola_pool = dola_ethereum_init.get_dola_pool()
 
@@ -98,9 +117,9 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
         try:
             for (dola_pool_id, token) in pool_infos:
                 if token == config.ETH_ZERO_ADDRESS:
-                    balance = get_eth_balance(dola_pool)
+                    balance = get_w3_eth_balance(w3_client.eth, dola_pool)
                 else:
-                    balance = get_erc20_balance(dola_pool, token)
+                    balance = get_w3_erc20_balance(w3_client.eth, dola_pool, token)
 
                 if dola_pool_id not in pool_info:
                     pool_info[dola_pool_id] = {}
