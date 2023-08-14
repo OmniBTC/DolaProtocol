@@ -109,6 +109,26 @@ def deploy_register_pool(file_dir):
     prepare_proposal(register_pool_package.package_id)
 
 
+def deploy_register_chain(file_dir):
+    register_chain_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            f"proposals/chain_manager_proposal/{file_dir}")
+    )
+
+    register_chain_package.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+    print("Package id:", register_chain_package.package_id)
+    prepare_proposal(register_chain_package.package_id)
+
+
 def deploy():
     dola_protocol_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
@@ -217,5 +237,6 @@ if __name__ == "__main__":
     redeploy_external_interfaces()
     # redeploy_genesis_proposal()
     # redeploy_reserve_proposal()
-    deploy_add_reward_pool("add_reward_pool_20230812")
-    deploy_register_pool("register_new_pool_20230812")
+    # deploy_add_reward_pool("add_reward_pool_20230812")
+    # deploy_register_pool("register_new_pool_20230812")
+    deploy_register_chain("register_new_chain_20230814")
