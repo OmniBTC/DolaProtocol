@@ -12,24 +12,21 @@ class ExchangeManager:
     def setup_exchanges(self):
         exchanges = []
 
-        # Setup Binance
-        binance_api_key = os.environ.get("BINANCE_API_KEY", None)
-        binance_secret = os.environ.get("BINANCE_SECRET", None)
-        if binance_api_key and binance_secret:
-            binance = ccxt.binance(
-                {"apiKey": binance_api_key, "secret": binance_secret})
-            binance.load_markets()
-            exchanges.append(binance)
+        # List of exchanges to set up
+        exchange_names = ['binance', 'okex']  # Add more exchanges if needed in future
 
-        # Setup OKEx
-        okex_api_key = os.environ.get("OKEX_API_KEY", None)
-        okex_secret = os.environ.get("OKEX_SECRET", None)
-        if okex_api_key and okex_secret:
-            okex = ccxt.okex({"apiKey": okex_api_key, "secret": okex_secret})
-            okex.load_markets()
-            exchanges.append(okex)
+        for exchange_name in exchange_names:
+            api_key = os.environ.get(f"{exchange_name.upper()}_API_KEY", None)
+            secret = os.environ.get(f"{exchange_name.upper()}_SECRET", None)
+
+            if api_key and secret:
+                exchange_class = getattr(ccxt, exchange_name)
+                exchange = exchange_class({"apiKey": api_key, "secret": secret})
+                exchange.load_markets()
+                exchanges.append(exchange)
 
         return exchanges
+
 
     def fetch_ticker_with_delay(self, exchange, symbol):
         # 使用rate_limit属性进行延迟
