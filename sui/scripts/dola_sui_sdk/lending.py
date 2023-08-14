@@ -12,11 +12,11 @@ from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object
+from dola_sui_sdk.exchange import ExchangeManager
 
 U64_MAX = 18446744073709551615
 
-coinbase = ccxt.coinbase()
-coinbase.load_markets()
+exchange_manager = ExchangeManager()
 
 
 def calculate_sui_gas(gas_used):
@@ -79,8 +79,9 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
 
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
-        pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+        pyth_price = parse_u256(
+            result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
+        coinbase_price = exchange_manager.fetch_ticker(symbol)['close']
 
         if pyth_price > coinbase_price:
             deviation = 1 - coinbase_price / pyth_price
@@ -147,7 +148,8 @@ def get_zero_coin():
 def get_amount_coins_if_exist(amounts: [int]):
     sui_coins = sui_project.get_account_sui()
     balances = [int(coin['balance']) for coin in sui_coins.values()]
-    coins = [coin_object for coin_object, coin in sui_coins.items() if int(coin['balance']) in amounts]
+    coins = [coin_object for coin_object,
+             coin in sui_coins.items() if int(coin['balance']) in amounts]
     for amount in amounts:
         if amount not in balances:
             if sui_coins.__len__() > 1:
@@ -454,7 +456,8 @@ def core_withdraw(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(
+            asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -608,7 +611,8 @@ def core_borrow(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(
+            asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -855,7 +859,8 @@ def core_liquidate(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(
+            asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -1200,7 +1205,8 @@ def core_cancel_as_collateral(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(
+            asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -1385,9 +1391,11 @@ def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_c
     if 'results' not in result:
         return []
 
-    feed_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][0][0])
+    feed_token_ids = convert_vec_u16_to_list(
+        result['results'][0]['returnValues'][0][0])
     feed_token_ids = list(set(feed_token_ids))
-    skip_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][1][0])
+    skip_token_ids = convert_vec_u16_to_list(
+        result['results'][0]['returnValues'][1][0])
 
     return [x for x in feed_token_ids if x not in skip_token_ids]
 
