@@ -1,5 +1,6 @@
 from pprint import pprint
 
+import dola_monitor
 from dola_sui_sdk import load, sui_project, init
 
 
@@ -461,16 +462,49 @@ def get_user_total_reward_info(
     return result['events'][-1]['parsedJson']
 
 
+def calculate_apys():
+    all_rewards = {
+        "sui_otoken_reward": 9877.84 * 0.6 / 7 * 365,
+        "whusdc_otoken_reward": 4278.3 * 0.6 / 7 * 365,
+        "sui_dtoken_reward": 9877.84 * 0.6 / 7 * 365,
+        "whusdc_dtoken_reward": 4278.3 * 0.6 / 7 * 365,
+    }
+
+    sui_otoken_value = dola_monitor.get_otoken_total_supply(3) / 1e8 * 0.6
+    whusdc_otoken_value = dola_monitor.get_otoken_total_supply(8) / 1e8
+    sui_dtoken_value = dola_monitor.get_dtoken_total_supply(3) / 1e8 * 0.6
+    whusdc_dtoken_value = dola_monitor.get_dtoken_total_supply(8) / 1e8
+
+    print(
+        {
+            "sui_otoken_apy": all_rewards["sui_otoken_reward"] / sui_otoken_value,
+            "whusdc_otoken_apy": all_rewards["whusdc_otoken_reward"] / whusdc_otoken_value,
+            "sui_dtoken_apy": all_rewards["sui_dtoken_reward"] / sui_dtoken_value,
+            "whusdc_dtoken_apy": all_rewards["whusdc_dtoken_reward"] / whusdc_dtoken_value,
+
+        }
+    )
+
+
 def get_reward_pool_apys(
-        reward_tokens,
-        reward_pools,
-        dola_pool_ids
+        reward_tokens=None,
+        reward_pools=None,
+        dola_pool_ids=None
 
 ):
+    if reward_tokens is None:
+        reward_tokens = [3, 3, 3, 3]
+        reward_pools = [3, 8, 3, 8]
+        dola_pool_ids = ["0xda4deae4c153c275dacd1fda66567ab158deac5ce17408a4c343bc8ebf8901cc",
+                         "0x290791baf8da8fc0d12be3257acc50bddcf1cfbd72c510d63c27473063f17867",
+                         "0x0dece1bbc7977d63394a403166bfad63628a5bc42dde6edc14935159a7824000",
+                         "0x18368d5f2bdbb16d3c2135837e91aef85ae372b4df909bc75ad8463faa3a8c45"
+                         ]
     external_interface = load.external_interfaces_package()
 
     lending_storage = sui_project.network_config['objects']['LendingStorage']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
+    clock = sui_project.network_config['objects']['Clock']
 
     result = external_interface.interfaces.get_reward_pool_apys.inspect(
         lending_storage,
@@ -478,6 +512,7 @@ def get_reward_pool_apys(
         reward_tokens,
         dola_pool_ids,
         reward_pools,
+        clock
     )
     return result['events'][-1]['parsedJson']
 
@@ -488,7 +523,7 @@ if __name__ == "__main__":
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
-    pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
+    # pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
     # pprint(result)
     # pprint(get_user_all_collateral(1))
     # pprint(get_user_health_factor(1))
@@ -503,6 +538,6 @@ if __name__ == "__main__":
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
     # pprint(get_user_allowed_withdraw(23, 1, 2))
-    # pprint(get_user_total_reward_info(10, [3],
-    # ["0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21"]))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
+    calculate_apys()
+    print(get_reward_pool_apys())

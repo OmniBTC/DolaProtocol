@@ -56,7 +56,7 @@ networks:
         v_1_0_5: '0x0f7f3822d0917bc737e73cd8106d592aa26252ca881b2205ffcbc6732abbae6d'
         v_1_0_6: '0x887f9ce74da0675c053a050cc9d6039dc8cae5c047d98d3601d6bcccd245ba76'
         latest: '0x887f9ce74da0675c053a050cc9d6039dc8cae5c047d98d3601d6bcccd245ba76'
-      external_interfaces: '0x7ae675a61bbc8c3d2dbe83fb67d9b405fa69ede5137e5c3d400e5af5b9c8ded1'
+      external_interfaces: '0x56248d127ba1067e992c8bfe60042105839632aa55e305d783b677d70b8caea8'
       genesis_proposal: '0x693828fbf1322d43f23ad365ab27b7d6f6649133aa3761ff55be6380e53c1b70'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
       reserve_proposal: '0xb62cbf8e23b5c02bdb822f68e549d5c8abf609f0d477c8200197718f045d4741'
@@ -387,6 +387,7 @@ networks:
 sui_wallets:
   from_mnemonic:
     TestAccount: ${DEFAULT}
+    LendingLiquidate: ${LENDING_LIQUIDATE}
     OracleGuard: ${LENDING_ORACLE_GUARD}
     LendingCore1: ${LENDING_CORE1}
     LendingCore2: ${LENDING_CORE2}
