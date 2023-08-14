@@ -48,6 +48,8 @@ class ExchangeManager:
             for future in as_completed(futures):
                 try:
                     ticker = future.result()
+                    exchange_used = futures[future]
+                    print(f"Received ticker from {exchange_used.name}")  # 打印当前API由哪个交易所返回的
                     return ticker
                 except:
                     continue
