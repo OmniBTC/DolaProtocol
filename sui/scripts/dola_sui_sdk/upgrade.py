@@ -154,7 +154,7 @@ if __name__ == "__main__":
             - call upgrade:  dola_protocol is 0x0, publish at is latest
         3. after the front-end upgrade, migrate_version
     """
-    # generate_dola_protocol_package_info()
+    generate_dola_protocol_package_info()
     # deploy_upgrade_proposal("upgrade_proposal_V_1_0_6")
     # upgrade_dola_protocol(
     #     package_id="0x5e3e4eb7dc8e8230bd4c18777d5db7ff3ae821db32e921dfb2c150087c7bf90b",
