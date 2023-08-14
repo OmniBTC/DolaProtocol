@@ -93,6 +93,7 @@ networks:
         pool_weight: 1
     scan_rpc_url: https://api.basescan.org/api
     graphql_url: https://api.studio.thegraph.com/query/48530/opdolarelayer/version/latest
+    endpoints: [ "https://1rpc.io/base", "https://base.blockpi.network/v1/rpc/public", "https://base.meowrpc.com", "https://base-mainnet.public.blastapi.io", "https://mainnet.base.org" ]
     tokens:
       ETH:
         address: '0x0000000000000000000000000000000000000000'
@@ -154,6 +155,7 @@ networks:
         pool_address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f'
         pool_name: WBTC
         pool_weight: 1
+    endpoints: [ "https://1rpc.io/arb", "https://endpoints.omniatech.io/v1/arbitrum/one/public", "https://arb-mainnet-public.unifra.io", "https://arb1.arbitrum.io/rpc", "https://rpc.ankr.com/arbitrum", "https://arbitrum.blockpi.network/v1/rpc/public", "https://arbitrum-one.public.blastapi.io", "https://arbitrum.meowrpc.com" ]
     scan_rpc_url: https://api.arbiscan.io/api
     graphql_url: https://api.studio.thegraph.com/query/48530/arbdolarelayer/v0.0.3
     tokens:
@@ -288,6 +290,7 @@ networks:
         pool_weight: 1
     scan_rpc_url: https://api.polygonscan.com/api
     graphql_url: https://api.studio.thegraph.com/query/48530/polygondolarelayer/v0.0.4
+    endpoints: [ "https://polygon.llamarpc.com", "https://rpc-mainnet.maticvigil.com", "https://endpoints.omniatech.io/v1/matic/mainnet/public", "https://polygon-rpc.com", "https://rpc-mainnet.matic.quiknode.pro", "https://poly-rpc.gateway.pokt.network", "https://rpc.ankr.com/polygon", "https://polygon-mainnet.public.blastapi.io", "https://1rpc.io/matic", "https://polygon.meowrpc.com", "https://polygon-bor.publicnode.com" ]
     tokens:
       MATIC:
         address: '0x0000000000000000000000000000000000000000'

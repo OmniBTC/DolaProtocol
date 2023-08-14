@@ -1,7 +1,7 @@
 import os
-import time
-import ccxt
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import ccxt
 
 
 class ExchangeManager:
@@ -50,7 +50,7 @@ class ExchangeManager:
                     exchange_used = futures[future]
                     print(f"Received ticker from {exchange_used.name}")  # 打印当前API由哪个交易所返回的
                     return ticker
-                except:
+                except Exception:
                     continue
         raise ValueError(
             f"Failed to fetch ticker for {symbol} from all exchanges.")

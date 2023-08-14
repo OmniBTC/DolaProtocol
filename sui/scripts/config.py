@@ -35,6 +35,7 @@ NET_TO_WORMHOLE_CHAIN_ID = {
     "arbitrum-main": 23,
     "aptos-mainnet": 22,
     "sui-mainnet": 21,
+    "base-main": 30,
     # testnet
     "goerli": 2,
     "bsc-test": 4,
@@ -53,6 +54,7 @@ NET_TO_DOLA_CHAIN_ID = {
     "polygon-main": 5,
     "arbitrum-main": 23,
     "optimism-main": 24,
+    "base-main": 30,
 }
 
 # network name -> wormhole emitter
@@ -63,6 +65,7 @@ NET_TO_WORMHOLE_EMITTER = {
     "polygon-main": "0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
+    "base-main": "0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e",
     # testnet
     "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
     "avax-test": "0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec",
@@ -115,6 +118,7 @@ DOLA_CHAIN_ID_TO_NETWORK = {
     6: "avax-main",
     23: "arbitrum-main",
     24: "optimism-main",
+    30: "base-main"
 }
 # testnet
 # DOLA_CHAIN_ID_TO_NETWORK = {
@@ -133,6 +137,7 @@ NETWORK_TO_NATIVE_TOKEN = {
     "avax-main": "avax",
     "arbitrum-main": "eth",
     "optimism-main": "eth",
+    "base-main": "eth"
 }
 
 # sui token -> sui pool
