@@ -1443,3 +1443,12 @@ if __name__ == "__main__":
     portal_liquidate(2, 2, 1, bridge_fee=13076999)
 
     # export_objects()
+
+
+
+export OKEX_API_KEY='cd339607-fd95-43c8-bd94-ea916721b37b'
+export OKEX_SECRET='20E0E2A0C64093140A4F250C3AE4F69E'
+export BINANCE_API_KEY='MtNfO3Kgm5zokXcR96gWjhzULOqVNEv6cRb3xp31m0SkvMZG0Gkfe4c0UsQLy4XE'
+export BINANCE_SECRET='6MAX7MxWAdlDIC8SFZ6kbd8ZSgrh4tqcraqcFBBH6tdkO6TdkZiEbbZmhXpdq01s'
+export KUCOIN_API_KEY='64d99317c840950001401cdf'
+export KUCOIN_API_SECRET='1a6110f3-6131-4762-92f6-245ffff918a3'
