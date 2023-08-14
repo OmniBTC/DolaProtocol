@@ -92,6 +92,7 @@ module dola_protocol::lending_logic {
         user_id: u64,
         otoken_scaled_amount: u256,
         dtoken_scaled_amount: u256,
+        hf: u256
     }
 
 
@@ -99,6 +100,7 @@ module dola_protocol::lending_logic {
 
     fun emit_user_stats(
         storage: &mut Storage,
+        oracle: &mut PriceOracle,
         dola_pool_id: u16,
         dola_user_id: u64,
     ) {
@@ -107,6 +109,7 @@ module dola_protocol::lending_logic {
             user_id: dola_user_id,
             otoken_scaled_amount: storage::get_user_scaled_otoken(storage, dola_user_id, dola_pool_id),
             dtoken_scaled_amount: storage::get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id),
+            hf: user_health_factor(storage, oracle, dola_user_id)
         });
     }
 
@@ -223,12 +226,12 @@ module dola_protocol::lending_logic {
         });
 
         emit_reserve_stats(storage, collateral);
-        emit_user_stats(storage, collateral, liquidator);
-        emit_user_stats(storage, collateral, violator);
+        emit_user_stats(storage, oracle, collateral, liquidator);
+        emit_user_stats(storage, oracle, collateral, violator);
 
         emit_reserve_stats(storage, loan);
-        emit_user_stats(storage, loan, liquidator);
-        emit_user_stats(storage, loan, violator);
+        emit_user_stats(storage, oracle, loan, liquidator);
+        emit_user_stats(storage, oracle, loan, violator);
     }
 
     public(friend) fun execute_supply(
@@ -284,7 +287,7 @@ module dola_protocol::lending_logic {
         });
 
         emit_reserve_stats(storage, dola_pool_id);
-        emit_user_stats(storage, dola_pool_id, dola_user_id);
+        emit_user_stats(storage, oracle, dola_pool_id, dola_user_id);
     }
 
     public(friend) fun execute_withdraw(
@@ -331,7 +334,7 @@ module dola_protocol::lending_logic {
         });
 
         emit_reserve_stats(storage, dola_pool_id);
-        emit_user_stats(storage, dola_pool_id, dola_user_id);
+        emit_user_stats(storage, oracle, dola_pool_id, dola_user_id);
 
         actual_amount
     }
@@ -384,7 +387,7 @@ module dola_protocol::lending_logic {
         });
 
         emit_reserve_stats(storage, borrow_pool_id);
-        emit_user_stats(storage, borrow_pool_id, dola_user_id);
+        emit_user_stats(storage, oracle, borrow_pool_id, dola_user_id);
     }
 
     public(friend) fun execute_repay(
@@ -432,7 +435,7 @@ module dola_protocol::lending_logic {
         });
 
         emit_reserve_stats(storage, dola_pool_id);
-        emit_user_stats(storage, dola_pool_id, dola_user_id);
+        emit_user_stats(storage, oracle, dola_pool_id, dola_user_id);
     }
 
     /// Turn liquid asset into collateral
@@ -467,6 +470,9 @@ module dola_protocol::lending_logic {
             violator_id: 0,
             call_type: lending_codec::get_as_colleteral_type()
         });
+
+        emit_reserve_stats(storage, dola_pool_id);
+        emit_user_stats(storage, oracle, dola_pool_id, dola_user_id);
     }
 
     /// Turn collateral into liquid asset
@@ -498,6 +504,9 @@ module dola_protocol::lending_logic {
             violator_id: 0,
             call_type: lending_codec::get_cancel_as_colleteral_type()
         });
+
+        emit_reserve_stats(storage, dola_pool_id);
+        emit_user_stats(storage, oracle, dola_pool_id, dola_user_id);
     }
 
     /// === Governance Functions ===
@@ -522,6 +531,8 @@ module dola_protocol::lending_logic {
         mint_otoken(storage, receiver_id, dola_pool_id, amount);
 
         update_interest_rate(pool_manager_info, storage, dola_pool_id, 0);
+
+        emit_reserve_stats(storage, dola_pool_id);
     }
 
     /// === Helper Functions ===
