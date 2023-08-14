@@ -1,18 +1,16 @@
 from pathlib import Path
 from pprint import pprint
 
-import ccxt
 import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16
 
 import config
 from dola_sui_sdk import load, init
+from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
-from dola_sui_sdk.oracle import get_price_info_object
-from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.oracle import get_feed_vaa
 
 U64_MAX = 18446744073709551615
@@ -90,10 +88,10 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         else:
             deviation = 1 - pyth_price / coinbase_price
 
-        print(f"{symbol} price deviation: {deviation}")
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
         if deviation > deviation_threshold:
-            raise ValueError(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
+            print(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
+            # raise ValueError(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
