@@ -4,20 +4,10 @@ module set_reserve_proposal::proposal {
     use std::option;
     use std::vector;
 
-    use dola_protocol::dola_address;
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
-    use dola_protocol::pool_manager;
-    use dola_protocol::pool_manager::PoolManagerInfo;
     use sui::address;
     use sui::object;
     use sui::tx_context::TxContext;
-    use dola_protocol::wormhole_adapter_core;
-    use dola_protocol::wormhole_adapter_core::CoreState;
-
-    use wormhole::state::State;
-    use sui::clock::Clock;
-    use sui::coin;
-    use sui::sui::SUI;
     use dola_protocol::lending_core_storage;
     use dola_protocol::lending_core_storage::Storage;
 
