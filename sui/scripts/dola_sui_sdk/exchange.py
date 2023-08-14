@@ -37,7 +37,6 @@ class ExchangeManager:
         return exchanges
 
     def fetch_ticker_with_delay(self, exchange, symbol):
-        time.sleep(0.1)
         return exchange.fetch_ticker(symbol)
 
     def fetch_fastest_ticker(self, symbol):
