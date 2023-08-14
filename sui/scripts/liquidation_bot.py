@@ -75,7 +75,6 @@ def liquidation_bot(liquidator_user_id):
 
     while True:
         try:
-
             # get user ids with health factor < 1
             user_ids = get_user_ids_by_hf(0, 1)
 

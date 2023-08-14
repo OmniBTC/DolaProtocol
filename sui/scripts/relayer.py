@@ -334,8 +334,12 @@ def wormhole_vaa_guardian(network="polygon-test"):
     wormhole = dola_ethereum_load.womrhole_package(network)
 
     while True:
-        wait_vaa_txs = list(relay_record.find({'status': 'waitForVaa', 'src_chain_id': src_chain_id}).sort(
-            "block_number", 1))
+        try:
+            wait_vaa_txs = list(relay_record.find({'status': 'waitForVaa', 'src_chain_id': src_chain_id}).sort(
+                "block_number", 1))
+        except Exception as e:
+            local_logger.warning(f"relay record find failed! {e}")
+            continue
 
         for tx in wait_vaa_txs:
             try:
@@ -573,7 +577,12 @@ def sui_core_executor(relayer_account, divisor=1, remainder=0):
     gas_record = GasRecord()
 
     while True:
-        relay_transactions = relay_record.find({"status": "false", "nonce": {"$mod": [divisor, remainder]}})
+        try:
+            relay_transactions = relay_record.find({"status": "false", "nonce": {"$mod": [divisor, remainder]}})
+        except Exception as e:
+            local_logger.warning(f"relay record find failed! {e}")
+            continue
+
         for tx in relay_transactions:
             try:
                 relay_fee_value = tx['relay_fee']
@@ -660,8 +669,13 @@ def sui_pool_executor(relayer_account):
     gas_record = GasRecord()
 
     while True:
-        relay_transactions = relay_record.find(
-            {"status": "withdraw", "withdraw_chain_id": 0})
+        try:
+            relay_transactions = relay_record.find(
+                {"status": "withdraw", "withdraw_chain_id": 0})
+        except Exception as e:
+            local_logger.warning(f"relay record find failed! {e}")
+            continue
+
         for withdraw_tx in relay_transactions:
             try:
                 core_costed_fee = (
@@ -740,8 +754,12 @@ def eth_pool_executor():
     gas_record = GasRecord()
 
     while True:
-        relay_transactions = relay_record.find(
-            {"status": "withdraw", "withdraw_chain_id": {"$ne": 0}})
+        try:
+            relay_transactions = relay_record.find(
+                {"status": "withdraw", "withdraw_chain_id": {"$ne": 0}})
+        except Exception as e:
+            local_logger.warning(f"relay record find failed! {e}")
+            continue
 
         for withdraw_tx in relay_transactions:
             try:

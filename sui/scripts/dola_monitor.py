@@ -142,7 +142,7 @@ def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(1)
+        time.sleep(5)
 
 
 def check_pool_health(dola_pool_id, pool_info):
@@ -187,7 +187,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
         lock.acquire()
         value.value = health
         lock.release()
-        time.sleep(2)
+        time.sleep(5)
 
 
 def get_all_pools():
