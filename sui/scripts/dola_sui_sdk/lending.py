@@ -81,12 +81,16 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        coinbase_price = exchange_manager.fetch_fastest_ticker(symbol)['close']
 
-        if pyth_price > coinbase_price:
-            deviation = 1 - coinbase_price / pyth_price
+        if f"{symbol}T" in config.EXCHANGE_SYMBOLS:
+            exchange_price = exchange_manager.fetch_fastest_ticker(f"{symbol}T")['close']
         else:
-            deviation = 1 - pyth_price / coinbase_price
+            exchange_price = 1
+
+        if pyth_price > exchange_price:
+            deviation = 1 - exchange_price / pyth_price
+        else:
+            deviation = 1 - pyth_price / exchange_price
 
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
         if deviation > deviation_threshold:

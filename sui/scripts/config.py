@@ -83,6 +83,8 @@ NATIVE_TOKEN_NAME_TO_KUCOIN_SYMBOL = {
     "apt": "APT/USDT"
 }
 
+EXCHANGE_SYMBOLS = ["ETH/USDT", "BTC/USDT", "MATIC/USDT", "ARB/USDT", "SUI/USDT", "OP/USDT"]
+
 # native token name -> decimal
 NATIVE_TOKEN_NAME_TO_DECIMAL = {
     "eth": 18,

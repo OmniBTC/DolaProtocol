@@ -54,3 +54,9 @@ class ExchangeManager:
                     continue
         raise ValueError(
             f"Failed to fetch ticker for {symbol} from all exchanges.")
+
+
+if __name__ == "__main__":
+    exchange_manager = ExchangeManager()
+    ticker = exchange_manager.fetch_fastest_ticker("ETH/USDT")
+    print(ticker)
