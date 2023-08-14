@@ -216,6 +216,6 @@ def main():
 if __name__ == "__main__":
     redeploy_external_interfaces()
     # redeploy_genesis_proposal()
-    # redeploy_reserve_proposal()
-    deploy_add_reward_pool("add_reward_pool_20230812")
-    deploy_register_pool("register_new_pool_20230812")
+    # # redeploy_reserve_proposal()
+    # deploy_add_reward_pool("add_reward_pool_20230812")
+    # deploy_register_pool("register_new_pool_20230812")

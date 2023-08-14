@@ -1039,7 +1039,7 @@ module external_interfaces::interfaces {
         let borrow_amount = logic::calculate_amount(oracle, borrow_pool_id, can_borrow_value);
         let pool_address = dola_address::create_dola_address(dola_chain_id, dola_address);
 
-        let pool_liquidity =  pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
+        let pool_liquidity = pool_manager::get_pool_liquidity(pool_manager_info, pool_address);
         let reserve = pool_manager::get_app_liquidity(pool_manager_info, borrow_pool_id, storage::get_app_id(storage));
 
         let max_borrow_amount = ray_math::min(borrow_amount, reserve);
@@ -1243,6 +1243,7 @@ module external_interfaces::interfaces {
         reward_token: u16,
         reward_pool_info: address,
         dola_pool_id: u16,
+        clock: &Clock,
     ): u256 {
         let total_otoken_balance = lending_logic::total_otoken_supply(storage, dola_pool_id);
         let total_dtoken_balance = lending_logic::total_dtoken_supply(storage, dola_pool_id);
@@ -1280,7 +1281,7 @@ module external_interfaces::interfaces {
             };
             let total_reward_value = logic::calculate_value(oracle, reward_token, total_reward_balance);
 
-            if (total_value == 0) {
+            if (total_value == 0 || storage::get_timestamp(clock) >= boost::get_end_time(reward_pool_info)) {
                 apy = 0;
             }else {
                 apy = total_reward_value * 10000 / total_value / ray_math::ray();
@@ -1296,6 +1297,7 @@ module external_interfaces::interfaces {
         reward_tokens: vector<u16>,
         reward_pool_infos: vector<address>,
         dola_pool_ids: vector<u16>,
+        clock: &Clock
     ) {
         let apys = vector::empty<RewardPoolApy>();
         let i = 0;
@@ -1309,7 +1311,8 @@ module external_interfaces::interfaces {
                 oracle,
                 reward_token,
                 reward_pool_info,
-                dola_pool_id
+                dola_pool_id,
+                clock
             );
             vector::push_back(&mut apys, RewardPoolApy {
                 reward_pool_info,
