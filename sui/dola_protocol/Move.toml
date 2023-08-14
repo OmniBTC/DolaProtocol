@@ -1,7 +1,7 @@
 [package]
 name = "DolaProtocol"
 version = "1.0.2"
-published-at = "0x0f7f3822d0917bc737e73cd8106d592aa26252ca881b2205ffcbc6732abbae6d"
+published-at = "0x887f9ce74da0675c053a050cc9d6039dc8cae5c047d98d3601d6bcccd245ba76"
 
 [addresses]
 dola_protocol = "0x0"
