@@ -74,6 +74,7 @@ def get_erc20_balance(dola_pool, token):
 
 
 def get_w3_erc20_balance(w3_eth, dola_pool, token):
+    token = brownie.web3.toChecksumAddress(token)
     erc20 = dola_ethereum_load.w3_erc20_package(w3_eth, token)
     decimal = erc20.functions.decimals().call()
     balance = erc20.functions.balanceOf(dola_pool).call()
@@ -104,7 +105,7 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
     dola_ethereum_sdk.set_ethereum_network(network)
     if network in config.NETWORK_TO_MONITOR_RPC:
         rpc_url = config.NETWORK_TO_MONITOR_RPC[network]
-        external_endpoint = [rpc_url]
+        external_endpoint = [rpc_url] if rpc_url else []
     else:
         external_endpoint = []
     w3_client = dola_ethereum_init.multi_endpoints_web3(network, external_endpoint)
@@ -241,12 +242,13 @@ def main():
 
     q = manager.Queue()
 
-    pt = ProcessExecutor(executor=4)
+    pt = ProcessExecutor(executor=6)
 
     sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
     polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
     optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
     arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
+    base_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['base-main']
 
     pt.run([
         # One monitoring pool balance per chain
@@ -261,6 +263,9 @@ def main():
         functools.partial(eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
                           arbitrum_dola_chain_id,
                           all_pools[arbitrum_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[base_pool_monitor]"),
+                          base_dola_chain_id,
+                          all_pools[base_dola_chain_id], q),
         # Protocol health monitoring
         functools.partial(dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
     ])

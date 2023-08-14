@@ -1077,12 +1077,13 @@ def main():
 
     q = manager.Queue()
 
-    pt = ProcessExecutor(executor=18)
+    pt = ProcessExecutor(executor=21)
 
     sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
     polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
     optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
     arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
+    base_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['base-main']
 
     pt.run([
         # One monitoring pool balance per chain
@@ -1097,6 +1098,9 @@ def main():
         functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
                           arbitrum_dola_chain_id,
                           all_pools[arbitrum_dola_chain_id], q),
+        functools.partial(dola_monitor.eth_pool_monitor, logger.getChild("[base_pool_monitor]"),
+                          base_dola_chain_id,
+                          all_pools[base_dola_chain_id], q),
         # Protocol health monitoring
         functools.partial(dola_monitor.dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
         # Two core executor
@@ -1111,6 +1115,8 @@ def main():
         functools.partial(wormhole_vaa_guardian, "arbitrum-main"),
         functools.partial(eth_portal_watcher, health, "optimism-main"),
         functools.partial(wormhole_vaa_guardian, "optimism-main"),
+        functools.partial(eth_portal_watcher, health, "base-main"),
+        functools.partial(wormhole_vaa_guardian, "base-main"),
         # User withdraw watcher
         functools.partial(pool_withdraw_watcher, health),
         # User withdraw executor

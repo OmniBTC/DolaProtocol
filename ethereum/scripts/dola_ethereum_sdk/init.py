@@ -221,8 +221,8 @@ def multi_endpoints_web3(network, external_endpoint=None):
 
 
 if __name__ == "__main__":
-    net = "optimism-main"
-    set_ethereum_network("optimism-main")
+    net = "polygon-main"
+    set_ethereum_network(net)
     lending_portal = load.lending_portal_package(net).address
     system_portal = load.system_portal_package(net).address
     external_endpoint = brownie.web3.provider.endpoint_uri
