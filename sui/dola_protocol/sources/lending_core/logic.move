@@ -15,6 +15,7 @@ module dola_protocol::lending_logic {
     use dola_protocol::ray_math as math;
     use dola_protocol::scaled_balance;
     use dola_protocol::boost;
+    use sui::event::emit;
 
     friend dola_protocol::lending_core_wormhole_adapter;
     friend dola_protocol::lending_portal;
@@ -76,7 +77,53 @@ module dola_protocol::lending_logic {
         call_type: u8
     }
 
+    struct LendingReserveStatsEvent has drop, copy {
+        pool_id: u16,
+        otoken_scaled_amount: u256,
+        dtoken_scaled_amount: u256,
+        supply_rate: u256,
+        borrow_rate: u256,
+        supply_index: u256,
+        borrow_index: u256,
+    }
+
+    struct LendingUserStatsEvent has drop, copy {
+        pool_id: u16,
+        user_id: u64,
+        otoken_scaled_amount: u256,
+        dtoken_scaled_amount: u256,
+    }
+
+
     /// === Friend Functions ===
+
+    fun emit_user_stats(
+        storage: &mut Storage,
+        dola_pool_id: u16,
+        dola_user_id: u64,
+    ) {
+        emit(LendingUserStatsEvent {
+            pool_id: dola_pool_id,
+            user_id: dola_user_id,
+            otoken_scaled_amount: storage::get_user_scaled_otoken(storage, dola_user_id, dola_pool_id),
+            dtoken_scaled_amount: storage::get_user_scaled_dtoken(storage, dola_user_id, dola_pool_id),
+        });
+    }
+
+    fun emit_reserve_stats(
+        storage: &mut Storage,
+        dola_pool_id: u16
+    ) {
+        emit(LendingReserveStatsEvent {
+            pool_id: dola_pool_id,
+            otoken_scaled_amount: storage::get_otoken_scaled_total_supply(storage, dola_pool_id),
+            dtoken_scaled_amount: storage::get_dtoken_scaled_total_supply(storage, dola_pool_id),
+            supply_rate: storage::get_liquidity_rate(storage, dola_pool_id),
+            borrow_rate: storage::get_borrow_rate(storage, dola_pool_id),
+            supply_index: storage::get_borrow_index(storage, dola_pool_id),
+            borrow_index: storage::get_borrow_index(storage, dola_pool_id),
+        });
+    }
 
     public(friend) fun execute_liquidate(
         pool_manager_info: &PoolManagerInfo,
@@ -173,7 +220,15 @@ module dola_protocol::lending_logic {
             pool_id: collateral,
             violator_id: violator,
             call_type: lending_codec::get_liquidate_type()
-        })
+        });
+
+        emit_reserve_stats(storage, collateral);
+        emit_user_stats(storage, collateral, liquidator);
+        emit_user_stats(storage, collateral, violator);
+
+        emit_reserve_stats(storage, loan);
+        emit_user_stats(storage, loan, liquidator);
+        emit_user_stats(storage, loan, violator);
     }
 
     public(friend) fun execute_supply(
@@ -226,7 +281,10 @@ module dola_protocol::lending_logic {
             pool_id: dola_pool_id,
             violator_id: 0,
             call_type: lending_codec::get_supply_type()
-        })
+        });
+
+        emit_reserve_stats(storage, dola_pool_id);
+        emit_user_stats(storage, dola_pool_id, dola_user_id);
     }
 
     public(friend) fun execute_withdraw(
@@ -271,6 +329,9 @@ module dola_protocol::lending_logic {
             violator_id: 0,
             call_type: lending_codec::get_withdraw_type()
         });
+
+        emit_reserve_stats(storage, dola_pool_id);
+        emit_user_stats(storage, dola_pool_id, dola_user_id);
 
         actual_amount
     }
@@ -321,6 +382,9 @@ module dola_protocol::lending_logic {
             violator_id: 0,
             call_type: lending_codec::get_borrow_type()
         });
+
+        emit_reserve_stats(storage, borrow_pool_id);
+        emit_user_stats(storage, borrow_pool_id, dola_user_id);
     }
 
     public(friend) fun execute_repay(
@@ -366,6 +430,9 @@ module dola_protocol::lending_logic {
             violator_id: 0,
             call_type: lending_codec::get_repay_type()
         });
+
+        emit_reserve_stats(storage, dola_pool_id);
+        emit_user_stats(storage, dola_pool_id, dola_user_id);
     }
 
     /// Turn liquid asset into collateral
