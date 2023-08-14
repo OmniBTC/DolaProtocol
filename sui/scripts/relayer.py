@@ -647,11 +647,11 @@ def sui_core_executor(relayer_account, divisor=1, remainder=0):
                     local_logger.warning(f"relay fee: {relay_fee_value} USD, consumed fee: {core_costed_fee} USD")
                     local_logger.warning(f"status: {status}")
             except AssertionError as e:
-                status = eval(str(e))
+                # status = eval(str(e))
                 relay_record.update_record({'vaa': tx['vaa']},
-                                           {"$set": {'status': 'fail', 'reason': status['effects']['status']['error']}})
+                                           {"$set": {'status': 'fail', 'reason': str(e)}})
                 local_logger.warning("Execute sui core fail! ")
-                local_logger.warning(f"status: {status}")
+                local_logger.warning(f"status: {str(e)}")
             except Exception as e:
                 traceback.print_exc()
                 local_logger.error(f"Execute sui core fail\n {e}")
