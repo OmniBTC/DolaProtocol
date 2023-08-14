@@ -1,4 +1,5 @@
 import os
+import time
 import ccxt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -30,10 +31,15 @@ class ExchangeManager:
 
         return exchanges
 
+    def fetch_ticker_with_delay(self, exchange, symbol):
+        # 使用rate_limit属性进行延迟
+        time.sleep(exchange.rate_limit / 1000)  # ccxt中的rate_limit是毫秒
+        return exchange.fetch_ticker(symbol)['close']
+
     def fetch_fastest_ticker(self, symbol):
         with ThreadPoolExecutor(max_workers=len(self.exchanges)) as executor:
             futures = {executor.submit(
-                exchange.fetch_ticker, symbol): exchange for exchange in self.exchanges}
+                self.fetch_ticker_with_delay, exchange, symbol): exchange for exchange in self.exchanges}
 
             for future in as_completed(futures):
                 try:
