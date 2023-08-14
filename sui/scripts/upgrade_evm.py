@@ -148,5 +148,15 @@ def upgrade_evm_wormhole_adapter(network, old_version="v3"):
     print(f"  system_portal: {system_portal.address}")
 
 
+def register_relayer(network):
+    dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    dola_ethereum_sdk.set_ethereum_network(network)
+    tx_hash = "ENKaHNgJkawnN5rRF7yaE9CYNasEsXWtLe6zYPQUUTzx"
+    wormhole_adapter_pool = "0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e"
+    vaa = get_vaa_by_wormhole(tx_hash, get_core_emitter())
+    register_new_relayer(vaa, wormhole_adapter_pool)
+
+
 if __name__ == '__main__':
-    upgrade_evm_wormhole_adapter('polygon-main')
+    # upgrade_evm_wormhole_adapter('polygon-main')
+    register_relayer("base-main")
