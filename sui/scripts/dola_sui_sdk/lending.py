@@ -13,11 +13,11 @@ from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_price_info_object
+from dola_sui_sdk.exchange import ExchangeManager
 
 U64_MAX = 18446744073709551615
 
-coinbase = ccxt.coinbase()
-coinbase.load_markets()
+exchange_manager = ExchangeManager()
 
 
 def calculate_sui_gas(gas_used):
@@ -81,7 +81,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+        coinbase_price = exchange_manager.fetch_fastest_ticker(symbol)['close']
 
         if pyth_price > coinbase_price:
             deviation = 1 - coinbase_price / pyth_price
