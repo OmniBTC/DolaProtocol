@@ -600,7 +600,7 @@ def sui_core_executor(relayer_account, divisor=1, remainder=0):
                     continue
 
                 # If no gas record exists, relay once for free.
-                fee_rate = 0.8
+                fee_rate = 0
                 if not list(gas_record.find(
                         {'src_chain_id': tx['src_chain_id'], 'dst_chain_id': 0, 'call_name': call_name})):
                     fee_rate = 0
