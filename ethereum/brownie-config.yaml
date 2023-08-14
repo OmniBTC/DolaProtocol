@@ -74,6 +74,43 @@ networks:
     dola_pool: '0x233DDEce6a96c49ecE6Ad9ae820690fE62a28975'
     not_involve_fund_consistency: 200
     involve_fund_consistency: 200
+  base-main:
+    dola_chain_id: 30
+    core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
+    pools:
+      ETH:
+        dola_chain_id: 30
+        dola_pool_id: 4
+        pool_address: '0x0000000000000000000000000000000000000000'
+        pool_name: ETH
+        pool_weight: 1
+      USDC:
+        dola_chain_id: 30
+        dola_pool_id: 2
+        pool_address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA'
+        pool_name: USDC
+        pool_weight: 1
+    scan_rpc_url: https://api.basescan.org/api
+    graphql_url: https://api.studio.thegraph.com/query/48530/opdolarelayer/version/latest
+    tokens:
+      ETH:
+        address: '0x0000000000000000000000000000000000000000'
+        decimals: 18
+        dola_pool_id: 4
+      USDC:
+        address: '0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA'
+        decimals: 6
+        dola_pool_id: 2
+    wormhole: '0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6'
+    wormhole_chainid: 30
+    wormhole_adapter_pool:
+      v3: ""
+      latest: ''
+    lending_portal: ''
+    system_portal: ''
+    dola_pool: ''
+    not_involve_fund_consistency: 200
+    involve_fund_consistency: 200
   arbitrum-main:
     core_emitter: '0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86'
     dola_chain_id: 23
