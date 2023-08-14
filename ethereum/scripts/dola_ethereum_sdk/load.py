@@ -42,3 +42,7 @@ def test_coins_package():
 def erc20_package(package_address):
     return Contract.from_abi("ERC20", package_address,
                              DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+
+
+def w3_erc20_package(w3_eth, package_address):
+    return w3_eth.contract(package_address, abi=DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)

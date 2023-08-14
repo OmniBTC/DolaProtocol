@@ -227,8 +227,8 @@ if __name__ == "__main__":
     system_portal = load.system_portal_package(net).address
     external_endpoint = brownie.web3.provider.endpoint_uri
     w3_client = multi_endpoints_web3(net, [external_endpoint])
-    while True:
-        try:
-            print(query_relay_event_by_get_logs(w3_client, lending_portal, system_portal, start_block=108198338))
-        except Exception as e:
-            print(e)
+
+    account = get_account()
+    erc20 = load.w3_erc20_package(w3_client.eth, usdc()['address'])
+    balance = erc20.functions.balanceOf(account.address).call()
+    print(balance)
