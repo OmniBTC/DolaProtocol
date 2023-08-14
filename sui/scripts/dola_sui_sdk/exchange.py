@@ -11,23 +11,30 @@ class ExchangeManager:
 
     def setup_exchanges(self):
         exchanges = []
-        # List of exchanges to set up
-        exchange_names = os.environ.get("EXCHANGE_NAMES", "").split(",")
+        # List of exchanges to set up. Use 'okx,kucoin,coinbase' as default if not set.
+        exchange_names = os.environ.get("EXCHANGE_NAMES", "okx,kucoin,coinbase").split(",")
 
         for exchange_name in exchange_names:
             api_key = os.environ.get(f"{exchange_name.upper()}_API_KEY", None)
             secret = os.environ.get(f"{exchange_name.upper()}_SECRET", None)
 
-            if api_key and secret:
-                try:
-                    exchange_class = getattr(ccxt, exchange_name.strip())
+            try:
+                exchange_class = getattr(ccxt, exchange_name.strip())
+
+                if api_key and secret:
                     exchange = exchange_class({"apiKey": api_key, "secret": secret})
-                    exchange.load_markets()
-                    exchanges.append(exchange)
-                except AttributeError:  # If ccxt does not have the mentioned exchange
-                    print(f"Warning: {exchange_name} not found in ccxt. Skipping.")
+                else:
+                    print(f"Note: Using public API for {exchange_name}. Rate limits may apply.")
+                    exchange = exchange_class()  # If no keys are provided, initialize without them
+
+                exchange.load_markets()
+                exchanges.append(exchange)
+
+            except AttributeError:  # If ccxt does not have the mentioned exchange
+                print(f"Warning: {exchange_name} not found in ccxt. Skipping.")
 
         return exchanges
+
 
     def fetch_ticker_with_delay(self, exchange, symbol):
         time.sleep(0.1)
