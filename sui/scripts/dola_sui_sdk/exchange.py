@@ -29,8 +29,7 @@ class ExchangeManager:
 
 
     def fetch_ticker_with_delay(self, exchange, symbol):
-        # 使用rate_limit属性进行延迟
-        time.sleep(1)  # ccxt中的rate_limit是毫秒
+        time.sleep(1)
         return exchange.fetch_ticker(symbol)
 
     def fetch_fastest_ticker(self, symbol):
@@ -41,7 +40,7 @@ class ExchangeManager:
             for future in as_completed(futures):
                 try:
                     ticker = future.result()
-                    return ticker  # 返回最先获取到的ticker
+                    return ticker
                 except:
                     continue
         raise ValueError(
