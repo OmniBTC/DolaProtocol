@@ -14,6 +14,11 @@ module register_new_chain_proposal::proposal {
     use dola_protocol::wormhole_adapter_core;
     use dola_protocol::wormhole_adapter_core::CoreState;
 
+    use wormhole::state::State;
+    use sui::clock::Clock;
+    use sui::coin;
+    use sui::sui::SUI;
+
     /// Add Base Chain
 
     /// Constant
@@ -45,6 +50,8 @@ module register_new_chain_proposal::proposal {
     const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
 
     const POOL_MANAGER_INFO: vector<u8> = x"1be839a23e544e8d4ba7fab09eab50626c5cfed80f6a22faf7ff71b814689cfb";
+
+    const RELAYER_ADDRESS: vector<u8> = x"252CDE02Ec05bB96381FeC47DCc8C58c49499681";
 
     struct ProposalDesc has store {
         // Description of proposal content
@@ -88,7 +95,9 @@ module register_new_chain_proposal::proposal {
     public entry fun vote_porposal(
         governance_info: &mut GovernanceInfo,
         pool_manager_info: &mut PoolManagerInfo,
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
+        clock: &Clock,
         proposal: &mut Proposal<Certificate>,
         ctx: &mut TxContext
     ) {
@@ -113,6 +122,17 @@ module register_new_chain_proposal::proposal {
             let pool = dola_address::create_dola_address(DOLA_CHAIN_ID, USDC_POOL_ADDRESS);
             pool_manager::register_pool(&cap, pool_manager_info, pool, USDC_POOL_ID);
             pool_manager::set_pool_weight(&cap, pool_manager_info, pool, USDC_POOL_WEIGHT);
+
+            // Add relayer
+            wormhole_adapter_core::remote_add_relayer(
+                &cap,
+                wormhole_state,
+                core_state,
+                DOLA_CHAIN_ID,
+                RELAYER_ADDRESS,
+                coin::zero<SUI>(ctx),
+                clock,
+            );
 
             governance_v1::destroy_governance_cap(cap);
         };
