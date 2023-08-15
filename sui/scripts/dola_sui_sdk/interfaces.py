@@ -523,7 +523,7 @@ if __name__ == "__main__":
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
-    # pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
+    pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
     # pprint(result)
     # pprint(get_user_all_collateral(1))
     # pprint(get_user_health_factor(1))
@@ -539,5 +539,5 @@ if __name__ == "__main__":
     # pprint(get_all_reserve_info())
     # pprint(get_user_allowed_withdraw(23, 1, 2))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
-    calculate_apys()
-    print(get_reward_pool_apys())
+    # calculate_apys()
+    # print(get_reward_pool_apys())
