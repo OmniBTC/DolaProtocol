@@ -106,24 +106,25 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
-def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
+def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
     dola_protocol = load.dola_protocol_package()
 
-    pyth_fee_amount = 0
+    pyth_fee_amount = 1
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pool_id = get_pool_id(symbol)
+    symbol = config.DOLA_POOL_ID_TO_SYMBOL[pool_id]
 
     if simulate:
         vaa = get_feed_vaa(symbol)
+        price_info_object = get_price_info_object(symbol)
         result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
                 wormhole_state,
                 pyth_state,
-                get_price_info_object(symbol),
+                price_info_object,
                 price_oracle,
                 pool_id,
                 list(bytes.fromhex(vaa.replace("0x", ""))),
@@ -132,7 +133,7 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -161,17 +162,16 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
 
-        coinbase_price = coinbase.fetch_ticker(symbol)['close']
+        kraken_price = kraken.fetch_ticker(symbol)['close']
 
-        if pyth_price > coinbase_price:
-            deviation = 1 - coinbase_price / pyth_price
+        if pyth_price > kraken_price:
+            deviation = 1 - kraken_price / pyth_price
         else:
-            deviation = 1 - pyth_price / coinbase_price
+            deviation = 1 - pyth_price / kraken_price
 
-        print(f"{symbol} price deviation: {deviation}")
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
-        if deviation <= deviation_threshold:
-            raise ValueError("The oracle price difference is too large!")
+        if deviation > deviation_threshold:
+            raise ValueError(f"The oracle price difference is too large! {symbol} price deviation: {deviation}")
     else:
         sui_project.batch_transaction(
             actual_params=[
@@ -187,7 +187,7 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -207,7 +207,7 @@ def feed_token_price_by_pyth(symbol, simulate=True, coinbase=None):
 
 def build_feed_transaction_block(dola_protocol, basic_param_num, sequence):
     return [
-        dola_protocol.oracle.feed_token_price_by_pyth,
+        dola_protocol.oracle.feed_token_price_by_pyth_v2,
         [
             Argument("Input", U16(basic_param_num - 5)),
             Argument("Input", U16(basic_param_num - 4)),
@@ -424,7 +424,7 @@ def check_guard_price(symbol):
     return result['effects']['status']['status'] == 'failure'
 
 
-def oracle_guard(symbols=None):
+def oracle_guard(pool_ids=None):
     """Check price guard time and update price termly
 
     :return:
@@ -441,18 +441,23 @@ def oracle_guard(symbols=None):
     logger.addHandler(ch)
     local_logger = logger.getChild("oracle_guard")
 
-    if symbols is None:
-        symbols = []
+    kraken = ccxt.kraken()
+    kraken.load_markets()
+
+    if pool_ids is None:
+        pool_ids = []
 
     sui_project.active_account("OracleGuard")
-    
+    symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in pool_ids]
+
     while True:
         try:
-            for symbol in symbols:
+            for (pool_id, symbol) in zip(pool_ids, symbols):
+
                 local_logger.info(f"Check {symbol} price guard time")
                 if check_guard_price(symbol):
                     local_logger.info(f"Update {symbol} price")
-                    feed_token_price_by_pyth(symbol, simulate=False)
+                    feed_token_price_by_pyth(pool_id, simulate=False, kraken=kraken)
         except Exception as e:
             local_logger.warning(e)
         finally:
@@ -460,10 +465,4 @@ def oracle_guard(symbols=None):
 
 
 if __name__ == '__main__':
-    # deploy_oracle()
-    # print(get_price_info_object('ETH/USD'))
-    coinbase = ccxt.coinbase()
-    coinbase.load_markets()
-    print(coinbase.fetch_ticker("BTC/USD"))
-    # print(get_token_price("USDT/USD"))
-    # batch_feed_token_price_by_pyth(["BTC/USD", "USDT/USD", "USDC/USD", "SUI/USD", "ETH/USD", "MATIC/USD"])
+    oracle_guard(list(range(9)))

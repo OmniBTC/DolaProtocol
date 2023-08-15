@@ -4,9 +4,10 @@ from pathlib import Path
 import requests
 from retrying import retry
 
+import config
 import dola_ethereum_sdk
 import dola_sui_sdk
-import notify
+import sms
 from dola_sui_sdk import interfaces, lending, sui_project
 
 
@@ -71,10 +72,11 @@ def get_liquidate_feed_tokens(liquidator_lending_info, violator_lending_info):
 def liquidation_bot(liquidator_user_id):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
+    sui_project.active_account("LendingLiquidate")
 
     while True:
         # get user ids with health factor < 1
-        user_ids = get_user_ids_by_hf(0, 1)
+        user_ids = get_user_ids_by_hf(0, 1.0)
 
         for user_id in user_ids:
             user_id = user_id['userId']
@@ -82,6 +84,7 @@ def liquidation_bot(liquidator_user_id):
             debt_infos = violator_lending_info['debt_infos']
             max_debt_info = max(debt_infos, key=lambda x: x['debt_value'])
             repay_pool_id = max_debt_info['dola_pool_id']
+            repay_symbol = lending.dola_pool_id_to_symbol(repay_pool_id)
 
             liquidator_lending_info = interfaces.get_user_lending_info(liquidator_user_id)
 
@@ -90,19 +93,19 @@ def liquidation_bot(liquidator_user_id):
                 collateral_infos = violator_lending_info['collateral_infos']
                 max_collateral_info = max(collateral_infos, key=lambda x: x['collateral_value'])
                 liquidate_pool_id = max_collateral_info['dola_pool_id']
+                liquidate_symbol = lending.dola_pool_id_to_symbol(liquidate_pool_id)
 
                 liquidate_feed_tokens = get_liquidate_feed_tokens(liquidator_lending_info, violator_lending_info)
                 feed_nums = len(liquidate_feed_tokens)
                 relay_fee = get_liquidate_relay_fee(feed_nums)
-                lending.portal_liquidate(repay_pool_id, liquidate_pool_id, user_id, bridge_fee=relay_fee)
-                # todo: better ensure that the liquidation is completed properly
-                time.sleep(60)
+                print(f"Liquidate use {repay_symbol} to get {liquidate_symbol}")
+                lending.portal_liquidate(repay_pool_id, user_id, liquidate_pool_id, bridge_fee=relay_fee)
             else:
                 symbol = lending.dola_pool_id_to_symbol(repay_pool_id)
                 msg = f'liquidator {liquidator_user_id} has no liquidity to repay user {user_id} {symbol} debt'
                 notify.notify(msg)
-        time.sleep(5)
+        time.sleep(60)
 
 
 if __name__ == '__main__':
-    liquidation_bot(1)
+    liquidation_bot(7523)

@@ -1,4 +1,10 @@
 # Some constants for the scripts
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent.parent.joinpath('env/.env'))
 
 # dola reserves count
 DOLA_RESERVES_COUNT = 9
@@ -29,6 +35,7 @@ NET_TO_WORMHOLE_CHAIN_ID = {
     "arbitrum-main": 23,
     "aptos-mainnet": 22,
     "sui-mainnet": 21,
+    "base-main": 30,
     # testnet
     "goerli": 2,
     "bsc-test": 4,
@@ -47,6 +54,7 @@ NET_TO_DOLA_CHAIN_ID = {
     "polygon-main": 5,
     "arbitrum-main": 23,
     "optimism-main": 24,
+    "base-main": 30,
 }
 
 # network name -> wormhole emitter
@@ -54,9 +62,10 @@ NET_TO_WORMHOLE_EMITTER = {
     # mainnet
     "optimism-main": "0xD4f0968c718E2b3F6fC2C9da3341c5a0C4720d68",
     "arbitrum-main": "0x4d6CAB4f234736B9E149E709CE6f45CE04a11cE5",
-    "polygon-main": "0x8F65495ca94cCdb3F159369Cf27a91464Db87E98",
+    "polygon-main": "0xb4da6261C07330C6Cb216159dc38fa3B302BC8B5",
     "sui-mainnet": "0xabbce6c0c2c7cd213f4c69f8a685f6dfc1848b6e3f31dd15872f4e777d5b3e86",
     "sui-mainnet-pool": "0xdd1ca0bd0b9e449ff55259e5bcf7e0fc1b8b7ab49aabad218681ccce7b202bd6",
+    "base-main": "0x0F4aedfB8DA8aF176DefF282DA86EBbe3A0EA19e",
     # testnet
     "polygon-test": "0x83B787B99B1f5E9D90eDcf7C09E41A5b336939A7",
     "avax-test": "0xF3d8cFbEee2A16c47b8f5f05f6452Bf38b0346Ec",
@@ -73,6 +82,8 @@ NATIVE_TOKEN_NAME_TO_KUCOIN_SYMBOL = {
     "sui": "SUI/USDT",
     "apt": "APT/USDT"
 }
+
+EXCHANGE_SYMBOLS = ["ETH/USDT", "BTC/USDT", "MATIC/USDT", "ARB/USDT", "SUI/USDT", "OP/USDT"]
 
 # native token name -> decimal
 NATIVE_TOKEN_NAME_TO_DECIMAL = {
@@ -109,6 +120,7 @@ DOLA_CHAIN_ID_TO_NETWORK = {
     6: "avax-main",
     23: "arbitrum-main",
     24: "optimism-main",
+    30: "base-main"
 }
 # testnet
 # DOLA_CHAIN_ID_TO_NETWORK = {
@@ -127,13 +139,14 @@ NETWORK_TO_NATIVE_TOKEN = {
     "avax-main": "avax",
     "arbitrum-main": "eth",
     "optimism-main": "eth",
+    "base-main": "eth"
 }
 
 # sui token -> sui pool
 # mainnet
 SUI_TOKEN_TO_POOL = {
     "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI": "0x19b5315353192fcbe21214d51520b1292cd78215849cd5a9a9ea80ee3916cb73",
-    "5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN": "0xe3544997abc93c211ef7e35cd5e0af719bed4810cec8d2d3bf4b7653310a75fb"
+    "0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN": "0xe3544997abc93c211ef7e35cd5e0af719bed4810cec8d2d3bf4b7653310a75fb"
 }
 
 #  testnet
@@ -162,4 +175,24 @@ DOLA_POOL_ID_TO_SYMBOL = {
     6: "ARB/USD",
     7: "OP/USD",
     8: "USDC/USD"
+}
+
+# mainnet
+DOLA_POOL_ID_TO_PRICE_INFO_OBJECT = {
+    0: "0x144ec4135c65af207b97b3d2dfea9972efc7d80cc13a960ae1d808a3307d90ca",
+    1: "0x64f8db86bef3603472cf446c7ab40278af7f4bcda97c7599ad4cb33d228e31eb",
+    2: "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f",
+    3: "0x168aa44fa92b27358beb17643834078b1320be6adf1b3bb0c7f018ac3591db1a",
+    4: "0xaa6adc565636860729907ef3e7fb7808d80c8a425a5fd417ae47bb68e2dcc2e3",
+    5: "0x607890f56b8c3aab0e56f6fd52d4fde892d19462e4f80a51cb5d47191eae84b5",
+    6: "0x3f5facfd23427362a17d5e0dca85c94098fb49bded49a2555058a352bb516a56",
+    7: "0xb0526b6a2960ebacda89119c86e446017fa42b9e1b33dc6d7bf57c86cfa6e311",
+    8: "0x1db46472aa29f5a41dd4dc41867fdcbc1594f761e607293c40bdb66d7cd5278f"
+}
+
+# monitor rpc
+NETWORK_TO_MONITOR_RPC = {
+    "polygon-main": os.getenv('POLYGON_MAIN_MONITOR_RPC'),
+    "arbitrum-main": os.getenv('ARBITRUM_MAIN_MONITOR_RPC'),
+    "optimism-main": os.getenv('OPTIMISM_MAIN_MONITOR_RPC'),
 }
