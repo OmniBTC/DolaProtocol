@@ -18,6 +18,10 @@ U64_MAX = 18446744073709551615
 exchange_manager = ExchangeManager()
 
 
+def dola_pool_id_to_symbol(pool_id):
+    return config.DOLA_POOL_ID_TO_SYMBOL[pool_id]
+
+
 def calculate_sui_gas(gas_used):
     return int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
         gas_used['storageRebate'])
