@@ -420,6 +420,9 @@ def eth_portal_watcher(health, network="polygon-test"):
             result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
+            if latest_relay_block_number == 0 and network == 'base-main':
+                latest_relay_block_number = 2596984
+
             # query relay events from latest relay block number + 1 to actual latest block number
             relay_events = dola_ethereum_init.query_relay_event_by_get_logs(w3_client, lending_portal, system_portal,
                                                                             latest_relay_block_number)
