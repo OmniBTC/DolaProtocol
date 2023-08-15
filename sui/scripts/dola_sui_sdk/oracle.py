@@ -157,9 +157,6 @@ def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
                 ]
             ]
         )
-        print(f"pool_id: {pool_id}")
-        print(f"symbol: {symbol}")
-        print(f"price_info_object: {price_info_object}")
 
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
@@ -190,7 +187,7 @@ def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -210,7 +207,7 @@ def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
 
 def build_feed_transaction_block(dola_protocol, basic_param_num, sequence):
     return [
-        dola_protocol.oracle.feed_token_price_by_pyth,
+        dola_protocol.oracle.feed_token_price_by_pyth_v2,
         [
             Argument("Input", U16(basic_param_num - 5)),
             Argument("Input", U16(basic_param_num - 4)),
@@ -427,7 +424,7 @@ def check_guard_price(symbol):
     return result['effects']['status']['status'] == 'failure'
 
 
-def oracle_guard(symbols=None):
+def oracle_guard(pool_ids=None):
     """Check price guard time and update price termly
 
     :return:
@@ -444,18 +441,23 @@ def oracle_guard(symbols=None):
     logger.addHandler(ch)
     local_logger = logger.getChild("oracle_guard")
 
-    if symbols is None:
-        symbols = []
+    kraken = ccxt.kraken()
+    kraken.load_markets()
+
+    if pool_ids is None:
+        pool_ids = []
 
     sui_project.active_account("OracleGuard")
+    symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in pool_ids]
 
     while True:
         try:
-            for symbol in symbols:
+            for (pool_id, symbol) in zip(pool_ids, symbols):
+
                 local_logger.info(f"Check {symbol} price guard time")
                 if check_guard_price(symbol):
                     local_logger.info(f"Update {symbol} price")
-                    feed_token_price_by_pyth(symbol, simulate=False)
+                    feed_token_price_by_pyth(pool_id, simulate=False, kraken=kraken)
         except Exception as e:
             local_logger.warning(e)
         finally:
@@ -463,6 +465,4 @@ def oracle_guard(symbols=None):
 
 
 if __name__ == '__main__':
-    kraken = ccxt.kraken()
-    kraken.load_markets()
-    feed_token_price_by_pyth(3, kraken=kraken)
+    oracle_guard(list(range(9)))
