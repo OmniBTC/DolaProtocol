@@ -25,7 +25,6 @@ module external_interfaces::interfaces {
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::rates;
     use dola_protocol::ray_math;
-    use dola_protocol::ray_math::ray_div;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
     use wormhole::state::State;
     use wormhole::vaa;
@@ -980,7 +979,8 @@ module external_interfaces::interfaces {
         let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
         let collateral_coefficient = storage::get_collateral_coefficient(storage, withdraw_pool_id);
 
-        if (ray_div(health_collateral_value, health_loan_value) <= TARGET_HF) {
+
+        if (logic::user_health_factor(storage, oracle, dola_user_id) <= TARGET_HF) {
             emit(UserAllowedWithdraw {
                 withdraw_token,
                 max_withdraw_amount: 0,
@@ -1045,7 +1045,7 @@ module external_interfaces::interfaces {
 
         let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
 
-        if (ray_div(health_collateral_value, health_loan_value) <= TARGET_HF) {
+        if (logic::user_health_factor(storage, oracle, dola_user_id) <= TARGET_HF) {
             emit(UserAllowedBorrow {
                 borrow_token,
                 max_borrow_amount: 0,
@@ -1165,7 +1165,7 @@ module external_interfaces::interfaces {
         let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
 
         let health = true;
-        if (ray_div(health_collateral_value, health_loan_value) <= TARGET_HF) {
+        if (logic::user_health_factor(storage, oracle, dola_user_id) <= TARGET_HF) {
             health = false;
         };
 
