@@ -288,7 +288,7 @@ def get_reserve_info(dola_pool_id):
     return result['events'][-1]['parsedJson']
 
 
-def get_user_allowed_withdraw(dola_chain_id, dola_user_id, dola_pool_id, withdraw_all=False):
+def get_user_allowed_withdraw(dola_chain_id, dola_pool_address, dola_user_id, dola_pool_id, withdraw_all=False):
     """
     public entry fun get_user_allowed_withdraw(
         pool_manager_info: &mut PoolManagerInfo,
@@ -315,6 +315,7 @@ def get_user_allowed_withdraw(dola_chain_id, dola_user_id, dola_pool_id, withdra
         lending_storage,
         price_oracle,
         dola_chain_id,
+        list(bytes.fromhex(dola_pool_address)),
         dola_user_id,
         dola_pool_id,
         withdraw_all
@@ -537,7 +538,7 @@ if __name__ == "__main__":
     # pprint(get_user_allowed_borrow(0, 1, 3))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
-    # pprint(get_user_allowed_withdraw(23, 1, 2))
+    pprint(get_user_allowed_withdraw(23, "FF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", 7518, 2))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
-    calculate_apys()
-    print(get_reward_pool_apys())
+    # calculate_apys()
+    # print(get_reward_pool_apys())
