@@ -73,8 +73,24 @@ def get_erc20_balance(dola_pool, token):
     return convert_dola_decimal(balance, decimal)
 
 
+def get_w3_erc20_balance(w3_eth, dola_pool, token):
+    token = brownie.web3.toChecksumAddress(token)
+    erc20 = dola_ethereum_load.w3_erc20_package(w3_eth, token)
+    decimal = erc20.functions.decimals().call()
+    balance = erc20.functions.balanceOf(dola_pool).call()
+
+    return convert_dola_decimal(balance, decimal)
+
+
 def get_eth_balance(dola_pool):
     balance = brownie.web3.eth.get_balance(dola_pool)
+    decimal = config.ETH_DECIMAL
+
+    return convert_dola_decimal(balance, decimal)
+
+
+def get_w3_eth_balance(w3_eth, dola_pool):
+    balance = w3_eth.get_balance(dola_pool)
     decimal = config.ETH_DECIMAL
 
     return convert_dola_decimal(balance, decimal)
@@ -87,6 +103,12 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
 
     network = config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]
     dola_ethereum_sdk.set_ethereum_network(network)
+    if network in config.NETWORK_TO_MONITOR_RPC:
+        rpc_url = config.NETWORK_TO_MONITOR_RPC[network]
+        external_endpoint = [rpc_url] if rpc_url else []
+    else:
+        external_endpoint = []
+    w3_client = dola_ethereum_init.multi_endpoints_web3(network, external_endpoint)
 
     dola_pool = dola_ethereum_init.get_dola_pool()
 
@@ -96,17 +118,28 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
         try:
             for (dola_pool_id, token) in pool_infos:
                 if token == config.ETH_ZERO_ADDRESS:
-                    balance = get_eth_balance(dola_pool)
+                    balance = get_w3_eth_balance(w3_client.eth, dola_pool)
                 else:
-                    balance = get_erc20_balance(dola_pool, token)
+                    balance = get_w3_erc20_balance(w3_client.eth, dola_pool, token)
 
-                if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
-                    pool_info[dola_pool_id] = balance
-                    q.put((dola_chain_id, dola_pool_id, balance))
+                if dola_pool_id not in pool_info:
+                    pool_info[dola_pool_id] = {}
+
+                if token not in pool_info[dola_pool_id]:
+                    pool_info[dola_pool_id][token] = 0
+
+                if pool_info[dola_pool_id][token] != balance:
+                    change = balance - pool_info[dola_pool_id][token]
+                    local_logger.info(
+                        f"dola pool {config.DOLA_POOL_ID_TO_SYMBOL[dola_pool_id]} on chain {network} balance: {balance} change: {change}")
+                    pool_info[dola_pool_id][token] = balance
+                    pool_balance = sum(pool_info[dola_pool_id][token] for token in pool_info[dola_pool_id])
+                    q.put((dola_chain_id, dola_pool_id, pool_balance))
+
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(1)
+        time.sleep(10)
 
 
 def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
@@ -121,12 +154,15 @@ def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
                 pool_address = config.SUI_TOKEN_TO_POOL[token]
                 balance = get_sui_pool_balance(pool_address)
                 if dola_pool_id not in pool_info or pool_info[dola_pool_id] != balance:
+                    change = balance - pool_info[dola_pool_id] if dola_pool_id in pool_info else balance
+                    local_logger.info(
+                        f"dola pool {config.DOLA_POOL_ID_TO_SYMBOL[dola_pool_id]} on chain sui balance: {balance} change: {change}")
                     pool_info[dola_pool_id] = balance
                     q.put((0, dola_pool_id, balance))
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(1)
+        time.sleep(5)
 
 
 def check_pool_health(dola_pool_id, pool_info):
@@ -134,7 +170,7 @@ def check_pool_health(dola_pool_id, pool_info):
     total_debt = get_dtoken_total_supply(dola_pool_id)
 
     liquidity = sum(pool_info[dola_chain_id] for dola_chain_id in pool_info)
-    return liquidity + total_debt >= total_supply
+    return liquidity + total_debt + config.DOLA_RESERVES_COUNT >= total_supply
 
 
 def check_dola_health(pool_infos):
@@ -153,8 +189,6 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
     while True:
         try:
             (dola_chain_id, dola_pool_id, balance) = q.get_nowait()
-            local_logger.info(
-                f"dola pool {dola_pool_id} on chain {config.DOLA_CHAIN_ID_TO_NETWORK[dola_chain_id]} balance: {balance}")
             if dola_pool_id not in pool_infos:
                 pool_infos[dola_pool_id] = {}
 
@@ -173,7 +207,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
         lock.acquire()
         value.value = health
         lock.release()
-        time.sleep(1)
+        time.sleep(5)
 
 
 def get_all_pools():
@@ -197,22 +231,43 @@ def get_all_pools():
 
 def main():
     all_pools = get_all_pools()
-    monitor_num = len(all_pools.keys())
 
     manager = Manager()
 
-    value = manager.Value('b', True)
+    logger = logging.getLogger("dola_monitor")
 
     lock = manager.Lock()
 
+    health = manager.Value('b', True)
+
     q = manager.Queue()
 
-    pt = ProcessExecutor(executor=monitor_num + 1)
+    pt = ProcessExecutor(executor=6)
+
+    sui_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['sui-mainnet']
+    polygon_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['polygon-main']
+    optimism_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['optimism-main']
+    arbitrum_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['arbitrum-main']
+    base_dola_chain_id = config.NET_TO_DOLA_CHAIN_ID['base-main']
 
     pt.run([
-        functools.partial(sui_pool_monitor, all_pools[0], q),
-        functools.partial(eth_pool_monitor, 6, all_pools[6], q),
-        functools.partial(dola_monitor, q, value, lock)
+        # One monitoring pool balance per chain
+        functools.partial(sui_pool_monitor, logger.getChild("[sui_pool_monitor]"),
+                          all_pools[sui_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[polygon_pool_monitor]"),
+                          polygon_dola_chain_id,
+                          all_pools[polygon_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[optimism_pool_monitor]"),
+                          optimism_dola_chain_id,
+                          all_pools[optimism_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[arbitrum_pool_monitor]"),
+                          arbitrum_dola_chain_id,
+                          all_pools[arbitrum_dola_chain_id], q),
+        functools.partial(eth_pool_monitor, logger.getChild("[base_pool_monitor]"),
+                          base_dola_chain_id,
+                          all_pools[base_dola_chain_id], q),
+        # Protocol health monitoring
+        functools.partial(dola_monitor, logger.getChild("[dola_monitor]"), q, health, lock),
     ])
 
 

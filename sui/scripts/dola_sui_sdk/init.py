@@ -6,6 +6,7 @@ import requests
 import sui_brownie
 from sui_brownie import SuiObject, Argument, U16, NestedResult
 
+import config
 from dola_sui_sdk import load, sui_project, DOLA_CONFIG, deploy
 
 RAY = 1000000000000000000000000000
@@ -163,8 +164,7 @@ def pool(coin_type):
 
 
 def pool_id(coin_type):
-    coin_name = coin_type.split("::")[-1]
-    return sui_project.network_config['objects'][f"Pool<{coin_name}>"]
+    return config.SUI_TOKEN_TO_POOL[coin_type]
 
 
 def proposal():
@@ -190,15 +190,15 @@ def query_pool_relay_event(tx_digest, limit=10):
     :return:
     """
     # Use the version when the event was added
-    if sui_project.network == "sui-testnet":
-        dola_protocol = "0x0415de1c03a69d652e64e17c166311c01d7608133c699edf97dd8297e83bf02b"
-    else:
-        dola_protocol = sui_project.network_config['packages']['dola_protocol']['latest']
+    # v 1.0.3
+    dola_protocol = sui_project.network_config['packages']['dola_protocol']['v_1_0_3']
+
+    cursor = None if tx_digest == "" else {"txDigest": tx_digest, "eventSeq": "1"}
 
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::wormhole_adapter_pool::RelayEvent"},
         limit=limit,
-        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
+        cursor=cursor, descending_order=False)['data']
 
 
 def query_core_relay_event(tx_digest, limit=10):
@@ -211,9 +211,11 @@ def query_core_relay_event(tx_digest, limit=10):
     """
     dola_protocol = sui_project.network_config['packages']['dola_protocol']['origin']
 
+    cursor = None if tx_digest == "" else {"txDigest": tx_digest, "eventSeq": "1"}
+
     return sui_project.client.suix_queryEvents(
         {"MoveEventType": f"{dola_protocol}::lending_core_wormhole_adapter::RelayEvent"}, limit=limit,
-        cursor={"txDigest": tx_digest, "eventSeq": "1"}, descending_order=False)['data']
+        cursor=cursor, descending_order=False)['data']
 
 
 @functools.lru_cache()
@@ -1565,7 +1567,7 @@ def create_reward_pool(
     genesis_proposal = load.genesis_proposal_package()
 
     # Init chain group id param
-    create_proposal()
+    # create_proposal()
 
     governance_info = sui_project.network_config['objects']['GovernanceInfo']
     storage = sui_project.network_config['objects']['LendingStorage']
@@ -1610,38 +1612,6 @@ def create_reward_pool(
     )
 
 
-def create_reward_pool_v1(file_dir):
-    proposal_id = "0xe61f29e49591ea4cc705b2e65a23511b0bccb6ddcce63923686f324c531553b1"
-    reward_proposal = load.sui_package(proposal_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
-        f"proposals/manage_reward_proposal/{file_dir}"))
-    reward_amount = 28312280000200
-    governance_info = sui_project.network_config['objects']['GovernanceInfo']
-    escrow_reward = "0xfd19c89a87cbd6239faa35e9918cdc22ce5d859f286ff2f3d3004091ec590f8b"
-
-    basic_params = [
-        governance_info,
-        escrow_reward,
-        reward_amount
-    ]
-
-    tx_blocks = [
-        [
-            reward_proposal.proposal.create_proposal,
-            [
-                Argument("Input", U16(0)),
-                Argument("Input", U16(1)),
-                Argument("Input", U16(2)),
-            ],
-            []
-        ]
-    ]
-
-    return sui_project.batch_transaction(
-        actual_params=basic_params,
-        transactions=tx_blocks
-    )
-
-
 def batch_init():
     active_governance_v1()
     batch_init_oracle()
@@ -1650,7 +1620,7 @@ def batch_init():
 
 
 if __name__ == '__main__':
-    # batch_init()
+    batch_init()
     # register_new_reserve(reserve="whUSDCeth")
     # set_reserve_params()
     # register_new_pool()
@@ -1663,11 +1633,3 @@ if __name__ == '__main__':
     # add_oracle_relayer("0x96f0e953051678006c98f444d7ac0d7c0d2e5a06c0d153ef177ca051337ef9a3")
     # add_oracle_relayer("0x8424a9a02e81149c162f0a48454bc1c1b701b760003e1be96fe6de1e4e375c03")
     # add_oracle_relayer("0xdaa4567f5cb58ee59c7a2d510c8049fda4070bdeef5124d7b919cac180500a6c")
-    # create_reward_pool(
-    #     start_time=1691658000,
-    #     end_time=1691917200,
-    #     reward_amount=int(10 * 1e9),
-    #     dola_pool_id=3,
-    #     reward_action=2
-    # )
-    print(create_reward_pool_v1("add_reward_pool_20230812"))

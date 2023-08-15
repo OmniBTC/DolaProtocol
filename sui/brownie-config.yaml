@@ -388,9 +388,9 @@ networks:
 sui_wallets:
   from_mnemonic:
     TestAccount: ${DEFAULT}
-    LendingLiquidate: ${LENDING_LIQUIDATE}
     OracleGuard: ${LENDING_ORACLE_GUARD}
     LendingCore1: ${LENDING_CORE1}
     LendingCore2: ${LENDING_CORE2}
     LendingCore3: ${LENDING_CORE3}
     LendingPool: ${LENDING_POOL}
+    Liquidator: ${LENDING_LIQUIDATE}

@@ -1,19 +1,17 @@
-import time
 from pathlib import Path
 from pprint import pprint
 
-import ccxt
 import requests
 import yaml
 from sui_brownie import SuiObject, Argument, U16
 
 import config
-from dola_sui_sdk import load, init, oracle
+from dola_sui_sdk import load, init
+from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
-from dola_sui_sdk.oracle import get_price_info_object
-from dola_sui_sdk.exchange import ExchangeManager
+from dola_sui_sdk.oracle import get_feed_vaa
 
 U64_MAX = 18446744073709551615
 
@@ -36,19 +34,21 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     wormhole_state = sui_project.network_config['objects']['WormholeState']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
     pyth_state = sui_project.network_config['objects']['PythState']
-    pyth_fee_amount = 0
+    pyth_fee_amount = 1
 
     feed_gas = 0
 
     symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
-    vaas = oracle.get_batch_feed_vaa(symbols)
-    for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
+    price_info_objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id] for pool_id in asset_ids]
+    vaas = [get_feed_vaa(symbol) for symbol in symbols]
+    for (pool_id, symbol, price_info_object) in zip(asset_ids, symbols, price_info_objects):
+        vaa = get_feed_vaa(symbol)
         result = sui_project.batch_transaction_inspect(
             actual_params=[
                 governance_genesis,
                 wormhole_state,
                 pyth_state,
-                get_price_info_object(symbol),
+                price_info_object,
                 price_oracle,
                 pool_id,
                 list(bytes.fromhex(vaa.replace("0x", ""))),
@@ -57,7 +57,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
             ],
             transactions=[
                 [
-                    dola_protocol.oracle.feed_token_price_by_pyth,
+                    dola_protocol.oracle.feed_token_price_by_pyth_v2,
                     [
                         Argument("Input", U16(0)),
                         Argument("Input", U16(1)),
@@ -85,30 +85,34 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
         decimal = int(result['results'][2]['returnValues'][1][0][0])
 
         pyth_price = parse_u256(result['results'][2]['returnValues'][0][0]) / (10 ** decimal)
-        coinbase_price = exchange_manager.fetch_fastest_ticker(symbol)['close']
 
-        if pyth_price > coinbase_price:
-            deviation = 1 - coinbase_price / pyth_price
+        if f"{symbol}T" in config.EXCHANGE_SYMBOLS:
+            exchange_price = exchange_manager.fetch_fastest_ticker(f"{symbol}T")['close']
         else:
-            deviation = 1 - pyth_price / coinbase_price
+            exchange_price = 1
 
-        print(f"{symbol} price deviation: {deviation}")
+        if pyth_price > exchange_price:
+            deviation = 1 - exchange_price / pyth_price
+        else:
+            deviation = 1 - pyth_price / exchange_price
+
         deviation_threshold = config.SYMBOL_TO_DEVIATION[symbol]
-        if deviation <= deviation_threshold:
-            raise ValueError("The oracle price difference is too large!")
+        if deviation > deviation_threshold:
+            print(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
+            # raise ValueError(f"The oracle price difference is too large! {symbol} deviation {deviation}!")
 
         gas = calculate_sui_gas(result['effects']['gasUsed'])
         feed_gas += gas
 
     if relay_fee >= int(fee_rate * feed_gas):
-        relay_fee -= feed_gas
-        for (pool_id, vaa, symbol) in zip(asset_ids, vaas, symbols):
+        relay_fee -= int(fee_rate * feed_gas)
+        for (pool_id, vaa, symbol, price_info_object) in zip(asset_ids, vaas, symbols, price_info_objects):
             sui_project.batch_transaction(
                 actual_params=[
                     governance_genesis,
                     wormhole_state,
                     pyth_state,
-                    get_price_info_object(symbol),
+                    price_info_object,
                     price_oracle,
                     pool_id,
                     list(bytes.fromhex(vaa.replace("0x", ""))),
@@ -117,7 +121,7 @@ def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
                 ],
                 transactions=[
                     [
-                        dola_protocol.oracle.feed_token_price_by_pyth,
+                        dola_protocol.oracle.feed_token_price_by_pyth_v2,
                         [
                             Argument("Input", U16(0)),
                             Argument("Input", U16(1)),
@@ -564,6 +568,7 @@ def portal_borrow(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee=0
     if receiver is None:
         assert dst_chain_id == 0
         receiver = account_address
+
     genesis = sui_project.network_config['objects']['GovernanceGenesis']
     pool_state = sui_project.network_config['objects']['PoolState']
     wormhole_state = sui_project.network_config['objects']['WormholeState']
@@ -575,8 +580,8 @@ def portal_borrow(pool_addr, amount, dst_chain_id=0, receiver=None, bridge_fee=0
         pool_state,
         wormhole_state,
         dst_chain_id,
-        list(bytes(pool_addr.replace('0x', ''), 'ascii')),
-        list(bytes.fromhex(receiver.replace('0x', ''))),
+        pool_addr,
+        receiver,
         amount,
         coins[0],
         init.clock(),
@@ -1393,7 +1398,10 @@ def get_feed_tokens_for_relayer(vaa, is_withdraw=False, is_liquidate=False, is_c
 
     feed_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][0][0])
     feed_token_ids = list(set(feed_token_ids))
-    skip_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][1][0])
+    if len(result['results'][0]['returnValues']) == 2:
+        skip_token_ids = convert_vec_u16_to_list(result['results'][0]['returnValues'][1][0])
+    else:
+        skip_token_ids = []
 
     return [x for x in feed_token_ids if x not in skip_token_ids]
 

@@ -4,9 +4,10 @@ from pathlib import Path
 import requests
 from retrying import retry
 
+import config
 import dola_ethereum_sdk
 import dola_sui_sdk
-import notify
+import sms
 from dola_sui_sdk import interfaces, lending, sui_project
 
 
