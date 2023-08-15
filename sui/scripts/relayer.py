@@ -420,7 +420,7 @@ def eth_portal_watcher(health, network="polygon-test"):
             result = list(relay_record.find({'src_chain_id': src_chain_id}).sort("block_number", -1).limit(1))
             latest_relay_block_number = result[0]['block_number'] if result else latest_relay_block_number
 
-            if latest_relay_block_number == 0 and network == 'base-main':
+            if network == 'base-main':
                 latest_relay_block_number = w3_client.eth.get_block_number() - 500
 
             # query relay events from latest relay block number + 1 to actual latest block number
