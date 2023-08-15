@@ -216,7 +216,7 @@ def multi_endpoints_web3(network, external_endpoint=None):
     if external_endpoint is None:
         external_endpoint = []
 
-    endpoints = web3_endpoints(network) + external_endpoint
+    endpoints = external_endpoint + web3_endpoints(network)
     return web3.Web3(MultiProvider(endpoints))
 
 
