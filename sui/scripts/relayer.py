@@ -403,7 +403,11 @@ def eth_portal_watcher(health, network="polygon-test"):
     system_portal = dola_ethereum_load.system_portal_package(network).address
 
     external_endpoint = brownie.web3.provider.endpoint_uri
-    w3_client = dola_ethereum_init.multi_endpoints_web3(network, [external_endpoint])
+
+    if network == 'base-main':
+        w3_client = dola_ethereum_init.fallback_endpoints_web3(network, [external_endpoint])
+    else:
+        w3_client = dola_ethereum_init.multi_endpoints_web3(network, [external_endpoint])
 
     # graphql_url = dola_ethereum_init.graphql_url(network)
     # transport = AIOHTTPTransport(url=graphql_url)

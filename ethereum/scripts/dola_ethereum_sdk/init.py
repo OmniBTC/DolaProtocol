@@ -7,7 +7,7 @@ import web3
 from brownie import (
     network,
     config, )
-from web3_multi_provider import MultiProvider
+from web3_multi_provider import MultiProvider, FallbackProvider
 
 from dola_ethereum_sdk import load, get_account, set_ethereum_network
 
@@ -218,6 +218,14 @@ def multi_endpoints_web3(network, external_endpoint=None):
 
     endpoints = external_endpoint + web3_endpoints(network)
     return web3.Web3(MultiProvider(endpoints))
+
+
+def fallback_endpoints_web3(network, external_endpoint=None):
+    if external_endpoint is None:
+        external_endpoint = []
+
+    endpoints = external_endpoint + web3_endpoints(network)
+    return web3.Web3(FallbackProvider(endpoints))
 
 
 if __name__ == "__main__":
