@@ -1,9 +1,9 @@
 [package]
-name = "AddRewardProposal"
+name = "MigrateVersionProposal"
 version = "0.0.1"
 
 [addresses]
-add_reward_pool = "0x0"
+migrate_version_proposal = "0x0"
 dola_proposal = "0x0"
 
 [dependencies.Sui]

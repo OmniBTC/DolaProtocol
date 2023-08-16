@@ -122,6 +122,8 @@ module dola_protocol::governance_v1 {
         state: u8
     }
 
+    struct ProposalDescId has copy, drop, store {}
+
     /// Events
 
     /// Create proposal
@@ -434,7 +436,7 @@ module dola_protocol::governance_v1 {
         ctx: &mut TxContext
     ) {
         assert!(proposal.creator == tx_context::sender(ctx), ENOT_CREATEOR);
-        dynamic_field::add(&mut proposal.id, 0, desc);
+        dynamic_field::add(&mut proposal.id, ProposalDescId {}, desc);
     }
 
 
