@@ -47,7 +47,7 @@ def get_dola_user_id(user_address, dola_chain_id=0):
     result = external_interfaces.interfaces.get_dola_user_id.inspect(
         user_manager_info,
         dola_chain_id,
-        list(bytes.fromhex(user_address))
+        list(bytes.fromhex(user_address.replace("0x", "")))
     )
     return result['events'][-1]['parsedJson']
 
@@ -569,7 +569,11 @@ if __name__ == "__main__":
     # result = [(bytes(data['dola_address']).hex(), data['dola_chain_id']) for data in
     #           dola_addresses['dola_user_addresses']]
     # pprint(get_eq_fee(23, '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', 15550527))
-    pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
+    # pprint(int(calculate_changed_health_factor(1, 1, int(1e8))['health_factor']) / 1e27)
+    pprint(get_dola_user_id(
+        "0xbf6b2837abd115294051488d2efe8b9d4ed8f094",
+        30
+    ))
     # pprint(result)
     # pprint(get_user_all_collateral(1))
     # pprint(get_user_health_factor(1))
@@ -583,6 +587,6 @@ if __name__ == "__main__":
     # pprint(get_user_allowed_borrow(0, 1, 3))
     # pprint(get_all_pool_liquidity(1))
     # pprint(get_all_reserve_info())
-    pprint(get_user_allowed_withdraw(23, "FF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", 7518, 2))
+    # pprint(get_user_allowed_withdraw(23, "FF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", 7518, 2))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
-    get_protocol_total_otoken_value()
+    # get_protocol_total_otoken_value()
