@@ -310,7 +310,7 @@ module dola_protocol::boost {
         remain_balance
     }
 
-    public fun migrate_reward_pool<X>(
+    public fun migrate_reward_pool(
         _: &GovernanceCap,
         storage: &mut Storage,
         dola_pool_id: u16
