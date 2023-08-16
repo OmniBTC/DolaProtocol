@@ -1,5 +1,5 @@
 [package]
-name = "AddMemberProposal"
+name = "AddRewardProposal"
 version = "0.0.1"
 
 [addresses]
