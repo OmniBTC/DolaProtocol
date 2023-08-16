@@ -254,6 +254,14 @@ module dola_protocol::lending_core_storage {
 
     /// === View Functions ===
 
+    public fun borrow_storage_id(storage: &Storage): &UID {
+        &storage.id
+    }
+
+    public fun get_storage_id(storage: &mut Storage): &mut UID {
+        &mut storage.id
+    }
+
     public fun get_app_id(
         storage: &mut Storage
     ): u16 {
@@ -682,10 +690,6 @@ module dola_protocol::lending_core_storage {
         let reserve = table::borrow_mut(&mut storage.reserves, dola_pool_id);
         reserve.current_borrow_rate = new_borrow_rate;
         reserve.current_liquidity_rate = new_liquidity_rate;
-    }
-
-    public fun get_storage_id(storage: &mut Storage): &mut UID {
-        &mut storage.id
     }
 
     /// === Helper Functions ===
