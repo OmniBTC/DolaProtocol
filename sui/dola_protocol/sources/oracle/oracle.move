@@ -22,6 +22,7 @@ module dola_protocol::oracle {
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use pyth::hot_potato_vector;
     use pyth::i64;
+    use pyth::price_feed;
     use pyth::price_identifier::{Self, PriceIdentifier};
     use pyth::price_info::{Self, PriceInfoObject};
     use pyth::pyth;
@@ -51,6 +52,7 @@ module dola_protocol::oracle {
 
     const ERELAYER_NOT_EXIST: u64 = 8;
 
+    const ENOT_FRESH_PYTH: u64 = 9;
 
     const DEPRECATED: u64 = 0;
 
@@ -263,7 +265,14 @@ module dola_protocol::oracle {
         let price_oracles = &mut price_oracle.price_oracles;
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
-        // get the price of the lastest minute
+        // get the ema price
+        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
+        let price_feed = price_info::get_price_feed(&price_info);
+        let pyth_price = price_feed::get_ema_price(price_feed);
+
+        // check pyth price is fresh
+        assert!(pyth::price::get_timestamp(&pyth_price) + MINUATE > current_timestamp, ENOT_FRESH_PYTH);
+
         let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MINUATE);
         hot_potato_vector::destroy(hot_potato_vector);
 
