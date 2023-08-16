@@ -71,7 +71,7 @@ def get_liquidate_feed_tokens(liquidator_lending_info, violator_lending_info):
 def liquidation_bot(liquidator_user_id):
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    sui_project.active_account("LendingLiquidate")
+    sui_project.active_account("Liquidator")
 
     while True:
         # get user ids with health factor < 1
