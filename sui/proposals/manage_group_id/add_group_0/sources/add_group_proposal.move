@@ -10,7 +10,6 @@ module add_group_proposal::proposal {
     use sui::object;
     use dola_protocol::user_manager;
     use dola_protocol::user_manager::UserManagerInfo;
-    use dola_protocol::genesis;
 
     const BASE_CHAIN_ID: u16 = 30;
 
@@ -19,7 +18,7 @@ module add_group_proposal::proposal {
     // Add LM address
     const MEMBER_ADDRESS: vector<u8> = x"9bab5b2fa325fe2b103fd6a56a93bf91925b269a2dd31ee146b693e5cb9d2901";
 
-    const GOVERNANCE_INFO: vector<u8> = x"79d7106ea18373fc7542b0849d5ebefc3a9daf8b664a4f82d9b35bbd0c22042d";
+    const GOVERNANCE_INFO: vector<u8> = x"ee633dc3fd1218d3bd9703fb9b98e6c8d7fdd8c8bf1ca2645ee40d65fb533a3e";
 
     const USER_MANAGER_INFO: vector<u8> = x"42ef90066e649215e6ab91399a83e1a5467fd7cc436e8b83adb8743a0efba621";
 

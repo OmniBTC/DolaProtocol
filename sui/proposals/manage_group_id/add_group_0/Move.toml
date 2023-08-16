@@ -3,7 +3,7 @@ name = "AddGroupProposal"
 version = "0.0.1"
 
 [addresses]
-add_member_proposal = "0x0"
+add_group_proposal = "0x0"
 dola_proposal = "0x0"
 
 [dependencies.Sui]

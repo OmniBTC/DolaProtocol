@@ -169,6 +169,26 @@ def deploy_migrate_reward_pool(file_dir="migrate_reward_pool_20230816"):
     prepare_proposal(migrate_reward_pool.package_id)
 
 
+def deploy_migrate_reward_pool(file_dir="add_group_0"):
+    add_group = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath(
+            f"proposals/manage_group_id/{file_dir}")
+    )
+
+    add_group.program_publish_package(replace_address=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['origin'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth']
+    ), replace_publish_at=dict(
+        dola_protocol=sui_project.network_config['packages']['dola_protocol']['latest'],
+        wormhole=sui_project.network_config['packages']['wormhole'],
+        pyth=sui_project.network_config['packages']['pyth'],
+    ))
+
+    print("Package id:", add_group.package_id)
+    prepare_proposal(add_group.package_id)
+
+
 def deploy():
     dola_protocol_package = sui_brownie.SuiPackage(
         package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("dola_protocol")
@@ -274,7 +294,7 @@ def main():
 
 
 if __name__ == "__main__":
-    redeploy_external_interfaces()
+    # redeploy_external_interfaces()
     # redeploy_genesis_proposal()
     # redeploy_reserve_proposal()
     # deploy_add_reward_pool("add_reward_pool_20230812")
@@ -282,3 +302,4 @@ if __name__ == "__main__":
     # deploy_register_chain("register_new_chain_20230814")
     # deploy_set_reserve("set_reserve_params_20230814")
     # deploy_migrate_reward_pool()
+    deploy_migrate_reward_pool()
