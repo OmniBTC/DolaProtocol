@@ -273,7 +273,6 @@ module dola_protocol::oracle {
         // check pyth price is fresh
         assert!(pyth::price::get_timestamp(&pyth_price) + MINUATE > current_timestamp, ENOT_FRESH_PYTH);
 
-        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MINUATE);
         hot_potato_vector::destroy(hot_potato_vector);
 
         let price_value = pyth::price::get_price(&pyth_price);
