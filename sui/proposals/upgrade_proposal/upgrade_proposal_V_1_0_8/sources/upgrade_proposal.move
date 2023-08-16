@@ -12,7 +12,7 @@ module upgrade_proposal::proposal {
     use sui::object;
 
     /// The digest of the new contract
-    const DIGEST: vector<u8> = x"a642a3a003697213ff53e3dffcb747cc0be72018c8613d4cb378371c1568a165";
+    const DIGEST: vector<u8> = x"a53b0d5da88f8a1362bf5ae790edcf222c6035f740e4d76393d88a3a8eadb994";
     const POLICY: u8 = 0;
 
     /// Errors
