@@ -7,6 +7,7 @@
 module dola_protocol::wormhole_adapter_core {
     use std::vector;
 
+    use sui::clock;
     use sui::clock::Clock;
     use sui::coin::Coin;
     use sui::dynamic_field;
@@ -57,6 +58,10 @@ module dola_protocol::wormhole_adapter_core {
 
     const ERELAYER_NOT_EXIST: u64 = 6;
 
+    const EVAA_HAS_EXPIRED: u64 = 7;
+
+    const DEFAULT_VAA_EXPIRED_TIME: u64 = 3600;
+
     /// `wormhole_bridge_adapter` adapts to wormhole, enabling cross-chain messaging.
     /// For VAA data, the following validations are required.
     /// For wormhole official library: 1) verify the signature.
@@ -76,6 +81,9 @@ module dola_protocol::wormhole_adapter_core {
 
     /// Only certain users are allowed to act as Relayer
     struct Relayer has copy, drop, store {}
+
+    /// Vaa expired time
+    struct VaaExpiredTime has copy, drop, store {}
 
     /// Events
 
@@ -363,6 +371,17 @@ module dola_protocol::wormhole_adapter_core {
         });
     }
 
+    public fun set_vaa_expired_time(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        vaa_expired_time: u64
+    ) {
+        if (dynamic_field::exists_with_type<VaaExpiredTime, u64>(&mut core_state.id, VaaExpiredTime {})) {
+            dynamic_field::remove<VaaExpiredTime, u64>(&mut core_state.id, VaaExpiredTime {});
+        };
+        dynamic_field::add<VaaExpiredTime, u64>(&mut core_state.id, VaaExpiredTime {}, vaa_expired_time)
+    }
+
     /// === Friend Functions ===
 
     /// Receive message without funding
@@ -454,6 +473,9 @@ module dola_protocol::wormhole_adapter_core {
             clock,
             ctx,
         );
+        let vaa_timestamp = vaa::timestamp(&msg);
+        check_vaa_expired_time(core_state, (vaa_timestamp as u64), clock);
+
         let payload = vaa::take_payload(msg);
 
         let (user_address, app_id, _, app_payload) =
@@ -518,5 +540,14 @@ module dola_protocol::wormhole_adapter_core {
         );
         let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut core_state.id, Relayer {});
         assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
+    }
+
+    fun check_vaa_expired_time(core_state: &mut CoreState, vaa_timestamp: u64, clock: &Clock) {
+        let vaa_expired_time = DEFAULT_VAA_EXPIRED_TIME;
+        if (dynamic_field::exists_with_type<VaaExpiredTime, u64>(&mut core_state.id, VaaExpiredTime {})) {
+            vaa_expired_time = *dynamic_field::borrow<VaaExpiredTime, u64>(&mut core_state.id, VaaExpiredTime {});
+        };
+
+        assert!(vaa_timestamp + vaa_expired_time < clock::timestamp_ms(clock) / 1000, EVAA_HAS_EXPIRED);
     }
 }
