@@ -236,7 +236,7 @@ module dola_protocol::oracle {
     /// If the price on chain has been updated, use it directly
     entry fun update_token_price_by_pyth(
         genesis: &GovernanceGenesis,
-        price_info_object: &mut PriceInfoObject,
+        price_info_object: &PriceInfoObject,
         price_oracle: &mut PriceOracle,
         dola_pool_id: u16,
         clock: &Clock,
@@ -257,7 +257,6 @@ module dola_protocol::oracle {
         assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
 
         // get the ema price
-        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
         let price_feed = price_info::get_price_feed(&price_info);
         let pyth_price = price_feed::get_ema_price(price_feed);
 
@@ -298,8 +297,14 @@ module dola_protocol::oracle {
         assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
 
         let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
-        let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
-        let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
+        let hot_potato_price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
+        let hot_potato_vector = pyth::update_single_price_feed(
+            pyth_state,
+            hot_potato_price_info,
+            price_info_object,
+            fee,
+            clock
+        );
         let price_oracles = &mut price_oracle.price_oracles;
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
