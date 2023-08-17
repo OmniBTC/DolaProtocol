@@ -110,5 +110,4 @@ def liquidation_bot(liquidator_user_id):
 
 
 if __name__ == '__main__':
-    sms.notify("liquidator")
-    # liquidation_bot(7523)
+    liquidation_bot(7523)
