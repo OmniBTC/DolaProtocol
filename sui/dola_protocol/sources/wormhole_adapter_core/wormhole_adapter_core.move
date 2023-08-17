@@ -77,6 +77,11 @@ module dola_protocol::wormhole_adapter_core {
     /// Only certain users are allowed to act as Relayer
     struct Relayer has copy, drop, store {}
 
+    /// Emitters used for transition in version upgrades
+    ///
+    /// When evm contract is upgraded, use transitional emitters until the upgrade is complete
+    struct TransitionalEmitters has copy, drop, store {}
+
     /// Events
 
     /// Event for register bridge
@@ -519,4 +524,12 @@ module dola_protocol::wormhole_adapter_core {
         let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut core_state.id, Relayer {});
         assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
     }
+
+
+    fun parse_verify_and_replay_protect(
+        core_state: &mut CoreState,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {}
 }

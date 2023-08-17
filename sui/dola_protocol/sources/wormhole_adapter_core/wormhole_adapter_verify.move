@@ -55,6 +55,31 @@ module dola_protocol::wormhole_adapter_verify {
         assert!(emitter == vaa::emitter_address(vm), EUNKNOWN_EMITTER);
     }
 
+    /// Ensure current and transitional emitters
+    fun assert_known_and_transitional_emitters(
+        current_emitters: &VecMap<u16, ExternalAddress>,
+        transitional_emitters: &VecMap<u16, ExternalAddress>,
+        vm: &VAA
+    ) {
+        let wormhole_chain_id = vaa::emitter_chain(vm);
+        let maybe_emitter = get_registered_emitter(current_emitters, &wormhole_chain_id);
+        assert!(option::is_some<ExternalAddress>(&maybe_emitter), EUNKNOWN_CHAIN);
+
+        let vaa_emitter = vaa::emitter_address(vm);
+        let emitter = option::extract(&mut maybe_emitter);
+
+        let maybe_transitional_emitter = get_registered_emitter(transitional_emitters, &wormhole_chain_id);
+        if (option::is_some<ExternalAddress>(&maybe_transitional_emitter)) {
+            let transitional_emitter = option::extract(&mut maybe_transitional_emitter);
+            assert!(
+                emitter == vaa_emitter || transitional_emitter == vaa_emitter,
+                EUNKNOWN_EMITTER
+            );
+        } else {
+            assert!(emitter == vaa_emitter, EUNKNOWN_EMITTER);
+        }
+    }
+
     /// Verify signature and known wormhole emitter
     public fun parse_and_verify(
         wormhole_state: &mut State,
@@ -92,6 +117,22 @@ module dola_protocol::wormhole_adapter_verify {
         ctx: &mut TxContext
     ): VAA {
         let vaa = parse_and_verify(wormhole_state, registered_emitters, vaa, clock);
+        replay_protect(consumed_vaas, &vaa, ctx);
+        vaa
+    }
+
+    /// Parse and verify with transitional emitters
+    public(friend) fun parse_verify_and_replay_protect_with_transitional_emitters(
+        wormhole_state: &mut State,
+        consumed_vaas: &mut object_table::ObjectTable<Bytes32, Unit>,
+        current_emitters: &VecMap<u16, ExternalAddress>,
+        transitional_emitters: &VecMap<u16, ExternalAddress>,
+        vaa: vector<u8>,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ): VAA {
+        let vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
+        assert_known_and_transitional_emitters(current_emitters, transitional_emitters, &vaa);
         replay_protect(consumed_vaas, &vaa, ctx);
         vaa
     }
