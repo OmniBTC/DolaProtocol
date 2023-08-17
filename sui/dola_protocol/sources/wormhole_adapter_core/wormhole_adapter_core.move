@@ -34,6 +34,7 @@ module dola_protocol::wormhole_adapter_core {
     use wormhole::publish_message;
     use wormhole::state::State;
     use wormhole::vaa;
+    use wormhole::vaa::VAA;
 
     friend dola_protocol::system_core_wormhole_adapter;
     friend dola_protocol::lending_core_wormhole_adapter;
@@ -368,6 +369,29 @@ module dola_protocol::wormhole_adapter_core {
         });
     }
 
+    /// Set evm brige emitter for upgrade transition
+    public fun set_transitional_emitter(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+    ) {
+        dynamic_field::remove_if_exists<TransitionalEmitters, VecMap<u16, ExternalAddress>>(
+            &mut core_state.id,
+            TransitionalEmitters {}
+        );
+        dynamic_field::add(&mut core_state.id, TransitionalEmitters {}, core_state.registered_emitters);
+    }
+
+    /// Remove evm brige transitional emitter after upgrade completed
+    public fun remove_transitional_emitters(
+        _: &GovernanceCap,
+        core_state: &mut CoreState
+    ) {
+        dynamic_field::remove_if_exists<TransitionalEmitters, VecMap<u16, ExternalAddress>>(
+            &mut core_state.id,
+            TransitionalEmitters {}
+        );
+    }
+
     /// === Friend Functions ===
 
     /// Receive message without funding
@@ -380,10 +404,9 @@ module dola_protocol::wormhole_adapter_core {
         ctx: &mut TxContext
     ): (DolaAddress, vector<u8>) {
         check_relayer(core_state, ctx);
-        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+        let msg = parse_verify_and_replay_protect(
             wormhole_state,
-            &core_state.registered_emitters,
-            &mut core_state.consumed_vaas,
+            core_state,
             vaa,
             clock,
             ctx,
@@ -410,10 +433,9 @@ module dola_protocol::wormhole_adapter_core {
         ctx: &mut TxContext
     ): (DolaAddress, DolaAddress, u256, vector<u8>) {
         check_relayer(core_state, ctx);
-        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+        let msg = parse_verify_and_replay_protect(
             wormhole_state,
-            &core_state.registered_emitters,
-            &mut core_state.consumed_vaas,
+            core_state,
             vaa,
             clock,
             ctx,
@@ -451,10 +473,9 @@ module dola_protocol::wormhole_adapter_core {
         ctx: &mut TxContext
     ): (DolaAddress, vector<u8>) {
         check_relayer(core_state, ctx);
-        let msg = wormhole_adapter_verify::parse_verify_and_replay_protect(
+        let msg = parse_verify_and_replay_protect(
             wormhole_state,
-            &core_state.registered_emitters,
-            &mut core_state.consumed_vaas,
+            core_state,
             vaa,
             clock,
             ctx,
@@ -527,9 +548,38 @@ module dola_protocol::wormhole_adapter_core {
 
 
     fun parse_verify_and_replay_protect(
+        wormhole_state: &mut State,
         core_state: &mut CoreState,
         vaa: vector<u8>,
         clock: &Clock,
         ctx: &mut TxContext
-    ) {}
+    ): VAA {
+        if (dynamic_field::exists_with_type<TransitionalEmitters, VecMap<u16, ExternalAddress>>(
+            &mut core_state.id,
+            TransitionalEmitters {}
+        )) {
+            let transitional_emitters = dynamic_field::borrow_mut<TransitionalEmitters, VecMap<u16, ExternalAddress>>(
+                &mut core_state.id,
+                TransitionalEmitters {}
+            );
+            wormhole_adapter_verify::parse_verify_and_replay_protect_with_transitional_emitters(
+                wormhole_state,
+                &mut core_state.consumed_vaas,
+                &mut core_state.registered_emitters,
+                transitional_emitters,
+                vaa,
+                clock,
+                ctx,
+            )
+        } else {
+            wormhole_adapter_verify::parse_verify_and_replay_protect(
+                wormhole_state,
+                &core_state.registered_emitters,
+                &mut core_state.consumed_vaas,
+                vaa,
+                clock,
+                ctx,
+            )
+        }
+    }
 }

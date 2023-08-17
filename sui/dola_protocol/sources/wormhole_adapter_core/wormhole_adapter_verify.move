@@ -17,6 +17,8 @@ module dola_protocol::wormhole_adapter_verify {
     use wormhole::state::State;
     use wormhole::vaa::{Self, VAA};
 
+    friend dola_protocol::wormhole_adapter_core;
+
     /// Errors
 
     /// Unkonwn chain
