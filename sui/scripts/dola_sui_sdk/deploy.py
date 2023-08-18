@@ -294,7 +294,7 @@ def main():
 
 
 if __name__ == "__main__":
-    # redeploy_external_interfaces()
+    redeploy_external_interfaces()
     # redeploy_genesis_proposal()
     # redeploy_reserve_proposal()
     # deploy_add_reward_pool("add_reward_pool_20230812")
@@ -302,4 +302,4 @@ if __name__ == "__main__":
     # deploy_register_chain("register_new_chain_20230814")
     # deploy_set_reserve("set_reserve_params_20230814")
     # deploy_migrate_reward_pool()
-    deploy_migrate_reward_pool()
+    # deploy_migrate_reward_pool()
