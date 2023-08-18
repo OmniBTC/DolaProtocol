@@ -72,6 +72,7 @@ def init_logger():
 
     gql_client_logs.setLevel(logging.WARNING)
     gql_logs.setLevel(logging.WARNING)
+    return logger
 
 
 def init_markets():
