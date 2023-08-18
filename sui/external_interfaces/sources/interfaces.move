@@ -971,12 +971,12 @@ module external_interfaces::interfaces {
 
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
 
-        let target_collateral_value = ray_math::ray_div(
-            health_collateral_value,
+        let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
+        let target_loan_value = ray_math::ray_mul(
+            health_loan_value,
             TARGET_HF
         );
 
-        let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
         let collateral_coefficient = storage::get_collateral_coefficient(storage, withdraw_pool_id);
 
         if (logic::user_health_factor(storage, oracle, dola_user_id) <= TARGET_HF) {
@@ -994,7 +994,7 @@ module external_interfaces::interfaces {
             user_collateral_value(storage, oracle, dola_user_id, withdraw_pool_id)
         } else {
             ray_math::ray_div(
-                (target_collateral_value - health_loan_value),
+                (health_collateral_value - target_loan_value),
                 collateral_coefficient
             )
         };
@@ -1013,7 +1013,7 @@ module external_interfaces::interfaces {
 
         let max_withdraw_amount = ray_math::min(withdraw_amount, reserve);
 
-        if (withdarw_all) {
+        if (withdarw_all && health_loan_value == 0) {
             withdraw_amount = withdraw_amount * 10;
         };
 
