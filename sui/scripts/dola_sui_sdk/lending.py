@@ -905,7 +905,10 @@ def core_liquidate(vaa, relay_fee=0, fee_rate=0.8):
     status = result['effects']['status']['status']
     gas = calculate_sui_gas(result['effects']['gasUsed'])
     executed = False
-    if left_relay_fee >= int(fee_rate * gas) and status == 'success':
+    whitelist = [7523, 72]
+    if int(result['events'][-1]['parsedJson']["sender_user_id"]) not in whitelist:
+        return gas + feed_gas, executed, status, feed_nums, "NotWhiteList"
+    elif left_relay_fee >= int(fee_rate * gas) and status == 'success':
         executed = True
         result = sui_project.batch_transaction(
             actual_params=[
