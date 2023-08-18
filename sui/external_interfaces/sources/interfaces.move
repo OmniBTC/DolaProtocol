@@ -1013,7 +1013,7 @@ module external_interfaces::interfaces {
 
         let max_withdraw_amount = ray_math::min(withdraw_amount, reserve);
 
-        if (withdarw_all) {
+        if (withdarw_all && health_loan_value == 0) {
             withdraw_amount = withdraw_amount * 10;
         };
 
