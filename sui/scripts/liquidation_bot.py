@@ -8,6 +8,7 @@ import dola_ethereum_sdk
 import dola_sui_sdk
 import sms
 from dola_sui_sdk import interfaces, lending, sui_project
+from relayer import init_logger
 
 
 @retry
@@ -69,10 +70,14 @@ def get_liquidate_feed_tokens(liquidator_lending_info, violator_lending_info):
 
 
 def liquidation_bot(liquidator_user_id):
+    logger = init_logger()
+
     dola_sui_sdk.set_dola_project_path(Path("../.."))
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
-    sui_project.active_account("LendingLiquidate")
+    sui_project.active_account("Liquidator")
 
+    last_notify_time = time.time()
+    interval = 600
     while True:
         # get user ids with health factor < 1
         user_ids = get_user_ids_by_hf(0, 1.0)
@@ -97,12 +102,19 @@ def liquidation_bot(liquidator_user_id):
                 liquidate_feed_tokens = get_liquidate_feed_tokens(liquidator_lending_info, violator_lending_info)
                 feed_nums = len(liquidate_feed_tokens)
                 relay_fee = get_liquidate_relay_fee(feed_nums)
-                print(f"Liquidate use {repay_symbol} to get {liquidate_symbol}")
+                logger.info(f"Liquidate use {repay_symbol} to get {liquidate_symbol}")
                 lending.portal_liquidate(repay_pool_id, user_id, liquidate_pool_id, bridge_fee=relay_fee)
             else:
                 symbol = lending.dola_pool_id_to_symbol(repay_pool_id)
                 msg = f'liquidator {liquidator_user_id} has no liquidity to repay user {user_id} {symbol} debt'
-                sms.notify(msg)
+                logger.info(msg)
+                try:
+                    if last_notify_time + interval >= time.time():
+                        continue
+                    sms.notify(msg)
+                    last_notify_time = time.time()
+                except Exception as e:
+                    logger.warning(f"Notify fail due to {e}")
         time.sleep(60)
 
 

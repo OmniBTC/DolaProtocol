@@ -22,6 +22,8 @@ module dola_protocol::oracle {
     use dola_protocol::genesis::{Self, GovernanceCap, GovernanceGenesis};
     use pyth::hot_potato_vector;
     use pyth::i64;
+    use pyth::price;
+    use pyth::price_feed;
     use pyth::price_identifier::{Self, PriceIdentifier};
     use pyth::price_info::{Self, PriceInfoObject};
     use pyth::pyth;
@@ -51,6 +53,7 @@ module dola_protocol::oracle {
 
     const ERELAYER_NOT_EXIST: u64 = 8;
 
+    const ENOT_FRESH_PYTH: u64 = 9;
 
     const DEPRECATED: u64 = 0;
 
@@ -230,6 +233,43 @@ module dola_protocol::oracle {
 
     /// === Entry Functions ===
 
+    /// If the price on chain has been updated, use it directly
+    entry fun update_token_price_by_pyth(
+        genesis: &GovernanceGenesis,
+        price_info_object: &PriceInfoObject,
+        price_oracle: &mut PriceOracle,
+        dola_pool_id: u16,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        // Check current protocol version
+        genesis::check_latest_version(genesis);
+
+        // Check valid oracle relayer
+        check_relayer(price_oracle, ctx);
+
+        // Check feed token is correct
+        assert!(table::contains(&price_oracle.price_identifiers, dola_pool_id), ENONEXISTENT_ORACLE);
+        let price_idetifiers = &mut price_oracle.price_identifiers;
+        let price_identifier = table::borrow(price_idetifiers, dola_pool_id);
+        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
+        let pyth_price_identifier = price_info::get_price_identifier(&price_info);
+        assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
+
+        // get the ema price
+        let price_feed = price_info::get_price_feed(&price_info);
+        let pyth_price = price_feed::get_price(price_feed);
+
+        // check pyth price is fresh
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        assert!(pyth::price::get_timestamp(&pyth_price) + MINUATE > current_timestamp, ENOT_FRESH_PYTH);
+
+        // update oracle price
+        let price_oracles = &mut price_oracle.price_oracles;
+        let price = table::borrow_mut(price_oracles, dola_pool_id);
+        update_price(price, &pyth_price, current_timestamp);
+    }
+
     entry fun feed_token_price_by_pyth_v2(
         genesis: &GovernanceGenesis,
         wormhole_state: &mut WormholeState,
@@ -257,24 +297,30 @@ module dola_protocol::oracle {
         assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
 
         let verified_vaa = vaa::parse_and_verify(wormhole_state, vaa, clock);
-        let price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
-        let hot_potato_vector = pyth::update_single_price_feed(pyth_state, price_info, price_info_object, fee, clock);
-        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        let hot_potato_price_info = pyth::create_price_infos_hot_potato(pyth_state, vector[verified_vaa], clock);
+        let hot_potato_vector = pyth::update_single_price_feed(
+            pyth_state,
+            hot_potato_price_info,
+            price_info_object,
+            fee,
+            clock
+        );
         let price_oracles = &mut price_oracle.price_oracles;
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
-        // get the price of the lastest minute
-        let pyth_price = pyth::get_price_no_older_than(price_info_object, clock, MINUATE);
+        // get the ema price
+        let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
+        let price_feed = price_info::get_price_feed(&price_info);
+        let pyth_price = price_feed::get_price(price_feed);
+
+        // check pyth price is fresh
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+        assert!(pyth::price::get_timestamp(&pyth_price) + MINUATE > current_timestamp, ENOT_FRESH_PYTH);
+
         hot_potato_vector::destroy(hot_potato_vector);
 
-        let price_value = pyth::price::get_price(&pyth_price);
-        let price_value = i64::get_magnitude_if_positive(&price_value);
-        let expo = pyth::price::get_expo(&pyth_price);
-        let expo = i64::get_magnitude_if_negative(&expo);
-
-        price.value = (price_value as u256);
-        price.decimal = (expo as u8);
-        price.last_update_timestamp = current_timestamp;
+        // update oracle price
+        update_price(price, &pyth_price, current_timestamp);
     }
 
     public fun feed_token_price_by_pyth(
@@ -292,6 +338,17 @@ module dola_protocol::oracle {
     }
 
     /// === Internal Functions ===
+
+    fun update_price(price: &mut Price, pyth_price: &price::Price, current_timestamp: u64) {
+        let price_value = pyth::price::get_price(pyth_price);
+        let price_value = i64::get_magnitude_if_positive(&price_value);
+        let expo = pyth::price::get_expo(pyth_price);
+        let expo = i64::get_magnitude_if_negative(&expo);
+
+        price.value = (price_value as u256);
+        price.decimal = (expo as u8);
+        price.last_update_timestamp = current_timestamp;
+    }
 
     fun check_relayer(price_oracle: &mut PriceOracle, ctx: &mut TxContext) {
         assert!(

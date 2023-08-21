@@ -72,6 +72,7 @@ def init_logger():
 
     gql_client_logs.setLevel(logging.WARNING)
     gql_logs.setLevel(logging.WARNING)
+    return logger
 
 
 def init_markets():
@@ -404,10 +405,7 @@ def eth_portal_watcher(health, network="polygon-test"):
 
     external_endpoint = brownie.web3.provider.endpoint_uri
 
-    if network == 'base-main':
-        w3_client = dola_ethereum_init.fallback_endpoints_web3(network, [external_endpoint])
-    else:
-        w3_client = dola_ethereum_init.multi_endpoints_web3(network, [external_endpoint])
+    w3_client = dola_ethereum_init.fallback_endpoints_web3(network, [external_endpoint])
 
     # graphql_url = dola_ethereum_init.graphql_url(network)
     # transport = AIOHTTPTransport(url=graphql_url)

@@ -200,14 +200,15 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
             local_logger.error(e)
 
         health = check_dola_health(pool_infos)
-        if health:
-            local_logger.info(f"dola protocol health: {health}")
-        else:
-            local_logger.warning(f"dola protocol health: {health}")
+
         lock.acquire()
         value.value = health
         lock.release()
-        time.sleep(5)
+        if health:
+            local_logger.info(f"dola protocol health: {health}")
+            time.sleep(10)
+        else:
+            local_logger.warning(f"dola protocol health: {health}")
 
 
 def get_all_pools():
