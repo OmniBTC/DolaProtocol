@@ -137,12 +137,15 @@ def get_all_reserve_info():
     external_interfaces = load.external_interfaces_package()
 
     pool_manager = sui_project.network_config['objects']['PoolManagerInfo']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
     lending_storage = sui_project.network_config['objects']['LendingStorage']
+
     result = external_interfaces.interfaces.get_all_reserve_info.inspect(
         pool_manager,
+        price_oracle,
         lending_storage
     )
-    pprint(result)
+
     return result['events'][-1]['parsedJson']
 
 
@@ -583,10 +586,22 @@ if __name__ == "__main__":
     # pprint(get_user_allowed_borrow("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint(get_user_token_debt("0xdc1f21230999232d6cfc230c4730021683f6546f", 1))
     # pprint(get_user_collateral(66, 3))
-    pprint(get_user_lending_info(7612))
+    # pprint(get_user_lending_info(7612))
     # pprint(get_user_allowed_borrow(0, 1, 3))
     # pprint(get_all_pool_liquidity(1))
-    # pprint(get_all_reserve_info())
+    reserves_infos = get_all_reserve_info()
+    total_available = 0
+    total_borrows = 0
+    for reserve_info in reserves_infos['reserve_infos']:
+        total_available += int(reserve_info['available_value'])
+        total_borrows += int(reserve_info['debt_value'])
+
+    print(total_available)
+    print(reserves_infos['total_available'])
+    print(total_borrows)
+    print(reserves_infos['total_borrows'])
+    print((int(reserves_infos['total_available']) + int(reserves_infos['total_borrows'])) / 1e8)
+    print(int(reserves_infos['total_market_size']) / 1e8)
     # pprint(get_user_allowed_withdraw(23, "FF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", 7518, 2))
     # pprint(reward_claim_inspect(3, "0x1e477aafbdff2e900a1fdc274c3ba34b9dd552f3aaea0dbdeb7c1a4e2c4a2b21", 0))
     # get_protocol_total_otoken_value()
