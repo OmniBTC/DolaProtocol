@@ -256,7 +256,7 @@ module dola_protocol::oracle {
         let pyth_price_identifier = price_info::get_price_identifier(&price_info);
         assert!(price_identifier == &pyth_price_identifier, EWRONG_FEED_TOKEN);
 
-        // get the ema price
+        // get the latest price
         let price_feed = price_info::get_price_feed(&price_info);
         let pyth_price = price_feed::get_price(price_feed);
 
@@ -308,7 +308,7 @@ module dola_protocol::oracle {
         let price_oracles = &mut price_oracle.price_oracles;
         let price = table::borrow_mut(price_oracles, dola_pool_id);
 
-        // get the ema price
+        // get the latest price
         let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
         let price_feed = price_info::get_price_feed(&price_info);
         let pyth_price = price_feed::get_price(price_feed);
