@@ -1,13 +1,15 @@
 import base64
-import ccxt
-import config
 import logging
+import time
+from pprint import pprint
+
+import ccxt
 import requests
 import sui_brownie
-import time
-from dola_sui_sdk import load, sui_project, init
-from pprint import pprint
 from sui_brownie import Argument, U16
+
+import config
+from dola_sui_sdk import load, sui_project, init
 
 
 class ColorFormatter(logging.Formatter):
@@ -104,13 +106,28 @@ def get_pyth_fee():
     return parse_u64(result['results'][0]['returnValues'][0][0])
 
 
+def get_updatable_asset_ids(asset_ids):
+    objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[asset_id] for asset_id in asset_ids]
+    results = sui_project.client.sui_multiGetObjects(objects, {'showContent': True})
+    current_timestamp = int(time.time())
+    updatable_feed_ids = []
+
+    for (asset_id, result) in zip(asset_ids, results):
+        price_info = result['data']['content']['fields']['price_info']
+        price = price_info['fields']['price_feed']['fields']['price']
+        timestamp = int(price['fields']['timestamp'])
+        if current_timestamp - timestamp < 60:
+            updatable_feed_ids.append(asset_id)
+
+    return updatable_feed_ids
+
+
 def update_token_price_by_pyth(pool_id):
     dola_protocol = load.dola_protocol_package()
 
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
-    symbol = config.DOLA_POOL_ID_TO_SYMBOL[pool_id]
-    price_info_object = get_price_info_object(symbol)
+    price_info_object = config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id]
 
     dola_protocol.oracle.update_token_price_by_pyth(
         governance_genesis,
@@ -453,7 +470,7 @@ def oracle_guard(pool_ids=None):
                         update_token_price_by_pyth(pool_id)
                     except Exception as e:
                         local_logger.warning(f'Update token price failed: {e}')
-                        local_logger.info(f'Try feed token price...')
+                        local_logger.info('Try feed token price...')
                         feed_token_price_by_pyth(pool_id, simulate=False, kraken=kraken)
         except Exception as e:
             local_logger.warning(e)
