@@ -1,15 +1,13 @@
 import base64
-import logging
-import time
-from pprint import pprint
-
 import ccxt
+import config
+import logging
 import requests
 import sui_brownie
-from sui_brownie import Argument, U16
-
-import config
+import time
 from dola_sui_sdk import load, sui_project, init
+from pprint import pprint
+from sui_brownie import Argument, U16
 
 
 class ColorFormatter(logging.Formatter):
@@ -104,6 +102,23 @@ def get_pyth_fee():
 
     result = pyth.state.get_base_update_fee.inspect(pyth_state())
     return parse_u64(result['results'][0]['returnValues'][0][0])
+
+
+def update_token_price_by_pyth(pool_id):
+    dola_protocol = load.dola_protocol_package()
+
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    symbol = config.DOLA_POOL_ID_TO_SYMBOL[pool_id]
+    price_info_object = get_price_info_object(symbol)
+
+    dola_protocol.oracle.update_token_price_by_pyth(
+        governance_genesis,
+        price_info_object,
+        price_oracle,
+        pool_id,
+        init.clock()
+    )
 
 
 def feed_token_price_by_pyth(pool_id, simulate=True, kraken=None):
@@ -319,29 +334,6 @@ def check_sui_objects():
         sui_project.pay_all_sui()
 
 
-def feed_market_price(symbols=("BTC/USDT", "ETH/USDT")):
-    kucoin = ccxt.kucoin()
-    kucoin.load_markets()
-
-    sui_project.active_account("Oracle")
-    oracle = load.oracle_package()
-    while True:
-        check_sui_objects()
-        for symbol in symbols:
-            try:
-                price = kucoin.fetch_ticker(symbol)['close']
-                oracle.oracle.update_token_price(
-                    oracle.oracle.OracleCap[-1],
-                    oracle.oracle.PriceOracle[-1],
-                    get_pool_id(symbol),
-                    int(price * 100)
-                )
-            except Exception as e:
-                print(e)
-                continue
-        time.sleep(600)
-
-
 def test_verify_oracle():
     dola_protocol = load.dola_protocol_package()
     coinbase = ccxt.coinbase()
@@ -457,7 +449,12 @@ def oracle_guard(pool_ids=None):
                 local_logger.info(f"Check {symbol} price guard time")
                 if check_guard_price(symbol):
                     local_logger.info(f"Update {symbol} price")
-                    feed_token_price_by_pyth(pool_id, simulate=False, kraken=kraken)
+                    try:
+                        update_token_price_by_pyth(pool_id)
+                    except Exception as e:
+                        local_logger.warning(f'Update token price failed: {e}')
+                        local_logger.info(f'Try feed token price...')
+                        feed_token_price_by_pyth(pool_id, simulate=False, kraken=kraken)
         except Exception as e:
             local_logger.warning(e)
         finally:
