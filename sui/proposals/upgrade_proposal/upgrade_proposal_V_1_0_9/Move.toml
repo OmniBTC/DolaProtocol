@@ -1,0 +1,16 @@
+[package]
+name = "UpgradeProposal"
+version = "0.0.1"
+
+[addresses]
+upgrade_proposal = "0x0"
+dola_protocol = "0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e"
+sui = "0x2"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "09b2081498366df936abae26eea4b2d5cafb2788"
+
+[dependencies.DolaProtocol]
+local = "../../../dola_protocol"
