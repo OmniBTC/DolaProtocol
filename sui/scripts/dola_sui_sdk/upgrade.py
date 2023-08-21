@@ -156,12 +156,12 @@ if __name__ == "__main__":
     """
     # generate_dola_protocol_package_info()
     # deploy_upgrade_proposal("upgrade_proposal_V_1_0_9")
-    upgrade_dola_protocol(
-        package_id="0xf389afbaacce38ff811a8f6c5be075991de9e347411c544e5a7fc1f9d1efd30e",
-        file_dir="upgrade_proposal_V_1_0_9"
-    )
+    # upgrade_dola_protocol(
+    #     package_id="0xf389afbaacce38ff811a8f6c5be075991de9e347411c544e5a7fc1f9d1efd30e",
+    #     file_dir="upgrade_proposal_V_1_0_9"
+    # )
 
-    # deploy_migrate_proposal(version="version_1_0_7")
-    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_7'])
-    check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_8'])
+    deploy_migrate_proposal(version="version_1_0_8")
+    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_7'])
+    # check_version(sui_project.network_config['packages']['dola_protocol']['v_1_0_8'])
     # check_version(get_latest_dola_protocol())
