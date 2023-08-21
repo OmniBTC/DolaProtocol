@@ -1,15 +1,17 @@
-import config
+from pathlib import Path
+from pprint import pprint
+
 import requests
 import yaml
+from sui_brownie import SuiObject, Argument, U16
+
+import config
 from dola_sui_sdk import load, init
 from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_feed_vaa
-from pathlib import Path
-from pprint import pprint
-from sui_brownie import SuiObject, Argument, U16
 
 U64_MAX = 18446744073709551615
 
@@ -44,9 +46,7 @@ def update_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
 
     governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
     price_oracle = sui_project.network_config['objects']['PriceOracle']
-    pyth_state = sui_project.network_config['objects']['PythState']
 
-    symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
     price_info_objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id] for pool_id in asset_ids]
 
     basic_params = [
@@ -60,10 +60,10 @@ def update_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
     for (pool_id, price_info_object) in zip(asset_ids, price_info_objects):
         update_price_params.extend([price_info_object, pool_id])
 
-    update_price_tx_blocks = []
-
-    for i in range(len(asset_ids)):
-        update_price_tx_blocks.append(build_update_oracle_price_tx_block(dola_protocol, len(asset_ids), i))
+    update_price_tx_blocks = [
+        build_update_oracle_price_tx_block(dola_protocol, len(basic_params), i)
+        for i in range(len(asset_ids))
+    ]
 
     result = sui_project.batch_transaction_inspect(
         actual_params=basic_params + update_price_params,
