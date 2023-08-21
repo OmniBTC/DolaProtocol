@@ -77,8 +77,11 @@ module external_interfaces::interfaces {
         borrow_apy: u256,
         supply_apy: u256,
         reserve: u256,
+        available_value: u256,
         supply: u256,
+        supply_value: u256,
         debt: u256,
+        debt_value: u256,
         current_isolate_debt: u256,
         isolate_debt_ceiling: u256,
         is_isolate_asset: bool,
@@ -87,6 +90,9 @@ module external_interfaces::interfaces {
     }
 
     struct AllReserveInfo has copy, drop {
+        total_market_size: u256,
+        total_available: u256,
+        total_borrows: u256,
         reserve_infos: vector<LendingReserveInfo>
     }
 
@@ -522,6 +528,7 @@ module external_interfaces::interfaces {
 
     public entry fun get_reserve_info(
         pool_manager_info: &mut PoolManagerInfo,
+        oracle: &mut PriceOracle,
         storage: &mut Storage,
         dola_pool_id: u16
     ) {
@@ -541,13 +548,16 @@ module external_interfaces::interfaces {
         }else {
             0
         };
+        let available_value = logic::calculate_value(oracle, dola_pool_id, reserve);
         let collateral_coefficient = storage::get_collateral_coefficient(storage, dola_pool_id);
         let borrow_rate = storage::get_borrow_rate(storage, dola_pool_id);
         let borrow_apy = borrow_rate * 10000 / ray_math::ray();
         let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
         let supply_apy = liquidity_rate * 10000 / ray_math::ray();
         let supply = logic::total_otoken_supply(storage, dola_pool_id);
+        let supply_value = logic::calculate_value(oracle, dola_pool_id, supply);
         let debt = logic::total_dtoken_supply(storage, dola_pool_id);
+        let debt_value = logic::calculate_value(oracle, dola_pool_id, debt);
         let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
         let isolate_debt_ceiling = storage::get_reserve_borrow_ceiling(storage, dola_pool_id);
         let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
@@ -558,7 +568,6 @@ module external_interfaces::interfaces {
             let utilization = rates::calculate_utilization(storage, dola_pool_id, reserve);
             utilization_rate = utilization * 10000 / ray_math::ray();
         };
-
         emit(LendingReserveInfo {
             dola_pool_id,
             collateral_coefficient,
@@ -566,8 +575,11 @@ module external_interfaces::interfaces {
             borrow_apy,
             supply_apy,
             reserve,
+            available_value,
             supply,
+            supply_value,
             debt,
+            debt_value,
             utilization_rate,
             pools,
             current_isolate_debt,
@@ -580,10 +592,15 @@ module external_interfaces::interfaces {
 
     public entry fun get_all_reserve_info(
         pool_manager_info: &mut PoolManagerInfo,
+        oracle: &mut PriceOracle,
         storage: &mut Storage
     ) {
         let reserve_length = storage::get_reserve_length(storage);
         let reserve_infos = vector::empty<LendingReserveInfo>();
+        let total_market_size = 0;
+        let total_available = 0;
+        let total_borrows = 0;
+
         let i = 0;
         while (i < reserve_length) {
             let dola_pool_id = (i as u16);
@@ -600,7 +617,9 @@ module external_interfaces::interfaces {
             let liquidity_rate = storage::get_liquidity_rate(storage, dola_pool_id);
             let supply_apy = liquidity_rate * 10000 / ray_math::ray();
             let supply = logic::total_otoken_supply(storage, dola_pool_id);
+            let supply_value = logic::calculate_value(oracle, dola_pool_id, supply);
             let debt = logic::total_dtoken_supply(storage, dola_pool_id);
+            let debt_value = logic::calculate_value(oracle, dola_pool_id, debt);
             let reserve = if (pool_manager::exist_pool_id(pool_manager_info, dola_pool_id)) {
                 pool_manager::get_app_liquidity(
                     pool_manager_info,
@@ -610,6 +629,7 @@ module external_interfaces::interfaces {
             }else {
                 0
             };
+            let available_value = logic::calculate_value(oracle, dola_pool_id, reserve);
             let current_isolate_debt = storage::get_isolate_debt(storage, dola_pool_id);
             let isolate_debt_ceiling = storage::get_reserve_borrow_ceiling(storage, dola_pool_id);
             let is_isolate_asset = storage::is_isolated_asset(storage, dola_pool_id);
@@ -629,8 +649,11 @@ module external_interfaces::interfaces {
                 borrow_apy,
                 supply_apy,
                 reserve,
+                available_value,
                 supply,
+                supply_value,
                 debt,
+                debt_value,
                 utilization_rate,
                 pools,
                 current_isolate_debt,
@@ -640,9 +663,17 @@ module external_interfaces::interfaces {
                 total_pool_weight
             };
             vector::push_back(&mut reserve_infos, reserve_info);
+
+            total_market_size = total_market_size + supply_value;
+            total_available = total_available + available_value;
+            total_borrows = total_borrows + debt_value;
+
             i = i + 1;
         };
         emit(AllReserveInfo {
+            total_market_size,
+            total_available,
+            total_borrows,
             reserve_infos
         })
     }
@@ -971,12 +1002,12 @@ module external_interfaces::interfaces {
 
         let health_collateral_value = logic::user_health_collateral_value(storage, oracle, dola_user_id);
 
-        let target_collateral_value = ray_math::ray_div(
-            health_collateral_value,
+        let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
+        let target_loan_value = ray_math::ray_mul(
+            health_loan_value,
             TARGET_HF
         );
 
-        let health_loan_value = logic::user_health_loan_value(storage, oracle, dola_user_id);
         let collateral_coefficient = storage::get_collateral_coefficient(storage, withdraw_pool_id);
 
         if (logic::user_health_factor(storage, oracle, dola_user_id) <= TARGET_HF) {
@@ -994,7 +1025,7 @@ module external_interfaces::interfaces {
             user_collateral_value(storage, oracle, dola_user_id, withdraw_pool_id)
         } else {
             ray_math::ray_div(
-                (target_collateral_value - health_loan_value),
+                (health_collateral_value - target_loan_value),
                 collateral_coefficient
             )
         };
@@ -1013,7 +1044,7 @@ module external_interfaces::interfaces {
 
         let max_withdraw_amount = ray_math::min(withdraw_amount, reserve);
 
-        if (withdarw_all) {
+        if (withdarw_all && health_loan_value == 0) {
             withdraw_amount = withdraw_amount * 10;
         };
 
