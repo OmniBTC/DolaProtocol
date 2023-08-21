@@ -1,19 +1,17 @@
 # dola protocol monitor
+import brownie
+import config
+import dola_ethereum_sdk
+import dola_sui_sdk
 import functools
 import logging
 import queue
 import time
-from multiprocessing import Manager
-from pathlib import Path
-
-import brownie
-from sui_brownie.parallelism import ProcessExecutor
-
-import config
-import dola_ethereum_sdk
-import dola_sui_sdk
 from dola_ethereum_sdk import load as dola_ethereum_load, init as dola_ethereum_init
 from dola_sui_sdk import load as dola_sui_load, sui_project, interfaces
+from multiprocessing import Manager
+from pathlib import Path
+from sui_brownie.parallelism import ProcessExecutor
 
 
 def parse_u256(data: list):
@@ -139,7 +137,7 @@ def eth_pool_monitor(local_logger: logging.Logger, dola_chain_id, pool_infos, q)
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(10)
+        time.sleep(5)
 
 
 def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
@@ -162,7 +160,7 @@ def sui_pool_monitor(local_logger: logging.Logger, pool_infos, q):
         except Exception as e:
             local_logger.error(e)
 
-        time.sleep(5)
+        time.sleep(1)
 
 
 def check_pool_health(dola_pool_id, pool_info):
@@ -206,7 +204,7 @@ def dola_monitor(local_logger: logging.Logger, q, value, lock):
         lock.release()
         if health:
             local_logger.info(f"dola protocol health: {health}")
-            time.sleep(10)
+            time.sleep(5)
         else:
             local_logger.warning(f"dola protocol health: {health}")
 

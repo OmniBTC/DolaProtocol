@@ -1,17 +1,15 @@
-from pathlib import Path
-from pprint import pprint
-
+import config
 import requests
 import yaml
-from sui_brownie import SuiObject, Argument, U16
-
-import config
 from dola_sui_sdk import load, init
 from dola_sui_sdk.exchange import ExchangeManager
 from dola_sui_sdk.init import clock
 from dola_sui_sdk.init import pool
 from dola_sui_sdk.load import sui_project
 from dola_sui_sdk.oracle import get_feed_vaa
+from pathlib import Path
+from pprint import pprint
+from sui_brownie import SuiObject, Argument, U16
 
 U64_MAX = 18446744073709551615
 
@@ -25,6 +23,63 @@ def dola_pool_id_to_symbol(pool_id):
 def calculate_sui_gas(gas_used):
     return int(gas_used['computationCost']) + int(gas_used['storageCost']) - int(
         gas_used['storageRebate'])
+
+
+def build_update_oracle_price_tx_block(dola_protocol, basic_nums: int, sequence: int):
+    return [
+        dola_protocol.oracle.update_token_price_by_pyth,
+        [
+            Argument("Input", U16(0)),
+            Argument("Input", U16(basic_nums + sequence * 2 + 0)),
+            Argument("Input", U16(1)),
+            Argument("Input", U16(basic_nums + sequence * 2 + 1)),
+            Argument("Input", U16(2)),
+        ],
+        []
+    ]
+
+
+def update_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
+    dola_protocol = load.dola_protocol_package()
+
+    governance_genesis = sui_project.network_config['objects']['GovernanceGenesis']
+    price_oracle = sui_project.network_config['objects']['PriceOracle']
+    pyth_state = sui_project.network_config['objects']['PythState']
+
+    symbols = [config.DOLA_POOL_ID_TO_SYMBOL[pool_id] for pool_id in asset_ids]
+    price_info_objects = [config.DOLA_POOL_ID_TO_PRICE_INFO_OBJECT[pool_id] for pool_id in asset_ids]
+
+    basic_params = [
+        governance_genesis,
+        price_oracle,
+        clock(),
+    ]
+
+    update_price_params = []
+
+    for (pool_id, price_info_object) in zip(asset_ids, price_info_objects):
+        update_price_params.extend([price_info_object, pool_id])
+
+    update_price_tx_blocks = []
+
+    for i in range(len(asset_ids)):
+        update_price_tx_blocks.append(build_update_oracle_price_tx_block(dola_protocol, len(asset_ids), i))
+
+    result = sui_project.batch_transaction_inspect(
+        actual_params=basic_params + update_price_params,
+        transactions=update_price_tx_blocks
+    )
+
+    feed_gas = calculate_sui_gas(result['effects']['gasUsed'])
+
+    if relay_fee >= int(fee_rate * feed_gas):
+        relay_fee -= int(fee_rate * feed_gas)
+        sui_project.batch_transaction(
+            actual_params=basic_params + update_price_params,
+            transactions=update_price_tx_blocks
+        )
+
+    return relay_fee, feed_gas
 
 
 def feed_multi_token_price_with_fee(asset_ids, relay_fee=0, fee_rate=0.8):
@@ -465,7 +520,11 @@ def core_withdraw(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        try:
+            left_relay_fee, feed_gas = update_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        except Exception as e:
+            print(f'Update price error: {e}')
+            left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -619,7 +678,11 @@ def core_borrow(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        try:
+            left_relay_fee, feed_gas = update_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        except Exception as e:
+            print(f'Update price error: {e}')
+            left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -866,7 +929,11 @@ def core_liquidate(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        try:
+            left_relay_fee, feed_gas = update_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        except Exception as e:
+            print(f'Update price error: {e}')
+            left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
@@ -1214,7 +1281,11 @@ def core_cancel_as_collateral(vaa, relay_fee=0, fee_rate=0.8):
     feed_nums = len(asset_ids)
 
     if feed_nums > 0:
-        left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        try:
+            left_relay_fee, feed_gas = update_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
+        except Exception as e:
+            print(f'Update price error: {e}')
+            left_relay_fee, feed_gas = feed_multi_token_price_with_fee(asset_ids, relay_fee, fee_rate)
     else:
         left_relay_fee = relay_fee
         feed_gas = 0
