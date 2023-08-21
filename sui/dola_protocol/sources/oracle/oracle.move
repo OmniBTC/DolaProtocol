@@ -258,7 +258,7 @@ module dola_protocol::oracle {
 
         // get the ema price
         let price_feed = price_info::get_price_feed(&price_info);
-        let pyth_price = price_feed::get_ema_price(price_feed);
+        let pyth_price = price_feed::get_price(price_feed);
 
         // check pyth price is fresh
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
@@ -311,7 +311,7 @@ module dola_protocol::oracle {
         // get the ema price
         let price_info = price_info::get_price_info_from_price_info_object(price_info_object);
         let price_feed = price_info::get_price_feed(&price_info);
-        let pyth_price = price_feed::get_ema_price(price_feed);
+        let pyth_price = price_feed::get_price(price_feed);
 
         // check pyth price is fresh
         let current_timestamp = clock::timestamp_ms(clock) / 1000;
