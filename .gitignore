@@ -39,3 +39,4 @@ aptos/tests
 
 .pytest_cache/
 
+venv/
