@@ -238,6 +238,13 @@ def deploy():
         pyth=sui_project.network_config['packages']['pyth'],
     ))
 
+def deploy_bool_anchor():
+    message_bridge_package = sui_brownie.SuiPackage(
+        package_path=DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("booltest/message_bridge")
+    )
+    message_bridge_package.program_publish_package()
+
+
 
 def redeploy_genesis_proposal():
     genesis_proposal_package = sui_brownie.SuiPackage(

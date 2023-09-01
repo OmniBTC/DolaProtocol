@@ -118,6 +118,13 @@ def deploy_token(token_name="USDT"):
         token_name, token_name, {'from': account}
     )
 
+def deploy_booltest_consumer(anchor):
+    account = get_account()
+
+    print(f"deploy booltest {anchor}...")
+    return DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MessageBridge"].deploy(
+        anchor, {"from": account}
+    )
 
 if __name__ == "__main__":
     set_ethereum_network("base-main")

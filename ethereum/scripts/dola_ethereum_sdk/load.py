@@ -1,3 +1,4 @@
+import json
 from brownie import Contract
 
 from dola_ethereum_sdk import DOLA_CONFIG, config
@@ -46,3 +47,70 @@ def erc20_package(package_address):
 
 def w3_erc20_package(w3_eth, package_address):
     return w3_eth.contract(package_address, abi=DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["ERC20"].abi)
+
+
+def booltest_consumer_package(package_address):
+    return Contract.from_abi(
+        "MessageBridge",
+        package_address,
+        DOLA_CONFIG["DOLA_ETHEREUM_PROJECT"]["MessageBridge"].abi
+    )
+
+
+def booltest_messenger_package(package_address):
+    messenger_abi_json = """[
+	{
+		"inputs": [
+			{
+				"components": [
+					{
+						"internalType": "bytes32",
+						"name": "txUniqueIdentification",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "crossType",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "srcAnchor",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes",
+						"name": "bnExtraFeed",
+						"type": "bytes"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "dstAnchor",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes",
+						"name": "payload",
+						"type": "bytes"
+					}
+				],
+				"internalType": "struct IMsgReceiver.Message",
+				"name": "message",
+				"type": "tuple"
+			},
+			{
+				"internalType": "bytes",
+				"name": "signature",
+				"type": "bytes"
+			}
+		],
+		"name": "receiveFromBool",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]"""
+
+    messenger_abi = json.loads(messenger_abi_json)
+
+    return Contract.from_abi("Messenger", package_address, messenger_abi)

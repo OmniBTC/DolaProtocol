@@ -1,0 +1,13 @@
+[package]
+name = "message_bridge"
+version = "0.0.1"
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
+#Sui = { local = "../../../../sui/crates/sui-framework/packages/sui-framework" }
+
+boolamt = { local = "../../booltest/boolamt" }
+
+[addresses]
+boolamt = "0x32eca1991b191fd230beb0fcadcf0819b1e08c7d27e4b8234cd49c05eda5645f"
+message_bridge = "0x0"

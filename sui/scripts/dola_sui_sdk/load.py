@@ -99,3 +99,15 @@ def test_coins_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.TestCoins[-1]
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins"))
+
+def booltest_anchor_package(package_id: str):
+    return sui_package(
+        package_id,
+        DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("booltest/message_bridge")
+    )
+
+def booltest_boolamt_package(package_id: str):
+    return sui_package(
+        package_id,
+        DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("booltest/boolamt")
+    )

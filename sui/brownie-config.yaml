@@ -221,7 +221,7 @@ networks:
     wormhole_url: https://wormhole-v2-mainnet-api.certus.one
     wormhole_scan_url: https://api.wormscan.io/api/v1/
   sui-testnet:
-    node_url: https://sui-testnet-endpoint.blockvision.org:443
+    node_url: https://fullnode.testnet.sui.io
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
       CoreState: '0x203ed644a34bdead51b69a5dfe384f66098bd0a1329108d5abe365211fbb3635'
@@ -387,6 +387,38 @@ networks:
         dola_pool_id: 3
     wormhole_url: https://wormhole-v2-testnet-api.certus.one
     wormhole_scan_url: https://api.testnet.wormscan.io/api/v1/
+    bool_network:
+      node_url: wss://test-rpc-node-ws.bool.network
+      cids:
+        334:
+          chain: bevm-testnet
+          committee_key: "0x04ae05493d480eafdd9d1efd997ad8f0ae54d0d16bf6d478a4c0dc99fdae40d9a092c3c28cf8191ef2258e06106f6ef3144ea1d231ae532e10bdb6607e6d5fe772"
+          key_type: "ecdsa"
+        335:
+          chain: sui-testnet
+          committee_key: "0xfc3cc61da7647d4317c330f8c196615625d4afc2206d47b43f969e8cdd2bff32"
+          key_type: "eddsa"
+      chains:
+        sui-testnet:
+          chainid: 1918346523
+          cid: 335
+          anchor: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
+          consumer: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
+          upgrade_cap: "0xd29db817e829f3bc3933f8260e8f9b49dc9cf2313332dc168af9d20f468c201a"
+          anchor_cap: "0x0c8fe8bca1d62389b34355b36559a0c5ef7afc677397ca425f5a9d9b3166674d"
+          anchor_state: "0x1a53ae1bad85cbd565c0c9afa83fa9aa2a739330f9d839eee182e8e2f0a6cb82"
+          remote_anchor: "0xee15ba3173e6a13028958aa0c89299473a8cf5a9"
+          boolamt: "0x32eca1991b191fd230beb0fcadcf0819b1e08c7d27e4b8234cd49c05eda5645f"
+          global_state: "0x85c4c4f30a3cb2b982950b35bd1e189a3f47504341c12430dcf6bca120d3be3d"
+        bevm-testnet:
+          chainid: 1502
+          cid: 334
+          anchor: "0xee15ba3173e6a13028958aa0c89299473a8cf5a9"
+          messenger: "0xF68F872F0DDE0Ec1Ba8c28EeD9d0674760aA8eB1"
+          consumer": "0x955034955264BCc103108DbfC2d0768C367b3a63"
+          remote_chainid: 1918346523
+          remote_anchor: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
+
 sui_wallets:
   from_mnemonic:
     TestAccount: ${DEFAULT}
