@@ -13,18 +13,19 @@ def mongodb(mongodb_uri):
 class BOOLRecord:
     def __init__(self, mongodb_uri):
         db = mongodb(mongodb_uri)
-        self.db = db['BoolRecord']
+        self.record_collection = db['BoolRecord']
+        self.latest_scan = db['BoolLatestScan']
 
         self._create_index()
 
     def _create_index(self):
-        self.db.create_index("crossId", unique=True)
+        self.record_collection.create_index("crossId", unique=True)
 
     def find_one(self, filter):
-        return self.db.find_one(filter)
+        return self.record_collection.find_one(filter)
 
     def find(self, filter):
-        return self.db.find(filter)
+        return self.record_collection.find(filter)
 
     def date(self):
         current_timestamp = int(time.time())
@@ -50,11 +51,28 @@ class BOOLRecordProducer(BOOLRecord):
         }
 
         try:
-            self.db.insert_one(record)
+            self.record_collection.insert_one(record)
         except errors.DuplicateKeyError:
             pass
+
+    def upsert_latest_scan(self, block_num: int):
+        self.latest_scan.update_one(
+            {"name": "latest_scan"},
+            {'$set': {"name": "latest_scan", "block_num": block_num, "update": self.date()}},
+            upsert=True
+        )
+
+    def get_latest_scan_num(self):
+        latest_scan = self.latest_scan.find_one(
+            {"name": "latest_scan"}
+        )
+
+        if latest_scan is None:
+            return 0
+        else:
+            return latest_scan["block_num"]
 
 
 class BOOLRecordConsumer(BOOLRecord):
     def update_record(self, filter, update):
-        self.db.update_one(filter, update)
+        self.record_collection.update_one(filter, update)

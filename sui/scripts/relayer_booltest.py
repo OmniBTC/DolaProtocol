@@ -136,7 +136,7 @@ def testnet():
             bool_node_url,
             bool_cids,
             20,
-            None,
+            7298606,
             True
         ),
         functools.partial(

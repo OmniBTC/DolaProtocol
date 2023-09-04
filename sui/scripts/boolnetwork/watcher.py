@@ -32,7 +32,7 @@ class BoolWatcher:
             ws_url,
             mongodb_uri,
             config: dict = None,
-            begin_num: int = None,
+            begin_num: int = 0,
             max_block_range: int = 100,
             wait_seconds: int = 10,
             verify: bool = False,
@@ -48,10 +48,9 @@ class BoolWatcher:
         self.verify = verify
         self.db = BOOLRecordProducer(mongodb_uri=mongodb_uri)
 
-        if begin_num is None or begin_num <= 10:
-            begin_num = self.latest
+        latest_scan = self.db.get_latest_scan_num()
 
-        self.begin_num = begin_num
+        self.begin_num = latest_scan if begin_num < latest_scan else begin_num
 
         self.filter_cids = []
         self.sui_cids = []
@@ -66,6 +65,7 @@ class BoolWatcher:
 
         logging.info(
             f"[BoolWatcher] init: begin_num={self.begin_num}, "
+            f"latest_scan={latest_scan}, "
             f"latest_num={self.latest}, "
             f"max_block_range={self.max_block_range}, "
             f"filter_cids={self.filter_cids}, "
@@ -131,6 +131,8 @@ class BoolWatcher:
                 result.append(e)
 
         logging.info(f"[BoolWatcher] _filter_events: end [#{block_start}, #{block_end}]")
+
+        self.db.upsert_latest_scan(block_end)
 
         return result
 
