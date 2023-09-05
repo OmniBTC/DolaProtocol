@@ -2,6 +2,8 @@ compiler:
   solc:
     remappings:
       - '@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.6.0'
+    # on bevm
+    version: 0.8.13
 dependencies:
   - OpenZeppelin/openzeppelin-contracts@4.6.0
 dotenv: .env
