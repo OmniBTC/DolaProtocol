@@ -1,3 +1,7 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
+
+// System front-end contract portal. Including address binding, etc.
 module dola_protocol::system_portal_v2 {
     use sui::clock::Clock;
     use sui::coin::Coin;

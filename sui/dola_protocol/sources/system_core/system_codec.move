@@ -1,6 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
-
 module dola_protocol::system_codec {
 
     use std::vector;

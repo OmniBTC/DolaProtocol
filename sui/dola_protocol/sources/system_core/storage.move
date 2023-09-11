@@ -1,6 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
-
 module dola_protocol::system_core_storage {
     use sui::object::{Self, UID};
     use sui::transfer;

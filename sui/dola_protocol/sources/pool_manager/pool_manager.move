@@ -20,6 +20,8 @@ module dola_protocol::pool_manager {
     #[test_only]
     use dola_protocol::genesis;
     #[test_only]
+    use dola_protocol::dola_address::create_dola_address;
+    #[test_only]
     use std::ascii::string;
     #[test_only]
     use sui::test_scenario;
@@ -529,7 +531,7 @@ module dola_protocol::pool_manager {
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = dola_address::create_dola_address(0, b"USDT");
+            let pool = create_dola_address(0, b"USDT");
             let dola_pool_id = 0;
             register_pool_id(
                 &governance_cap,
@@ -552,7 +554,7 @@ module dola_protocol::pool_manager {
     public fun test_add_liquidity() {
         let manager = @0x22;
         let dola_pool_name = string(b"USDT");
-        let pool = dola_address::create_dola_address(0, b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -603,7 +605,7 @@ module dola_protocol::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @0x22;
         let dola_pool_name = string(b"USDT");
-        let pool = dola_address::create_dola_address(0, b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
