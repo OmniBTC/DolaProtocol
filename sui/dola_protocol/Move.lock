@@ -7,6 +7,7 @@ dependencies = [
   { name = "Pyth" },
   { name = "Sui" },
   { name = "Wormhole" },
+  { name = "boolamt" },
 ]
 
 [[move.package]]
@@ -33,6 +34,14 @@ dependencies = [
 [[move.package]]
 name = "Wormhole"
 source = { git = "https://github.com/wormhole-foundation/wormhole.git", rev = "fcfe551da0f46b704b76b09ae11dca3dd9387837", subdir = "sui/wormhole" }
+
+dependencies = [
+  { name = "Sui" },
+]
+
+[[move.package]]
+name = "boolamt"
+source = { local = "../booltest/boolamt" }
 
 dependencies = [
   { name = "Sui" },

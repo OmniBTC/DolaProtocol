@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBoolAdapterPool.sol";
+import "../libraries/LibBoolAdapterVerify.sol";
 import "../libraries/LibSystemCodec.sol";
 import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";
@@ -50,6 +51,11 @@ contract SystemPortalBool {
             LibSystemCodec.BINDING
         );
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_SYSTEM_BINDING
+        );
+
         IBoolAdapterPool(boolAdapterPool).sendMessage(
             SYSTEM_APP_ID,
             appPayload
@@ -91,6 +97,11 @@ contract SystemPortalBool {
             nonce,
             LibDolaTypes.DolaAddress(unbindDolaChainId, unbindAddress),
             LibSystemCodec.UNBINDING
+        );
+
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_SYSTEM_UNBINDING
         );
 
         IBoolAdapterPool(boolAdapterPool).sendMessage(

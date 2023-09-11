@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IBoolAdapterPool.sol";
+import "../libraries/LibBoolAdapterVerify.sol";
 import "../libraries/LibLendingCodec.sol";
 import "../libraries/LibDecimals.sol";
 import "../libraries/LibDolaTypes.sol";
@@ -64,6 +65,11 @@ contract LendingPortalBool {
             );
         }
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_SUPPLY
+        );
+
         IBoolAdapterPool(boolAdapterPool).sendDeposit{
             value: msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
@@ -113,6 +119,11 @@ contract LendingPortalBool {
             LibLendingCodec.WITHDRAW
         );
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_WITHDRAW
+        );
+
         IBoolAdapterPool(boolAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
@@ -160,6 +171,11 @@ contract LendingPortalBool {
             LibDolaTypes.DolaAddress(dolaChainId, token),
             LibDolaTypes.DolaAddress(dstChainId, receiver),
             LibLendingCodec.BORROW
+        );
+
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_BORROW
         );
 
         IBoolAdapterPool(boolAdapterPool).sendMessage(
@@ -221,6 +237,11 @@ contract LendingPortalBool {
             );
         }
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_REPAY
+        );
+
         IBoolAdapterPool(boolAdapterPool).sendDeposit{
             value: msg.value - fee
         }(token, amount, LENDING_APP_ID, appPayload);
@@ -267,6 +288,11 @@ contract LendingPortalBool {
             liquidatePoolId
         );
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_LIQUIDATE
+        );
+
         // Deposit assets to the pool and perform amount checks
 
         IBoolAdapterPool(boolAdapterPool).sendMessage(
@@ -311,6 +337,11 @@ contract LendingPortalBool {
             LibLendingCodec.AS_COLLATERAL
         );
 
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_COLLATERAL
+        );
+
         IBoolAdapterPool(boolAdapterPool).sendMessage(
             LENDING_APP_ID,
             appPayload
@@ -351,6 +382,11 @@ contract LendingPortalBool {
         bytes memory appPayload = LibLendingCodec.encodeManageCollateralPayload(
             dolaPoolIds,
             LibLendingCodec.CANCEL_AS_COLLATERAL
+        );
+
+        appPayload = LibBoolAdapterVerify.remapping_opcode(
+            appPayload,
+            LibBoolAdapterVerify.SERVER_OPCODE_LENDING_CANCEL_COLLATERAL
         );
 
         IBoolAdapterPool(boolAdapterPool).sendMessage(

@@ -166,18 +166,18 @@ contract BoolAdapterPool is ERC165, IBoolConsumerBase, IBoolAdapterPool {
             raw_payload.length - 2
         );
 
-        if (op_code == LibBoolAdapterVerify.REMAPPING_ADD_RELAYER_OPCODE) {
+        if (op_code == LibBoolAdapterVerify.CLIENT_OPCODE_ADD_RELAYER) {
             registerRelayer(internal_payload);
-        } else if (op_code == LibBoolAdapterVerify.REMAPPING_REMOVE_RELAYER_OPCODE) {
+        } else if (op_code == LibBoolAdapterVerify.CLIENT_OPCODE_REMOVE_RELAYER) {
             removeRelayer(internal_payload);
-        } else if (op_code == LibBoolAdapterVerify.REMAPPING_POOL_REGISTER_SPENDER) {
+        } else if (op_code == LibBoolAdapterVerify.CLIENT_OPCODE_REGISTER_SPENDER) {
             registerSpender(internal_payload);
-        } else if (op_code == LibBoolAdapterVerify.REMAPPING_POOL_DELETE_SPENDER) {
+        } else if (op_code == LibBoolAdapterVerify.CLIENT_OPCODE_DELETE_SPENDER) {
             deleteSpender(internal_payload);
-        } else if (op_code == LibBoolAdapterVerify.REMAPPING_POOL_WITHDRAW) {
+        } else if (op_code == LibBoolAdapterVerify.CLIENT_OPCODE_WITHDRAW) {
             receiveWithdraw(internal_payload);
         } else {
-            revert("invalid remapping opcode");
+            revert("invalid client opcode");
         }
     }
 

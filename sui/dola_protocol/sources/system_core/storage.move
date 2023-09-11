@@ -10,6 +10,7 @@ module dola_protocol::system_core_storage {
     use dola_protocol::genesis::GovernanceCap;
 
     friend dola_protocol::system_core_wormhole_adapter;
+    friend dola_protocol::system_core_bool_adapter;
 
     struct Storage has key {
         id: UID,

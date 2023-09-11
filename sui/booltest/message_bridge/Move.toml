@@ -9,5 +9,7 @@ Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-fram
 boolamt = { local = "../../booltest/boolamt" }
 
 [addresses]
-boolamt = "0x32eca1991b191fd230beb0fcadcf0819b1e08c7d27e4b8234cd49c05eda5645f"
+#boolamt = "0x32eca1991b191fd230beb0fcadcf0819b1e08c7d27e4b8234cd49c05eda5645f"
+boolamt = "0xa1f98a4fa3e7305b1772b45623f3338a73b975a2c6bf0053d93bce03ac10cc5c"
+
 message_bridge = "0x0"

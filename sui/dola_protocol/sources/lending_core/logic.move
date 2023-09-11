@@ -19,6 +19,7 @@ module dola_protocol::lending_logic {
 
     friend dola_protocol::lending_core_wormhole_adapter;
     friend dola_protocol::lending_portal;
+    friend dola_protocol::lending_core_bool_adapter;
 
     #[test_only]
     friend dola_protocol::logic_tests;

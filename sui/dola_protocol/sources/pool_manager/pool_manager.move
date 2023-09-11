@@ -29,6 +29,7 @@ module dola_protocol::pool_manager {
 
     friend dola_protocol::lending_portal;
     friend dola_protocol::wormhole_adapter_core;
+    friend dola_protocol::bool_adapter_core;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
