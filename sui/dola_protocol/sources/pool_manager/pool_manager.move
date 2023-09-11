@@ -13,7 +13,7 @@ module dola_protocol::pool_manager {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    use dola_protocol::dola_address::{Self, DolaAddress};
+    use dola_protocol::dola_address::DolaAddress;
     use dola_protocol::equilibrium_fee;
     use dola_protocol::genesis::GovernanceCap;
 
