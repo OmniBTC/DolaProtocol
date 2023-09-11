@@ -9,6 +9,7 @@ module dola_protocol::bool_adapter_core {
 
     use sui::coin::{Self, Coin};
     use sui::dynamic_field;
+    use sui::dynamic_object_field;
     use sui::event;
     use sui::object::{Self, UID};
     use sui::table;
@@ -74,12 +75,13 @@ module dola_protocol::bool_adapter_core {
     /// 1) make sure the caller is from the correct application by app_id from pool payload.
     struct CoreState has key, store {
         id: UID,
-        // Move does not have a contract address, boolnet uses the AnchorCap
-        // to represent the send address of this contract
-        bool_anchor_cap: AnchorCap,
         // dola_chain_id(dola config) => dst_chain_id(boolnet config)
         chain_id_map: table::Table<u16, u32>
     }
+
+    /// Move does not have a contract address, boolnet uses the AnchorCap
+    /// to represent the send address of this contract
+    struct BoolAnchorCap has copy, drop, store {}
 
     /// Only certain users are allowed to act as Relayer
     struct Relayer has copy, drop, store {}
@@ -116,16 +118,46 @@ module dola_protocol::bool_adapter_core {
         bool_anchor_cap: AnchorCap,
         ctx: &mut TxContext
     ) {
-        transfer::public_share_object(
-            CoreState {
-                id: object::new(ctx),
-                bool_anchor_cap,
-                chain_id_map: table::new(ctx)
-            }
+        let core_state = CoreState {
+            id: object::new(ctx),
+            chain_id_map: table::new(ctx)
+        };
+
+        dynamic_object_field::add<BoolAnchorCap, AnchorCap>(
+            &mut core_state.id,
+            BoolAnchorCap {},
+            bool_anchor_cap
         );
+
+        transfer::public_share_object(core_state);
     }
 
     /// Call by governance
+
+    public fun set_anchor_cap(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        bool_anchor_cap: AnchorCap
+    ) {
+        dynamic_object_field::add<BoolAnchorCap, AnchorCap>(
+            &mut core_state.id,
+            BoolAnchorCap {},
+            bool_anchor_cap
+        );
+    }
+
+    public fun release_anchor_cap(
+        _: &GovernanceCap,
+        core_state: &mut CoreState,
+        receiver: address
+    ) {
+        let bool_anchor_cap = dynamic_object_field::remove<BoolAnchorCap, AnchorCap>(
+            &mut core_state.id,
+            BoolAnchorCap {}
+        );
+
+        transfer::public_transfer(bool_anchor_cap, receiver)
+    }
 
     /// Register path on boolamt contract
     public fun register_path(
@@ -139,7 +171,7 @@ module dola_protocol::bool_adapter_core {
         enable_path(
             dst_chain_id,
             dst_anchor,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_global_state
         );
 
@@ -173,7 +205,7 @@ module dola_protocol::bool_adapter_core {
             *dst_chain_id,
             payload,
             bool_message_fee,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state,
             ctx
         );
@@ -208,7 +240,7 @@ module dola_protocol::bool_adapter_core {
             *dst_chain_id,
             payload,
             bool_message_fee,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state,
             ctx
         );
@@ -241,7 +273,7 @@ module dola_protocol::bool_adapter_core {
             *dst_chain_id,
             payload,
             bool_message_fee,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state,
             ctx
         );
@@ -272,7 +304,7 @@ module dola_protocol::bool_adapter_core {
             *dst_chain_id,
             payload,
             bool_message_fee,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state,
             ctx
         );
@@ -329,7 +361,7 @@ module dola_protocol::bool_adapter_core {
         let payload_without_opcode = parse_verify_and_replay_protect(
             message_raw,
             signature,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state
         );
 
@@ -357,7 +389,7 @@ module dola_protocol::bool_adapter_core {
         let payload_without_opcode = parse_verify_and_replay_protect(
             message_raw,
             signature,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state
         );
 
@@ -395,7 +427,7 @@ module dola_protocol::bool_adapter_core {
         let payload_without_opcode = parse_verify_and_replay_protect(
             message_raw,
             signature,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state
         );
 
@@ -448,7 +480,7 @@ module dola_protocol::bool_adapter_core {
             *dst_chain_id,
             payload,
             bool_message_fee,
-            &core_state.bool_anchor_cap,
+            get_anchor_cap(&core_state.id),
             bool_state,
             ctx
         );
@@ -465,6 +497,17 @@ module dola_protocol::bool_adapter_core {
         );
         let relayers = dynamic_field::borrow<Relayer, vector<address>>(&mut core_state.id, Relayer {});
         assert!(vector::contains(relayers, &tx_context::sender(ctx)), ENOT_RELAYER);
+    }
+
+    fun get_anchor_cap(
+        core_state_id: &UID
+    ): &AnchorCap {
+        let bool_anchor_cap = dynamic_object_field::borrow<BoolAnchorCap, AnchorCap>(
+            core_state_id,
+            BoolAnchorCap {}
+        );
+
+        return bool_anchor_cap
     }
 
     fun send_to_bool(
