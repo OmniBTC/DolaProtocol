@@ -13,12 +13,11 @@ boolamt = "0xa1f98a4fa3e7305b1772b45623f3338a73b975a2c6bf0053d93bce03ac10cc5c"
 git = "https://github.com/MystenLabs/sui.git"
 subdir = "crates/sui-framework/packages/sui-framework"
 rev = "09b2081498366df936abae26eea4b2d5cafb2788"
-override = true
 
 [dependencies.Wormhole]
 git = "https://github.com/wormhole-foundation/wormhole.git"
 subdir = "sui/wormhole"
-rev = "fcfe551da0f46b704b76b09ae11dca3dd9387837"
+rev = "d050ad1d67a5b7da9fb65030aad12ef5d774ccad"
 override = true
 
 [dependencies.Pyth]
@@ -27,4 +26,4 @@ subdir = "target_chains/sui/contracts"
 rev = "7dab308f961746890faf1ac0b52e283b31112bf6"
 
 [dependencies.boolamt]
-local = "../booltest/boolamt"
+local = "../boolamt"

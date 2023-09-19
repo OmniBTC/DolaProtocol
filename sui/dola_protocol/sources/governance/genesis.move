@@ -11,6 +11,8 @@ module dola_protocol::genesis {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
+    use boolamt::anchor::{register_anchor_cap, AnchorCap, GlobalState};
+
     friend dola_protocol::governance_v1;
 
     const E_EXIST_PACKAGE: u64 = 0;
@@ -177,6 +179,22 @@ module dola_protocol::genesis {
         receipt: UpgradeReceipt,
     ) {
         package::commit_upgrade(&mut genesis.upgrade_cap, receipt);
+    }
+
+    /// Require upgrade_cap
+    public fun register_bool_anchor(
+        _: &GovernanceCap,
+        governance_genesis: &GovernanceGenesis,
+        committee_pk: vector<u8>,
+        state: &mut GlobalState,
+        ctx: &mut TxContext,
+    ): AnchorCap {
+        register_anchor_cap(
+            committee_pk,
+            &governance_genesis.upgrade_cap,
+            state,
+            ctx
+        )
     }
 
     public fun migrate_version<OldVersion: store + drop, NewVersion: store + drop>(

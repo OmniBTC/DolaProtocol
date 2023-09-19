@@ -25,8 +25,15 @@ module external_interfaces::interfaces {
     use dola_protocol::rates;
     use dola_protocol::ray_math;
     use dola_protocol::user_manager::{Self, UserManagerInfo};
+    use dola_protocol::bool_adapter_verify::{
+        server_opcode_lending_withdraw,
+        server_opcode_lending_borrow,
+        server_opcode_lending_liquidate,
+        server_opcode_lending_cancle_collateral,
+    };
     use wormhole::state::State;
     use wormhole::vaa;
+    use boolamt::messenger;
 
     const HOUR: u64 = 60 * 60;
 
@@ -913,6 +920,92 @@ module external_interfaces::interfaces {
         };
 
         if (is_cancel_collateral) {
+            let (user_address, _, _, _) =
+                pool_codec::decode_send_message_payload(payload);
+            let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+            let loans = storage::get_user_loans(storage, dola_user_id);
+
+            if (vector::length(&loans) > 0) {
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
+            };
+        };
+
+        let current_timestamp = clock::timestamp_ms(clock) / 1000;
+
+        let usdt_pool_id = 1;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdt_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdt_pool_id);
+        };
+
+        let usdc_pool_id = 2;
+        let (_, _, timestamp) = oracle::get_token_price(price_oracle, usdc_pool_id);
+        if (current_timestamp - timestamp < HOUR - MINUATE) {
+            vector::push_back(&mut skip_pool_ids, usdc_pool_id);
+        };
+
+        (feed_pool_ids, skip_pool_ids)
+    }
+
+    public fun get_feed_tokens_for_relayer_bool(
+        pool_manager_info: &mut PoolManagerInfo,
+        user_manager_info: &mut UserManagerInfo,
+        storage: &mut Storage,
+        price_oracle: &mut PriceOracle,
+        message_raw: vector<u8>,
+        clock: &Clock
+    ): (vector<u16>, vector<u16>) {
+        let message = messenger::message_from_bcs(&message_raw);
+        let payload_with_opcode = messenger::payload(&message);
+        let opcode = vector::pop_back(&mut payload_with_opcode);
+        let payload = payload_with_opcode;
+
+        let feed_pool_ids = vector[];
+        let skip_pool_ids = vector[];
+
+        if (server_opcode_lending_withdraw() == opcode || server_opcode_lending_borrow() == opcode) {
+            let (user_address, _, _, app_payload) =
+                pool_codec::decode_send_message_payload(payload);
+            let (_, _, _, pool, _, call_type) = lending_codec::decode_withdraw_payload(
+                app_payload
+            );
+            let dola_pool_id = pool_manager::get_id_by_pool(pool_manager_info, pool);
+            let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);
+            let collaterals = storage::get_user_collaterals(storage, dola_user_id);
+            let loans = storage::get_user_loans(storage, dola_user_id);
+            if (!vector::contains(&loans, &dola_pool_id)) {
+                vector::push_back(&mut feed_pool_ids, dola_pool_id);
+            };
+
+            if (vector::length(&loans) > 0 || call_type == lending_codec::get_borrow_type()) {
+                vector::append(&mut feed_pool_ids, collaterals);
+                vector::append(&mut feed_pool_ids, loans);
+            };
+        };
+
+        if (server_opcode_lending_liquidate() == opcode) {
+            let (sender, _, _, app_payload) =
+                pool_codec::decode_send_message_payload(payload);
+            let (_, _, _, liquidate_user_id, _, _) = lending_codec::decode_liquidate_payload_v2(
+                app_payload
+            );
+            let sender_dola_user_id = user_manager::get_dola_user_id(user_manager_info, sender);
+            let sender_collaterals = storage::get_user_collaterals(storage, sender_dola_user_id);
+            let sender_loans = storage::get_user_loans(storage, sender_dola_user_id);
+
+            vector::append(&mut feed_pool_ids, sender_collaterals);
+            vector::append(&mut feed_pool_ids, sender_loans);
+
+            let collaterals = storage::get_user_collaterals(storage, liquidate_user_id);
+            let loans = storage::get_user_loans(storage, liquidate_user_id);
+
+            vector::append(&mut feed_pool_ids, collaterals);
+            vector::append(&mut feed_pool_ids, loans);
+        };
+
+        if (server_opcode_lending_cancle_collateral() == opcode) {
             let (user_address, _, _, _) =
                 pool_codec::decode_send_message_payload(payload);
             let dola_user_id = user_manager::get_dola_user_id(user_manager_info, user_address);

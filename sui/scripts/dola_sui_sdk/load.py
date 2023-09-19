@@ -56,7 +56,7 @@ def wormhole_package(package_id: str = None):
         package_id: str = sui_project.network_config['packages']['wormhole']
     return sui_package(package_id,
                        Path.home().joinpath(Path(
-                           ".move/https___github_com_wormhole-foundation_wormhole_git_fcfe551da0f46b704b76b09ae11dca3dd9387837/sui/wormhole")))
+                           ".move/https___github_com_wormhole-foundation_wormhole_git_d050ad1d67a5b7da9fb65030aad12ef5d774ccad/sui/wormhole")))
 
 
 def pyth_package():
@@ -99,15 +99,3 @@ def test_coins_package(package_id: str = None):
     if package_id is None:
         package_id: str = sui_project.TestCoins[-1]
     return sui_package(package_id, DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("test_coins"))
-
-def booltest_anchor_package(package_id: str):
-    return sui_package(
-        package_id,
-        DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("booltest/message_bridge")
-    )
-
-def booltest_boolamt_package(package_id: str):
-    return sui_package(
-        package_id,
-        DOLA_CONFIG["DOLA_SUI_PATH"].joinpath("booltest/boolamt")
-    )

@@ -1,13 +1,15 @@
 import functools
-
 import logging
 from dotenv import dotenv_values
 from pathlib import Path
+
+from sui_brownie.parallelism import ProcessExecutor
+
 import dola_ethereum_sdk
 from dola_ethereum_sdk import get_account
 import dola_sui_sdk
 from dola_sui_sdk.load import sui_project
-from sui_brownie.parallelism import ProcessExecutor
+from dola_sui_sdk.lendingBool import dispatch
 
 from boolnetwork import BoolWatcher, BoolExecutorETH, BoolExecutorSui
 
@@ -20,13 +22,7 @@ def get_mongodb_uri():
 
 dola_sui_sdk.set_dola_project_path(Path("../.."), network="sui-testnet")
 
-print(f"ssss={sui_project.__repr__()}")
-
 bool_network_config = sui_project.network_config["bool_network"]
-bool_node_url = bool_network_config["node_url"]
-bool_cids = bool_network_config["cids"]
-bool_sui_config = bool_network_config["chains"]["sui-testnet"]
-bool_bevm_config = bool_network_config["chains"]["bevm-testnet"]
 
 
 def run_watcher(
@@ -49,8 +45,7 @@ def run_watcher(
 def run_executor_sui(
         cid,
         dst_network,
-        dst_contract,
-        other
+        dispatch,
 ):
     # path, network, account
 
@@ -59,17 +54,17 @@ def run_executor_sui(
     BoolExecutorSui(
         cid,
         dst_network,
-        dst_contract,
+        dispatch,
         get_mongodb_uri(),
-        interval=5,
-        other=other
+        "TestAccount",
+        interval=5
     ).run()
 
 
 def run_executor_eth(
         cid,
         dst_network,
-        dst_contract
+        messenger
 ):
     # path, network, account
     dola_ethereum_sdk.set_dola_project_path(Path("../.."))
@@ -80,12 +75,10 @@ def run_executor_eth(
     BoolExecutorETH(
         cid,
         dst_network,
-        dst_contract,
+        messenger,
         get_mongodb_uri(),
+        executor,
         interval=5,
-        other={
-            "executor": executor
-        }
     ).run()
 
 
@@ -128,6 +121,12 @@ def init_logger():
 
 
 def testnet():
+    bool_node_url = bool_network_config["node_url"]
+    bool_cids = bool_network_config["cids"]
+    bool_sui_config = bool_network_config["chains"]["sui-testnet"]
+    bool_bevm_config = bool_network_config["chains"]["bevm-testnet"]
+
+
     pt = ProcessExecutor(executor=3)
 
     pt.run([
@@ -143,12 +142,7 @@ def testnet():
             run_executor_sui,
             bool_sui_config["cid"],
             "sui-testnet",
-            bool_sui_config["anchor"],
-            {
-                "executor": "TestAccount",
-                "anchor_cap": bool_sui_config["anchor_cap"],
-                "global_state": bool_sui_config["global_state"]
-            }
+            dispatch
         ),
         functools.partial(
             run_executor_eth,

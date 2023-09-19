@@ -56,10 +56,9 @@ contract SystemPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_SYSTEM_BINDING
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            SYSTEM_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(SYSTEM_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);
@@ -104,10 +103,9 @@ contract SystemPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_SYSTEM_UNBINDING
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            SYSTEM_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(SYSTEM_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);

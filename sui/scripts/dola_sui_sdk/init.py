@@ -37,7 +37,7 @@ def register_token_price(dola_pool_id, price, decimal):
 def active_governance_v1():
     """Calls are required by the deployer
     public entry fun activate_governance(
-        governance_genesis: &mut GovernanceGenesis,
+        upgrade_cap: UpgradeCap,
         governance_info: &mut GovernanceInfo,
         ctx: &mut TxContext
     )
@@ -45,6 +45,8 @@ def active_governance_v1():
     """
     dola_protocol = load.dola_protocol_package()
     upgrade_cap = load.get_upgrade_cap_by_package_id(dola_protocol.package_id)
+
+    print("executing activate_governance")
     dola_protocol.governance_v1.activate_governance(
         upgrade_cap,
         dola_protocol.governance_v1.GovernanceInfo[-1],
@@ -80,7 +82,8 @@ def create_proposal():
     """
     genesis_proposal = load.genesis_proposal_package()
     dola_protocol = load.dola_protocol_package(
-        package_id=sui_project.network_config['packages']['dola_protocol']['origin'])
+        package_id=sui_project.network_config['packages']['dola_protocol']['origin']
+    )
     genesis_proposal.genesis_proposal.create_proposal(
         dola_protocol.governance_v1.GovernanceInfo[-1]
     )
@@ -541,21 +544,22 @@ def batch_execute_proposal():
     init_wormhole_adapter_core_tx_block = [[
         genesis_proposal.genesis_proposal.init_wormhole_adapter_core,
         [
-            Argument("NestedResult", NestedResult(U16(0), U16(0))),
-            Argument("NestedResult", NestedResult(U16(0), U16(1))),
+            Argument("NestedResult", NestedResult(U16(0), U16(0))), # HotPotato
             Argument("Input", U16(2))
         ],
         []
     ]]
 
-    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1)
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1) # HotPotato
 
+    print("executing init_wormhole_adapter_core")
     sui_project.batch_transaction(
         actual_params=init_wormhole_adapter_core_params,
         transactions=vote_proposal_final_tx_block + init_wormhole_adapter_core_tx_block + finish_proposal_tx_block
     )
 
     # Use core state
+    print("executing init_wormhole_adapter_pool")
     init_wormhole_adapter_pool()
 
     # Init poolmanager params
@@ -588,6 +592,7 @@ def batch_execute_proposal():
 
     finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, pool_num)
 
+    print("executing register new pools")
     sui_project.batch_transaction(
         actual_params=basic_params + pool_params,
         transactions=vote_proposal_final_tx_block + register_new_pool_tx_blocks + finish_proposal_tx_block
@@ -598,6 +603,8 @@ def batch_execute_proposal():
     group_chain_ids = [5, 23]
 
     create_proposal()
+
+    print("executing init system core and lending core")
     sui_project.batch_transaction(
         actual_params=[dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
                        sui_project[SuiObject.from_type(proposal())][-1],  # 1
@@ -613,30 +620,26 @@ def batch_execute_proposal():
              ],  # 0. vote_proposal_final
             [
                 genesis_proposal.genesis_proposal.init_system_core,
-                [Argument("NestedResult", NestedResult(U16(0), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(0), U16(1))),
+                [Argument("NestedResult", NestedResult(U16(0), U16(0))), # HotPotato
                  Argument("Input", U16(2))],
                 []
             ],  # 1. init_system_core
             [
                 genesis_proposal.genesis_proposal.init_lending_core,
-                [Argument("NestedResult", NestedResult(U16(1), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(1), U16(1))),
+                [Argument("NestedResult", NestedResult(U16(1), U16(0))), # HotPotato
                  Argument("Input", U16(2))],
                 []
             ],  # 2. init_lending_core
             [
                 genesis_proposal.genesis_proposal.init_chain_group_id,
-                [Argument("NestedResult", NestedResult(U16(2), U16(0))),
-                 Argument("NestedResult", NestedResult(U16(2), U16(1))),
+                [Argument("NestedResult", NestedResult(U16(2), U16(0))), # HotPotato
                  Argument("Input", U16(3)),
                  Argument("Input", U16(4)),
                  Argument("Input", U16(5))],
                 []
             ],  # 3. init_chain_group_id
             [genesis_proposal.genesis_proposal.destory,
-             [Argument("NestedResult", NestedResult(U16(3), U16(0))),
-              Argument("NestedResult", NestedResult(U16(3), U16(1)))],
+             [Argument("NestedResult", NestedResult(U16(3), U16(0)))], # HotPotato
              []
              ]
         ]
@@ -694,9 +697,108 @@ def batch_execute_proposal():
     actual_params = basic_params + reserve_params
     transactions = vote_proposal_final_tx_block + register_new_reserve_tx_blocks + finish_proposal_tx_block
 
+    print("executing register_new_reserve")
     sui_project.batch_transaction(
         actual_params=actual_params,
         transactions=transactions
+    )
+
+
+def init_bool_adapter_core_with_key():
+    # public fun init_bool_adapter_core_with_key(
+    #     hot_potato: HotPotato,
+    #     governance_genesis: &GovernanceGenesis,
+    #     committee_pk: vector<u8>,
+    #     bool_global: &mut GlobalState,
+    #     init_relayer: address,
+    #     ctx: &mut TxContext
+    # ): HotPotato
+
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    # init_bool_adapter_core_with_key
+
+    governance_genesis = dola_protocol.genesis.GovernanceGenesis[-1]
+    committee_key = sui_project.network_config['bool_network']['committee_key']
+    bool_global = sui_project.network_config['bool_network']['global_state']
+    init_relayer = sui_project.account.address()
+
+    create_proposal()
+
+    init_bool_adapter_core_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        governance_genesis, # 2
+        list(bytes.fromhex(committee_key.replace("0x", ""))), # 3
+        bool_global, # 4
+        init_relayer # 5
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    init_bool_adapter_core_tx_block = [[
+        genesis_proposal.genesis_proposal.init_bool_adapter_core_with_key,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))), # HotPotato
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+            Argument("Input", U16(4)),
+            Argument("Input", U16(5))
+        ],
+        []
+    ]]
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1) # HotPotato
+
+    sui_project.batch_transaction(
+        actual_params=init_bool_adapter_core_params,
+        transactions=vote_proposal_final_tx_block + init_bool_adapter_core_tx_block + finish_proposal_tx_block
+    )
+
+
+def init_bool_adapter_core_with_cap(anchor_cap):
+    # public fun init_bool_adapter_core_with_cap(
+    #     hot_potato: HotPotato,
+    #     bool_anchor_cap: AnchorCap,
+    #     init_relayer: address,
+    #     ctx: &mut TxContext
+    # ): HotPotato
+
+    genesis_proposal = load.genesis_proposal_package()
+    dola_protocol = load.dola_protocol_package()
+
+    # init_bool_adapter_core_with_cap
+
+    governance_genesis = dola_protocol.genesis.GovernanceGenesis[-1]
+    init_relayer = sui_project.account.address()
+
+    create_proposal()
+
+    init_bool_adapter_core_params = [
+        dola_protocol.governance_v1.GovernanceInfo[-1],  # 0
+        sui_project[SuiObject.from_type(proposal())][-1],  # 1
+        anchor_cap, # 2
+        init_relayer # 3
+    ]
+
+    vote_proposal_final_tx_block = build_vote_proposal_final_tx_block(genesis_proposal)
+
+    init_bool_adapter_core_tx_block = [[
+        genesis_proposal.genesis_proposal.init_bool_adapter_core_with_cap,
+        [
+            Argument("NestedResult", NestedResult(U16(0), U16(0))), # HotPotato
+            Argument("Input", U16(2)),
+            Argument("Input", U16(3)),
+        ],
+        []
+    ]]
+
+    finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, 1) # HotPotato
+
+    sui_project.batch_transaction(
+        actual_params=init_bool_adapter_core_params,
+        transactions=vote_proposal_final_tx_block + init_bool_adapter_core_tx_block + finish_proposal_tx_block
     )
 
 
@@ -781,6 +883,8 @@ def batch_create_pool():
         build_create_pool_tx_block(dola_protocol, i, coin_types[i])
         for i in range(len(create_pool_params))
     ]
+
+    print("executing batch_create_pool")
     sui_project.batch_transaction(
         actual_params=create_pool_params,
         transactions=create_pool_tx_blocks
@@ -807,9 +911,9 @@ def batch_init_oracle():
     genesis_proposal = load.genesis_proposal_package()
     create_proposal()
 
-    # btc_token_param = construct_register_token_price_param(
-    #     "BTC/USD", 'BTC'
-    # )
+    btc_token_param = construct_register_token_price_param(
+        "BTC/USD", 'BTC'
+    )
     # usdt_token_param = construct_register_token_price_param(
     #     "USDT/USD", 'USDT'
     # )
@@ -831,9 +935,9 @@ def batch_init_oracle():
     # arb_token_param = construct_register_token_price_param(
     #     "ARB/USD", 'ARB'
     # )
-    whusdceth_token_param = construct_register_token_price_param(
-        "USDC/USD", 'whUSDCeth'
-    )
+    # whusdceth_token_param = construct_register_token_price_param(
+    #     "USDC/USD", 'whUSDCeth'
+    # )
 
     basic_params = [
         sui_project.network_config["objects"]["GovernanceInfo"],  # 0
@@ -843,7 +947,7 @@ def batch_init_oracle():
     ]
 
     # token_params = btc_token_param + usdt_token_param + usdc_token_param + sui_token_param + eth_token_param + matic_token_param + op_token_param + arb_token_param
-    token_params = whusdceth_token_param
+    token_params = btc_token_param
 
     token_nums = len(token_params) // 4
     register_token_price_tx_blocks = [
@@ -856,6 +960,7 @@ def batch_init_oracle():
 
     finish_proposal_tx_block = build_finish_proposal_tx_block(genesis_proposal, token_nums)
 
+    print("executing batch_init_oracle")
     sui_project.batch_transaction(
         actual_params=basic_params + token_params,
         transactions=vote_proposal_final_tx_block + register_token_price_tx_blocks + finish_proposal_tx_block
@@ -1617,7 +1722,7 @@ def batch_init():
     batch_init_oracle()
     batch_create_pool()
     batch_execute_proposal()
-
+    init_bool_adapter_core_with_key()
 
 if __name__ == '__main__':
     batch_init()

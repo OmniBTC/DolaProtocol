@@ -114,8 +114,9 @@ module dola_protocol::bool_adapter_core {
 
     /// Initializing caps of PoolManager and UserManager through governance
     public fun initialize_cap_with_governance(
-        _: &GovernanceCap,
+        governance_cap: &GovernanceCap,
         bool_anchor_cap: AnchorCap,
+        init_relayer: address,
         ctx: &mut TxContext
     ) {
         let core_state = CoreState {
@@ -127,6 +128,12 @@ module dola_protocol::bool_adapter_core {
             &mut core_state.id,
             BoolAnchorCap {},
             bool_anchor_cap
+        );
+
+        add_relayer(
+            governance_cap,
+            &mut core_state,
+            init_relayer
         );
 
         transfer::public_share_object(core_state);
@@ -345,6 +352,18 @@ module dola_protocol::bool_adapter_core {
         });
     }
 
+    public fun get_bool_chain_id(
+        core_state: &CoreState,
+        dola_chain_id: u16
+    ): u32 {
+        let bool_chain_id = table::borrow<u16, u32>(
+            &core_state.chain_id_map,
+            dola_chain_id
+        );
+
+        return *bool_chain_id
+    }
+
     /// === Friend Functions ===
 
     /// Receive message without funding
@@ -471,13 +490,13 @@ module dola_protocol::bool_adapter_core {
 
         remapping_opcode(&mut payload, client_opcode_withdraw());
 
-        let dst_chain_id = table::borrow<u16, u32>(
-            &core_state.chain_id_map,
+        let dst_chain_id = get_bool_chain_id(
+            core_state,
             get_dola_chain_id(&pool_address)
         );
 
         send_to_bool(
-            *dst_chain_id,
+            dst_chain_id,
             payload,
             bool_message_fee,
             get_anchor_cap(&core_state.id),

@@ -124,10 +124,9 @@ contract LendingPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_LENDING_WITHDRAW
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            LENDING_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+            value: msg.value - fee
+        }(LENDING_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);
@@ -178,10 +177,9 @@ contract LendingPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_LENDING_BORROW
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            LENDING_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(LENDING_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);
@@ -295,10 +293,9 @@ contract LendingPortalBool {
 
         // Deposit assets to the pool and perform amount checks
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            LENDING_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(LENDING_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);
@@ -342,10 +339,9 @@ contract LendingPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_LENDING_COLLATERAL
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            LENDING_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(LENDING_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);
@@ -389,10 +385,9 @@ contract LendingPortalBool {
             LibBoolAdapterVerify.SERVER_OPCODE_LENDING_CANCEL_COLLATERAL
         );
 
-        IBoolAdapterPool(boolAdapterPool).sendMessage(
-            LENDING_APP_ID,
-            appPayload
-        );
+        IBoolAdapterPool(boolAdapterPool).sendMessage{
+                value: msg.value - fee
+        }(LENDING_APP_ID, appPayload);
 
         address relayer = IBoolAdapterPool(boolAdapterPool)
             .getOneRelayer(nonce);

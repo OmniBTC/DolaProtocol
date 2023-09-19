@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0
 
 /// Verification logic module for boolnet message. Including:
-/// 1) verifying the signature
-/// 2) ensuring that the VAA has not been reused
-/// 3) verifying the reliability of the source of the message
+/// 1) Verifying the signature
+/// 2) Deduplicates incoming messages
+/// 3) Verifying the reliability of the source of the message
+/// 4) Check server opcode
 module dola_protocol::bool_adapter_verify {
     use std::vector;
 
@@ -104,6 +105,7 @@ module dola_protocol::bool_adapter_verify {
         // All check here.
         // 1) Verifies message and signatures
         // 2) Deduplicates incoming messages
+        // 3) Verifying the reliability of the source of the message
         let (payload, _) = consumer::receive_message(
             message_raw,
             signature,
@@ -111,7 +113,7 @@ module dola_protocol::bool_adapter_verify {
             bool_state
         );
 
-        // 3) Check server opcode
+        // 4) Check server opcode
         let opcode: u8 = vector::pop_back(&mut payload);
         assert!(is_valid_server_opcode(opcode), EINVALID_SERVER_OPCODE);
 

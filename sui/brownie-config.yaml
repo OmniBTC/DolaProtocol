@@ -48,6 +48,7 @@ networks:
         USDT/USD: '0x2b89b9dc8fdf9f34709a5b106b472f0f39bb6ca9ce04b0fd7f2e971688e2e53b'
     packages:
       dola_protocol:
+        latest: '0xc26491612cdb386cb943ae92764d94d85f1f2c6fb1890ab6a2d5687521626c21'
         origin: '0x826915f8ca6d11597dfe6599b8aa02a4c08bd8d39674855254a06ee83fe7220e'
         v_1_0_1: '0xc5b2a5049cd71586362d0c6a38e34cfaae7ea9ce6d5401a350506a15f817bf72'
         v_1_0_2: '0x526352c8d904fdd4d61f0a2223e132a794723e672d97cd342455eb1e4dc7e52d'
@@ -58,7 +59,6 @@ networks:
         v_1_0_7: '0x2c674f67f73bb32ea94123e4a0c509de9f529a2423818b275d9a9019ad83cd04'
         v_1_0_8: '0x1f61d9c4a266a24cd53fabd902c3e012e221c2a223bbb0532229af3b8ac8ca65'
         v_1_0_9: '0xc26491612cdb386cb943ae92764d94d85f1f2c6fb1890ab6a2d5687521626c21'
-        latest: '0xc26491612cdb386cb943ae92764d94d85f1f2c6fb1890ab6a2d5687521626c21'
       external_interfaces: '0x6c3367d4eac668f8a7944b65f5185804c9573e15594e6198ef67b1c8e8fc0e54'
       genesis_proposal: '0x693828fbf1322d43f23ad365ab27b7d6f6649133aa3761ff55be6380e53c1b70'
       pyth: '0x00b53b0f4174108627fbee72e2498b58d6a2714cded53fac537034c220d26302'
@@ -79,6 +79,20 @@ networks:
         pool_weight: 1
     pyth_service_url: https://xc-mainnet.pyth.network
     reserves:
+      ARB:
+        base_borrow_rate: 0
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.33
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.66
+        dola_pool_id: 6
+        is_isolated_asset: false
+        optimal_utilization: 0.8
+        supply_cap_ceiling: 1000000
+        treasury: 0
+        treasury_factor: 0.23
       BTC:
         base_borrow_rate: 0
         borrow_cap_ceiling: 0
@@ -107,34 +121,6 @@ networks:
         supply_cap_ceiling: 500
         treasury: 0
         treasury_factor: 0.23
-      OP:
-        base_borrow_rate: 0
-        borrow_cap_ceiling: 0
-        borrow_coefficient: 1.09
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        borrowable_in_isolation: false
-        collateral_coefficient: 0.88
-        dola_pool_id: 7
-        is_isolated_asset: false
-        optimal_utilization: 0.8
-        supply_cap_ceiling: 1000000
-        treasury: 0
-        treasury_factor: 0.23
-      ARB:
-        base_borrow_rate: 0
-        borrow_cap_ceiling: 0
-        borrow_coefficient: 1.33
-        borrow_rate_slope1: 0.07
-        borrow_rate_slope2: 3
-        borrowable_in_isolation: false
-        collateral_coefficient: 0.66
-        dola_pool_id: 6
-        is_isolated_asset: false
-        optimal_utilization: 0.8
-        supply_cap_ceiling: 1000000
-        treasury: 0
-        treasury_factor: 0.23
       MATIC:
         base_borrow_rate: 0
         borrow_cap_ceiling: 0
@@ -146,6 +132,20 @@ networks:
         dola_pool_id: 5
         is_isolated_asset: false
         optimal_utilization: 0.75
+        supply_cap_ceiling: 1000000
+        treasury: 0
+        treasury_factor: 0.23
+      OP:
+        base_borrow_rate: 0
+        borrow_cap_ceiling: 0
+        borrow_coefficient: 1.09
+        borrow_rate_slope1: 0.07
+        borrow_rate_slope2: 3
+        borrowable_in_isolation: false
+        collateral_coefficient: 0.88
+        dola_pool_id: 7
+        is_isolated_asset: false
+        optimal_utilization: 0.8
         supply_cap_ceiling: 1000000
         treasury: 0
         treasury_factor: 0.23
@@ -218,27 +218,56 @@ networks:
         coin_type: 0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN
         decimals: 6
         dola_pool_id: 1
-    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
     wormhole_scan_url: https://api.wormscan.io/api/v1/
+    wormhole_url: https://wormhole-v2-mainnet-api.certus.one
   sui-testnet:
+    bool_network:
+      chains:
+        bevm-testnet:
+          anchor: '0x45395fc32da85a18285639f881cc1b7785c91091'
+          chainid: 1502
+          cid: 368
+          consumer": '0xb62bb643DB4e67AD2c1D90cC6Fb974008B0cbE79'
+          messenger: '0xF68F872F0DDE0Ec1Ba8c28EeD9d0674760aA8eB1'
+          remote_anchor: '0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c'
+          remote_chainid: 1918346523
+        sui-testnet:
+          anchor: '0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c'
+          chainid: 1918346523
+          cid: 370
+          remote_anchor: '0x45395fc32da85a18285639f881cc1b7785c91091'
+          remote_chainid: 1502
+      cids:
+        368:
+          chain: bevm-testnet
+          committee_key: '0x04c12f387800f95975fa7c988d0ce942de30d8eac95ff187742ebd562a4fe2dff2fc98faaac07b103b5cbb36d9e5e00334c73b33653a28239dddbc738c6d5ba521'
+          key_type: ecdsa
+        370:
+          chain: sui-testnet
+          committee_key: '0x28a9f4b0490113ac63e4082d263aa6b88b64ef7a594a0b977205495b0fa86e87'
+          key_type: eddsa
+      committee_key: '0x28a9f4b0490113ac63e4082d263aa6b88b64ef7a594a0b977205495b0fa86e87'
+      core_state: '0xcd4af4fcdb43af55f0afbe4a4a105efb8191584710b21207d4f29c1625aa232b'
+      global_state: '0x3ff7bed6107de126102bfe8ec402b816537b3690c8ca541a5d6d9522fc2c250a'
+      node_url: wss://test-rpc-node-ws.bool.network
     node_url: https://fullnode.testnet.sui.io
     objects:
       Clock: '0x0000000000000000000000000000000000000000000000000000000000000006'
-      CoreState: '0x203ed644a34bdead51b69a5dfe384f66098bd0a1329108d5abe365211fbb3635'
-      GovernanceGenesis: '0xb120ce4627baf7bf6f3c83a43c9ef91644a451d1c677a851c0e129fa03fb1e09'
-      GovernanceInfo: '0xa696a2de2a3d6b29129796c6b24835c15d7aa63c00899bb7f6af002606947ce5'
-      LendingPortal: '0xcc1956d488781eb6b48b52d92a2992fbd75166b83d0f11c1ec1cf404b54576a1'
+      CoreState: '0x80dc9ddc24d693d33cdb2737684fb859dcccf74a75aeecfc54c49197787cbc6f'
+      GovernanceGenesis: '0x468b3342e4f918d35b6c981fd5142965706a16fcf0f2f3295ff03f83773ac17e'
+      GovernanceInfo: '0x8955e740aa17a3069efe5dac5cca5b3f931d8769507595ff3cf8f008f7ade317'
+      LendingPortal: '0x527b967d70c59e38b06cf973f64b32932efa0a7978176cef478f751122b535a9'
       LendingStorage: '0x301459172ff7023416c0ed132df419f67693806a5a8a0397f8a42f5681c30973'
       Pool<SUI>: '0x283f712a6c6a9361132e2d75aee4b4499f98892a3b8cfd4a7244ad6862c62aa9'
-      PoolManagerInfo: '0xae4165234c13256599879183a2bd28000a10a216f2ec2ad60859b4552c269a09'
+      PoolManagerInfo: '0xd2f8c7a8aad3998530708c85407d77eec4f205766e0afce4a4cba64e4ffbb3cd'
       PoolState: '0x52c9fe49e061f5d10c163ccc1996906fda4f3bdec40b9bb4ee36bcdacaee65c7'
-      PriceOracle: '0xaeb51419b4e937355fae227ac70c5f3bce944ad6a0e38812b7e40ca1ed3fa9cb'
-      PythState: '0xd3e79c2c083b934e78b3bd58a490ec6b092561954da6e7322e1e2b3c8abfddc0'
+      PriceOracle: '0x984766f2018c9257f72ba6fff253afb0bbfc7d35e193f747dfad359ca370c7f8'
+      PythState: '0x2d82612a354f0b7e52809fc2845642911c7190404620cec8688f68808f8800d8'
       SUI: 0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
-      SystemPortal: '0xd8ee49f63b502a10be5c9ceb9dadb1f1f184bcc71aece57786c2e37593709da8'
+      SystemPortal: '0xe4aefa6e4d5e9ed2227c23f8044ec86d65476c8f071fd98139b50cc12938dcd0'
       SystemStorage: '0x18177724587ca69a9c8fc6f4c15e5b4b4d1fee1374ade62a2707f2069021a7f3'
-      UserManagerInfo: '0xea1a84e3b17bcf9beb44d0b806df92cc4fb345bb79e7c59f3fda30b85bdb1301'
-      WormholeState: '0x31358d198147da50db32eda2562951d53973a0c0ad5ed738e9b17d88b213d790'
+      UserManagerInfo: '0x771eeda80aab0e8da790e854ab63e6667ea9f3ed5ced6c774d3fe22860a86ccb'
+      WormholeState: '0xebba4cc4d614f7a7cdbe883acc76d1cc767922bc96778e7b68be0d15fce27c02'
     oracle:
       feed_id:
         APT/USD: '0x44a93dddd8effa54ea51076c4e851b6cbbfd938e82eb90197de38fe8876bb66e'
@@ -253,12 +282,12 @@ networks:
         USDT/USD: '0x1fc18861232290221461220bd4e2acd1dcdfbc89c84092c93c18bdc7756c1588'
     packages:
       dola_protocol:
-        origin: '0xdab5bbcf6b6aa9e1ebf4c8636505428a9c2a4cbe75d84d640cb6e7abfe8ef5e2'
-        latest: '0x8ab018a51be9817daa2a6c535a714e13d742ffa49e026f324747d5a7d9883378'
-      external_interfaces: '0xf68dfe40252482395491f9a49b2ce19b0aadba3960e3c19c37fb803e42c9d303'
-      genesis_proposal: '0xb03e33e795a4ba328fe4e90252fc066ae95aaf546d967a94c0833e1031bc33eb'
-      pyth: '0x431c1cfb9a4da32c77810a1c48aa19cc2edb03010281e0fe411b4b3b38589df1'
-      wormhole: '0xf47329f4344f3bf0f8e436e2f7b485466cff300f12a166563995d3888c296a94'
+        latest: '0x8b0d40e4a40eb90c6d6002bca4962e5cf890b7e9f16efbdfe64d3ec1bf2d598e'
+        origin: '0x8b0d40e4a40eb90c6d6002bca4962e5cf890b7e9f16efbdfe64d3ec1bf2d598e'
+      external_interfaces: '0xe011b662f0553e00fee7433be1cac962f92875a2f15fed06482799fd79217b99'
+      genesis_proposal: '0x5dbe8b093a0fc41d4fad58ed47104f84da75844a4c1c30232214980fa647efb6'
+      pyth: '0xe76d8a37d4132278a7a752183e90e04890b9e7d0f6657eadb68821609a2a56a3'
+      wormhole: '0xcc029e2810f17f9f43f52262f40026a71fbdca40ed3803ad2884994361910b7e'
     pools:
       SUI:
         dola_chain_id: 0
@@ -385,46 +414,14 @@ networks:
         coin_type: 0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI
         decimals: 9
         dola_pool_id: 3
-    wormhole_url: https://wormhole-v2-testnet-api.certus.one
     wormhole_scan_url: https://api.testnet.wormscan.io/api/v1/
-    bool_network:
-      node_url: wss://test-rpc-node-ws.bool.network
-      cids:
-        334:
-          chain: bevm-testnet
-          committee_key: "0x04ae05493d480eafdd9d1efd997ad8f0ae54d0d16bf6d478a4c0dc99fdae40d9a092c3c28cf8191ef2258e06106f6ef3144ea1d231ae532e10bdb6607e6d5fe772"
-          key_type: "ecdsa"
-        335:
-          chain: sui-testnet
-          committee_key: "0xfc3cc61da7647d4317c330f8c196615625d4afc2206d47b43f969e8cdd2bff32"
-          key_type: "eddsa"
-      chains:
-        sui-testnet:
-          chainid: 1918346523
-          cid: 335
-          anchor: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
-          consumer: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
-          upgrade_cap: "0xd29db817e829f3bc3933f8260e8f9b49dc9cf2313332dc168af9d20f468c201a"
-          anchor_cap: "0x0c8fe8bca1d62389b34355b36559a0c5ef7afc677397ca425f5a9d9b3166674d"
-          anchor_state: "0x1a53ae1bad85cbd565c0c9afa83fa9aa2a739330f9d839eee182e8e2f0a6cb82"
-          remote_anchor: "0xee15ba3173e6a13028958aa0c89299473a8cf5a9"
-          boolamt: "0x32eca1991b191fd230beb0fcadcf0819b1e08c7d27e4b8234cd49c05eda5645f"
-          global_state: "0x85c4c4f30a3cb2b982950b35bd1e189a3f47504341c12430dcf6bca120d3be3d"
-        bevm-testnet:
-          chainid: 1502
-          cid: 334
-          anchor: "0xee15ba3173e6a13028958aa0c89299473a8cf5a9"
-          messenger: "0xF68F872F0DDE0Ec1Ba8c28EeD9d0674760aA8eB1"
-          consumer": "0x955034955264BCc103108DbfC2d0768C367b3a63"
-          remote_chainid: 1918346523
-          remote_anchor: "0x65da07243a0579ae918f74aad5fbd1fedf13006163cbf5564fbaccbd5ec5741c"
-
+    wormhole_url: https://wormhole-v2-testnet-api.certus.one
 sui_wallets:
   from_mnemonic:
-    TestAccount: ${DEFAULT}
-    OracleGuard: ${LENDING_ORACLE_GUARD}
     LendingCore1: ${LENDING_CORE1}
     LendingCore2: ${LENDING_CORE2}
     LendingCore3: ${LENDING_CORE3}
     LendingPool: ${LENDING_POOL}
     Liquidator: ${LENDING_LIQUIDATE}
+    OracleGuard: ${LENDING_ORACLE_GUARD}
+    TestAccount: ${DEFAULT}

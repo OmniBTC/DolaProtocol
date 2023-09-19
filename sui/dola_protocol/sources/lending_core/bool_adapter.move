@@ -9,19 +9,24 @@ module dola_protocol::lending_core_bool_adapter {
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
 
-    use boolamt::anchor::GlobalState;
+    use boolamt::anchor::{GlobalState, get_fee_collector};
+    use boolamt::fee_collector;
+    use boolamt::messenger;
 
     use dola_protocol::dola_address::{Self, DolaAddress};
     use dola_protocol::genesis::{Self, GovernanceGenesis};
     use dola_protocol::lending_codec;
     use dola_protocol::lending_core_storage::{Self as storage, Storage};
     use dola_protocol::lending_logic;
+    use dola_protocol::pool_codec;
     use dola_protocol::oracle::PriceOracle;
     use dola_protocol::pool_manager::{Self, PoolManagerInfo};
     use dola_protocol::user_manager::{Self, UserManagerInfo};
-    use dola_protocol::bool_adapter_core::{Self, CoreState};
+    use dola_protocol::bool_adapter_core::{Self, CoreState, get_bool_chain_id};
     use dola_protocol::bool_adapter_verify::{
+        remapping_opcode,
         check_server_opcode,
+        client_opcode_withdraw,
         server_opcode_lending_supply,
         server_opcode_lending_withdraw,
         server_opcode_lending_borrow,
@@ -69,11 +74,73 @@ module dola_protocol::lending_core_bool_adapter {
 
     /// === Public Functions ===
 
-    public fun supply(
+    public fun calc_withdrow_bool_message_fee(
+        bool_global: &mut GlobalState,
+        core_state: &mut CoreState,
+        message_raw: vector<u8>
+    ): u64 {
+        let message = messenger::message_from_bcs(&message_raw);
+        let payload_with_opcode = messenger::payload(&message);
+        let opcode = vector::pop_back(&mut payload_with_opcode);
+        let payload = payload_with_opcode;
+        
+        if (opcode != server_opcode_lending_withdraw() && 
+            opcode != server_opcode_lending_borrow()){
+            return 0
+        };
+
+        let (
+            user_address, 
+            _app_id, 
+            _, 
+            app_payload
+        ) = 
+            pool_codec::decode_send_message_payload(payload);
+
+        let (
+            source_chain_id, 
+            nonce, 
+            amount, 
+            pool_address, 
+            _receiver, 
+            call_type
+        ) = 
+            lending_codec::decode_withdraw_payload(app_payload);
+
+        if (call_type != lending_codec::get_withdraw_type() && 
+            call_type != lending_codec::get_borrow_type()) {
+            return 0
+        };
+
+        let new_payload = pool_codec::encode_withdraw_payload(
+            source_chain_id,
+            nonce,
+            pool_address,
+            user_address,
+            amount
+        );
+        remapping_opcode(&mut new_payload, client_opcode_withdraw());
+
+        let new_payload_length = vector::length(&new_payload);
+
+        let dst_chain_id = get_bool_chain_id(core_state, source_chain_id);
+
+        let fee_collector = get_fee_collector(bool_global);
+        let fee = fee_collector::cpt_fee(
+            fee_collector,
+            dst_chain_id,
+            new_payload_length,
+            0
+        );
+
+        return fee
+    }
+    
+    public entry fun supply(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -89,7 +156,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         let (pool, user, amount, app_payload) = bool_adapter_core::receive_deposit(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -124,11 +191,11 @@ module dola_protocol::lending_core_bool_adapter {
         })
     }
 
-    public fun withdraw(
+    public entry fun withdraw(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -145,7 +212,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         let (user, app_payload) = bool_adapter_core::receive_withdraw(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -177,7 +244,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         bool_adapter_core::send_withdraw(
             core_state,
-            bool_state,
+            bool_global,
             storage::get_app_cap(storage),
             pool_manager_info,
             dst_pool,
@@ -210,11 +277,11 @@ module dola_protocol::lending_core_bool_adapter {
         })
     }
 
-    public fun borrow(
+    public entry fun borrow(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -231,7 +298,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         let (user, app_payload) = bool_adapter_core::receive_withdraw(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -262,7 +329,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         bool_adapter_core::send_withdraw(
             core_state,
-            bool_state,
+            bool_global,
             storage::get_app_cap(storage),
             pool_manager_info,
             dst_pool,
@@ -295,11 +362,11 @@ module dola_protocol::lending_core_bool_adapter {
         })
     }
 
-    public fun repay(
+    public entry fun repay(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -315,7 +382,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         let (pool, user, amount, app_payload) = bool_adapter_core::receive_deposit(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -351,11 +418,11 @@ module dola_protocol::lending_core_bool_adapter {
         })
     }
 
-    public fun liquidate(
+    public entry fun liquidate(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -371,7 +438,7 @@ module dola_protocol::lending_core_bool_adapter {
 
         let (sender, app_payload) = bool_adapter_core::receive_message(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -407,11 +474,11 @@ module dola_protocol::lending_core_bool_adapter {
         })
     }
 
-    public fun as_collateral(
+    public entry fun as_collateral(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -428,7 +495,7 @@ module dola_protocol::lending_core_bool_adapter {
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = bool_adapter_core::receive_message(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
@@ -454,11 +521,11 @@ module dola_protocol::lending_core_bool_adapter {
         };
     }
 
-    public fun cancel_as_collateral(
+    public entry fun cancel_as_collateral(
         genesis: &GovernanceGenesis,
         pool_manager_info: &mut PoolManagerInfo,
         user_manager_info: &mut UserManagerInfo,
-        bool_state: &mut GlobalState,
+        bool_global: &mut GlobalState,
         core_state: &mut CoreState,
         oracle: &mut PriceOracle,
         storage: &mut Storage,
@@ -475,7 +542,7 @@ module dola_protocol::lending_core_bool_adapter {
         // Verify that a message is valid using the wormhole
         let (sender, app_payload) = bool_adapter_core::receive_message(
             core_state,
-            bool_state,
+            bool_global,
             message_raw,
             signature,
             storage::get_app_cap(storage),
