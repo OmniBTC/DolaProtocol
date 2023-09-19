@@ -1,3 +1,5 @@
+// Copyright (c) OmniBTC, Inc.
+// SPDX-License-Identifier: GPL-3.0
 module dola_protocol::boost {
     use std::ascii::String;
     use std::type_name;

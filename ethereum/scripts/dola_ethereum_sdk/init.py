@@ -228,6 +228,38 @@ def fallback_endpoints_web3(network, external_endpoint=None):
     return web3.Web3(FallbackProvider(endpoints))
 
 
+def bool_adapter_init(net="bevm-test"):
+    print(f"bool_adapter_init: {net}")
+    anchor_address = config["networks"][net]["src_bool_anchor"]
+    anchor = load.bool_anchor_package(anchor_address)
+
+    account = get_account()
+
+    # update consumer
+    consumer = load.bool_adapter_pool_package(net).address
+    anchor.updateConsumer(
+        consumer,
+        {"from": account}
+    )
+
+    print(f"src_anchor={anchor_address}, src_consumer={consumer}")
+
+    # update path
+
+    remote_chainid = config["networks"][net]["dst_bool_chainid"]
+    remote_anchor = bytes.fromhex(config["networks"][net]["dst_bool_anchor"].replace("0x", ""))
+
+    if not anchor.isPathEnabled(remote_chainid):
+        anchor.batchUpdateRemoteAnchors(
+            [remote_chainid],
+            [remote_anchor],
+            {"from": account}
+        )
+
+    _remote_anchor = anchor.fetchRemoteAnchor(remote_chainid)
+    print(f"remote_chainid={remote_chainid}, remote_anchor={_remote_anchor}")
+
+
 if __name__ == "__main__":
     net = "polygon-main"
     set_ethereum_network(net)

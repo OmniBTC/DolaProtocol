@@ -21,6 +21,8 @@ module dola_protocol::user_manager {
     friend dola_protocol::lending_portal;
     friend dola_protocol::system_portal;
     friend dola_protocol::wormhole_adapter_core;
+    friend dola_protocol::bool_adapter_core;
+    friend dola_protocol::system_core_bool_adapter;
 
     /// Errors
     const EALREADY_USER: u64 = 0;

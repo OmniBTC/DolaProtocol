@@ -1,7 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
-
-///
 module dola_protocol::dola_address {
     use std::ascii;
     use std::type_name;

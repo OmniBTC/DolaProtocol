@@ -1,9 +1,10 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 
-/// Wormhole bridge adapter, this module is responsible for adapting wormhole to pass messages for settlement center
-/// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and
-/// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
+// Wormhole bridge adapter, this module is responsible for adapting wormhole to pass messages for settlement center
+// applications (such as lending core). The usage of this module are: 1) Update the status of user_manager and
+// pool_manager; 2) Verify VAA and  message source, decode PoolPaload, and pass it to the correct application
+#[allow(unused_field)]
 module dola_protocol::wormhole_adapter_core {
     use std::vector;
 

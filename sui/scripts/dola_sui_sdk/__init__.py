@@ -42,6 +42,6 @@ def set_dola_project_path(path: Union[Path, str], network="sui-mainnet"):
     DOLA_CONFIG["DOLA_PROJECT_PATH"] = path
     DOLA_CONFIG["DOLA_SUI_PATH"] = path.joinpath("sui")
     assert DOLA_CONFIG["DOLA_SUI_PATH"].exists(), f"Path error:{DOLA_CONFIG['DOLA_SUI_PATH'].absolute()}!"
-    sui_project = sui_brownie.SuiProject(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=network)
+    sui_project.__init__(project_path=DOLA_CONFIG["DOLA_SUI_PATH"], network=network)
     sui_project.load_config()
     sui_project.read_cache()

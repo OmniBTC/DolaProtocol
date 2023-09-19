@@ -120,6 +120,7 @@ contract DolaPool {
     }
 
     /// Get chain-unique nonce
+    /// Allow anyone to call
     function getNonce() external returns (uint64) {
         return nonce++;
     }

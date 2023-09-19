@@ -1,6 +1,5 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
-
 module dola_protocol::system_core_storage {
     use sui::object::{Self, UID};
     use sui::transfer;
@@ -10,6 +9,7 @@ module dola_protocol::system_core_storage {
     use dola_protocol::genesis::GovernanceCap;
 
     friend dola_protocol::system_core_wormhole_adapter;
+    friend dola_protocol::system_core_bool_adapter;
 
     struct Storage has key {
         id: UID,

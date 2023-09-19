@@ -10,10 +10,14 @@ module genesis_proposal::genesis_proposal {
     use sui::coin::Coin;
     use sui::sui::SUI;
     use sui::tx_context::TxContext;
+    use sui::transfer;
+
+    use wormhole::state::State;
+    use boolamt::anchor::{GlobalState, AnchorCap};
 
     use dola_protocol::app_manager::TotalAppInfo;
     use dola_protocol::dola_address;
-    use dola_protocol::genesis::GovernanceCap;
+    use dola_protocol::genesis::{GovernanceCap, GovernanceGenesis, register_bool_anchor};
     use dola_protocol::governance_v1::{Self, GovernanceInfo, Proposal};
     use dola_protocol::lending_core_storage::{Self, Storage};
     use dola_protocol::lending_logic;
@@ -24,10 +28,9 @@ module genesis_proposal::genesis_proposal {
     use dola_protocol::wormhole_adapter_core::{Self, CoreState};
     use dola_protocol::wormhole_adapter_pool;
     use dola_protocol::wormhole_adapter_pool::PoolState;
-    use wormhole::state::State;
     use dola_protocol::boost;
     use dola_protocol::boost::RewardPool;
-    use sui::transfer;
+    use dola_protocol::bool_adapter_core::initialize_cap_with_governance;
 
     const EIS_FINAL_VOTE: u64 = 0;
 
@@ -117,6 +120,50 @@ module genesis_proposal::genesis_proposal {
         ctx: &mut TxContext
     ): HotPotato {
         wormhole_adapter_core::initialize_cap_with_governance(&hot_potato.gov_cap, wormhole_state, ctx);
+        hot_potato
+    }
+
+    // Require gov_cap
+    public fun init_bool_adapter_core_with_key(
+        hot_potato: HotPotato,
+        governance_genesis: &GovernanceGenesis,
+        committee_pk: vector<u8>,
+        bool_global: &mut GlobalState,
+        init_relayer: address,
+        ctx: &mut TxContext
+    ): HotPotato {
+        let bool_anchor_cap = register_bool_anchor(
+            &hot_potato.gov_cap,
+            governance_genesis,
+            committee_pk,
+            bool_global,
+            ctx
+        );
+
+        initialize_cap_with_governance(
+            &hot_potato.gov_cap,
+            bool_anchor_cap,
+            init_relayer,
+            ctx
+        );
+
+        hot_potato
+    }
+
+    // Require gov_cap
+    public fun init_bool_adapter_core_with_cap(
+        hot_potato: HotPotato,
+        bool_anchor_cap: AnchorCap,
+        init_relayer: address,
+        ctx: &mut TxContext
+    ): HotPotato {
+        initialize_cap_with_governance(
+            &hot_potato.gov_cap,
+            bool_anchor_cap,
+            init_relayer,
+            ctx
+        );
+
         hot_potato
     }
 

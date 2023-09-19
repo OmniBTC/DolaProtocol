@@ -13,12 +13,14 @@ module dola_protocol::pool_manager {
     use sui::transfer;
     use sui::tx_context::TxContext;
 
-    use dola_protocol::dola_address::{Self, DolaAddress};
+    use dola_protocol::dola_address::DolaAddress;
     use dola_protocol::equilibrium_fee;
     use dola_protocol::genesis::GovernanceCap;
 
     #[test_only]
     use dola_protocol::genesis;
+    #[test_only]
+    use dola_protocol::dola_address::create_dola_address;
     #[test_only]
     use std::ascii::string;
     #[test_only]
@@ -29,6 +31,7 @@ module dola_protocol::pool_manager {
 
     friend dola_protocol::lending_portal;
     friend dola_protocol::wormhole_adapter_core;
+    friend dola_protocol::bool_adapter_core;
 
     /// Equilibrium fees are charged when liquidity is less than 60% of the target liquidity.
     const DEFAULT_ALPHA_1: u256 = 600000000000000000000000000;
@@ -528,7 +531,7 @@ module dola_protocol::pool_manager {
 
             let pool_manager_info = test_scenario::take_shared<PoolManagerInfo>(scenario);
             let dola_pool_name = string(b"USDT");
-            let pool = dola_address::create_dola_address(0, b"USDT");
+            let pool = create_dola_address(0, b"USDT");
             let dola_pool_id = 0;
             register_pool_id(
                 &governance_cap,
@@ -551,7 +554,7 @@ module dola_protocol::pool_manager {
     public fun test_add_liquidity() {
         let manager = @0x22;
         let dola_pool_name = string(b"USDT");
-        let pool = dola_address::create_dola_address(0, b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);
@@ -602,7 +605,7 @@ module dola_protocol::pool_manager {
     public fun test_remove_liquidity() {
         let manager = @0x22;
         let dola_pool_name = string(b"USDT");
-        let pool = dola_address::create_dola_address(0, b"USDT");
+        let pool = create_dola_address(0, b"USDT");
         let amount = 100;
 
         let scenario_val = test_scenario::begin(manager);

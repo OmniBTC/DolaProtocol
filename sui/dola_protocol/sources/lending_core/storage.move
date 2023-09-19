@@ -16,6 +16,7 @@ module dola_protocol::lending_core_storage {
     friend dola_protocol::lending_logic;
     friend dola_protocol::lending_portal;
     friend dola_protocol::lending_core_wormhole_adapter;
+    friend dola_protocol::lending_core_bool_adapter;
 
     /// Errors
 

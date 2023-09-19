@@ -1,7 +1,8 @@
 // Copyright (c) OmniBTC, Inc.
 // SPDX-License-Identifier: GPL-3.0
 
-/// System front-end contract portal. Including address binding, etc.
+// System front-end contract portal. Including address binding, etc.
+#[allow(unused_field, unused_function)]
 module dola_protocol::system_portal {
     use sui::object::{Self, UID};
     use sui::transfer;
